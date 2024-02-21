@@ -1,40 +1,34 @@
 version: "3.9"
 services:
-  db:
-    image: "postgres:14.4"
-    restart: always
-    container_name: "opub_postgres"
-    environment:
-      - POSTGRES_NAME=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    ports:
-      - "54321:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-  web:
+  backend:
     build: .
-    container_name: "opub_dataset_server"
+    env_file: .env
+    container_name: "DataExBackend"
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/code
     ports:
-      - "8005:8000"
+      - "8000:8000"
     depends_on:
-      - db
+      - backend_db
       - elasticsearch
       - redis
+
+  backend_db:
+    image: "postgres:14.4"
+    env_file: .env
+    restart: always
+    container_name: "DataExBackendDb"
+    ports:
+      - "54321:5432"
+    volumes:
+      - backend_db_data:/var/lib/postgresql/data   
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.6
     restart: always
-    container_name: "opub_elasticsearch"
-    environment:
-      - xpack.security.enabled=false
-      - discovery.type=single-node
-      - cluster.routing.allocation.disk.watermark.low=97%
-      - cluster.routing.allocation.disk.watermark.high=98%
-      - cluster.routing.allocation.disk.watermark.flood_stage=99%
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    container_name: "DataExBackendElastic"
+    env_file: .env
     ulimits:
       memlock:
         soft: -1
@@ -49,19 +43,22 @@ services:
     ports: 
       - "9200:9200"
       - "9300:9300"
+
   redis:
     image: "redis:alpine"
     restart: always
     command: redis-server
-    container_name: "opub_redis"
+    container_name: "DataExBackendRedis"
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
+      
 volumes:
-  postgres_data:
-    name: opub_postgres_data
+  backend_db_data:
+    name: backend_db_data
   elasticsearch-data:
     driver: local
   redis-data:
     driver: local
+
