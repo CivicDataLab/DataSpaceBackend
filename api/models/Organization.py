@@ -15,4 +15,5 @@ class Organization(models.Model):
     organization_types = models.CharField(
         max_length=50, choices=OrganizationTypes.choices
     )
-    parent = models.ForeignKey("self",unique=False,blank=True,null=True,on_delete=models.SET_NULL,related_name="parent_field",)
+    parent = models.ForeignKey("self", unique=False, blank=True, null=True, on_delete=models.SET_NULL,
+                               related_name="parent_field", )

@@ -50,11 +50,11 @@ class OrganizationTypes(models.TextChoices):
     STATE_GOVERNMENT = "STATE GOVERNMENT"
     UNION_TERRITORY_GOVERNMENT = "UNION TERRITORY GOVERNMENT"
     URBAN_LOCAL_BODY = "URBAN LOCAL BODY"
-    ACADEMIC_INSTITUTION = "ACADEMIC INSTITUTION" 
+    ACADEMIC_INSTITUTION = "ACADEMIC INSTITUTION"
     CENTRAL_GOVERNMENT = "CENTRAL GOVERNMENT"
-    CITIZENS_GROUP = "CITIZENS GROUP" 
+    CITIZENS_GROUP = "CITIZENS GROUP"
     CIVIL_SOCIETY_ORGANISATION = "CIVIL SOCIETY ORGANISATION"
-    INDUSTRY_BODY = "INDUSTRY BODY" 
+    INDUSTRY_BODY = "INDUSTRY BODY"
     MEDIA_ORGANISATION = "MEDIA ORGANISATION"
     OPEN_DATA_TECHNOLOGY_COMMUNITY = "OPEN DATA/TECHNOLOGY COMMUNITY"
     PRIVATE_COMPANY = "PRIVATE COMPANY"
@@ -65,22 +65,26 @@ class OrganizationTypes(models.TextChoices):
     CORPORATIONS = "CORPORATIONS"
     NGO = "NGO"
 
+
 class OrganizationSubTypes(models.TextChoices):
     MINISTRY = "MINISTRY"
     DEPARTMENT = "DEPARTMENT"
     ORGANISATION = "ORGANISATION"
-    OTHER  = "OTHER"
+    OTHER = "OTHER"
+
 
 class GeoTypes(models.TextChoices):
     DISTRICT = "DISTRICT"
     STATE = "STATE"
     COUNTRY = "COUNTRY"
-    UT      = "UT"
+    UT = "UT"
+
 
 class DataType(models.TextChoices):
     API = "API"
     FILE = "FILE"
     EXTERNAL = "EXTERNAL"
+
 
 class ValidationUnits(models.TextChoices):
     LIFETIME = "LIFETIME"
@@ -110,5 +114,3 @@ class ParameterTypes(models.TextChoices):
 class FormatLocation(models.TextChoices):
     HEADER = "HEADER"
     PARAM = "PARAM"
-
-

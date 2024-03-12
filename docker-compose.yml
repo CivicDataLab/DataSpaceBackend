@@ -19,6 +19,10 @@ services:
     env_file: .env
     restart: always
     container_name: "DataExBackendDb"
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
     ports:
       - "54321:5432"
     volumes:

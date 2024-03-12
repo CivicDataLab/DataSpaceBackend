@@ -10,9 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
-from pathlib import Path
-from dotenv import load_dotenv
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -25,19 +27,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-af%#657wf@f-hclfimni96qy07fyhjbglc!@^98jpn9z%#9b6%'
 
 # load env and variables
-DB_ENGINE= os.getenv('DB_ENGINE', "django.db.backends.sqlite3"),
-DB_NAME= os.getenv('DB_NAME', str(BASE_DIR / "db.sqlite3")),
-DB_USER= os.getenv('DB_USER', "DB_USER"),
-DB_PASSWORD= os.getenv('DB_PASSWORD', 'DB_PASSWORD'),
-DB_HOST= os.getenv('DB_HOST', 'DB_HOST'),
-DB_PORT=os.getenv('DB_PORT', 'DB_PORT'), 
-WELCOME_TEXT=os.getenv('WELCOME_TEXT', 'Hello World'), 
+DB_ENGINE = os.getenv('DB_ENGINE', "django.db.backends.sqlite3"),
+DB_NAME = os.getenv('DB_NAME', str(BASE_DIR / "db.sqlite3")),
+DB_USER = os.getenv('DB_USER', "DB_USER"),
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'DB_PASSWORD'),
+DB_HOST = os.getenv('DB_HOST', 'DB_HOST'),
+DB_PORT = os.getenv('DB_PORT', 'DB_PORT'),
+WELCOME_TEXT = os.getenv('WELCOME_TEXT', 'Hello World'),
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', True),
 
 ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -81,12 +82,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'dataexbackend.wsgi.application'
 
-
 STRAWBERRY_DJANGO = {
     "FIELD_DESCRIPTION_FROM_HELP_TEXT": True,
     "TYPE_DESCRIPTION_FROM_MODEL_DOCSTRING": True,
 }
-
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
@@ -97,7 +96,6 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -117,7 +115,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
@@ -128,7 +125,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
