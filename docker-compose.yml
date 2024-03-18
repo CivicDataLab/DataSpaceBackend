@@ -33,6 +33,10 @@ services:
     restart: always
     container_name: "DataExBackendElastic"
     env_file: .env
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
     ulimits:
       memlock:
         soft: -1
@@ -44,9 +48,9 @@ services:
       - IPC_LOCK
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
-    ports: 
-      - "9200:9200"
-      - "9300:9300"
+#    ports:
+#      - "9200:9200"
+#      - "9300:9300"
 
   redis:
     image: "redis:alpine"
@@ -57,11 +61,107 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
+
+  telemetry_elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.2
+    container_name: telemetry_elasticsearch
+    restart: always
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+      - ELASTIC_PASSWORD=changeme
+      - xpack.security.enabled=true
+    volumes:
+      - tele-elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      interval: 10s
+      retries: 12
+      test:
+        curl -s http://localhost:9200/_cluster/health | grep -vq
+        '"status":"red"'
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.16.2
+    container_name: kibana
+    environment:
+      ELASTICSEARCH_URL: "http://telemetry_elasticsearch:9200"
+      ELASTICSEARCH_HOSTS: '["http://telemetry_elasticsearch:9200"]'
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: changeme
+    restart: always
+    depends_on:
+      telemetry_elasticsearch:
+        condition: service_healthy
+    ports:
+      - 127.0.0.1:5601:5601
+
+  apm-server:
+    image: docker.elastic.co/apm/apm-server:7.16.2
+    container_name: apm-server
+    user: apm-server
+    restart: always
+    command:
+      [
+        "--strict.perms=false",
+        "-e",
+        "-E",
+        "apm-server.host=0.0.0.0:8200",
+        "-E",
+        "apm-server.kibana.enabled=true",
+        "-E",
+        "apm-server.kibana.host=kibana:5601",
+        "-E",
+        "apm-server.kibana.username=elastic",
+        "-E",
+        "apm-server.kibana.password=changeme",
+        "-E",
+        "output.elasticsearch.hosts=['telemetry_elasticsearch:9200']",
+        "-E",
+        "output.elasticsearch.enabled=true",
+        "-E",
+        "output.elasticsearch.username=elastic",
+        "-E",
+        "output.elasticsearch.password=changeme",
+      ]
+    depends_on:
+      telemetry_elasticsearch:
+        condition: service_healthy
+    cap_add: [ "CHOWN", "DAC_OVERRIDE", "SETGID", "SETUID" ]
+    cap_drop: [ "ALL" ]
+    healthcheck:
+      interval: 10s
+      retries: 12
+      test:
+        curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null
+        http://localhost:8200/
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: otel-collector
+    restart: always
+    command: "--config=/etc/otel-collector-config.yaml"
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    depends_on:
+      apm-server:
+        condition: service_healthy
+    ports:
+      - 127.0.0.1:4317:4317
       
 volumes:
   backend_db_data:
     name: backend_db_data
   elasticsearch-data:
+    driver: local
+  tele-elasticsearch-data:
     driver: local
   redis-data:
     driver: local

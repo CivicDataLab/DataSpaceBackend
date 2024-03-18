@@ -1,0 +1,30 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 2000
+  batch:
+
+exporters:
+  logging:
+    loglevel: warn
+  otlp/elastic:
+    endpoint: "apm-server:8200"
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [ otlp ]
+      exporters: [ logging, otlp/elastic ]
+      processors: [ batch ]
+    metrics:
+      receivers: [ otlp ]
+      exporters: [ logging, otlp/elastic ]
+      processors: [ batch ]
+
