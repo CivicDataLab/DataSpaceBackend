@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'strawberry_django'
 ]
 
 MIDDLEWARE = [
@@ -137,3 +138,4 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'files', 'public')
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DJANGO_ALLOW_ASYNC_UNSAFE=True
