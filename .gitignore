@@ -11,9 +11,6 @@ db.sqlite3
 # C extensions
 *.so
 
-# django migrations
-api/migrations
-
 #config
 config.ini
 
