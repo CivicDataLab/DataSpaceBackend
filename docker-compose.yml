@@ -29,7 +29,7 @@ services:
       - backend_db_data:/var/lib/postgresql/data   
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.6
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
     restart: always
     container_name: "DataExBackendElastic"
     env_file: .env
@@ -37,6 +37,7 @@ services:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+      - ELASTIC_PASSWORD=changeme
     ulimits:
       memlock:
         soft: -1
@@ -48,9 +49,9 @@ services:
       - IPC_LOCK
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
-#    ports:
-#      - "9200:9200"
-#      - "9300:9300"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
 
   redis:
     image: "redis:alpine"

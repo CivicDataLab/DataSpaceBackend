@@ -26,6 +26,6 @@ schema = strawberry.Schema(
     extensions=[
         DjangoOptimizerExtension,
         # MaskErrors,
-        OpenTelemetryExtension
+        # OpenTelemetryExtension
     ],
 )
