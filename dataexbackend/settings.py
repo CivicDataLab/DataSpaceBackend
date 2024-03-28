@@ -142,7 +142,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 DJANGO_ALLOW_ASYNC_UNSAFE = True
 ELASTICSEARCH_DSL = {
     'default': {
-        'hosts': 'http://127.0.0.1:9200',
+        'hosts': 'http://elasticsearch:9200',
         'http_auth': ('elastic', 'changeme')
     }
 }
