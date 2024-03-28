@@ -25,7 +25,7 @@ class UpdateMetadataInput:
 
 
 def _add_update_dataset_metadata(dataset: Dataset, metadata_input: List[DSMetadataItemType]):
-    if not metadata_input or len(metadata_input):
+    if not metadata_input or len(metadata_input) == 0:
         return
     _delete_existing_metadata(dataset)
     for metadata_input_item in metadata_input:
@@ -34,7 +34,7 @@ def _add_update_dataset_metadata(dataset: Dataset, metadata_input: List[DSMetada
             if not metadata_field.enabled:
                 _delete_existing_metadata(dataset)
                 raise ValueError(f"Metadata with ID {metadata_input_item.id} is not enabled.")
-            ds_metadata = DatasetMetadata(dataset=Dataset, metadata_item=metadata_field,
+            ds_metadata = DatasetMetadata(dataset=dataset, metadata_item=metadata_field,
                                           value=metadata_input_item.value)
             # TODO: apply validations from metadata validations
             ds_metadata.save()
@@ -44,10 +44,11 @@ def _add_update_dataset_metadata(dataset: Dataset, metadata_input: List[DSMetada
 
 
 def _delete_existing_metadata(dataset):
-    existing_metadata = DatasetMetadata.objects.get(dataset=dataset)
-    if existing_metadata:
+    try:
+        existing_metadata = DatasetMetadata.objects.get(dataset=dataset)
         existing_metadata.delete()
-
+    except DatasetMetadata.DoesNotExist as e:
+        pass
 
 @strawberry.type
 class Mutation:
