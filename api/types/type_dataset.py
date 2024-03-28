@@ -1,8 +1,19 @@
+from typing import List
+
+import strawberry
 import strawberry_django
 
-from api.models import Dataset
+from api.models import Dataset, DatasetMetadata
+from api.types import TypeDatasetMetadata
 
 
 @strawberry_django.type(Dataset, fields="__all__")
 class TypeDataset:
-    pass
+    metadata: List[TypeDatasetMetadata]
+
+    @strawberry.field
+    def metadata(self, info) -> List[TypeDatasetMetadata]:
+        try:
+            return DatasetMetadata.objects.filter(dataset=self.id)
+        except DatasetMetadata.DoesNotExist as e:
+            return []
