@@ -150,3 +150,6 @@ cython_debug/
 
 #Resources upload folder
 resources/
+
+#local env file
+.env
