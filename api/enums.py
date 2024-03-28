@@ -114,3 +114,27 @@ class ParameterTypes(models.TextChoices):
 class FormatLocation(models.TextChoices):
     HEADER = "HEADER"
     PARAM = "PARAM"
+
+
+class MetadataModels(models.TextChoices):
+    DATASET = "DATASET"
+    RESEOURCE = "RESOURCE"
+
+
+class MetadataStandards(models.TextChoices):
+    DCATV3 = "DCATV3"
+    OCDS = "OCDS"
+    OBDS = "OBDS"
+
+
+class MetadataDataTypes(models.TextChoices):
+    STRING = "STRING"
+    NUMBER = "NUMBER"
+    SELECT = "SELECT"
+    MULTISELECT = "MULTISELECT"
+
+
+class MetadataTypes(models.TextChoices):
+    REQUIRED = "REQUIRED"
+    OPTIONAL = "OPTIONAL"
+    ADVANCED = "ADVANCED"
