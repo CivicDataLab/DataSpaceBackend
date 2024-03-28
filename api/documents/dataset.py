@@ -16,7 +16,6 @@ class DatasetDocument(Document):
 
         fields = [
             'id',
-            'title',
             'created',
             'modified'
         ]

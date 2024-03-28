@@ -6,18 +6,21 @@ from strawberry.tools import merge_types
 from strawberry_django.optimizer import DjangoOptimizerExtension
 
 import api.dataset_schema
-from api.types import TypeGeo
+import api.metadata_schema
+from api.types import TypeDataset, TypeMetadata
 
 
 @strawberry.type
 class Query:
-    geography: list[TypeGeo] = strawberry_django.field()
+    dataset: list[TypeDataset] = strawberry_django.field()
+    metadata: list[TypeMetadata] = strawberry_django.field()
 
 
 Mutation = merge_types(
     "Mutation",
     (
         api.dataset_schema.Mutation,
+        api.metadata_schema.Mutation,
     ),
 )
 schema = strawberry.Schema(
