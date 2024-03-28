@@ -142,7 +142,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 DJANGO_ALLOW_ASYNC_UNSAFE = True
 ELASTICSEARCH_DSL = {
     'default': {
-        'hosts': 'http://elasticsearch:9200',
-        'http_auth': ('elastic', 'changeme')
+        'hosts': os.getenv("ELASTICSEARCH_INDEX", 'http://elasticsearch:9200'),
+        'http_auth': (os.getenv("ELASTICSEARCH_USERNAME", 'elastic'), os.getenv("ELASTICSEARCH_PASSWORD", 'changeme'))
     }
 }
+TELEMETRY_URL = os.getenv("TELEMETRY_URL", 'http://otel-collector:4317')
