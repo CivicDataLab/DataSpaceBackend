@@ -1,12 +1,11 @@
 import strawberry
 import strawberry_django
 # from strawberry.extensions import MaskErrors
-from strawberry.extensions.tracing import OpenTelemetryExtension
 from strawberry.tools import merge_types
 from strawberry_django.optimizer import DjangoOptimizerExtension
 
-import api.dataset_schema
-import api.metadata_schema
+import api.schema.dataset_schema
+import api.schema.metadata_schema
 from api.types import TypeDataset, TypeMetadata
 
 
@@ -19,8 +18,8 @@ class Query:
 Mutation = merge_types(
     "Mutation",
     (
-        api.dataset_schema.Mutation,
-        api.metadata_schema.Mutation,
+        api.schema.dataset_schema.Mutation,
+        api.schema.metadata_schema.Mutation,
     ),
 )
 schema = strawberry.Schema(

@@ -3,8 +3,6 @@ from typing import List
 
 import strawberry
 import strawberry_django
-from django.core.exceptions import ObjectDoesNotExist
-
 # from asgiref.sync import sync_to_async
 
 from api import types, models
@@ -49,6 +47,7 @@ def _delete_existing_metadata(dataset):
         existing_metadata.delete()
     except DatasetMetadata.DoesNotExist as e:
         pass
+
 
 @strawberry.type
 class Mutation:
