@@ -63,7 +63,6 @@ class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=True)
     def add_update_dataset_metadata(self, update_metadata_input: UpdateMetadataInput) -> types.TypeDataset:
-        # TODO: Validate if metadata ids are enabled
         dataset_id = update_metadata_input.dataset
         metadata_input = update_metadata_input.metadata
 
