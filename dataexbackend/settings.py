@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'strawberry_django',
+    'rest_framework',
     'django_elasticsearch_dsl',
 ]
 
