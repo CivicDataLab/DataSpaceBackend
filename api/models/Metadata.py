@@ -15,3 +15,4 @@ class Metadata(models.Model):
     type = models.CharField(max_length=50, choices=MetadataTypes.choices, blank=False, unique=False)
     model = models.CharField(max_length=50, choices=MetadataModels.choices, blank=False, unique=False)
     enabled = models.BooleanField(default=False)
+    filterable = models.BooleanField(default=False)
