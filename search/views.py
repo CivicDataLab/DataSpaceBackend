@@ -59,7 +59,7 @@ class DatasetDocumentView(BaseDocumentViewSet):
                 LOOKUP_QUERY_LTE,
             ],
         },
-        # 'title': 'title.raw',
+        'title': 'title.raw',
         # 'publisher': 'publisher.raw',
         # 'publication_date': 'publication_date',
         # 'state': 'state.raw',
@@ -101,19 +101,19 @@ class DatasetDocumentView(BaseDocumentViewSet):
         #         LOOKUP_QUERY_LTE,
         #     ],
         # },
-        # 'tags': {
-        #     'field': 'tags',
-        #     # Note, that we limit the lookups of `tags` field in
-        #     # this example, to `terms, `prefix`, `wildcard`, `in` and
-        #     # `exclude` filters.
-        #     'lookups': [
-        #         LOOKUP_FILTER_TERMS,
-        #         LOOKUP_FILTER_PREFIX,
-        #         LOOKUP_FILTER_WILDCARD,
-        #         LOOKUP_QUERY_IN,
-        #         LOOKUP_QUERY_EXCLUDE,
-        #     ],
-        # },
+        'tags': {
+            'field': 'tags',
+            # Note, that we limit the lookups of `tags` field in
+            # this example, to `terms, `prefix`, `wildcard`, `in` and
+            # `exclude` filters.
+            'lookups': [
+                LOOKUP_FILTER_TERMS,
+                LOOKUP_FILTER_PREFIX,
+                LOOKUP_FILTER_WILDCARD,
+                LOOKUP_QUERY_IN,
+                LOOKUP_QUERY_EXCLUDE,
+            ],
+        },
         # 'tags.raw': {
         #     'field': 'tags.raw',
         #     # Note, that we limit the lookups of `tags.raw` field in

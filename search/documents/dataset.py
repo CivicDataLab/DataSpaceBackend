@@ -40,7 +40,9 @@ class DatasetDocument(Document):
         fields = [
             'id',
             'created',
-            'modified'
+            'modified',
+            'title',
+            'description'
         ]
 
         related_models = [Resource, Metadata, DatasetMetadata]
