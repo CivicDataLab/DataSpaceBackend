@@ -1,7 +1,7 @@
 from elasticsearch_dsl import Q
 from rest_framework import serializers
 
-from api.documents import DatasetDocument
+from search.documents import DatasetDocument
 from api.enums import MetadataModels
 from api.models import DatasetMetadata, Metadata, Dataset
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView

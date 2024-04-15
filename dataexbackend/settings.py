@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'strawberry_django',
     'rest_framework',
     'django_elasticsearch_dsl',
+    'django_elasticsearch_dsl_drf'
 ]
 
 MIDDLEWARE = [
@@ -148,3 +149,6 @@ ELASTICSEARCH_DSL = {
     }
 }
 TELEMETRY_URL = os.getenv("TELEMETRY_URL", 'http://otel-collector:4317')
+ELASTICSEARCH_INDEX_NAMES = {
+    'search.documents.dataset': 'dataset',
+}

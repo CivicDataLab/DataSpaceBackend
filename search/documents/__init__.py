@@ -1,0 +1,1 @@
+from search.documents.dataset import DatasetDocument

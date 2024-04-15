@@ -1,24 +1,38 @@
-from django_elasticsearch_dsl import Document, fields
-from django_elasticsearch_dsl.registries import registry
+from django_elasticsearch_dsl import Document, fields, Index
+# from elasticsearch_dsl.search_base import AggsProxy
+
+from search.documents.analysers import html_strip
 from api.models import Dataset, Resource, Metadata, DatasetMetadata
+from dataexbackend import settings
 
 
-@registry.register_document
+INDEX = Index(settings.ELASTICSEARCH_INDEX_NAMES[__name__])
+INDEX.settings(
+    number_of_shards=1,
+    number_of_replicas=0
+)
+
+
+@INDEX.doc_type
 class DatasetDocument(Document):
     metadata = fields.ObjectField(
         properties={
-            'value': fields.TextField(),
+            'value': fields.TextField(
+                analyzer=html_strip
+            ),
             'metadata_item': fields.ObjectField(
-                properties={'label': fields.TextField()}
+                properties={'label': fields.TextField(
+                    analyzer=html_strip
+                )}
             )
         }
     )
 
-    class Index:
-        name = 'dataset'
-        # See Elasticsearch Indices API reference for available settings
-        settings = {'number_of_shards': 1,
-                    'number_of_replicas': 0}
+    # class Index:
+    #     name = 'dataset'
+    #     # See Elasticsearch Indices API reference for available settings
+    #     settings = {'number_of_shards': 1,
+    #                 'number_of_replicas': 0}
 
     class Django:
         model = Dataset

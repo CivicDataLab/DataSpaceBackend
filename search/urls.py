@@ -14,14 +14,19 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.conf.urls.static import static
-from django.contrib import admin
-from django.urls import path, include, re_path
+from django.conf.urls import include
+from django.urls import path
+# from django.template.defaulttags import url
+from rest_framework.routers import DefaultRouter
 
 from dataexbackend import settings
-from search import urls as search_index_urls
+from search.views import DatasetDocumentView
+
+router = DefaultRouter()
+books = router.register(r'datasets',
+                        DatasetDocumentView,
+                        basename='datasetdocument')
 
 urlpatterns = [
-    path("api/", include("api.urls")),
-    path('admin/', admin.site.urls),
-    re_path(r'^search/', include(search_index_urls)),
-]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+      path('', include(router.urls)),
+  ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

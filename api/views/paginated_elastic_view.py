@@ -1,7 +1,6 @@
 import abc
 
 from django.http import HttpResponse
-from elasticsearch_dsl import Q
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.views import APIView
 
