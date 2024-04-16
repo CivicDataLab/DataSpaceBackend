@@ -1,3 +1,5 @@
+from importlib.resources._common import _
+
 from django.db import models
 import uuid
 
@@ -7,6 +9,12 @@ from api.models import Organization
 class Tag(models.Model):
     value = models.CharField(max_length=50, unique=True, blank=False)
 
+    class Meta:
+        verbose_name = _("Tag")
+        verbose_name_plural = _("Tags")
+
+    def __str__(self):
+        return self.value
 
 class Dataset(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -16,3 +24,11 @@ class Dataset(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     tags = models.ManyToManyField(Tag, blank=True)
+
+    @property
+    def tags_indexing(self):
+        """Tags for indexing.
+
+        Used in Elasticsearch indexing.
+        """
+        return [tag.value for tag in self.tags.all()]

@@ -28,6 +28,30 @@ class DatasetDocument(Document):
         }
     )
 
+    title = fields.TextField(
+        analyzer=html_strip,
+        fields={
+            'raw': fields.TextField(analyzer='keyword'),
+        }
+    )
+
+    description = fields.TextField(
+        analyzer=html_strip,
+        fields={
+            'raw': fields.TextField(analyzer='keyword'),
+        }
+    )
+
+    tags = fields.TextField(
+        attr='tags_indexing',
+        analyzer=html_strip,
+        fields={
+            'raw': fields.TextField(analyzer='keyword', multi=True),
+            'suggest': fields.CompletionField(multi=True),
+        },
+        multi=True
+    )
+
     # class Index:
     #     name = 'dataset'
     #     # See Elasticsearch Indices API reference for available settings
@@ -41,8 +65,6 @@ class DatasetDocument(Document):
             'id',
             'created',
             'modified',
-            'title',
-            'description'
         ]
 
         related_models = [Resource, Metadata, DatasetMetadata]
