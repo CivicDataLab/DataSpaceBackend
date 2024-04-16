@@ -7,6 +7,7 @@ import strawberry_django
 
 from api import types, models
 from api.models import Dataset, Metadata
+from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata
 
 
@@ -20,6 +21,14 @@ class DSMetadataItemType:
 class UpdateMetadataInput:
     dataset: uuid.UUID
     metadata: List[DSMetadataItemType]
+
+
+@strawberry.input
+class UpdateDatasetInput:
+    dataset: uuid.UUID
+    title: str
+    description: str
+    tags: List[str]
 
 
 def _add_update_dataset_metadata(dataset: Dataset, metadata_input: List[DSMetadataItemType]):
@@ -39,6 +48,14 @@ def _add_update_dataset_metadata(dataset: Dataset, metadata_input: List[DSMetada
         except Metadata.DoesNotExist as e:
             _delete_existing_metadata(dataset)
             raise ValueError(f"Metadata with ID {metadata_input_item.id} does not exist.")
+
+
+def _update_dataset_tags(dataset: Dataset, tags: List[str]):
+    tag_objects = []
+    dataset.tags.clear()
+    for tag in tags:
+        dataset.tags.add(Tag.objects.get_or_create(defaults={'value':tag}, value__iexact=tag)[0])
+    dataset.save()
 
 
 def _delete_existing_metadata(dataset):
@@ -73,4 +90,20 @@ class Mutation:
 
         _add_update_dataset_metadata(dataset, metadata_input)
         print(update_metadata_input)
+        return dataset
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def update_dataset(self, update_dataset_input: UpdateDatasetInput) -> types.TypeDataset:
+        dataset_id = update_dataset_input.dataset
+
+        # Verify if dataset exists
+        try:
+            dataset = Dataset.objects.get(id=dataset_id)
+        except Dataset.DoesNotExist as e:
+            raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
+
+        dataset.title = update_dataset_input.title
+        dataset.description = update_dataset_input.description
+        _update_dataset_tags(dataset, update_dataset_input.tags)
+        print(update_dataset_input)
         return dataset

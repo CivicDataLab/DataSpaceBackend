@@ -10,7 +10,7 @@ from api.types import TypeDatasetMetadata
 @strawberry_django.type(Dataset, fields="__all__")
 class TypeDataset:
     metadata: List[TypeDatasetMetadata]
-
+    tags: List[str]
     @strawberry.field
     def metadata(self, info) -> List[TypeDatasetMetadata]:
         try:
