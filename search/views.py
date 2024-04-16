@@ -132,4 +132,4 @@ class DatasetDocumentView(BaseDocumentViewSet):
         # 'publication_date': 'publication_date',
     }
     # Specify default ordering
-    ordering = ('id', 'title',)
+    ordering = ('id',)
