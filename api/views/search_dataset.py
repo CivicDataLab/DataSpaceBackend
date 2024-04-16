@@ -11,12 +11,6 @@ class MetadataSerializer(serializers.Serializer):
     label = serializers.CharField()
 
 
-# class MetadataSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Metadata
-#         fields = "__all__"
-
-
 class DatasetMetadataSerializer(serializers.ModelSerializer):
     metadata_item = MetadataSerializer()
 
@@ -25,32 +19,32 @@ class DatasetMetadataSerializer(serializers.ModelSerializer):
         fields = ["metadata_item", "value"]
 
 
-class DatasetSerializer(serializers.ModelSerializer):
+class DatasetDocumentSerializer(serializers.ModelSerializer):
     metadata = DatasetMetadataSerializer(many=True)
+    tags = serializers.ListField()
 
     class Meta:
         model = Dataset
         fields = "__all__"
 
-
-class SearchDataset(PaginatedElasticSearchAPIView):
-    serializer_class = DatasetSerializer
-    document_class = DatasetDocument
-
-    def __init__(self, **kwargs):
-        # super.__init__()
-        super().__init__(**kwargs)
-        enabled_metadata = Metadata.objects.filter(enabled=True).all()
-        self.searchable_fields = [f"metadata.{e.label}" if e.model == MetadataModels.DATASET else f"resoource.{e.label}"
-                                  for e in enabled_metadata]
-
-    #     TODO: add dataset and resource fields
-
-    def generate_q_expression(self, query):
-        # queries = [Q("match", **{field: query}) for field in self.searchable_fields]
-        # return Q("bool", should=queries, minimum_should_match=1)
-        return Q(
-                "multi_match", query=query,
-                fields=[
-                    "metadata.value",
-                ], fuzziness="auto")
+# class SearchDataset(PaginatedElasticSearchAPIView):
+#     serializer_class = DatasetSerializer
+#     document_class = DatasetDocument
+#
+#     def __init__(self, **kwargs):
+#         # super.__init__()
+#         super().__init__(**kwargs)
+#         enabled_metadata = Metadata.objects.filter(enabled=True).all()
+#         self.searchable_fields = [f"metadata.{e.label}" if e.model == MetadataModels.DATASET else f"resoource.{e.label}"
+#                                   for e in enabled_metadata]
+#
+#     #     TODO: add dataset and resource fields
+#
+#     def generate_q_expression(self, query):
+#         # queries = [Q("match", **{field: query}) for field in self.searchable_fields]
+#         # return Q("bool", should=queries, minimum_should_match=1)
+#         return Q(
+#                 "multi_match", query=query,
+#                 fields=[
+#                     "metadata.value",
+#                 ], fuzziness="auto")

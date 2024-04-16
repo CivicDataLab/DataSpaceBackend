@@ -150,5 +150,5 @@ ELASTICSEARCH_DSL = {
 }
 TELEMETRY_URL = os.getenv("TELEMETRY_URL", 'http://otel-collector:4317')
 ELASTICSEARCH_INDEX_NAMES = {
-    'search.documents.dataset': 'dataset',
+    'search.documents.dataset_document': 'dataset',
 }

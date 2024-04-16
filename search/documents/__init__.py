@@ -1,1 +1,1 @@
-from search.documents.dataset import DatasetDocument
+from search.documents.dataset_document import DatasetDocument

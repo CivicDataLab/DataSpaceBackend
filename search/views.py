@@ -20,7 +20,7 @@ from django_elasticsearch_dsl_drf.filter_backends import (
 from django_elasticsearch_dsl_drf.viewsets import BaseDocumentViewSet
 from django_elasticsearch_dsl_drf.pagination import PageNumberPagination
 
-from api.views.search_dataset import DatasetSerializer
+from api.views.search_dataset import DatasetDocumentSerializer
 from search.documents import DatasetDocument
 
 
@@ -28,7 +28,7 @@ class DatasetDocumentView(BaseDocumentViewSet):
     """The BookDocument view."""
 
     document = DatasetDocument
-    serializer_class = DatasetSerializer
+    serializer_class = DatasetDocumentSerializer
     pagination_class = PageNumberPagination
     lookup_field = 'id'
     filter_backends = [
