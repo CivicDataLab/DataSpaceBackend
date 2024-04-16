@@ -41,7 +41,9 @@ class DatasetDocumentView(BaseDocumentViewSet):
     # Define search fields
     search_fields = (
         'metadata.value',
-        # 'description',
+        'title',
+        'description',
+        'tags'
         # 'summary',
     )
     # Define filter fields
@@ -132,4 +134,5 @@ class DatasetDocumentView(BaseDocumentViewSet):
         # 'publication_date': 'publication_date',
     }
     # Specify default ordering
+    # TODO: add title and created date to ordering
     ordering = ('id',)
