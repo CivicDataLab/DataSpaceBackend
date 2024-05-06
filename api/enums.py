@@ -132,6 +132,7 @@ class MetadataDataTypes(models.TextChoices):
     NUMBER = "NUMBER"
     SELECT = "SELECT"
     MULTISELECT = "MULTISELECT"
+    DATE = "DATE"
 
 
 class MetadataTypes(models.TextChoices):
