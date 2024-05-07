@@ -1,7 +1,6 @@
-from importlib.resources._common import _
+import uuid
 
 from django.db import models
-import uuid
 
 from api.models import Organization
 
@@ -10,8 +9,8 @@ class Tag(models.Model):
     value = models.CharField(max_length=50, unique=True, blank=False)
 
     class Meta:
-        verbose_name = _("Tag")
-        verbose_name_plural = _("Tags")
+        verbose_name = "Tag"
+        verbose_name_plural = "Tags"
 
     def __str__(self):
         return self.value
