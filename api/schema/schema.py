@@ -6,13 +6,15 @@ from strawberry_django.optimizer import DjangoOptimizerExtension
 
 import api.schema.dataset_schema
 import api.schema.metadata_schema
-from api.types import TypeDataset, TypeMetadata
+import api.schema.resource_schema
+from api.types import TypeDataset, TypeMetadata, TypeResource
 
 
 @strawberry.type
 class Query:
     dataset: list[TypeDataset] = strawberry_django.field()
     metadata: list[TypeMetadata] = strawberry_django.field()
+    resource: list[TypeResource] = strawberry_django.field()
 
 
 Mutation = merge_types(
@@ -20,6 +22,7 @@ Mutation = merge_types(
     (
         api.schema.dataset_schema.Mutation,
         api.schema.metadata_schema.Mutation,
+        api.schema.resource_schema.Mutation,
     ),
 )
 schema = strawberry.Schema(
