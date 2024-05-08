@@ -19,7 +19,7 @@ class CreateFileResourceInput:
 class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=True)
-    async def read_files(self, file_resource_input: CreateFileResourceInput) -> typing.List[types.TypeResource]:
+    def read_files(self, file_resource_input: CreateFileResourceInput) -> typing.List[types.TypeResource]:
         dataset_id = file_resource_input.dataset
         resources = []
         try:
@@ -28,11 +28,12 @@ class Mutation:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
         for file in file_resource_input.files:
             resource = Resource()
-            resource.name = file.filename
+            resource.name = file.name
             resource.dataset = dataset
             resource.save()
             file_details = ResourceFileDetails()
             file_details.file = file
+            file_details.size = file.size
             file_details.resource = resource
             file_details.save()
             resources.append(resource)
