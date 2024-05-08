@@ -138,3 +138,13 @@ class MetadataTypes(models.TextChoices):
     REQUIRED = "REQUIRED"
     OPTIONAL = "OPTIONAL"
     ADVANCED = "ADVANCED"
+
+class MetadataValidators(models.TextChoices):
+    '''
+    Add options for validators
+    '''
+    DateValidator = "Date Validator"
+    LinkValidator = "Link Validator"
+    NameValidator = "Name Validator"
+
+

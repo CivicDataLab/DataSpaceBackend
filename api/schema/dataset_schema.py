@@ -5,10 +5,10 @@ import strawberry
 import strawberry_django
 # from asgiref.sync import sync_to_async
 
-from api import types, models
+from api import types, models, validators
 from api.models import Dataset, Metadata
 from api.models.DatasetMetadata import DatasetMetadata
-
+from api.validators import DateValidator, LinkValidator, NameValidators
 
 @strawberry.input
 class DSMetadataItemType:
@@ -21,6 +21,12 @@ class UpdateMetadataInput:
     dataset: uuid.UUID
     metadata: List[DSMetadataItemType]
 
+# define dictory with all the validators
+dict_validators = {
+    "Date Validator" : "DateValidator",
+    "Link Validator" : "LinkValidator",
+    "Name Validator" : "NameValidator" 
+}
 
 def _add_update_dataset_metadata(dataset: Dataset, metadata_input: List[DSMetadataItemType]):
     if not metadata_input or len(metadata_input) == 0:
@@ -35,6 +41,14 @@ def _add_update_dataset_metadata(dataset: Dataset, metadata_input: List[DSMetada
             ds_metadata = DatasetMetadata(dataset=dataset, metadata_item=metadata_field,
                                           value=metadata_input_item.value)
             # TODO: apply validations from metadata validations
+            try:
+                validator_function_name = dict_validators[metadata_field.validator]
+                validator_function = getattr(validators, validator_function_name)
+                return validator_function(metadata_field.label)
+            except Exception as e:
+                print(f"Error occurred while validating {metadata_field.validator}: {e}")
+                return False
+
             ds_metadata.save()
         except Metadata.DoesNotExist as e:
             _delete_existing_metadata(dataset)
