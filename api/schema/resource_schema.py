@@ -14,6 +14,14 @@ class CreateFileResourceInput:
     dataset: uuid.UUID
     files: typing.List[Upload]
 
+@strawberry.input
+class UpdateFileResourceInput:
+    id: uuid.UUID
+    file: Upload
+    name: str
+    description: str
+
+
 
 @strawberry.type
 class Mutation:
@@ -38,3 +46,20 @@ class Mutation:
             file_details.save()
             resources.append(resource)
         return resources
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def update_file_resource(self, file_resource_input: UpdateFileResourceInput) -> TypeResource:
+        try:
+            resource = Resource.objects.get(id=file_resource_input.id)
+        except Resource.DoesNotExist as e:
+            raise ValueError(f"Resource with ID {file_resource_input.id} does not exist.")
+        resource.name = file_resource_input.name
+        resource.description = file_resource_input.description
+        resource.save()
+
+        file_details = resource.resourcefiledetails_set[0]
+        file_details.file = file_resource_input.file
+        file_details.size = file_resource_input.file.size
+
+        file_details.save()
+        return resource

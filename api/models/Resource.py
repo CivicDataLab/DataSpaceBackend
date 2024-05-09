@@ -13,6 +13,7 @@ class Resource(models.Model):
     modified = models.DateTimeField(auto_now=True)
     type = models.CharField(max_length=50, choices=DataType.choices, default=DataType.FILE, blank=False, unique=False)
     name = models.CharField(max_length=50, unique=False, blank=True)
+    description = models.CharField(max_length=1000, unique=False, blank=True)
 
 
 class ResourceFileDetails(models.Model):
