@@ -6,6 +6,7 @@ import strawberry_django
 from strawberry.file_uploads import Upload
 
 from api.models import Resource, Dataset, ResourceFileDetails
+from api.types import TypeResource
 
 
 @strawberry.input
@@ -18,9 +19,9 @@ class CreateFileResourceInput:
 class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=False)
-    def create_file_resources(self, file_resource_input: CreateFileResourceInput) -> bool:
+    def create_file_resources(self, file_resource_input: CreateFileResourceInput) -> list[TypeResource]:
         dataset_id = file_resource_input.dataset
-        # resources = []
+        resources = []
         try:
             dataset = Dataset.objects.get(id=dataset_id)
         except Dataset.DoesNotExist as e:
@@ -35,5 +36,5 @@ class Mutation:
             file_details.size = file.size
             file_details.resource = resource
             file_details.save()
-            # resources.append(resource)
-        return True
+            resources.append(resource)
+        return resources
