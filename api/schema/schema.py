@@ -12,7 +12,7 @@ from api.types import TypeDataset, TypeMetadata, TypeResource
 
 @strawberry.type
 class Query:
-    dataset: list[TypeDataset] = strawberry_django.field()
+    datasets: list[TypeDataset] = strawberry_django.field()
     metadata: list[TypeMetadata] = strawberry_django.field()
     resource: list[TypeResource] = strawberry_django.field()
 
