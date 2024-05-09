@@ -29,7 +29,7 @@ class DatasetDocument(Document):
     )
 
     title = fields.TextField(
-        analyzer=html_strip,
+        analyzer='standard',
         fields={
             'raw': fields.TextField(analyzer='keyword'),
         }

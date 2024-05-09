@@ -20,13 +20,16 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from dataexbackend import settings
-from search.views import DatasetDocumentView
+from search.views import DatasetDocumentView, DatasetCompoundSearchBackendDocumentViewSet
 
 router = DefaultRouter()
-books = router.register(r'datasets',
-                        DatasetDocumentView,
-                        basename='datasetdocument')
+_ = router.register(r'datasets',
+                    DatasetDocumentView,
+                    basename='datasetdocument')
+_ = router.register(r'sdatasets',
+                    DatasetCompoundSearchBackendDocumentViewSet,
+                    basename='sdatasetdocument')
 
 urlpatterns = [
-      path('', include(router.urls)),
-  ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+                  path('', include(router.urls)),
+              ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
