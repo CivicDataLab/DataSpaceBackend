@@ -17,9 +17,9 @@ class CreateFileResourceInput:
 @strawberry.input
 class UpdateFileResourceInput:
     id: uuid.UUID
-    file: Upload
-    name: str
-    description: str
+    file: typing.Optional[Upload] = None
+    name: typing.Optional[str]
+    description: typing.Optional[str]
 
 
 
@@ -53,13 +53,16 @@ class Mutation:
             resource = Resource.objects.get(id=file_resource_input.id)
         except Resource.DoesNotExist as e:
             raise ValueError(f"Resource with ID {file_resource_input.id} does not exist.")
-        resource.name = file_resource_input.name
-        resource.description = file_resource_input.description
+        if file_resource_input.name:
+            resource.name = file_resource_input.name
+        if file_resource_input.description:
+            resource.description = file_resource_input.description
         resource.save()
 
-        file_details = resource.resourcefiledetails_set[0]
-        file_details.file = file_resource_input.file
-        file_details.size = file_resource_input.file.size
+        if file_resource_input.file:
+            file_details = resource.resourcefiledetails_set[0]
+            file_details.file = file_resource_input.file
+            file_details.size = file_resource_input.file.size
+            file_details.save()
 
-        file_details.save()
         return resource
