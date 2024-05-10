@@ -80,7 +80,7 @@ class Mutation:
             resource = Resource.objects.get(id=resource_id)
         except Resource.DoesNotExist as e:
             raise ValueError(f"Resource with ID {resource_id} does not exist.")
-        for file_details in resource.resourcefiledetails_set:
+        for file_details in resource.resourcefiledetails_set.all():
             file_details.delete()
         resource.delete()
         return True
