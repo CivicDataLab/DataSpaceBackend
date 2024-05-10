@@ -30,6 +30,11 @@ class AccessModelInput:
     type: AccessTypes
     resources: list[AccessModelResourceInput]
 
+@strawberry.type(name="Query")
+class Query:
+    @strawberry_django.field
+    def access_model_resources(self, info, dataset_id: uuid.UUID) -> list[TypeAccessModel]:
+        return AccessModel.objects.filter(dataset_id=dataset_id)
 
 @strawberry.type
 class Mutation:

@@ -23,6 +23,7 @@ Query = merge_types(
     (
         DefaultQuery,
         api.schema.resource_schema.Query,
+        api.schema.access_model_schema.Query,
     ),
 )
 
