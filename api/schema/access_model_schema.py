@@ -1,10 +1,10 @@
 import uuid
+from enum import Enum
 from typing import Optional
 
 import strawberry
 import strawberry_django
 
-from api.enums import AccessTypes
 from api.models import AccessModel, AccessModelResource, Dataset, Resource
 from api.types.type_access_model import TypeAccessModel
 
@@ -12,6 +12,14 @@ from api.types.type_access_model import TypeAccessModel
 @strawberry.input
 class AccessModelResourceInput:
     resource: uuid.UUID
+
+
+# TODO extract strawberry enum from django textchoices
+@strawberry.enum
+class AccessTypes(Enum):
+    PUBLIC = "PUBLIC"
+    PRIVATE = "PRIVATE"
+    PROTECTED = "PROTECTED"
 
 
 @strawberry.input
