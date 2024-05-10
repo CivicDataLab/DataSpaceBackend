@@ -73,3 +73,14 @@ class Mutation:
             file_details.save()
 
         return resource
+
+    @strawberry_django.mutation(handle_django_errors=False)
+    def delete_file_resource(self, resource_id: uuid.UUID) -> bool:
+        try:
+            resource = Resource.objects.get(id=resource_id)
+        except Resource.DoesNotExist as e:
+            raise ValueError(f"Resource with ID {resource_id} does not exist.")
+        for file_details in resource.resourcefiledetails_set:
+            file_details.delete()
+        resource.delete()
+        return True
