@@ -11,11 +11,20 @@ from api.types import TypeDataset, TypeMetadata, TypeResource
 
 
 @strawberry.type
-class Query:
+class DefaultQuery:
     datasets: list[TypeDataset] = strawberry_django.field()
     metadata: list[TypeMetadata] = strawberry_django.field()
     resource: list[TypeResource] = strawberry_django.field()
+    dataset: TypeDataset = strawberry_django.field()
 
+
+Query = merge_types(
+    "Query",
+    (
+        DefaultQuery,
+        api.schema.resource_schema.Query,
+    ),
+)
 
 Mutation = merge_types(
     "Mutation",

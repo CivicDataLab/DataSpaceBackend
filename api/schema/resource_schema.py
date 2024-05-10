@@ -14,6 +14,7 @@ class CreateFileResourceInput:
     dataset: uuid.UUID
     files: typing.List[Upload]
 
+
 @strawberry.input
 class UpdateFileResourceInput:
     id: uuid.UUID
@@ -21,6 +22,11 @@ class UpdateFileResourceInput:
     name: typing.Optional[str]
     description: typing.Optional[str]
 
+
+class Query:
+    @strawberry_django.field
+    def dataset_resources(self, info, dataset_id: uuid.UUID) -> list[TypeResource]:
+        return Resource.objects.filter(dataset_id=dataset_id)
 
 
 @strawberry.type
