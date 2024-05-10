@@ -25,7 +25,7 @@ class AccessTypes(Enum):
 @strawberry.input
 class AccessModelInput:
     dataset: uuid.UUID
-    title: str
+    name: str
     description: Optional[str]
     type: AccessTypes
     resources: list[AccessModelResourceInput]
@@ -49,7 +49,7 @@ class Mutation:
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
         access_model.dataset = dataset
-        access_model.title = access_model_input.title
+        access_model.name = access_model_input.name
         access_model.description = access_model_input.description
         access_model.type = access_model_input.type
         access_model.save()
