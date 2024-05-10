@@ -23,6 +23,7 @@ class UpdateFileResourceInput:
     description: typing.Optional[str]
 
 
+@strawberry.type(name="Query")
 class Query:
     @strawberry_django.field
     def dataset_resources(self, info, dataset_id: uuid.UUID) -> list[TypeResource]:

@@ -15,7 +15,6 @@ class DefaultQuery:
     datasets: list[TypeDataset] = strawberry_django.field()
     metadata: list[TypeMetadata] = strawberry_django.field()
     resource: list[TypeResource] = strawberry_django.field()
-    dataset: TypeDataset = strawberry_django.field()
 
 
 Query = merge_types(
