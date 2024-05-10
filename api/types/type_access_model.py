@@ -1,3 +1,4 @@
+import strawberry
 import strawberry_django
 
 from api.models import AccessModel, AccessModelResource
@@ -13,6 +14,7 @@ class TypeAccessModelResource:
 class TypeAccessModel:
     model_resources: list[TypeAccessModelResource]
 
+    @strawberry.field
     def model_resources(self, info) -> list[TypeAccessModelResource]:
         try:
             return AccessModelResource.objects.filter(access_model=self.id)
