@@ -139,3 +139,8 @@ class MetadataTypes(models.TextChoices):
     REQUIRED = "REQUIRED"
     OPTIONAL = "OPTIONAL"
     ADVANCED = "ADVANCED"
+
+class AccessTypes(models.TextChoices):
+    PUBLIC = "PUBLIC"
+    PRIVATE = "PRIVATE"
+    PROTECTED = "PROTECTED"

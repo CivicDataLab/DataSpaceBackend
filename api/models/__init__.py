@@ -6,3 +6,5 @@ from api.models.DatasetMetadata import DatasetMetadata
 from api.models.Resource import Resource
 from api.models.Resource import ResourceFileDetails
 from api.models.ResourceMetadata import ResourceMetadata
+from api.models.AccessModel import AccessModel
+from api.models.AccessModel import AccessModelResource
