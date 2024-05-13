@@ -37,6 +37,7 @@ pydantic==2.6.4
 pydantic_core==2.16.3
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
+python-magic==0.4.27
 requests==2.31.0
 six==1.16.0
 sqlparse==0.4.4
