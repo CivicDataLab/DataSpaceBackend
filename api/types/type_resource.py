@@ -53,3 +53,10 @@ class TypeResource:
         access_model_resources = AccessModelResource.objects.filter(resource=self.id).all()
         access_models = AccessModel.objects.filter(id__in=[x.access_model.id for x in access_model_resources]).all()
         return access_models
+
+    @strawberry.field
+    def file_details(self, info) -> Optional[TypeFileDetails]:
+        # try:
+        return self.resourcefiledetails
+        # except ResourceFileDetails.DoesNotExist as e:
+        #     return None
