@@ -1,13 +1,12 @@
 import uuid
-from typing import List
+from typing import List, Optional
 
 import strawberry
 import strawberry_django
 
-from api.models import DatasetMetadata, ResourceMetadata, Resource, AccessModel, AccessModelResource
+from api.models import DatasetMetadata, ResourceMetadata, Resource, AccessModel, AccessModelResource, \
+    ResourceFileDetails
 from api.types import TypeResourceMetadata
-# from api.types.type_access_model import TypeAccessModel
-# from api.types.type_access_model_resource import TypeAccessModelResource
 
 
 @strawberry_django.type(AccessModelResource)
@@ -17,6 +16,11 @@ class TypeAccessModelResourceFields:
     @strawberry.field
     def fields(self, info):
         return []
+
+
+@strawberry_django.type(ResourceFileDetails, fields="__all__")
+class TypeFileDetails:
+    pass
 
 
 @strawberry_django.type(AccessModel, fields="__all__")
@@ -35,6 +39,7 @@ class TypeResourceAccessModel:
 class TypeResource:
     metadata: List[TypeResourceMetadata]
     access_models: List[TypeResourceAccessModel]
+    file_details: Optional[TypeFileDetails]
 
     @strawberry.field
     def metadata(self, info) -> List[TypeResourceMetadata]:
