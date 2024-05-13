@@ -17,7 +17,7 @@ class Resource(models.Model):
 
 
 class ResourceFileDetails(models.Model):
-    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, null=False, blank=False)
+    resource = models.OneToOneField(Resource, on_delete=models.CASCADE, null=False, blank=False)
     file = models.FileField(upload_to='resources/')
     size = models.FloatField(blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
