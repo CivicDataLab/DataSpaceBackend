@@ -63,3 +63,9 @@ class AccessTypes(models.TextChoices):
     PUBLIC = "PUBLIC"
     PRIVATE = "PRIVATE"
     PROTECTED = "PROTECTED"
+
+
+class FieldTypes(models.TextChoices):
+    STRING = "STRING"
+    NUMBER = "NUMBER"
+    DATE = "DATE"

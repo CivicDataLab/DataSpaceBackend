@@ -22,3 +22,4 @@ class ResourceFileDetails(models.Model):
     size = models.FloatField(blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
+    format = models.CharField(max_length=50)
