@@ -15,7 +15,8 @@ FORMAT_MAPPING = {
     "application/geo+json": "JSON",
     "application/gml+xml": "XML",
     "application/xhtml+xml": "XML",
-    # "text/plain": "TXT",
+    # TODO: handle csv identified as text/plain
+    "text/plain": "CSV",
 }
 
 IMAGE_FORMAT_MAPPING = {
