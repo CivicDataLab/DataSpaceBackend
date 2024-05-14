@@ -5,7 +5,7 @@ import strawberry
 import strawberry_django
 
 from api.models import DatasetMetadata, ResourceMetadata, Resource, AccessModel, AccessModelResource, \
-    ResourceFileDetails
+    ResourceFileDetails, ResourceSchema
 from api.types import TypeResourceMetadata
 
 
@@ -20,6 +20,10 @@ class TypeAccessModelResourceFields:
 
 @strawberry_django.type(ResourceFileDetails, fields="__all__")
 class TypeFileDetails:
+    pass
+
+@strawberry_django.type(ResourceSchema, fields="__all__")
+class TypeResourceSchema:
     pass
 
 
@@ -40,6 +44,7 @@ class TypeResource:
     metadata: List[TypeResourceMetadata]
     access_models: List[TypeResourceAccessModel]
     file_details: Optional[TypeFileDetails]
+    schema: Optional[TypeResourceSchema]
 
     @strawberry.field
     def metadata(self, info) -> List[TypeResourceMetadata]:
@@ -58,5 +63,12 @@ class TypeResource:
     def file_details(self, info) -> Optional[TypeFileDetails]:
         # try:
         return self.resourcefiledetails
+        # except ResourceFileDetails.DoesNotExist as e:
+        #     return None
+
+    @strawberry.field
+    def schema(self, info) -> Optional[TypeResourceSchema]:
+        # try:
+        return self.resourceschema_set
         # except ResourceFileDetails.DoesNotExist as e:
         #     return None
