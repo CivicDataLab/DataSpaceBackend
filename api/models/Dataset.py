@@ -2,6 +2,7 @@ import uuid
 
 from django.db import models
 
+from api.enums import DatasetStatus
 from api.models import Organization
 
 
@@ -24,6 +25,7 @@ class Dataset(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     tags = models.ManyToManyField(Tag, blank=True)
+    status = models.CharField(max_length=50, default=DatasetStatus.DRAFT, choices=DatasetStatus.choices)
 
     @property
     def tags_indexing(self):

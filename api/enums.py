@@ -69,3 +69,9 @@ class FieldTypes(models.TextChoices):
     STRING = "STRING"
     NUMBER = "NUMBER"
     DATE = "DATE"
+
+
+class DatasetStatus(models.TextChoices):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"

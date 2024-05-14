@@ -68,7 +68,4 @@ class TypeResource:
 
     @strawberry.field
     def schema(self, info) -> Optional[TypeResourceSchema]:
-        # try:
         return self.resourceschema_set
-        # except ResourceFileDetails.DoesNotExist as e:
-        #     return None
