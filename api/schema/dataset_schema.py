@@ -3,12 +3,15 @@ from typing import List
 
 import strawberry
 import strawberry_django
-# from asgiref.sync import sync_to_async
 
 from api import types, models
+from api.enums import DatasetStatus
 from api.models import Dataset, Metadata
 from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata
+
+
+# from asgiref.sync import sync_to_async
 
 
 @strawberry.input
@@ -54,7 +57,7 @@ def _update_dataset_tags(dataset: Dataset, tags: List[str]):
     tag_objects = []
     dataset.tags.clear()
     for tag in tags:
-        dataset.tags.add(Tag.objects.get_or_create(defaults={'value':tag}, value__iexact=tag)[0])
+        dataset.tags.add(Tag.objects.get_or_create(defaults={'value': tag}, value__iexact=tag)[0])
     dataset.save()
 
 
@@ -106,4 +109,15 @@ class Mutation:
         dataset.description = update_dataset_input.description
         _update_dataset_tags(dataset, update_dataset_input.tags)
         print(update_dataset_input)
+        return dataset
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def publish_dataset(self, dataset_id: uuid.UUID) -> types.TypeDataset:
+        try:
+            dataset = Dataset.objects.get(id=dataset_id)
+        except Dataset.DoesNotExist as e:
+            raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
+        # TODO: validate dataset
+        dataset.status = DatasetStatus.PUBLISHED
+        dataset.save()
         return dataset
