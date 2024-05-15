@@ -68,6 +68,7 @@ class AccessTypes(models.TextChoices):
 class FieldTypes(models.TextChoices):
     STRING = "STRING"
     NUMBER = "NUMBER"
+    INTEGER = "INTEGER"
     DATE = "DATE"
 
 
