@@ -18,8 +18,8 @@ class PaginatedElasticSearchAPIView(APIView, LimitOffsetPagination):
     def get(self, request):
         try:
             query = request.GET.get('query', '')
-            page = request.GET.get('page', 1)
-            size = request.GET.get('size', 10)
+            page = int(request.GET.get('page', 1))
+            size = int(request.GET.get('size', 10))
             q = self.generate_q_expression(query)
             search = self.document_class.search().query(q)
             search = search[(page-1)*size:page*size]
