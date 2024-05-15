@@ -45,8 +45,11 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         self.searchable_fields.append("title")
 
     def generate_q_expression(self, query):
-        # queries = [Q("match", **{field: query}) for field in self.searchable_fields]
-        # return Q("bool", should=queries, minimum_should_match=1)
-        return Q(
-            "multi_match", query=query,
-            fields=self.searchable_fields, fuzziness="auto")
+        if query:
+            queries = [Q("match", **{field: query}) for field in self.searchable_fields]
+        else:
+            queries = [Q("match_all")]
+        return Q("bool", should=queries, minimum_should_match=1)
+        # return Q(
+        #     "multi_match", query=query,
+        #     fields=self.searchable_fields, fuzziness="auto")
