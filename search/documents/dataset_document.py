@@ -2,7 +2,7 @@ from django_elasticsearch_dsl import Document, fields, Index
 
 from api.models import Dataset, Resource, Metadata, DatasetMetadata
 from dataexbackend import settings
-from search.documents.analysers import html_strip, custom_analyser
+from search.documents.analysers import html_strip, ngram_analyser
 
 # from elasticsearch_dsl.search_base import AggsProxy
 
@@ -18,11 +18,11 @@ class DatasetDocument(Document):
     metadata = fields.ObjectField(
         properties={
             'value': fields.TextField(
-                analyzer=custom_analyser
+                analyzer=ngram_analyser
             ),
             'metadata_item': fields.ObjectField(
                 properties={'label': fields.TextField(
-                    analyzer=custom_analyser
+                    analyzer=ngram_analyser
                 )}
             )
         }
@@ -31,10 +31,10 @@ class DatasetDocument(Document):
     resources = fields.ObjectField(
         properties={
             'name': fields.TextField(
-                analyzer=custom_analyser
+                analyzer=ngram_analyser
             ),
             'description': fields.TextField(
-                analyzer=custom_analyser
+                analyzer=html_strip
             )
         }
     )
@@ -47,7 +47,7 @@ class DatasetDocument(Document):
     )
 
     description = fields.TextField(
-        analyzer=custom_analyser,
+        analyzer=html_strip,
         fields={
             'raw': fields.TextField(analyzer='keyword'),
         }
@@ -55,7 +55,7 @@ class DatasetDocument(Document):
 
     tags = fields.TextField(
         attr='tags_indexing',
-        analyzer=custom_analyser,
+        analyzer=ngram_analyser,
         fields={
             'raw': fields.TextField(analyzer='keyword', multi=True),
             'suggest': fields.CompletionField(multi=True),
