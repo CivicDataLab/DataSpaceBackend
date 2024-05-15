@@ -59,5 +59,14 @@ class SearchDataset(PaginatedElasticSearchAPIView):
 
     def add_aggregations(self, search: Search):
         for aggregation_field in self.aggregations:
-            search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field= aggregation_field)
+            search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
+        return search
+
+    def add_filters(self, filters, search: Search):
+        for filter in filters:
+            raw_filter = filter + '.raw'
+            if raw_filter in self.aggregations:
+                search = search.filter("terms", **{raw_filter: filters[filter].split(',')})
+            else:
+                search = search.filter("term", **{filter: filters[filter]})
         return search
