@@ -63,12 +63,6 @@ class DatasetDocument(Document):
         multi=True
     )
 
-    # class Index:
-    #     name = 'dataset'
-    #     # See Elasticsearch Indices API reference for available settings
-    #     settings = {'number_of_shards': 1,
-    #                 'number_of_replicas': 0}
-
     class Django:
         model = Dataset
 

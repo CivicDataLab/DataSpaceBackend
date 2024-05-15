@@ -15,8 +15,9 @@ class PaginatedElasticSearchAPIView(APIView, LimitOffsetPagination):
         """This method should be overridden
         and return a Q() expression."""
 
-    def get(self, request, query):
+    def get(self, request):
         try:
+            query = request.GET.get('query', '')
             q = self.generate_q_expression(query)
             search = self.document_class.search().query(q)
             response = search.execute()
