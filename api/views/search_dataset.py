@@ -1,4 +1,4 @@
-from elasticsearch_dsl import Q
+from elasticsearch_dsl import Q, Search
 from rest_framework import serializers
 
 from search.documents import DatasetDocument
@@ -42,6 +42,10 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         self.searchable_fields.append("resource.description")
         self.searchable_fields.append("resource.name")
         self.searchable_fields.append("title")
+        self.aggregations = {"tags.raw": "terms"}
+        for metadata in enabled_metadata:
+            if metadata.filterable:
+                self.aggregations[f"metadata.{metadata.label}"] = "terms"
 
     def generate_q_expression(self, query):
         if query:
@@ -52,3 +56,8 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         # return Q(
         #     "multi_match", query=query,
         #     fields=self.searchable_fields, fuzziness="auto")
+
+    def add_aggregations(self, search: Search):
+        for aggregation_field in self.aggregations:
+            search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field= aggregation_field)
+        return search

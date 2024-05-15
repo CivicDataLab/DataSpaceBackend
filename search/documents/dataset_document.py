@@ -1,4 +1,5 @@
 from django_elasticsearch_dsl import Document, fields, Index
+from elasticsearch_dsl import Keyword
 
 from api.models import Dataset, Resource, Metadata, DatasetMetadata
 from dataexbackend import settings
@@ -57,11 +58,13 @@ class DatasetDocument(Document):
         attr='tags_indexing',
         analyzer=ngram_analyser,
         fields={
-            'raw': fields.TextField(analyzer='keyword', multi=True),
+            'raw': fields.KeywordField(multi=True),
             'suggest': fields.CompletionField(multi=True),
         },
         multi=True
     )
+
+    # tags = Keyword(multi=True)
 
     class Django:
         model = Dataset
