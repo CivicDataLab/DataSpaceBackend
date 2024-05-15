@@ -43,7 +43,7 @@ def _validate_file_details_and_update_format(resource: Resource):
     file_obj = copy.deepcopy(file)
     supported_format = [file_format]
     if file_format.lower() == "csv":
-        data = pd.read_csv(file_obj, keep_default_na=False)
+        data = pd.read_csv(file.path, keep_default_na=False, encoding="utf8")
         cols = data.columns
         for vals in cols:
             if vals == " " or vals == "Unnamed: 1":
@@ -65,7 +65,7 @@ def _create_file_resource_schema(resource: Resource):
     schema_list = pd.io.json.build_table_schema(df, version=False)
     schema_list = schema_list.get("fields", [])
     for each in schema_list[1:]:
-        schema_item = ResourceSchema(field_name=each["name"], field_type=each["type"], description="")
+        schema_item = ResourceSchema(field_name=each["name"], format=each["type"], description="")
         schema_item.resource = resource
         schema_item.save()
 

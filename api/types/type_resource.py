@@ -44,7 +44,7 @@ class TypeResource:
     metadata: List[TypeResourceMetadata]
     access_models: List[TypeResourceAccessModel]
     file_details: Optional[TypeFileDetails]
-    schema: Optional[TypeResourceSchema]
+    schema: Optional[List[TypeResourceSchema]]
 
     @strawberry.field
     def metadata(self, info) -> List[TypeResourceMetadata]:
@@ -67,5 +67,5 @@ class TypeResource:
         #     return None
 
     @strawberry.field
-    def schema(self, info) -> Optional[TypeResourceSchema]:
-        return self.resourceschema_set
+    def schema(self:Resource, info) -> Optional[List[TypeResourceSchema]]:
+        return [a for a in self.resourceschema_set.all()]
