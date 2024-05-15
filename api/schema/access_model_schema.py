@@ -5,13 +5,14 @@ from typing import Optional
 import strawberry
 import strawberry_django
 
-from api.models import AccessModel, AccessModelResource, Dataset, Resource
+from api.models import AccessModel, AccessModelResource, Dataset, Resource, ResourceSchema
 from api.types.type_access_model import TypeAccessModel
 
 
 @strawberry.input
 class AccessModelResourceInput:
     resource: uuid.UUID
+    fields: list[int]
 
 
 # TODO extract strawberry enum from django textchoices
@@ -30,11 +31,23 @@ class AccessModelInput:
     type: AccessTypes
     resources: list[AccessModelResourceInput]
 
+
 @strawberry.type(name="Query")
 class Query:
     @strawberry_django.field
     def access_model_resources(self, info, dataset_id: uuid.UUID) -> list[TypeAccessModel]:
         return AccessModel.objects.filter(dataset_id=dataset_id)
+
+
+def _add_resource_fields(access_model_resource: AccessModelResource, dataset_resource: Resource, fields: list[int]):
+    for field_id in fields:
+        try:
+            dataset_field = dataset_resource.resourceschema_set.get(id=field_id)
+        except (Resource.DoesNotExist, ResourceSchema.DoesNotExist) as e:
+            raise ValueError(f"Field with ID {field_id} does not exist.")
+        access_model_resource.fields.add(dataset_field)
+    access_model_resource.save()
+
 
 @strawberry.type
 class Mutation:
@@ -54,13 +67,14 @@ class Mutation:
         access_model.type = access_model_input.type
         access_model.save()
         for resource_input in access_model_input.resources:
-            resource = AccessModelResource()
-            resource.access_model = access_model
+            access_model_resource = AccessModelResource()
+            access_model_resource.access_model = access_model
             resource_id = resource_input.resource
             try:
                 dataset_resource = Resource.objects.get(id=resource_id)
             except Resource.DoesNotExist as e:
                 raise ValueError(f"Resource with ID {resource_id} does not exist.")
-            resource.resource = dataset_resource
-            resource.save()
+            access_model_resource.resource = dataset_resource
+            access_model_resource.save()
+            _add_resource_fields(access_model_resource, dataset_resource, resource_input.fields)
         return access_model
