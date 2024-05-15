@@ -1,4 +1,4 @@
-from elasticsearch_dsl import analyzer
+from elasticsearch_dsl import analyzer, tokenizer
 
 html_strip = analyzer(
     'html_strip',
@@ -6,3 +6,8 @@ html_strip = analyzer(
     filter=["lowercase", "stop", "snowball"],
     char_filter=["html_strip"]
 )
+custom_analyser = analyzer('custom_analyser',
+                           tokenizer=tokenizer('trigram', 'ngram', min_gram=3, max_gram=3),
+                           filter=['lowercase', "stop", "snowball"],
+                           char_filter=["html_strip"]
+                           )

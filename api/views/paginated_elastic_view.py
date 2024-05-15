@@ -1,6 +1,7 @@
 import abc
 
 from django.http import HttpResponse
+from rest_framework.response import Response
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.views import APIView
 
@@ -22,8 +23,9 @@ class PaginatedElasticSearchAPIView(APIView, LimitOffsetPagination):
 
             print(f'Found {response.hits.total.value} hit(s) for query: "{query}"')
 
-            results = self.paginate_queryset(response, request, view=self)
-            serializer = self.serializer_class(results, many=True)
-            return self.get_paginated_response(serializer.data)
+            # results = self.paginate_queryset(response, request, view=self)
+            serializer = self.serializer_class(response, many=True)
+            # return self.get_paginated_response(serializer.data)
+            return Response({'results': serializer.data})
         except Exception as e:
             return HttpResponse(e, status=500)

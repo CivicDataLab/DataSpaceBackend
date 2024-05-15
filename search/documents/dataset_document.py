@@ -1,10 +1,10 @@
 from django_elasticsearch_dsl import Document, fields, Index
-# from elasticsearch_dsl.search_base import AggsProxy
 
-from search.documents.analysers import html_strip
 from api.models import Dataset, Resource, Metadata, DatasetMetadata
 from dataexbackend import settings
+from search.documents.analysers import html_strip, custom_analyser
 
+# from elasticsearch_dsl.search_base import AggsProxy
 
 INDEX = Index(settings.ELASTICSEARCH_INDEX_NAMES[__name__])
 INDEX.settings(
@@ -18,12 +18,23 @@ class DatasetDocument(Document):
     metadata = fields.ObjectField(
         properties={
             'value': fields.TextField(
-                analyzer=html_strip
+                analyzer=custom_analyser
             ),
             'metadata_item': fields.ObjectField(
                 properties={'label': fields.TextField(
-                    analyzer=html_strip
+                    analyzer=custom_analyser
                 )}
+            )
+        }
+    )
+
+    resources = fields.ObjectField(
+        properties={
+            'name': fields.TextField(
+                analyzer=custom_analyser
+            ),
+            'description': fields.TextField(
+                analyzer=custom_analyser
             )
         }
     )
@@ -36,7 +47,7 @@ class DatasetDocument(Document):
     )
 
     description = fields.TextField(
-        analyzer=html_strip,
+        analyzer=custom_analyser,
         fields={
             'raw': fields.TextField(analyzer='keyword'),
         }
@@ -44,7 +55,7 @@ class DatasetDocument(Document):
 
     tags = fields.TextField(
         attr='tags_indexing',
-        analyzer=html_strip,
+        analyzer=custom_analyser,
         fields={
             'raw': fields.TextField(analyzer='keyword', multi=True),
             'suggest': fields.CompletionField(multi=True),
