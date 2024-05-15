@@ -63,7 +63,7 @@ def _update_dataset_tags(dataset: Dataset, tags: List[str]):
 
 def _delete_existing_metadata(dataset):
     try:
-        existing_metadata = DatasetMetadata.objects.get(dataset=dataset)
+        existing_metadata = DatasetMetadata.objects.filter(dataset=dataset)
         existing_metadata.delete()
     except DatasetMetadata.DoesNotExist as e:
         pass
