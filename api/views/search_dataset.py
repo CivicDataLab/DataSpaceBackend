@@ -33,7 +33,6 @@ class SearchDataset(PaginatedElasticSearchAPIView):
     document_class = DatasetDocument
 
     def __init__(self, **kwargs):
-        # super.__init__()
         super().__init__(**kwargs)
         enabled_metadata = Metadata.objects.filter(enabled=True).all()
         self.searchable_fields = [f"metadata.{e.label}" if e.model == MetadataModels.DATASET else f"resoource.{e.label}"

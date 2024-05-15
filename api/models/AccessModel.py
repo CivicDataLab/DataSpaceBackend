@@ -3,7 +3,7 @@ import uuid
 from django.db import models
 
 from api.enums import AccessTypes
-from api.models import Organization, Dataset, Resource
+from api.models import Organization, Dataset, Resource, ResourceSchema
 
 
 class AccessModel(models.Model):
@@ -20,3 +20,4 @@ class AccessModel(models.Model):
 class AccessModelResource(models.Model):
     access_model = models.ForeignKey(AccessModel, on_delete=models.CASCADE, null=False, blank=False)
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, null=False, blank=False)
+    fields = models.ManyToManyField(ResourceSchema)
