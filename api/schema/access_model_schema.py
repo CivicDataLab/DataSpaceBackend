@@ -110,7 +110,7 @@ class Mutation:
         _add_update_access_model_resources(access_model, model_input_resources)
         return access_model
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(handle_django_errors=False)
     def delete_access_model(self, access_model_id: uuid.UUID) -> bool:
         try:
             access_model = AccessModel.objects.get(id=access_model_id)
