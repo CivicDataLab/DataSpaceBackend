@@ -13,6 +13,7 @@ class PaginatedElasticSearchAPIView(APIView):
     def generate_q_expression(self, query):
         """This method should be overridden
         and return a Q() expression."""
+
     @abc.abstractmethod
     def add_aggregations(self, search):
         """This method should be overridden
@@ -42,6 +43,8 @@ class PaginatedElasticSearchAPIView(APIView):
             print(f'Found {response.hits.total.value} hit(s) for query: "{query}"')
 
             serializer = self.serializer_class(response, many=True)
-            return Response({'results': serializer.data, 'aggregations': response.aggregations.to_dict()})
+            return Response({'results': serializer.data,
+                             'aggregations': response.aggregations.to_dict(),
+                             'total': response.hits.total.value})
         except Exception as e:
             return HttpResponse(e, status=500)
