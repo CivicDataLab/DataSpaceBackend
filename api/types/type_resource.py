@@ -1,4 +1,3 @@
-import uuid
 from typing import List, Optional
 
 import strawberry
@@ -9,21 +8,18 @@ from api.models import DatasetMetadata, ResourceMetadata, Resource, AccessModel,
 from api.types import TypeResourceMetadata
 
 
+@strawberry_django.type(ResourceSchema, fields="__all__")
+class TypeResourceSchema:
+    pass
+
+
 @strawberry_django.type(AccessModelResource)
 class TypeAccessModelResourceFields:
-    fields: list[uuid.UUID]
-
-    @strawberry.field
-    def fields(self, info):
-        return []
+    fields: list[TypeResourceSchema]
 
 
 @strawberry_django.type(ResourceFileDetails, fields="__all__")
 class TypeFileDetails:
-    pass
-
-@strawberry_django.type(ResourceSchema, fields="__all__")
-class TypeResourceSchema:
     pass
 
 
@@ -67,5 +63,5 @@ class TypeResource:
         #     return None
 
     @strawberry.field
-    def schema(self:Resource, info) -> Optional[List[TypeResourceSchema]]:
+    def schema(self: Resource, info) -> Optional[List[TypeResourceSchema]]:
         return [a for a in self.resourceschema_set.all()]
