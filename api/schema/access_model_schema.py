@@ -8,9 +8,6 @@ import strawberry_django
 from api.models import AccessModel, AccessModelResource, Dataset, Resource, ResourceSchema
 from api.types.type_access_model import TypeAccessModel
 
-from nova import objects
-
-
 @strawberry.input
 class AccessModelResourceInput:
     resource: uuid.UUID
