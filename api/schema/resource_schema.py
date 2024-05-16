@@ -108,7 +108,7 @@ class Mutation:
         resource.save()
 
         if file_resource_input.file:
-            file_details = resource.resourcefiledetails_set[0]
+            file_details = resource.resourcefiledetails
             file_details.file = file_resource_input.file
             file_details.size = file_resource_input.file.size
             file_details.save()
