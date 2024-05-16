@@ -8,4 +8,4 @@ from api.types.type_resource import TypeResourceSchema
 @strawberry_django.type(AccessModelResource, fields="__all__")
 class TypeAccessModelResource:
     resource: TypeResource
-    fields: TypeResourceSchema
+    fields: list[TypeResourceSchema]
