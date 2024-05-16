@@ -103,7 +103,7 @@ class Mutation:
         _update_dataset_tags(dataset, update_dataset_input.tags)
         return dataset
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(handle_django_errors=False)
     def publish_dataset(self, dataset_id: uuid.UUID) -> types.TypeDataset:
         try:
             dataset = Dataset.objects.get(id=dataset_id)
