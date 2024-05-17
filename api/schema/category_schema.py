@@ -17,6 +17,11 @@ class CategoryInputPartial(NodeInput):
     pass
 
 
+@strawberry_django.type
+class Query:
+    categories: list[TypeCategory] = strawberry_django.field()
+
+
 @strawberry.type
 class Mutation:
     create_category: TypeCategory = mutations.create(CategoryInput)
