@@ -17,7 +17,7 @@ class CategoryInputPartial(NodeInput):
     pass
 
 
-@strawberry_django.type
+@strawberry.type(name="Query")
 class Query:
     categories: list[TypeCategory] = strawberry_django.field()
 
