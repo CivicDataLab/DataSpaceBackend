@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from typing import List, Optional
 
@@ -72,6 +73,8 @@ class Mutation:
     def add_dataset(self) -> types.TypeDataset:
         # TODO: capture organisation
         dataset: Dataset = models.Dataset()
+        now = datetime.datetime.now()
+        dataset.title = f"New dataset {now.strftime('%d %b %Y - %H:%M')}"
         # sync_to_async(dataset.save)()
         dataset.save()
         return dataset
