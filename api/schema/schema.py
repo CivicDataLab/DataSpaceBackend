@@ -10,6 +10,7 @@ import api.schema.resource_schema
 import api.schema.access_model_schema
 import api.schema.category_schema
 from api.types import TypeDataset, TypeMetadata, TypeResource
+from api.types.type_dataset import TypeTag
 
 
 @strawberry.type
@@ -17,6 +18,7 @@ class DefaultQuery:
     datasets: list[TypeDataset] = strawberry_django.field()
     metadata: list[TypeMetadata] = strawberry_django.field()
     resource: list[TypeResource] = strawberry_django.field()
+    tags: list[TypeTag] = strawberry_django.field()
 
 
 Query = merge_types(

@@ -4,7 +4,7 @@ from typing import List
 import strawberry
 import strawberry_django
 
-from api.models import Dataset, DatasetMetadata, Resource, AccessModel
+from api.models import Dataset, DatasetMetadata, Resource, AccessModel, Tag
 from api.types import TypeDatasetMetadata, TypeResource
 from api.types.type_access_model import TypeAccessModel
 
@@ -14,12 +14,17 @@ class DatasetFilter:
     id: uuid.UUID
 
 
+@strawberry_django.type(Tag, fields="__all__")
+class TypeTag:
+    pass
+
+
 @strawberry_django.type(Dataset, fields="__all__", filters=DatasetFilter)
 class TypeDataset:
     metadata: List[TypeDatasetMetadata]
     resources: List["TypeResource"]
     access_models: List["TypeAccessModel"]
-    tags: List[str]
+    tags: List[TypeTag]
 
     @strawberry.field
     def metadata(self, info) -> List[TypeDatasetMetadata]:
@@ -27,6 +32,7 @@ class TypeDataset:
             return DatasetMetadata.objects.filter(dataset=self.id)
         except DatasetMetadata.DoesNotExist as e:
             return []
+
     @strawberry.field
     def resources(self, info) -> List[TypeResource]:
         try:
