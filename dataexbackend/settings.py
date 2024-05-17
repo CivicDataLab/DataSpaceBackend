@@ -42,10 +42,8 @@ DEBUG = os.getenv('DEBUG', True),
 whitelisted_urls = env("URL_WHITELIST").split(',')
 ALLOWED_HOSTS = whitelisted_urls + env("URL_WHITELIST").replace("https://", "").replace("http://", "").split(",")
 
-# CSRF_TRUSTED_ORIGINS = ['http://idp.nic.in', 'http://pmu.idp.nic.in']
 CSRF_TRUSTED_ORIGINS = whitelisted_urls
 
-# CORS_ORIGIN_WHITELIST = ['idpbe.civicdatalab.in', '43.205.200.192', 'idp.civicdatalab.in', 'localhost:3000']
 CORS_ORIGIN_WHITELIST = whitelisted_urls
 
 CORS_ALLOW_METHODS = [
@@ -124,6 +122,7 @@ WSGI_APPLICATION = 'dataexbackend.wsgi.application'
 STRAWBERRY_DJANGO = {
     "FIELD_DESCRIPTION_FROM_HELP_TEXT": True,
     "TYPE_DESCRIPTION_FROM_MODEL_DOCSTRING": True,
+    "GENERATE_ENUMS_FROM_CHOICES": True
 }
 
 # Database
