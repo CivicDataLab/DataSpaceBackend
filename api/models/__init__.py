@@ -9,3 +9,4 @@ from api.models.ResourceSchema import ResourceSchema
 from api.models.ResourceMetadata import ResourceMetadata
 from api.models.AccessModel import AccessModel
 from api.models.AccessModel import AccessModelResource
+from api.models.Category import Category
