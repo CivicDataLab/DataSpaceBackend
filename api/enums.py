@@ -43,6 +43,7 @@ class MetadataStandards(models.TextChoices):
     DCATV3 = "DCATV3"
     OCDS = "OCDS"
     OBDS = "OBDS"
+    NA = "NA"
 
 
 class MetadataDataTypes(models.TextChoices):

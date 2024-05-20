@@ -113,7 +113,7 @@ class Mutation:
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
         # TODO: validate dataset
-        dataset.status = DatasetStatus.PUBLISHED
+        dataset.status = DatasetStatus.PUBLISHED.value
         dataset.save()
         return dataset
 
