@@ -65,7 +65,7 @@ def _create_file_resource_schema(resource: Resource):
     schema_list = pd.io.json.build_table_schema(df, version=False)
     schema_list = schema_list.get("fields", [])
     for each in schema_list[1:]:
-        schema_item = ResourceSchema(field_name=each["name"], format=each["type"], description="")
+        schema_item = ResourceSchema(field_name=each["name"], format=str(each["type"]).capitalize(), description="")
         schema_item.resource = resource
         schema_item.save()
 
