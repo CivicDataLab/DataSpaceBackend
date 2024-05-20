@@ -14,7 +14,7 @@ class AccessModelResourceInput:
     fields: list[int]
 
 
-# TODO extract strawberry enum from django textchoices
+# TODO extract strawberry enum from django text choices
 @strawberry.enum
 class AccessTypes(Enum):
     PUBLIC = "PUBLIC"
@@ -77,7 +77,7 @@ def _add_update_access_model_resources(access_model: AccessModel, model_input_re
 def _update_access_model_fields(access_model: AccessModel, access_model_input):
     access_model.name = access_model_input.name
     access_model.description = access_model_input.description
-    access_model.type = access_model_input.type
+    access_model.type = access_model_input.type.value()
     access_model.save()
 
 
