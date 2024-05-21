@@ -11,7 +11,8 @@ class AccessModel(models.Model):
     name = models.CharField(max_length=300, unique=False, blank=True)
     description = models.CharField(max_length=1000, unique=False, blank=True)
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, null=False, blank=False)
-    type = models.CharField(max_length=100, unique=False, blank=False, choices=AccessTypes.choices)
+    type = models.CharField(max_length=100, unique=False, blank=False, choices=AccessTypes.choices,
+                            default=AccessTypes.PUBLIC)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
