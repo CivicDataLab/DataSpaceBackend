@@ -8,6 +8,7 @@ import strawberry_django
 from api.models import AccessModel, AccessModelResource, Dataset, Resource, ResourceSchema
 from api.types.type_access_model import TypeAccessModel
 
+
 @strawberry.input
 class AccessModelResourceInput:
     resource: uuid.UUID
@@ -34,10 +35,10 @@ class AccessModelInput:
 @strawberry.input
 class EditAccessModelInput:
     access_model_id: uuid.UUID
-    name: str
+    name: Optional[str]
     description: Optional[str]
-    type: AccessTypes
-    resources: list[AccessModelResourceInput]
+    type: Optional[AccessTypes]
+    resources: Optional[list[AccessModelResourceInput]]
 
 
 @strawberry.type(name="Query")
@@ -75,9 +76,12 @@ def _add_update_access_model_resources(access_model: AccessModel, model_input_re
 
 
 def _update_access_model_fields(access_model: AccessModel, access_model_input):
-    access_model.name = access_model_input.name
-    access_model.description = access_model_input.description
-    access_model.type = access_model_input.type.value
+    if access_model_input.name:
+        access_model.name = access_model_input.name
+    if access_model_input.description:
+        access_model.description = access_model_input.description
+    if access_model_input.type:
+        access_model.type = access_model_input.type.value
     access_model.save()
 
 
@@ -87,16 +91,13 @@ class Mutation:
     @strawberry_django.mutation(handle_django_errors=True)
     def create_access_model(self, access_model_input: AccessModelInput) -> TypeAccessModel:
         access_model = AccessModel()
-        dataset_id = access_model_input.dataset
-
         try:
-            dataset = Dataset.objects.get(id=dataset_id)
+            dataset = Dataset.objects.get(id=access_model_input.dataset)
         except Dataset.DoesNotExist as e:
-            raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
+            raise ValueError(f"Dataset with ID {access_model_input.dataset} does not exist.")
         access_model.dataset = dataset
         _update_access_model_fields(access_model, access_model_input)
-        model_input_resources = access_model_input.resources
-        _add_update_access_model_resources(access_model, model_input_resources)
+        _add_update_access_model_resources(access_model, access_model_input.resources)
         return access_model
 
     @strawberry_django.mutation(handle_django_errors=True)
@@ -106,8 +107,7 @@ class Mutation:
         except AccessModel.DoesNotExist as e:
             raise ValueError(f"Access model with ID {access_model_input.access_model_id} does not exist.")
         _update_access_model_fields(access_model, access_model_input)
-        model_input_resources = access_model_input.resources
-        _add_update_access_model_resources(access_model, model_input_resources)
+        _add_update_access_model_resources(access_model, access_model_input.resources)
         return access_model
 
     @strawberry_django.mutation(handle_django_errors=False)
