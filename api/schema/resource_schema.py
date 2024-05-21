@@ -21,6 +21,11 @@ class CreateFileResourceInput:
 
 
 @strawberry.input
+class CreateEmptyFileResourceInput:
+    dataset: uuid.UUID
+
+
+@strawberry.input
 class UpdateFileResourceInput:
     id: uuid.UUID
     file: typing.Optional[Upload] = None
@@ -94,6 +99,18 @@ class Mutation:
             _validate_file_details_and_update_format(resource)
             resources.append(resource)
         return resources
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def create_file_resource(self, file_resource_input: CreateEmptyFileResourceInput) -> TypeResource:
+        dataset_id = file_resource_input.dataset
+        try:
+            dataset = Dataset.objects.get(id=dataset_id)
+        except Dataset.DoesNotExist as e:
+            raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
+        resource = Resource()
+        resource.dataset = dataset
+        resource.save()
+        return resource
 
     @strawberry_django.mutation(handle_django_errors=True)
     def update_file_resource(self, file_resource_input: UpdateFileResourceInput) -> TypeResource:
