@@ -22,6 +22,8 @@ class DSMetadataItemType:
 class UpdateMetadataInput:
     dataset: uuid.UUID
     metadata: List[DSMetadataItemType]
+    description: Optional[str]
+    tags: Optional[List[str]]
 
 
 @strawberry.input
@@ -88,6 +90,11 @@ class Mutation:
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
+        if update_metadata_input.description:
+            dataset.description = update_metadata_input.description
+            dataset.save()
+        if update_metadata_input.tags:
+            _update_dataset_tags(dataset, update_metadata_input.tags)
         _add_update_dataset_metadata(dataset, metadata_input)
         print(update_metadata_input)
         return dataset
