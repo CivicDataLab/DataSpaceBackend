@@ -19,7 +19,7 @@ class TypeTag:
     pass
 
 
-@strawberry_django.type(Dataset, fields="__all__", filters=DatasetFilter)
+@strawberry_django.type(Dataset, fields="__all__", filters=DatasetFilter, pagination=True)
 class TypeDataset:
     metadata: List[TypeDatasetMetadata]
     resources: List["TypeResource"]

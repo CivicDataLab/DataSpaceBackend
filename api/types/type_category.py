@@ -6,7 +6,7 @@ from strawberry import auto
 from api.models import Category
 
 
-@strawberry_django.type(Category)
+@strawberry_django.type(Category, pagination=True)
 class TypeCategory:
     name: auto
     description: auto
