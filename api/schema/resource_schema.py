@@ -44,6 +44,8 @@ def _validate_file_details_and_update_format(resource: Resource):
     file = resource.resourcefiledetails.file
     deep_copy_file = copy.deepcopy(resource.resourcefiledetails.file)
     mime_type = file_validation(deep_copy_file, file, FORMAT_MAPPING)
+    if not mime_type:
+        raise ValueError("Unsupported file format.")
     file_format = FORMAT_MAPPING.get(mime_type.lower())
     file_obj = copy.deepcopy(file)
     supported_format = [file_format]
