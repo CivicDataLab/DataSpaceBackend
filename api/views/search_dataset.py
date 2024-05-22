@@ -45,7 +45,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         self.aggregations = {"tags.raw": "terms"}
         for metadata in enabled_metadata:
             if metadata.filterable:
-                self.aggregations[f"metadata.{metadata.label}"] = "terms"
+                self.aggregations[f"metadata.{metadata.label}.raw"] = "terms"
 
     def generate_q_expression(self, query):
         if query:
