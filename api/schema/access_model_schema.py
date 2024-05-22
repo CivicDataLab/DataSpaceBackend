@@ -35,6 +35,7 @@ class AccessModelInput:
 @strawberry.input
 class EditAccessModelInput:
     access_model_id: uuid.UUID
+    dataset: uuid.UUID
     name: Optional[str]
     description: Optional[str]
     type: Optional[AccessTypes]
@@ -104,10 +105,19 @@ class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=True)
     def edit_access_model(self, access_model_input: EditAccessModelInput) -> TypeAccessModel:
-        try:
-            access_model = AccessModel.objects.get(id=access_model_input.access_model_id)
-        except AccessModel.DoesNotExist as e:
-            raise ValueError(f"Access model with ID {access_model_input.access_model_id} does not exist.")
+        if not access_model_input.access_model_id:
+            access_model = AccessModel()
+            try:
+                dataset = Dataset.objects.get(id=access_model_input.dataset)
+            except Dataset.DoesNotExist as e:
+                raise ValueError(f"Dataset with ID {access_model_input.dataset} does not exist.")
+            access_model.dataset = dataset
+            access_model.save()
+        else:
+            try:
+                access_model = AccessModel.objects.get(id=access_model_input.access_model_id)
+            except AccessModel.DoesNotExist as e:
+                raise ValueError(f"Access model with ID {access_model_input.access_model_id} does not exist.")
         _update_access_model_fields(access_model, access_model_input)
         _add_update_access_model_resources(access_model, access_model_input.resources)
         return access_model

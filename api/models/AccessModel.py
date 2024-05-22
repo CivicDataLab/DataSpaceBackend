@@ -8,8 +8,8 @@ from api.models import Organization, Dataset, Resource, ResourceSchema
 
 class AccessModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=300, unique=False, blank=True)
-    description = models.CharField(max_length=1000, unique=False, blank=True)
+    name = models.CharField(max_length=300, unique=False, blank=True, null=True)
+    description = models.CharField(max_length=1000, unique=False, blank=True, null=True)
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, null=False, blank=False)
     type = models.CharField(max_length=100, unique=False, blank=False, choices=AccessTypes.choices,
                             default=AccessTypes.PUBLIC)
