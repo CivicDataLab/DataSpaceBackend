@@ -21,7 +21,7 @@ class DatasetDocument(Document):
             'value': fields.TextField(
                 analyzer=ngram_analyser
             ),
-            'value.raw': fields.KeywordField(multi=True),
+            'raw': fields.KeywordField(multi=True),
             'metadata_item': fields.ObjectField(
                 properties={'label': fields.TextField(
                     analyzer=ngram_analyser
