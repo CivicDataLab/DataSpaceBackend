@@ -48,6 +48,9 @@ class Query:
     def access_model_resources(self, info, dataset_id: uuid.UUID) -> list[TypeAccessModel]:
         return AccessModel.objects.filter(dataset_id=dataset_id)
 
+    @strawberry_django.field
+    def access_model(self, info, access_model_id: uuid.UUID) -> TypeAccessModel:
+        return AccessModel.objects.get(id=access_model_id)
 
 def _add_resource_fields(access_model_resource: AccessModelResource, dataset_resource: Resource, fields: list[int]):
     for field_id in fields:
