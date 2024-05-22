@@ -62,6 +62,8 @@ def _add_update_access_model_resources(access_model: AccessModel, model_input_re
     if access_model.accessmodelresource_set.exists():
         access_model.accessmodelresource_set.all().delete()
         access_model.save()
+    if not model_input_resources:
+        return
     for resource_input in model_input_resources:
         access_model_resource = AccessModelResource()
         access_model_resource.access_model = access_model
