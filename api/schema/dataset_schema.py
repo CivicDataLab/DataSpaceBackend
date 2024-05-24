@@ -72,7 +72,7 @@ def _delete_existing_metadata(dataset):
 def _add_update_dataset_categories(dataset: Dataset, categories: list[uuid.UUID]):
     categories = Category.objects.filter(id__in=categories)
     dataset.categories.clear()
-    dataset.categories.add(categories)
+    dataset.categories.add(*categories)2
     dataset.save()
 
 
