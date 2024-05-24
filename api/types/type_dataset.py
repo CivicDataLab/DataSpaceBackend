@@ -7,6 +7,7 @@ import strawberry_django
 from api.models import Dataset, DatasetMetadata, Resource, AccessModel, Tag
 from api.types import TypeDatasetMetadata, TypeResource
 from api.types.type_access_model import TypeAccessModel
+from api.types.type_category import TypeCategory
 
 
 @strawberry_django.filter(Dataset)
@@ -25,6 +26,7 @@ class TypeDataset:
     resources: List["TypeResource"]
     access_models: List["TypeAccessModel"]
     tags: List[TypeTag]
+    categorirs:  List[TypeCategory]
 
     @strawberry.field
     def metadata(self, info) -> List[TypeDatasetMetadata]:
