@@ -7,7 +7,7 @@ import strawberry_django
 
 from api import types, models
 from api.enums import DatasetStatus
-from api.models import Dataset, Metadata
+from api.models import Dataset, Metadata, Category
 from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata
 
@@ -24,6 +24,7 @@ class UpdateMetadataInput:
     metadata: List[DSMetadataItemType]
     description: Optional[str]
     tags: Optional[List[str]]
+    categories: List[uuid.UUID]
 
 
 @strawberry.input
@@ -68,6 +69,13 @@ def _delete_existing_metadata(dataset):
         pass
 
 
+def _add_update_dataset_categories(dataset: Dataset, categories: list[uuid.UUID]):
+    categories = Category.objects.filter(id__in=categories)
+    dataset.categories.clear()
+    dataset.categories.add(categories)
+    dataset.save()
+
+
 @strawberry.type
 class Mutation:
     # @strawberry_django.input_mutation()
@@ -96,6 +104,7 @@ class Mutation:
         if update_metadata_input.tags:
             _update_dataset_tags(dataset, update_metadata_input.tags)
         _add_update_dataset_metadata(dataset, metadata_input)
+        _add_update_dataset_categories(dataset, update_metadata_input.categories)
         print(update_metadata_input)
         return dataset
 

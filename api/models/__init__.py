@@ -1,5 +1,6 @@
 from api.models.Organization import Organization
 from api.models.Geography import Geography
+from api.models.Category import Category
 from api.models.Dataset import Dataset
 from api.models.Dataset import Tag
 from api.models.Metadata import Metadata
@@ -10,4 +11,3 @@ from api.models.ResourceSchema import ResourceSchema
 from api.models.ResourceMetadata import ResourceMetadata
 from api.models.AccessModel import AccessModel
 from api.models.AccessModel import AccessModelResource
-from api.models.Category import Category
