@@ -26,7 +26,7 @@ class TypeDataset:
     resources: List["TypeResource"]
     access_models: List["TypeAccessModel"]
     tags: List[TypeTag]
-    categorirs:  List[TypeCategory]
+    categories:  List[TypeCategory]
 
     @strawberry.field
     def metadata(self, info) -> List[TypeDatasetMetadata]:
