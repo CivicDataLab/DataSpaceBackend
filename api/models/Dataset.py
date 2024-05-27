@@ -35,3 +35,11 @@ class Dataset(models.Model):
         Used in Elasticsearch indexing.
         """
         return [tag.value for tag in self.tags.all()]
+
+    @property
+    def categories_indexing(self):
+        """Tags for indexing.
+
+        Used in Elasticsearch indexing.
+        """
+        return [category.value for category in self.categories.all()]

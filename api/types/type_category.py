@@ -2,7 +2,6 @@ import uuid
 from typing import Optional
 
 import strawberry_django
-from strawberry import auto
 
 from api.models import Category
 

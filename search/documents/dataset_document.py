@@ -65,6 +65,16 @@ class DatasetDocument(Document):
         multi=True
     )
 
+    categories = fields.TextField(
+        attr='categories_indexing',
+        analyzer=ngram_analyser,
+        fields={
+            'raw': fields.KeywordField(multi=True),
+            'suggest': fields.CompletionField(multi=True),
+        },
+        multi=True
+    )
+
     # tags = Keyword(multi=True)
 
     class Django:
