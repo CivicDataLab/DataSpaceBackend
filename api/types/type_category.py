@@ -14,3 +14,7 @@ class CategoryFilter:
 @strawberry_django.type(Category, pagination=True, fields="__all__", filters=CategoryFilter)
 class TypeCategory:
     parent_id: Optional["TypeCategory"]
+    dataset_count: int
+
+    def dataset_count(self:Category, info):
+        return self.dataset_set.count()
