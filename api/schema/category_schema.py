@@ -1,5 +1,6 @@
 import strawberry
 import strawberry_django
+from strawberry import auto
 from strawberry_django import NodeInput
 from strawberry_django.mutations import mutations
 
@@ -16,7 +17,7 @@ class CategoryInput:
 
 @strawberry_django.partial(Category, fields="__all__")
 class CategoryInputPartial:
-    slug: Optional[str] = None
+    slug: auto
 
 
 @strawberry.type(name="Query")

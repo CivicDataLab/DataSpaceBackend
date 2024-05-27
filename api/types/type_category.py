@@ -3,14 +3,15 @@ from typing import Optional
 
 import strawberry
 import strawberry_django
+from strawberry import auto
 
 from api.models import Category
 
 
 @strawberry_django.filter(Category)
 class CategoryFilter:
-    id: uuid.UUID
-    slug: str
+    id: auto
+    slug: auto
 
 
 @strawberry_django.type(Category, pagination=True, fields="__all__", filters=CategoryFilter)
