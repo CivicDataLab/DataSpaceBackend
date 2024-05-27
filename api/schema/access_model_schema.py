@@ -34,7 +34,7 @@ class AccessModelInput:
 
 @strawberry.input
 class EditAccessModelInput:
-    access_model_id: uuid.UUID
+    access_model_id: Optional[uuid.UUID]
     dataset: uuid.UUID
     name: Optional[str]
     description: Optional[str]
