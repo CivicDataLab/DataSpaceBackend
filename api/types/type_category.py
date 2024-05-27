@@ -1,6 +1,7 @@
 import uuid
 from typing import Optional
 
+import strawberry
 import strawberry_django
 
 from api.models import Category
@@ -16,5 +17,6 @@ class TypeCategory:
     parent_id: Optional["TypeCategory"]
     dataset_count: int
 
-    def dataset_count(self:Category, info):
+    @strawberry.field
+    def dataset_count(self:Category, info) -> int:
         return self.dataset_set.count()
