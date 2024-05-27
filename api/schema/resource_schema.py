@@ -1,7 +1,9 @@
 import copy
 import typing
 import uuid
+from enum import Enum
 
+import pandas as pd
 import strawberry
 import strawberry_django
 from strawberry.file_uploads import Upload
@@ -11,7 +13,6 @@ from api.file_utils import file_validation
 from api.models import Resource, Dataset, ResourceFileDetails
 from api.models.ResourceSchema import ResourceSchema
 from api.types import TypeResource
-import pandas as pd
 
 
 @strawberry.input
@@ -31,6 +32,28 @@ class UpdateFileResourceInput:
     file: typing.Optional[Upload] = None
     name: typing.Optional[str]
     description: typing.Optional[str]
+
+
+# TODO extract strawberry enum from django text choices
+@strawberry.enum
+class FieldType(Enum):
+    STRING = "STRING"
+    NUMBER = "NUMBER"
+    INTEGER = "INTEGER"
+    DATE = "DATE"
+
+
+@strawberry.input
+class SchemaUpdate:
+    schema_id: int
+    description: str
+    format: FieldType
+
+
+@strawberry.input
+class SchemaUpdateInput:
+    resource: uuid.UUID
+    updates: list[SchemaUpdate]
 
 
 @strawberry.type(name="Query")
@@ -75,6 +98,18 @@ def _create_file_resource_schema(resource: Resource):
         schema_item = ResourceSchema(field_name=each["name"], format=str(each["type"]).upper(), description="")
         schema_item.resource = resource
         schema_item.save()
+
+
+def _update_file_resource_schema(resource: Resource, updated_schema: list[SchemaUpdate]):
+    existing_schema = ResourceSchema.objects.filter(resource=resource)
+    for schema in existing_schema:
+        try:
+            schema_change = next(item for item in updated_schema if item["schema_id"] == schema.id)
+            schema.description = schema_change["description"]
+            schema.format = schema_change["format"]
+            schema.save()
+        except KeyError:
+            pass
 
 
 @strawberry.type
@@ -154,4 +189,13 @@ class Mutation:
         # TODO: validate file vs api type for schema
         _create_file_resource_schema(resource)
         resource.save()
+        return resource
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def update_schema(self, input: SchemaUpdateInput) -> TypeResource:
+        try:
+            resource = Resource.objects.get(id=input.resource)
+        except Resource.DoesNotExist as e:
+            raise ValueError(f"Resource with ID {input.resource} does not exist.")
+        _update_file_resource_schema(resource, input.updates)
         return resource
