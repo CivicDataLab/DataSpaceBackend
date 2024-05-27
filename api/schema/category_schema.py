@@ -6,6 +6,8 @@ from strawberry_django.mutations import mutations
 from api.models import Category
 from api.types.type_category import TypeCategory
 
+from typing import Optional
+
 
 @strawberry_django.input(Category, fields="__all__")
 class CategoryInput:
@@ -14,7 +16,7 @@ class CategoryInput:
 
 @strawberry_django.partial(Category, fields="__all__")
 class CategoryInputPartial:
-    pass
+    slug: Optional[str] = None
 
 
 @strawberry.type(name="Query")
