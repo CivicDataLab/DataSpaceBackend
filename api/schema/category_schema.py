@@ -13,7 +13,7 @@ class CategoryInput:
 
 
 @strawberry_django.partial(Category, fields="__all__")
-class CategoryInputPartial(NodeInput):
+class CategoryInputPartial:
     pass
 
 
@@ -25,5 +25,5 @@ class Query:
 @strawberry.type
 class Mutation:
     create_category: TypeCategory = mutations.create(CategoryInput)
-    update_category: TypeCategory = mutations.update(CategoryInputPartial)
+    update_category: TypeCategory = mutations.update(CategoryInputPartial, key_attr="id")
     delete_category: TypeCategory = mutations.delete(NodeInput)
