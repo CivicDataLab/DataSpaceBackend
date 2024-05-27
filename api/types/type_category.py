@@ -10,6 +10,7 @@ from api.models import Category
 @strawberry_django.filter(Category)
 class CategoryFilter:
     id: uuid.UUID
+    slug: str
 
 
 @strawberry_django.type(Category, pagination=True, fields="__all__", filters=CategoryFilter)

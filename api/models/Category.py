@@ -1,8 +1,7 @@
 import uuid
 
 from django.db import models
-
-from api.enums import GeoTypes
+from django.utils.text import slugify
 
 
 class Category(models.Model):
@@ -10,3 +9,8 @@ class Category(models.Model):
     name = models.CharField(max_length=75, unique=True, null=False, blank=False)
     description = models.CharField(max_length=1000, null=True, blank=True)
     parent_id = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
+    slug = models.SlugField(max_length=75, null=True, blank=False, unique=True)
+
+    def save(self, *args, **kwargs):
+        self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
