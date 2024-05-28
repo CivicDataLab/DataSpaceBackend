@@ -22,6 +22,7 @@ class DatasetMetadataSerializer(serializers.ModelSerializer):
 class DatasetDocumentSerializer(serializers.ModelSerializer):
     metadata = DatasetMetadataSerializer(many=True)
     tags = serializers.ListField()
+    categories = serializers.ListField()
 
     class Meta:
         model = Dataset
