@@ -12,7 +12,9 @@ class Metadata(models.Model):
     # TODO: detail options maybe with json field
     options = models.JSONField(blank=True, null = True)  # for select and multiselect
     # TODO: Add predefined set of validators and corresponding implementation
-    validator = models.CharField(max_length=75, unique=False, blank=True)  # predefined set
+    validator = models.CharField(max_length=75, unique=False, blank=True, choices=[("Date Validator", "Date Validator"),
+        ("Link Validator", "Link Validator"),
+        ("Name Validator", "Name Validator")])  # predefined set
     type = models.CharField(max_length=50, choices=MetadataTypes.choices, blank=False, unique=False)
     model = models.CharField(max_length=50, choices=MetadataModels.choices, blank=False, unique=False)
     enabled = models.BooleanField(default=False)
