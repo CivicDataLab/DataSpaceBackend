@@ -9,6 +9,8 @@ from api import types, models, validators
 from api.models import Dataset, Metadata
 from api.models.DatasetMetadata import DatasetMetadata
 from api.validators import DateValidator, LinkValidator, NameValidators
+from api.enums import MetadataValidators
+from django.core.exceptions import ValidationError
 
 @strawberry.input
 class DSMetadataItemType:
@@ -23,9 +25,9 @@ class UpdateMetadataInput:
 
 # define dictory with all the validators
 dict_validators = {
-    "Date Validator" : "DateValidator",
-    "Link Validator" : "LinkValidator",
-    "Name Validator" : "NameValidator" 
+    MetadataValidators.DateValidator: DateValidator,
+    MetadataValidators.LinkValidator: LinkValidator,
+    MetadataValidators.NameValidator: NameValidators
 }
 
 def _add_update_dataset_metadata(dataset: Dataset, metadata_input: List[DSMetadataItemType]):
@@ -42,12 +44,17 @@ def _add_update_dataset_metadata(dataset: Dataset, metadata_input: List[DSMetada
                                           value=metadata_input_item.value)
             # TODO: apply validations from metadata validations
             try:
-                validator_function_name = dict_validators[metadata_field.validator]
-                validator_function = getattr(validators, validator_function_name)
-                return validator_function(metadata_field.label)
+                validator_function = dict_validators[metadata_field.validator]
+                validator_function(metadata_input_item.value)  # Validate the actual value
+            except KeyError:
+                    print(f"No validator named '{metadata_field.validator}' found in the dictionary.")
+                    raise ValueError(f"No validator named '{metadata_field.validator}' found.")
+            except ValidationError as e:
+                    print(f"Validation error for {metadata_field.validator}: {e}")
+                    raise ValueError(f"Validation error: {e}")
             except Exception as e:
-                print(f"Error occurred while validating {metadata_field.validator}: {e}")
-                return False
+                    print(f"Error occurred while validating {metadata_field.validator}: {e}")
+                    raise ValueError(f"Error occurred while validating: {e}")
 
             ds_metadata.save()
         except Metadata.DoesNotExist as e:
