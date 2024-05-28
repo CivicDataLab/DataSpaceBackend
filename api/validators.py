@@ -1,6 +1,8 @@
 # validators.py
 from datetime import datetime
 import re
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 
 def DateValidator(value):
     """
@@ -17,27 +19,21 @@ def DateValidator(value):
         datetime.strptime(value, '%Y-%m-%d')  # Adjust the date format as needed after discussing
         return True
     except ValueError:
-        return False
+        raise ValidationError(f"{value} is not a valid date format. Use YYYY-MM-DD.")
 
 def LinkValidator(link):
     """
     Validate a link URL.
-
-    Args:
-        link (str): The link URL to validate.
-
-    Returns:
-        bool: True if the link is valid, False otherwise.
     """
-    url_pattern = re.compile(
-        r'^(?:http|ftp)s?://'  # http:// or https:// or ftp://
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
-        r'localhost|'  # localhost...
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or IP
-        r'(?::\d+)?'  # optional port
-        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
-
-    return bool(re.match(url_pattern, link))
+    url_validator = URLValidator()
+    try:
+        url_validator(link)
+    except ValidationError:
+        raise ValidationError(f"{link} is not a valid URL.")
 
 def NameValidator(value):
-    return value
+    """
+    Validate name value (example: only letters and spaces).
+    """
+    if not re.match(r'^[A-Za-z\s]+$', value):
+        raise ValidationError(f"{value} is not a valid name. Only letters and spaces are allowed.")
