@@ -104,9 +104,9 @@ def _update_file_resource_schema(resource: Resource, updated_schema: list[Schema
     existing_schema = ResourceSchema.objects.filter(resource=resource)
     for schema in existing_schema:
         try:
-            schema_change = next(item for item in updated_schema if item["schema_id"] == schema.id)
-            schema.description = schema_change["description"]
-            schema.format = schema_change["format"]
+            schema_change = next(item for item in updated_schema if item.schema_id == schema.id)
+            schema.description = schema_change.description
+            schema.format = schema_change.format
             schema.save()
         except KeyError:
             pass
