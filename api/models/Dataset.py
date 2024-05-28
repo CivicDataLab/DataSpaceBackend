@@ -38,8 +38,8 @@ class Dataset(models.Model):
 
     @property
     def categories_indexing(self):
-        """Tags for indexing.
+        """Categories for indexing.
 
         Used in Elasticsearch indexing.
         """
-        return [category.value for category in self.categories.all()]
+        return [category.name for category in self.categories.all()]
