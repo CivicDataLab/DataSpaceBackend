@@ -45,7 +45,7 @@ class FieldType(Enum):
 
 @strawberry.input
 class SchemaUpdate:
-    schema_id: int
+    schema_id: str
     description: str
     format: FieldType
 
