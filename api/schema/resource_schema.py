@@ -187,6 +187,7 @@ class Mutation:
             file_details.save()
 
         resource.preview_enabled = file_resource_input.preview_enabled
+        resource.save()
         if file_resource_input.preview_details:
             _update_resource_preview_details(file_resource_input, resource)
 
