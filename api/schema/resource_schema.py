@@ -37,8 +37,8 @@ class PreviewDetails:
 class UpdateFileResourceInput:
     id: uuid.UUID
     file: typing.Optional[Upload] = None
-    name: typing.Optional[str]
-    description: typing.Optional[str]
+    name: typing.Optional[str] = None
+    description: typing.Optional[str] = None
     preview_enabled: typing.Optional[bool] = False
     preview_details: typing.Optional[PreviewDetails] = None
 
