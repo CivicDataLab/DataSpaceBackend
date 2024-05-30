@@ -10,7 +10,7 @@ from strawberry.file_uploads import Upload
 
 from api.constants import FORMAT_MAPPING
 from api.file_utils import file_validation
-from api.models import Resource, Dataset, ResourceFileDetails
+from api.models import Resource, Dataset, ResourceFileDetails, ResourcePreviewDetails
 from api.models.ResourceSchema import ResourceSchema
 from api.types import TypeResource
 
@@ -27,11 +27,20 @@ class CreateEmptyFileResourceInput:
 
 
 @strawberry.input
+class PreviewDetails:
+    is_all_entries: typing.Optional[bool] = True
+    start_entry: typing.Optional[int] = 0
+    end_entry: typing.Optional[int] = 10
+
+
+@strawberry.input
 class UpdateFileResourceInput:
     id: uuid.UUID
     file: typing.Optional[Upload] = None
     name: typing.Optional[str]
     description: typing.Optional[str]
+    preview_enabled: typing.Optional[bool] = False
+    preview_details: typing.Optional[PreviewDetails] = None
 
 
 # TODO extract strawberry enum from django text choices
@@ -70,7 +79,6 @@ def _validate_file_details_and_update_format(resource: Resource):
     if not mime_type:
         raise ValueError("Unsupported file format.")
     file_format = FORMAT_MAPPING.get(mime_type.lower())
-    file_obj = copy.deepcopy(file)
     supported_format = [file_format]
     if file_format.lower() == "csv":
         data = pd.read_csv(file.path, keep_default_na=False, encoding="utf8")
@@ -110,6 +118,17 @@ def _update_file_resource_schema(resource: Resource, updated_schema: list[Schema
             schema.save()
         except KeyError:
             pass
+
+
+def _update_resource_preview_details(file_resource_input, resource):
+    if resource.preview_details:
+        resource.preview_details.delete()
+    preview_details = ResourcePreviewDetails(is_all_entries=file_resource_input.preview_details.is_all_entries,
+                                             start_entry=file_resource_input.preview_details.start_entry,
+                                             end_entry=file_resource_input.preview_details.end_entry)
+    preview_details.save()
+    resource.preview_details = preview_details
+    resource.save()
 
 
 @strawberry.type
@@ -166,6 +185,10 @@ class Mutation:
             file_details.file = file_resource_input.file
             file_details.size = file_resource_input.file.size
             file_details.save()
+
+        resource.preview_enabled = file_resource_input.preview_enabled
+        if file_resource_input.preview_details:
+            _update_resource_preview_details(file_resource_input, resource)
 
         return resource
 
