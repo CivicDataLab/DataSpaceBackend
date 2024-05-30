@@ -14,6 +14,8 @@ class Resource(models.Model):
     type = models.CharField(max_length=50, choices=DataType.choices, default=DataType.FILE, blank=False, unique=False)
     name = models.CharField(max_length=50, unique=False, blank=True)
     description = models.CharField(max_length=1000, unique=False, blank=True)
+    preview_enabled = models.BooleanField(default=False)
+    preview_details = models.OneToOneField('ResourcePreviewDetails', on_delete=models.CASCADE, null=True, blank=True)
 
 
 class ResourceFileDetails(models.Model):
@@ -23,3 +25,9 @@ class ResourceFileDetails(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     format = models.CharField(max_length=50)
+
+
+class ResourcePreviewDetails(models.Model):
+    is_all_entries = models.BooleanField(default=True)
+    start_entry = models.IntegerField(default=0)
+    end_entry = models.IntegerField(default=10)
