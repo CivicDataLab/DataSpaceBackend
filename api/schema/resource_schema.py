@@ -157,7 +157,7 @@ class Mutation:
             raise ValueError(f"Resource with ID {file_resource_input.id} does not exist.")
         if file_resource_input.name:
             resource.name = file_resource_input.name
-        if file_resource_input.description:
+        if not file_resource_input.description is None:
             resource.description = file_resource_input.description
         resource.save()
 
