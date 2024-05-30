@@ -45,7 +45,7 @@ class FieldType(Enum):
 
 @strawberry.input
 class SchemaUpdate:
-    schema_id: str
+    id: str
     description: str
     format: FieldType
 
@@ -104,7 +104,7 @@ def _update_file_resource_schema(resource: Resource, updated_schema: list[Schema
     existing_schema = ResourceSchema.objects.filter(resource=resource)
     for schema in existing_schema:
         try:
-            schema_change = next(item for item in updated_schema if item.schema_id == str(schema.id))
+            schema_change = next(item for item in updated_schema if item.id == str(schema.id))
             schema.description = schema_change.description
             schema.format = schema_change.format.value
             schema.save()
