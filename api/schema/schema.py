@@ -29,7 +29,8 @@ Query = merge_types(
         DefaultQuery,
         api.schema.resource_schema.Query,
         api.schema.access_model_schema.Query,
-        api.schema.category_schema.Query
+        api.schema.category_schema.Query,
+        api.schema.resource_chart_schema.Query
     ),
 )
 

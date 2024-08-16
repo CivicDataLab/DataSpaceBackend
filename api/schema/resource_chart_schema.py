@@ -12,6 +12,17 @@ ChartType = strawberry.enum(ChartTypes)
 AggregateType = strawberry.enum(AggregateType)
 
 
+@strawberry.type(name="Query")
+class Query:
+    @strawberry_django.field
+    def charts_details(self, info, dataset_id: uuid.UUID) -> list[TypeResourceChart]:
+        return ResourceChartDetails.objects.filter(resource__dataset_id=dataset_id)
+
+    @strawberry_django.field
+    def access_model(self, info, chart_details_id: uuid.UUID) -> TypeResourceChart:
+        return ResourceChartDetails.objects.get(id=chart_details_id)
+
+
 @strawberry_django.input(ResourceChartDetails)
 class ResourceChartInput:
     chart_id: Optional[uuid.UUID]
