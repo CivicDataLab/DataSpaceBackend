@@ -81,7 +81,7 @@ def _add_update_access_model_resources(access_model: AccessModel, model_input_re
         _add_resource_fields(access_model_resource, dataset_resource, resource_input.fields)
 
 
-def _update_access_model_fields(access_model: AccessModel, access_model_input):
+def _update_access_model_fields(access_model: AccessModel, access_model_input: AccessModelInput):
     if access_model_input.name:
         access_model.name = access_model_input.name
     if access_model_input.description:
