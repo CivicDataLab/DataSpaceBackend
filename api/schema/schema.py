@@ -10,6 +10,7 @@ import api.schema.resource_schema
 import api.schema.access_model_schema
 import api.schema.category_schema
 import api.schema.organization_schema
+import api.schema.resource_chart_schema
 from api.types import TypeDataset, TypeMetadata, TypeResource
 from api.types.type_dataset import TypeTag
 
@@ -41,6 +42,7 @@ Mutation = merge_types(
         api.schema.access_model_schema.Mutation,
         api.schema.category_schema.Mutation,
         api.schema.organization_schema.Mutation,
+        api.schema.resource_chart_schema.Mutation,
     ),
 )
 schema = strawberry.Schema(

@@ -77,3 +77,17 @@ class DatasetStatus(models.TextChoices):
     DRAFT = "DRAFT"
     PUBLISHED = "PUBLISHED"
     ARCHIVED = "ARCHIVED"
+
+
+class ChartTypes(models.TextChoices):
+    BAR_VERTICAL = "BAR_VERTICAL"
+    BAR_HORIZONTAL = "BAR_HORIZONTAL"
+    LINE = "LINE"
+    COLUMN = "COLUMN"
+
+
+class AggregateType(models.TextChoices):
+    NONE = "NONE"
+    SUM = "SUM"
+    AVERAGE = "AVERAGE"
+    COUNT = "COUNT"
