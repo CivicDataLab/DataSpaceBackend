@@ -49,7 +49,7 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
 @strawberry.type
 class Mutation:
     @strawberry_django.mutation(handle_django_errors=True)
-    def edit_access_model(self, chart_input: ResourceChartInput) -> TypeResourceChart:
+    def edit_resource_chart(self, chart_input: ResourceChartInput) -> TypeResourceChart:
         if not chart_input.chart_id:
             chart: ResourceChartDetails = ResourceChartDetails()
         else:
