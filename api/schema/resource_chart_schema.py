@@ -12,7 +12,7 @@ ChartType = strawberry.enum(ChartTypes)
 AggregateType = strawberry.enum(AggregateType)
 
 
-@strawberry_django.input(ResourceChartDetails, fields="__all__")
+@strawberry_django.input(ResourceChartDetails)
 class ResourceChartInput:
     chart_id: Optional[uuid.UUID]
     resource: uuid.UUID
