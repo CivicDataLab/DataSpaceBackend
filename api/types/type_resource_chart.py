@@ -38,4 +38,8 @@ class TypeResourceChart:
 
     @strawberry.field
     def chart(self, info) -> JSON:
-        return json.loads(chart_base(self).dump_options_with_quotes())
+        base_chart = chart_base(self)
+        if base_chart:
+            return json.loads(base_chart.dump_options_with_quotes())
+        else:
+            return {}
