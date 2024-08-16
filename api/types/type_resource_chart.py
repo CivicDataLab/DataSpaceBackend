@@ -1,5 +1,7 @@
 import json
 from random import randrange
+from typing import Optional
+
 import pandas as pd
 import strawberry
 import strawberry_django
@@ -12,7 +14,9 @@ from api.models import ResourceChartDetails
 from api.types import TypeResource
 
 
-def chart_base(chart_details: ResourceChartDetails) -> RectChart:
+def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart]:
+    if not chart_details.x_axis_column or not chart_details.y_axis_column:
+        return None
     data = pd.read_csv(chart_details.resource.resourcefiledetails.file.path)
     metrics = data.groupby(chart_details.x_axis_column.field_name).agg(
         {chart_details.y_axis_column.field_name: chart_details.aggregate_type}).reset_index()
