@@ -52,6 +52,7 @@ class Mutation:
     def edit_resource_chart(self, chart_input: ResourceChartInput) -> TypeResourceChart:
         if not chart_input.chart_id:
             chart: ResourceChartDetails = ResourceChartDetails()
+            chart.save()
         else:
             try:
                 chart = ResourceChartDetails.objects.get(id=chart_input.chart_id)
