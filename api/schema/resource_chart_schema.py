@@ -76,3 +76,12 @@ class Mutation:
         chart.save()
         _update_chart_fields(chart, chart_input, resource)
         return chart
+
+    @strawberry_django.mutation(handle_django_errors=False)
+    def delete_resource_chart(self, chart_id: uuid.UUID) -> bool:
+        try:
+            chart = ResourceChartDetails.objects.get(id=chart_id)
+        except ResourceChartDetails.DoesNotExist as e:
+            raise ValueError(f"Resource Chart with ID {chart_id} does not exist.")
+        chart.delete()
+        return True
