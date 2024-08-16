@@ -19,7 +19,7 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart]:
         return None
     data = pd.read_csv(chart_details.resource.resourcefiledetails.file.path)
     metrics = data.groupby(chart_details.x_axis_column.field_name).agg(
-        {chart_details.y_axis_column.field_name: chart_details.aggregate_type}).reset_index()
+        {chart_details.y_axis_column.field_name: chart_details.aggregate_type.lower()}).reset_index()
     metrics.columns = [chart_details.x_axis_column.field_name, chart_details.y_axis_column.field_name]
     chart = (
         Bar()
