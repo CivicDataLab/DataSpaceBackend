@@ -19,7 +19,7 @@ class Query:
         return ResourceChartDetails.objects.filter(resource__dataset_id=dataset_id)
 
     @strawberry_django.field
-    def access_model(self, info, chart_details_id: uuid.UUID) -> TypeResourceChart:
+    def resource_chart(self, info, chart_details_id: uuid.UUID) -> TypeResourceChart:
         return ResourceChartDetails.objects.get(id=chart_details_id)
 
 
