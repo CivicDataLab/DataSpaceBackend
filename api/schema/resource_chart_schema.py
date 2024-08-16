@@ -37,10 +37,10 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
         chart.name = chart_input.name
     if chart_input.description:
         chart.description = chart_input.description
-    if chart_input.x_axis_column:
+    if chart_input.x_axis_Column:
         field = ResourceSchema.objects.get(id=chart_input.x_axis_Column)
         chart.x_axis_column = field
-    if chart_input.y_axis_column:
+    if chart_input.y_axis_Column:
         field = ResourceSchema.objects.get(id=chart_input.y_axis_Column)
         chart.y_axis_column = field
     chart.save()
