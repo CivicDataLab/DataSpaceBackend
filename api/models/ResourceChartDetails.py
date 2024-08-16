@@ -15,8 +15,8 @@ class ResourceChartDetails(models.Model):
                                   blank=False, unique=False)
     x_axis_label = models.CharField(max_length=50, default="")
     y_axis_label = models.CharField(max_length=50, default="")
-    x_axis_column = models.ForeignKey(ResourceSchema, on_delete=models.CASCADE, null=False, blank=False, related_name="x_column")
-    y_axis_column = models.ForeignKey(ResourceSchema, on_delete=models.CASCADE, null=False, blank=False, related_name="y_column")
+    x_axis_column = models.ForeignKey(ResourceSchema, on_delete=models.CASCADE, null=True, blank=True, related_name="x_column")
+    y_axis_column = models.ForeignKey(ResourceSchema, on_delete=models.CASCADE, null=True, blank=True, related_name="y_column")
     show_legend = models.BooleanField(default=False)
     aggregate_type = models.CharField(max_length=50, choices=AggregateType.choices, default=AggregateType.NONE,
                                       blank=False, unique=False)
