@@ -8,8 +8,8 @@ from api.models.DatasetMetadata import DatasetMetadata
 from api.models.Resource import Resource
 from api.models.Resource import ResourceFileDetails
 from api.models.Resource import ResourcePreviewDetails
-from api.models.Resource import ResourceChartDetails
 from api.models.ResourceSchema import ResourceSchema
+from api.models.ResourceChartDetails import ResourceChartDetails
 from api.models.ResourceMetadata import ResourceMetadata
 from api.models.AccessModel import AccessModel
 from api.models.AccessModel import AccessModelResource
