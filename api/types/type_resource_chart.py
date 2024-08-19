@@ -36,8 +36,8 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart]:
 class TypeResourceChart:
     resource: TypeResource
     chart: JSON
-    x_axis_column: TypeResourceSchema
-    y_axis_column: TypeResourceSchema
+    x_axis_column: Optional[TypeResourceSchema]
+    y_axis_column: Optional[TypeResourceSchema]
 
     @strawberry.field
     def chart(self, info) -> JSON:
