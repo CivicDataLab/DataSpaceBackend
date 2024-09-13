@@ -21,4 +21,12 @@ class MetadataInputPartial(NodeInput):
 class Mutation:
     create_metadata: TypeMetadata = mutations.create(MetadataInput)
     update_metadata: TypeMetadata = mutations.update(MetadataInputPartial)
-    delete_metadata: TypeMetadata = mutations.delete(NodeInput)
+
+    @strawberry_django.mutation(handle_django_errors=False)
+    def delete_metadata(self, metadata_id: str) -> bool:
+        try:
+            metadata = Metadata.objects.get(id=metadata_id)
+        except Metadata.DoesNotExist as e:
+            raise ValueError(f"Metadata with ID {metadata_id} does not exist.")
+        metadata.delete()
+        return True
