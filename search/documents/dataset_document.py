@@ -98,6 +98,6 @@ class DatasetDocument(Document):
             return related_instance.dataset
         elif isinstance(related_instance, Metadata):
             ds_metadata_objects = related_instance.datasetmetadata_set.all()
-            return [obj.dataset_set.all() for obj in ds_metadata_objects]
+            return [obj.dataset for obj in ds_metadata_objects]
         elif isinstance(related_instance, DatasetMetadata):
             return related_instance.dataset
