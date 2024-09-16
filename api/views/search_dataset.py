@@ -108,10 +108,29 @@ class SearchDataset(PaginatedElasticSearchAPIView):
     #     return search
 
     def add_filters(self, filters, search: Search):
+        non_filter_metadata = Metadata.objects.filter(filterable=False).all()
+        excluded_labels = [e.label for e in non_filter_metadata]
+
         for filter in filters:
-            raw_filter = filter + '.raw'
-            if raw_filter in self.aggregations:
-                search = search.filter("terms", **{raw_filter: filters[filter].split(',')})
+            if filter in excluded_labels:
+                continue
+            elif filter in ["tags", "categories", "formats"]:
+                raw_filter = filter + '.raw'
+                if raw_filter in self.aggregations:
+                    search = search.filter("terms", **{raw_filter: filters[filter].split(',')})
+                else:
+                    search = search.filter("term", **{filter: filters[filter]})
+            # TODO: Handle resource metadata
             else:
-                search = search.filter("term", **{filter: filters[filter]})
+                search = search.filter(
+                    'nested',
+                    path='metadata',
+                    query={
+                        'bool': {
+                            'must': {
+                                'term': {f'metadata.value': filters[filter]}
+                            }
+                        }
+                    }
+                )
         return search
