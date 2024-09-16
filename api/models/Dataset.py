@@ -50,4 +50,4 @@ class Dataset(models.Model):
 
         Used in Elasticsearch indexing.
         """
-        return [resource.resourcefiledetails.format for resource in self.resources.all()]
+        return list(set([resource.resourcefiledetails.format for resource in self.resources.all()]).difference({""}))
