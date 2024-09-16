@@ -43,3 +43,11 @@ class Dataset(models.Model):
         Used in Elasticsearch indexing.
         """
         return [category.name for category in self.categories.all()]
+
+    @property
+    def formats_indexing(self):
+        """Formats for indexing.
+
+        Used in Elasticsearch indexing.
+        """
+        return [resource.resourcefiledetails.format for resource in self.resources.all()]

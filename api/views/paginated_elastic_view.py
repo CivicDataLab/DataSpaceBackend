@@ -69,6 +69,12 @@ class PaginatedElasticSearchAPIView(APIView):
             for agg in tags_agg:
                 aggregations["tags"][agg["key"]] = agg["doc_count"]
 
+            formats_agg = aggregations["formats"]["buckets"]
+            aggregations.pop("formats")
+            aggregations["formats"] = {}
+            for agg in formats_agg:
+                aggregations["formats"][agg["key"]] = agg["doc_count"]
+
             return Response({'results': serializer.data,
                              'aggregations': aggregations,
                              'total': response.hits.total.value})

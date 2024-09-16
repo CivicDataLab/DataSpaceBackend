@@ -68,6 +68,15 @@ class DatasetDocument(Document):
         },
         multi=True
     )
+    formats = fields.TextField(
+        attr='formats_indexing',
+        analyzer=ngram_analyser,
+        fields={
+            'raw': fields.KeywordField(multi=True),
+            'suggest': fields.CompletionField(multi=True),
+        },
+        multi=True
+    )
 
     # tags = Keyword(multi=True)
 
