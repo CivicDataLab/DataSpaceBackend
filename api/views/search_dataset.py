@@ -83,35 +83,16 @@ class SearchDataset(PaginatedElasticSearchAPIView):
                 field_name = aggregation_field.split('.')[1]
                 aggregate_fields.append(field_name)
             else:
-                search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
+                search.aggs.bucket(aggregation_field.replace(".raw", ""), self.aggregations[aggregation_field], field=aggregation_field)
 
         if aggregate_fields:
             metadata_bucket = search.aggs.bucket('metadata', 'nested', path='metadata')
-            for field in aggregate_fields:
-                composite_agg = A('composite', sources=[
-                    {'metadata_label': {'terms': {'field': 'metadata.metadata_item.label'}}},
-                    {'metadata_value': {'terms': {'field': 'metadata.value'}}}
-                ])
-                metadata_bucket.bucket("composite_agg", composite_agg)
-
-        # for aggregation_field in self.aggregations:
-        #     if aggregation_field.startswith('metadata.'):
-        #         field_name = aggregation_field.split('.')[1]
-        #
-        #         # Composite aggregation to group by both metadata.value and metadata_item.label
-        #         composite_agg = A('composite', sources=[
-        #             {'metadata_label': {'terms': {'field': 'metadata.metadata_item.label'}}},
-        #             {'metadata_value': {'terms': {'field': 'metadata.value'}}}
-        #         ])
-        #
-        #         # Add the nested aggregation for 'metadata'
-        #         search.aggs.bucket(f'{field_name}_agg', 'nested', path='metadata').bucket(
-        #             f'{field_name}_composite', composite_agg
-        #         )
-        #     else:
-        #         # Non-nested fields can use regular aggregations
-        #         search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
-
+            # for field in aggregate_fields:
+            composite_agg = A('composite', sources=[
+                {'metadata_label': {'terms': {'field': 'metadata.metadata_item.label'}}},
+                {'metadata_value': {'terms': {'field': 'metadata.value'}}}
+            ])
+            metadata_bucket.bucket("composite_agg", composite_agg)
         return search
 
     def generate_q_expression(self, query):
