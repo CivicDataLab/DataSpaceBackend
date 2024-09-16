@@ -1,4 +1,4 @@
-from elasticsearch_dsl import Q, Search
+from elasticsearch_dsl import Q, Search, A
 from rest_framework import serializers
 
 from search.documents import DatasetDocument
@@ -51,21 +51,52 @@ class SearchDataset(PaginatedElasticSearchAPIView):
                 aggregations[f"metadata.{metadata.label}"] = "terms"
         return searchable_fields, aggregations
 
+    # def add_aggregations(self, search: Search):
+    #     aggregate_fields = []
+    #     for aggregation_field in self.aggregations:
+    #         if aggregation_field.startswith('metadata.'):
+    #             field_name = aggregation_field.split('.')[1]
+    #             aggregate_fields.append(field_name)
+    #         else:
+    #             search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
+    #     if aggregate_fields:
+    #         metadata_bucket = search.aggs.bucket('metadata', 'nested', path='metadata')
+    #         for field in aggregate_fields:
+    #             metadata_bucket.bucket(field, 'multi_terms', terms={
+    #                 'field': 'metadata.value',
+    #                 'include': {
+    #                     'filter': {
+    #                         'term': {'metadata.metadata_item.label': field}
+    #                     }
+    #                 }
+    #             })
+    #             # metadata_bucket.bucket(field, 'terms', field=f'metadata.value')
+    #     return search
+
     def add_aggregations(self, search: Search):
-        aggregate_fields = []
+        """
+        Add aggregations to the search query for metadata value and label using composite aggregation.
+        """
         for aggregation_field in self.aggregations:
             if aggregation_field.startswith('metadata.'):
                 field_name = aggregation_field.split('.')[1]
-                aggregate_fields.append(field_name)
+
+                # Composite aggregation to group by both metadata.value and metadata_item.label
+                composite_agg = A('composite', sources=[
+                    {'metadata_label': {'terms': {'field': 'metadata.metadata_item.label'}}},
+                    {'metadata_value': {'terms': {'field': 'metadata.value'}}}
+                ])
+
+                # Add the nested aggregation for 'metadata'
+                search.aggs.bucket(f'{field_name}_agg', 'nested', path='metadata').bucket(
+                    f'{field_name}_composite', composite_agg
+                )
             else:
+                # Non-nested fields can use regular aggregations
                 search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
-        if aggregate_fields:
-            metadata_bucket = search.aggs.bucket('metadata', 'nested', path='metadata')
-            for field in aggregate_fields:
-                label_bucket = metadata_bucket.bucket(field, 'terms', field='metadata.metadata_item.label')
-                label_bucket.bucket(f'{field}_values', 'terms', field='metadata.value')
-                # metadata_bucket.bucket(field, 'terms', field=f'metadata.value')
+
         return search
+
     def generate_q_expression(self, query):
         if query:
             queries = [Q("match", **{field: query}) for field in self.searchable_fields]
