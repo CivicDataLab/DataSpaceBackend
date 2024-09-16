@@ -55,9 +55,11 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         for aggregation_field in self.aggregations:
             if aggregation_field.startswith('metadata.'):
                 field_name = aggregation_field.split('.')[1]
-                search.aggs.bucket(field_name, 'nested', path='metadata').bucket(field_name, {
-                    'terms': {'field': f'metadata.value'}
-                })
+                search.aggs.bucket(f'{field_name}_agg', 'nested', path='metadata').bucket(
+                    f'{field_name}_labels', 'terms', field='metadata.metadata_item.label'
+                ).bucket(
+                    f'{field_name}_values', 'terms', field='metadata.value'
+                )
             else:
                 search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
         return search
