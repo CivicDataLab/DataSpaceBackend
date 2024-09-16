@@ -26,7 +26,8 @@ class TypeDataset:
     resources: List["TypeResource"]
     access_models: List["TypeAccessModel"]
     tags: List[TypeTag]
-    categories:  List[TypeCategory]
+    categories: List[TypeCategory]
+    formats: List[str]
 
     @strawberry.field
     def metadata(self, info) -> List[TypeDatasetMetadata]:
@@ -48,3 +49,7 @@ class TypeDataset:
             return AccessModel.objects.filter(dataset=self.id)
         except AccessModel.DoesNotExist as e:
             return []
+
+    @strawberry.field
+    def formats(self: Dataset, info) -> List[str]:
+        return self.formats_indexing
