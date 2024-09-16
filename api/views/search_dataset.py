@@ -52,11 +52,22 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         return searchable_fields, aggregations
 
     def add_aggregations(self, search: Search):
+        enabled_metadata = Metadata.objects.filter(enabled=False).all()
+        excluded_labels = [e.label for e in enabled_metadata]
         for aggregation_field in self.aggregations:
             if aggregation_field.startswith('metadata.'):
                 field_name = aggregation_field.split('.')[1]
-                search.aggs.bucket(f'{field_name}_agg', 'nested', path='metadata').bucket(
-                    f'{field_name}_labels', 'terms', field='metadata.metadata_item.label'
+                search.aggs.bucket(f'metadata', 'nested', path='metadata') \
+                    .bucket(
+                    f'{field_name}_filtered', 'filter', {
+                        'bool': {
+                            'must_not': [
+                                {'terms': {'metadata.metadata_item.label.keyword': excluded_labels}}
+                            ]
+                        }
+                    }) \
+                    .bucket(
+                    f'{field_name}', 'terms', field='metadata.metadata_item.label'
                 ).bucket(
                     f'{field_name}_values', 'terms', field='metadata.value'
                 )
