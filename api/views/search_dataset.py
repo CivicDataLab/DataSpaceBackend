@@ -35,18 +35,31 @@ class SearchDataset(PaginatedElasticSearchAPIView):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.searchable_fields, self.aggregations = self.get_searchable_and_aggregations()
+
+    @staticmethod
+    def get_searchable_and_aggregations():
         enabled_metadata = Metadata.objects.filter(enabled=True).all()
-        self.searchable_fields = [f"metadata.{e.label}" if e.model == MetadataModels.DATASET else f"resoource.{e.label}"
-                                  for e in enabled_metadata]
-        self.searchable_fields.append("tags")
-        self.searchable_fields.append("description")
-        self.searchable_fields.append("resource.description")
-        self.searchable_fields.append("resource.name")
-        self.searchable_fields.append("title")
-        self.aggregations = {"tags.raw": "terms", "categories.raw": "terms"}
+        searchable_fields = [
+            f"metadata.{e.label}" if e.model == MetadataModels.DATASET else f"resource.{e.label}"
+            for e in enabled_metadata
+        ]
+        searchable_fields.extend(["tags", "description", "resource.description", "resource.name", "title"])
+        aggregations = {"tags.raw": "terms","categories.raw": "terms"}
         for metadata in enabled_metadata:
             if metadata.filterable:
-                self.aggregations[f"metadata.{metadata.label}.raw"] = "terms"
+                aggregations[f"metadata.{metadata.label}.raw"] = "terms"
+        return searchable_fields, aggregations
+
+    def add_aggregations(self, search: Search):
+        for aggregation_field in self.aggregations:
+            if aggregation_field.startswith('metadata.'):
+                field_name = aggregation_field.split('.')[1]
+                search.aggs.bucket(aggregation_field, {'nested': {'path': 'metadata'}}).bucket(field_name, {
+                    'terms': {'field': f'metadata.metadata_item.label.raw'}})
+            else:
+                search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
+        return search
 
     def generate_q_expression(self, query):
         if query:
@@ -54,14 +67,11 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         else:
             queries = [Q("match_all")]
         return Q("bool", should=queries, minimum_should_match=1)
-        # return Q(
-        #     "multi_match", query=query,
-        #     fields=self.searchable_fields, fuzziness="auto")
 
-    def add_aggregations(self, search: Search):
-        for aggregation_field in self.aggregations:
-            search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
-        return search
+    # def add_aggregations(self, search: Search):
+    #     for aggregation_field in self.aggregations:
+    #         search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
+    #     return search
 
     def add_filters(self, filters, search: Search):
         for filter in filters:

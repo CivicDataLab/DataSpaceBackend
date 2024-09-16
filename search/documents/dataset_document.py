@@ -1,4 +1,4 @@
-from django_elasticsearch_dsl import Document, fields, Index
+from django_elasticsearch_dsl import Document, fields, Index, KeywordField
 from elasticsearch_dsl import Keyword
 
 from api.models import Dataset, Resource, Metadata, DatasetMetadata
@@ -16,19 +16,13 @@ INDEX.settings(
 
 @INDEX.doc_type
 class DatasetDocument(Document):
-    metadata = fields.ObjectField(
-        properties={
-            'value': fields.TextField(
-                analyzer=ngram_analyser
-            ),
-            'raw': fields.KeywordField(multi=True),
-            'metadata_item': fields.ObjectField(
-                properties={'label': fields.TextField(
-                    analyzer=ngram_analyser
-                )}
-            )
-        }
-    )
+    metadata = fields.NestedField(properties={
+        'value': fields.TextField(analyzer=ngram_analyser),
+        'raw': KeywordField(multi=True),
+        'metadata_item': fields.ObjectField(properties={
+            'label': fields.TextField(analyzer=ngram_analyser)
+        })
+    })
 
     resources = fields.ObjectField(
         properties={
