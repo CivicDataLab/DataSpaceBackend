@@ -60,16 +60,11 @@ class SearchDataset(PaginatedElasticSearchAPIView):
             else:
                 search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
         if aggregate_fields:
-            # search.aggs.bucket(f'metadata', 'nested', path='metadata') \
-            #     .bucket(
-            #     f'{field_name}', 'terms', field='metadata.metadata_item.label'
-            # ) \
-            #     .bucket(
-            #     f'{field_name}_values', 'terms', field='metadata.value'
-            # )
             metadata_bucket = search.aggs.bucket('metadata', 'nested', path='metadata')
             for field in aggregate_fields:
-                metadata_bucket.bucket(field, 'terms', field=f'metadata.value')
+                label_bucket = metadata_bucket.bucket(field, 'terms', field='metadata.metadata_item.label')
+                label_bucket.bucket(f'{field}_values', 'terms', field='metadata.value')
+                # metadata_bucket.bucket(field, 'terms', field=f'metadata.value')
         return search
     def generate_q_expression(self, query):
         if query:
