@@ -17,10 +17,10 @@ INDEX.settings(
 @INDEX.doc_type
 class DatasetDocument(Document):
     metadata = fields.NestedField(properties={
-        'value': fields.TextField(analyzer=ngram_analyser),
+        'value': KeywordField(multi=True),
         'raw': KeywordField(multi=True),
         'metadata_item': fields.ObjectField(properties={
-            'label': fields.TextField(analyzer=ngram_analyser)
+            'label': KeywordField(multi=False)
         })
     })
 

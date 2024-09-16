@@ -48,22 +48,19 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         aggregations = {"tags.raw": "terms", "categories.raw": "terms"}
         for metadata in enabled_metadata:
             if metadata.filterable:
-                aggregations[f"metadata.{metadata.label}.raw"] = "terms"
+                aggregations[f"metadata.{metadata.label}"] = "terms"
         return searchable_fields, aggregations
 
     def add_aggregations(self, search: Search):
         for aggregation_field in self.aggregations:
             if aggregation_field.startswith('metadata.'):
                 field_name = aggregation_field.split('.')[1]
-                search.aggs.bucket(aggregation_field, {
-                    'nested': {'path': 'metadata'}
-                }).bucket(field_name, {
-                    'terms': {'field': f'metadata.metadata_item.label.raw'}
+                search.aggs.bucket(field_name, 'nested', path='metadata').bucket(field_name, {
+                    'terms': {'field': f'metadata.value'}
                 })
             else:
                 search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
         return search
-
     def generate_q_expression(self, query):
         if query:
             queries = [Q("match", **{field: query}) for field in self.searchable_fields]
