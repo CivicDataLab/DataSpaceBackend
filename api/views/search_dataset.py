@@ -84,16 +84,14 @@ class SearchDataset(PaginatedElasticSearchAPIView):
                 aggregate_fields.append(field_name)
             else:
                 search.aggs.bucket(aggregation_field.replace(".raw", ""), self.aggregations[aggregation_field],
-                                   field=aggregation_field).metric(
-                    'buckets_with_min_doc', 'terms', {'min_doc_count': 0}
-                )
+                                   field=aggregation_field)
 
         if aggregate_fields:
             metadata_bucket = search.aggs.bucket('metadata', 'nested', path='metadata')
             # for field in aggregate_fields:
             composite_agg = A('composite', sources=[
-                {'metadata_label': {'terms': {'field': 'metadata.metadata_item.label', 'min_doc_count': 0}}},
-                {'metadata_value': {'terms': {'field': 'metadata.value', 'min_doc_count': 0}}}
+                {'metadata_label': {'terms': {'field': 'metadata.metadata_item.label'}}},
+                {'metadata_value': {'terms': {'field': 'metadata.value'}}}
             ])
             metadata_bucket.bucket("composite_agg", composite_agg)
         return search
