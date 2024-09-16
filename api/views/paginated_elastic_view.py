@@ -4,6 +4,8 @@ from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from api.models import Metadata
+
 
 class PaginatedElasticSearchAPIView(APIView):
     serializer_class = None
@@ -43,8 +45,13 @@ class PaginatedElasticSearchAPIView(APIView):
             print(f'Found {response.hits.total.value} hit(s) for query: "{query}"')
 
             serializer = self.serializer_class(response, many=True)
+            aggregations = response.aggregations.to_dict()
+            enabled_metadata = Metadata.objects.filter(enabled=False).all()
+            excluded_labels = [e.label for e in enabled_metadata]
+            for label in excluded_labels:
+                aggregations['metadata'].pop(label, None)
             return Response({'results': serializer.data,
-                             'aggregations': response.aggregations.to_dict(),
+                             'aggregations': aggregations,
                              'total': response.hits.total.value})
         except Exception as e:
             return HttpResponse(e, status=500)

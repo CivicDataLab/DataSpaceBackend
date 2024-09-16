@@ -52,19 +52,16 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         return searchable_fields, aggregations
 
     def add_aggregations(self, search: Search):
-        enabled_metadata = Metadata.objects.filter(enabled=False).all()
-        excluded_labels = [e.label for e in enabled_metadata]
         for aggregation_field in self.aggregations:
             if aggregation_field.startswith('metadata.'):
                 field_name = aggregation_field.split('.')[1]
-                if field_name not in excluded_labels:
-                    search.aggs.bucket(f'metadata', 'nested', path='metadata') \
-                        .bucket(
-                            f'{field_name}', 'terms', field='metadata.metadata_item.label'
-                        )\
-                        .bucket(
-                            f'{field_name}_values', 'terms', field='metadata.value'
-                        )
+                search.aggs.bucket(f'metadata', 'nested', path='metadata') \
+                    .bucket(
+                        f'{field_name}', 'terms', field='metadata.metadata_item.label'
+                    )\
+                    .bucket(
+                        f'{field_name}_values', 'terms', field='metadata.value'
+                    )
             else:
                 search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
         return search
