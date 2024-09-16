@@ -57,20 +57,14 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         for aggregation_field in self.aggregations:
             if aggregation_field.startswith('metadata.'):
                 field_name = aggregation_field.split('.')[1]
-                search.aggs.bucket(f'metadata', 'nested', path='metadata') \
-                    .bucket(
-                    f'{field_name}_filtered', 'filter', {
-                        'bool': {
-                            'must_not': [
-                                {'terms': {'metadata.metadata_item.label.keyword': excluded_labels}}
-                            ]
-                        }
-                    }) \
-                    .bucket(
-                    f'{field_name}', 'terms', field='metadata.metadata_item.label'
-                ).bucket(
-                    f'{field_name}_values', 'terms', field='metadata.value'
-                )
+                if field_name not in excluded_labels:
+                    search.aggs.bucket(f'metadata', 'nested', path='metadata') \
+                        .bucket(
+                            f'{field_name}', 'terms', field='metadata.metadata_item.label'
+                        )\
+                        .bucket(
+                            f'{field_name}_values', 'terms', field='metadata.value'
+                        )
             else:
                 search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
         return search
