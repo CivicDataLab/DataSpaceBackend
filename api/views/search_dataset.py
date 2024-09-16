@@ -45,7 +45,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
             for e in enabled_metadata
         ]
         searchable_fields.extend(["tags", "description", "resource.description", "resource.name", "title"])
-        aggregations = {"tags.raw": "terms","categories.raw": "terms"}
+        aggregations = {"tags.raw": "terms", "categories.raw": "terms"}
         for metadata in enabled_metadata:
             if metadata.filterable:
                 aggregations[f"metadata.{metadata.label}.raw"] = "terms"
@@ -55,8 +55,11 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         for aggregation_field in self.aggregations:
             if aggregation_field.startswith('metadata.'):
                 field_name = aggregation_field.split('.')[1]
-                search.aggs.bucket(aggregation_field, {'nested': {'path': 'metadata'}}).bucket(field_name, {
-                    'terms': {'field': f'metadata.metadata_item.label.raw'}})
+                search.aggs.bucket(aggregation_field, {
+                    'nested': {'path': 'metadata'}
+                }).bucket(field_name, {
+                    'terms': {'field': f'metadata.metadata_item.label.raw'}
+                })
             else:
                 search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
         return search
