@@ -14,7 +14,7 @@ class MetadataInput:
 
 @strawberry_django.partial(Metadata, fields="__all__")
 class MetadataInputPartial(NodeInput):
-    pass
+    id: str
 
 
 @strawberry.type
