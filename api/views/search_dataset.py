@@ -136,3 +136,10 @@ class SearchDataset(PaginatedElasticSearchAPIView):
                     }
                 )
         return search
+
+    def add_sort(self, sort, search):
+        if sort == "alphabetical":
+            search = search.sort({"title": {"order": "asc"}})
+        if sort == "recent":
+            search = search.sort({"modified": {"order": "desc"}})
+        return search

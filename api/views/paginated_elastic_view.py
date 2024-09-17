@@ -26,19 +26,27 @@ class PaginatedElasticSearchAPIView(APIView):
         """This method should be overridden
         and return a Search object with filters added."""
 
+    @abc.abstractmethod
+    def add_sort(self, sort, search):
+        """This method should be overridden
+        and return a Search object with filters added."""
+
     def get(self, request):
         try:
             query = request.GET.get('query', '')
             page = int(request.GET.get('page', 1))
             size = int(request.GET.get('size', 10))
+            sort = int(request.GET.get('sort', 'alphabetical'))
             filters = request.GET.dict()
             filters.pop('query', None)
             filters.pop("page", None)
             filters.pop("size", None)
+            filters.pop("sort", None)
             q = self.generate_q_expression(query)
             search = self.document_class.search().query(q)
             search = self.add_aggregations(search)
             search = self.add_filters(filters, search)
+            search = self.add_sort(sort, search)
             search = search[(page - 1) * size:page * size]
             response = search.execute()
 
