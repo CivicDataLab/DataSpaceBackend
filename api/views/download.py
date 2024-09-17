@@ -1,12 +1,12 @@
+import asyncio
 import os
-from asyncio import get_event_loop
 
 import magic
 from django.http import HttpResponse
+from pyecharts_snapshot.main import make_a_snapshot
 
 from api.models import Resource, ResourceChartDetails
 from api.types.type_resource_chart import chart_base
-from pyecharts_snapshot.main import make_a_snapshot
 
 
 def download(request, type, id):
@@ -27,12 +27,11 @@ def download(request, type, id):
         return response
 
 
-def generate_chart(resource_chart:ResourceChartDetails):
+def generate_chart(resource_chart: ResourceChartDetails):
     chart_ = chart_base(resource_chart)
     chart_.render("snapshot.html")
     image_file_name = "snapshot.png"
-    loop = get_event_loop()
-    loop.run_until_complete(make_a_snapshot("snapshot.html", image_file_name))
+    asyncio.run(make_a_snapshot("snapshot.html", image_file_name))
     # await make_snapshot(snapshot, "snapshot.html", image_file_name)
     with open(image_file_name, "rb") as f:
         image_data = f.read()
