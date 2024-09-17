@@ -1,4 +1,5 @@
 import asyncio
+import concurrent
 import os
 
 import magic
@@ -31,7 +32,10 @@ def generate_chart(resource_chart: ResourceChartDetails):
     chart_ = chart_base(resource_chart)
     chart_.render("snapshot.html")
     image_file_name = "snapshot.png"
-    asyncio.run(make_a_snapshot("snapshot.html", image_file_name))
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(make_a_snapshot("snapshot.html", image_file_name))
+    loop.close()
     # await make_snapshot(snapshot, "snapshot.html", image_file_name)
     with open(image_file_name, "rb") as f:
         image_data = f.read()
