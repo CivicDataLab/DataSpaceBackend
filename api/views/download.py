@@ -4,6 +4,7 @@ import os
 
 import magic
 from django.http import HttpResponse
+from pyecharts.render import make_snapshot, snapshot
 from pyecharts_snapshot.main import make_a_snapshot
 
 from api.models import Resource, ResourceChartDetails
@@ -32,10 +33,11 @@ def generate_chart(resource_chart: ResourceChartDetails):
     chart_ = chart_base(resource_chart)
     chart_.render("snapshot.html")
     image_file_name = "snapshot.png"
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(make_a_snapshot("snapshot.html", image_file_name))
-    loop.close()
+    # loop = asyncio.new_event_loop()
+    # asyncio.set_event_loop(loop)
+    # loop.run_until_complete(make_a_snapshot("snapshot.html", image_file_name))
+    # loop.close()
+    make_snapshot(snapshot, chart_.render(), image_file_name)
     # await make_snapshot(snapshot, "snapshot.html", image_file_name)
     with open(image_file_name, "rb") as f:
         image_data = f.read()
