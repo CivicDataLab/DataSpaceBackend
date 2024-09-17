@@ -38,7 +38,7 @@ class DatasetDocument(Document):
     title = fields.TextField(
         analyzer=ngram_analyser,
         fields={
-            'raw': fields.TextField(analyzer='keyword'),
+            'raw': KeywordField(multi=False),
         }
     )
 
