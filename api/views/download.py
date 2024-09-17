@@ -1,4 +1,5 @@
 import os
+from asyncio import get_event_loop
 
 import magic
 from django.http import HttpResponse
@@ -30,7 +31,8 @@ def generate_chart(resource_chart:ResourceChartDetails):
     chart_ = chart_base(resource_chart)
     chart_.render("snapshot.html")
     image_file_name = "snapshot.png"
-    await make_a_snapshot("snapshot.html", image_file_name)
+    loop = get_event_loop()
+    loop.run_until_complete(make_a_snapshot("snapshot.html", image_file_name))
     # await make_snapshot(snapshot, "snapshot.html", image_file_name)
     with open(image_file_name, "rb") as f:
         image_data = f.read()
