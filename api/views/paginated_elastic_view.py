@@ -36,7 +36,7 @@ class PaginatedElasticSearchAPIView(APIView):
             query = request.GET.get('query', '')
             page = int(request.GET.get('page', 1))
             size = int(request.GET.get('size', 10))
-            sort = int(request.GET.get('sort', 'alphabetical'))
+            sort = request.GET.get('sort', 'alphabetical')
             filters = request.GET.dict()
             filters.pop('query', None)
             filters.pop("page", None)
