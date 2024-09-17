@@ -21,12 +21,12 @@ def download(request, type, id):
         return response
     elif type == "chart":
         resource_chart = ResourceChartDetails.objects.get(pk=id)
-        response = await generate_chart(resource_chart)
+        response = generate_chart(resource_chart)
         response['Content-Disposition'] = 'attachment; filename="chart.png"'
         return response
 
 
-async def generate_chart(resource_chart:ResourceChartDetails):
+def generate_chart(resource_chart:ResourceChartDetails):
     chart_ = chart_base(resource_chart)
     chart_.render("snapshot.html")
     image_file_name = "snapshot.png"
