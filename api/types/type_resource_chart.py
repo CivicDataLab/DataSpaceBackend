@@ -27,7 +27,7 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart]:
         .add_xaxis(metrics[chart_details.x_axis_column.field_name].tolist())
         .add_yaxis(chart_details.y_axis_label, metrics[chart_details.y_axis_column.field_name].tolist())
         # .add_yaxis("dislike", [randrange(0, 100) for _ in range(6)])
-        .set_global_opts(title_opts=opts.TitleOpts(title=chart_details.name, subtitle=chart_details.description))
+        # .set_global_opts(title_opts=opts.TitleOpts(title=chart_details.name, subtitle=chart_details.description))
     )
     return chart
 
