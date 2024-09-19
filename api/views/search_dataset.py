@@ -45,7 +45,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
             f"metadata.{e.label}" if e.model == MetadataModels.DATASET else f"resource.{e.label}"
             for e in enabled_metadata
         ]
-        searchable_fields.extend(["tags", "description", "resource.description", "resource.name", "title"])
+        searchable_fields.extend(["tags", "description", "resources.description", "resources.name", "title"])
         aggregations = {"tags.raw": "terms", "categories.raw": "terms", "formats.raw": "terms"}
         for metadata in enabled_metadata:
             if metadata.filterable:
