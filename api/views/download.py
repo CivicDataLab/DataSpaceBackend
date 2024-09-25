@@ -11,6 +11,7 @@ from pyecharts_snapshot.main import make_a_snapshot
 # from snapshot_selenium import Snapshot
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from snapshot_selenium import snapshot
 
 from api.models import Resource, ResourceChartDetails
 from api.types.type_resource_chart import chart_base
@@ -18,7 +19,7 @@ from api.types.type_resource_chart import chart_base
 
 @sync_to_async
 def get_resource_chart(id):
-    return ResourceChartDetails.objects.get(pk=id).select_related("x_axis_column", "y_axis_column")
+    return ResourceChartDetails.objects.get(pk=id)
 
 
 @sync_to_async
@@ -73,7 +74,7 @@ def get_custom_webdriver():
 
 
 async def generate_chart(resource_chart: ResourceChartDetails):
-    chart_ = chart_base(resource_chart)
+    chart_ = await sync_to_async(chart_base)(resource_chart)
     chart_.render("snapshot.html")
     image_file_name = "snapshot.png"
     # loop = asyncio.new_event_loop()
@@ -84,8 +85,8 @@ async def generate_chart(resource_chart: ResourceChartDetails):
     # Create a custom snapshot instance using the custom WebDriver
     # snapshot = Snapshot(webdriver=get_custom_webdriver())
 
-    await make_snapshot(get_custom_webdriver(), "snapshot.html", image_file_name)
-    # await make_snapshot(snapshot, "snapshot.html", image_file_name)
+    # await make_snapshot(get_custom_webdriver(), "snapshot.html", image_file_name)
+    await make_snapshot(snapshot, "snapshot.html", image_file_name)
     with open(image_file_name, "rb") as f:
         image_data = f.read()
     return HttpResponse(image_data, content_type="image/png")
