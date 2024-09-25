@@ -4,7 +4,7 @@ services:
     build: .
     env_file: .env
     container_name: "DataExBackend"
-    command: python manage.py runserver 0.0.0.0:8000
+    command: python asgi.py
     volumes:
       - .:/code
     ports:
