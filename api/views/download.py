@@ -86,7 +86,8 @@ async def generate_chart(resource_chart: ResourceChartDetails):
     # snapshot = Snapshot(webdriver=get_custom_webdriver())
 
     # await make_snapshot(get_custom_webdriver(), "snapshot.html", image_file_name)
-    await make_snapshot(snapshot, "snapshot.html", image_file_name)
+    webdriver = get_custom_webdriver()
+    make_snapshot(snapshot, "snapshot.html", image_file_name, driver=webdriver)
     with open(image_file_name, "rb") as f:
         image_data = f.read()
     return HttpResponse(image_data, content_type="image/png")
