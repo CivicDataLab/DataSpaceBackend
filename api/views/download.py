@@ -4,14 +4,15 @@ import os
 
 import magic
 from django.http import HttpResponse
-from pyecharts.render import make_snapshot, snapshot
+# from pyecharts.render import make_snapshot
 from pyecharts_snapshot.main import make_a_snapshot
+# from snapshot_selenium import snapshot
 
 from api.models import Resource, ResourceChartDetails
 from api.types.type_resource_chart import chart_base
 
 
-def download(request, type, id):
+async def download(request, type, id):
     if type == "resource":
         resource = Resource.objects.get(pk=id)
         file_path = resource.resourcefiledetails.file.name
@@ -24,12 +25,12 @@ def download(request, type, id):
         return response
     elif type == "chart":
         resource_chart = ResourceChartDetails.objects.get(pk=id)
-        response = generate_chart(resource_chart)
+        response = await generate_chart(resource_chart)
         response['Content-Disposition'] = 'attachment; filename="chart.png"'
         return response
 
 
-def generate_chart(resource_chart: ResourceChartDetails):
+async def generate_chart(resource_chart: ResourceChartDetails):
     chart_ = chart_base(resource_chart)
     chart_.render("snapshot.html")
     image_file_name = "snapshot.png"
@@ -37,7 +38,7 @@ def generate_chart(resource_chart: ResourceChartDetails):
     # asyncio.set_event_loop(loop)
     # loop.run_until_complete(make_a_snapshot("snapshot.html", image_file_name))
     # loop.close()
-    make_snapshot(snapshot, chart_.render(), image_file_name)
+    await make_a_snapshot("snapshot.html", image_file_name)
     # await make_snapshot(snapshot, "snapshot.html", image_file_name)
     with open(image_file_name, "rb") as f:
         image_data = f.read()
