@@ -7,7 +7,7 @@ FORMAT_MAPPING = {
     # "application/msword": "DOC",
     # "application/doc": "DOC",
     # "application/ms-doc": "DOC",
-    # "application/pdf": "PDF",
+    "application/pdf": "PDF",
     # "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
     "application/xml": "XML",
     "xml": "XML",
@@ -17,6 +17,7 @@ FORMAT_MAPPING = {
     "application/xhtml+xml": "XML",
     # TODO: handle csv identified as text/plain
     "text/plain": "CSV",
+    "application/zip": "ZIP",
 }
 
 IMAGE_FORMAT_MAPPING = {
