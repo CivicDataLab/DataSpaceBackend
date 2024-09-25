@@ -29,19 +29,9 @@ async def download(request, type, id):
         try:
             # Fetch the resource asynchronously
             resource = await get_resource(id)
-            file_path = resource.resourcefiledetails.file.name
-
-            if len(file_path):
-                # Use magic to get MIME type
-                mime_type = magic.from_buffer(resource.resourcefiledetails.file.read(), mime=True)
-                response = HttpResponse(resource.resourcefiledetails.file, content_type=mime_type)
-                response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
-            else:
-                response = HttpResponse("File doesn't exist", content_type='text/plain')
         except ObjectDoesNotExist:
-            response = HttpResponse("Resource not found", content_type='text/plain')
-
-        return response
+            return HttpResponse("Resource not found", content_type='text/plain')
+        return await sync_to_async(get_file_response)(resource)
 
     elif type == "chart":
         try:
@@ -55,6 +45,18 @@ async def download(request, type, id):
 
         except ObjectDoesNotExist:
             return HttpResponse("Chart not found", content_type='text/plain')
+
+
+def get_file_response(resource):
+    file_path = resource.resourcefiledetails.file.name
+    if len(file_path):
+        # Use magic to get MIME type
+        mime_type = magic.from_buffer(resource.resourcefiledetails.file.read(), mime=True)
+        response = HttpResponse(resource.resourcefiledetails.file, content_type=mime_type)
+        response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
+    else:
+        response = HttpResponse("File doesn't exist", content_type='text/plain')
+    return response
 
 
 # Configure Selenium WebDriver with no-sandbox option
