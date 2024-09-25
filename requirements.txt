@@ -14,8 +14,9 @@ djangorestframework==3.15.1
 elastic-transport==8.13.0
 elasticsearch==8.13.0
 elasticsearch-dsl==8.12.0
-googleapis-common-protos==1.63.0
+googleapis-common-protos==1.65.0
 graphql-core==3.2.3
+gunicorn==23.0.0
 grpcio==1.62.1
 idna==3.6
 importlib-metadata==6.11.0
@@ -34,13 +35,12 @@ opentelemetry-semantic-conventions==0.44b0
 opentelemetry-util-http==0.44b0
 packaging==24.0
 pandas==2.2.2
-pillow==10.2.0
+pillow==10.4.0
 protobuf==4.25.3
 pydantic==2.6.4
 pydantic_core==2.16.3
 pyecharts==2.0.3
 pyecharts-snapshot @ git+https://github.com/Deepthi-Chand/pyecharts-snapshot.git@8d6cadd055db6c919a1447064185d00d1b30ce01
-snapshot-selenium==0.0.2
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 python-magic==0.4.27
@@ -53,5 +53,6 @@ strawberry-graphql-django==0.37.1
 typing_extensions==4.10.0
 tzdata==2024.1
 urllib3==2.2.1
+uvicorn==0.30.6
 wrapt==1.16.0
 zipp==3.18.1
