@@ -102,27 +102,29 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         if query:
             queries = []
             for field in self.searchable_fields:
-                # Handle fuzzy match for resources fields with nested query
-                if field.startswith('resources.'):
+                if field.startswith('resources.name') or field.startswith('resources.description'):
+                    # Combine both fuzzy and wildcard for resource fields
                     queries.append(
-                        Q('nested', path='resources', query=Q("match", **{
-                            field: {
-                                "query": query,
-                                "fuzziness": "AUTO"  # Enable fuzzy matching
-                            }
-                        }))
-                    )
-                # Handle metadata fields with nested query
-                elif field.startswith('metadata.'):
-                    queries.append(
-                        Q('nested', path='metadata', query=Q("match", **{field: query}))
+                        Q('nested', path='resources', query=Q("bool", should=[
+                            Q("wildcard", **{
+                                field: {
+                                    "value": f"*{query}*"
+                                }
+                            }),
+                            Q("fuzzy", **{
+                                field: {
+                                    "value": query,
+                                    "fuzziness": "AUTO"
+                                }
+                            })
+                        ]))
                     )
                 else:
-                    # Handle non-nested fields
-                    queries.append(Q("match", **{field: query}))
+                    # For other fields, we can just use a regular match or fuzzy match
+                    queries.append(Q("fuzzy", **{field: {"value": query, "fuzziness": "AUTO"}}))
         else:
             queries = [Q("match_all")]
-        print(queries)
+
         return Q("bool", should=queries, minimum_should_match=1)
 
     # def add_aggregations(self, search: Search):
