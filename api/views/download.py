@@ -6,9 +6,11 @@ import magic
 from asgiref.sync import sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
-# from pyecharts.render import make_snapshot
+from pyecharts.render import make_snapshot
 from pyecharts_snapshot.main import make_a_snapshot
-# from snapshot_selenium import snapshot
+# from snapshot_selenium import Snapshot
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 from api.models import Resource, ResourceChartDetails
 from api.types.type_resource_chart import chart_base
@@ -16,7 +18,7 @@ from api.types.type_resource_chart import chart_base
 
 @sync_to_async
 def get_resource_chart(id):
-    return ResourceChartDetails.objects.get(pk=id)
+    return ResourceChartDetails.objects.get(pk=id).select_related("x_axis_column", "y_axis_column")
 
 
 @sync_to_async
@@ -57,6 +59,19 @@ async def download(request, type, id):
             return HttpResponse("Chart not found", content_type='text/plain')
 
 
+# Configure Selenium WebDriver with no-sandbox option
+def get_custom_webdriver():
+    chrome_options = Options()
+    chrome_options.add_argument("--no-sandbox")  # Bypass OS security model
+    chrome_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
+    chrome_options.add_argument("--headless")  # Run headless browser
+    chrome_options.add_argument("--disable-gpu")  # Disable GPU for headless browser
+
+    # Specify path to ChromeDriver
+    driver = webdriver.Chrome(options=chrome_options)
+    return driver
+
+
 async def generate_chart(resource_chart: ResourceChartDetails):
     chart_ = chart_base(resource_chart)
     chart_.render("snapshot.html")
@@ -65,7 +80,11 @@ async def generate_chart(resource_chart: ResourceChartDetails):
     # asyncio.set_event_loop(loop)
     # loop.run_until_complete(make_a_snapshot("snapshot.html", image_file_name))
     # loop.close()
-    await make_a_snapshot("snapshot.html", image_file_name)
+
+    # Create a custom snapshot instance using the custom WebDriver
+    # snapshot = Snapshot(webdriver=get_custom_webdriver())
+
+    await make_snapshot(get_custom_webdriver(), "snapshot.html", image_file_name)
     # await make_snapshot(snapshot, "snapshot.html", image_file_name)
     with open(image_file_name, "rb") as f:
         image_data = f.read()
