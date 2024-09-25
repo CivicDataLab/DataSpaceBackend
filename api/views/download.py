@@ -1,5 +1,3 @@
-import asyncio
-import concurrent
 import os
 
 import magic
@@ -7,7 +5,6 @@ from asgiref.sync import sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
 from pyecharts.render import make_snapshot
-from pyecharts_snapshot.main import make_a_snapshot
 # from snapshot_selenium import Snapshot
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -77,17 +74,7 @@ async def generate_chart(resource_chart: ResourceChartDetails):
     chart_ = await sync_to_async(chart_base)(resource_chart)
     chart_.render("snapshot.html")
     image_file_name = "snapshot.png"
-    # loop = asyncio.new_event_loop()
-    # asyncio.set_event_loop(loop)
-    # loop.run_until_complete(make_a_snapshot("snapshot.html", image_file_name))
-    # loop.close()
-
-    # Create a custom snapshot instance using the custom WebDriver
-    # snapshot = Snapshot(webdriver=get_custom_webdriver())
-
-    # await make_snapshot(get_custom_webdriver(), "snapshot.html", image_file_name)
-    webdriver = get_custom_webdriver()
-    make_snapshot(snapshot, "snapshot.html", image_file_name, driver=webdriver)
+    make_snapshot(snapshot, "snapshot.html", image_file_name, driver=(get_custom_webdriver()))
     with open(image_file_name, "rb") as f:
         image_data = f.read()
     return HttpResponse(image_data, content_type="image/png")
