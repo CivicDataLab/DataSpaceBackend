@@ -41,11 +41,12 @@ class SearchDataset(PaginatedElasticSearchAPIView):
     @staticmethod
     def get_searchable_and_aggregations():
         enabled_metadata = Metadata.objects.filter(enabled=True).all()
-        searchable_fields = [
-            f"metadata.{e.label}" if e.model == MetadataModels.DATASET else f"resource.{e.label}"
-            for e in enabled_metadata
-        ]
-        searchable_fields.extend(["tags", "description", "resources.description", "resources.name", "title"])
+        searchable_fields = []
+        # searchable_fields = [
+        #     f"metadata.{e.label}" if e.model == MetadataModels.DATASET else f"resource.{e.label}"
+        #     for e in enabled_metadata
+        # ]
+        searchable_fields.extend(["tags", "description", "resources.description", "resources.name", "title", "metadata.value"])
         aggregations = {"tags.raw": "terms", "categories.raw": "terms", "formats.raw": "terms"}
         for metadata in enabled_metadata:
             if metadata.filterable:
@@ -99,15 +100,29 @@ class SearchDataset(PaginatedElasticSearchAPIView):
 
     def generate_q_expression(self, query):
         if query:
-            # queries = [Q("match", **{field: query}) for field in self.searchable_fields]
-            queries = [
-                Q("match", **{field: query}) if not field.startswith('resources.') else
-                Q('nested', path='resources', query=Q("match", **{field: query}))
-                for field in self.searchable_fields
-            ]
+            queries = []
+            for field in self.searchable_fields:
+                # Handle fuzzy match for resources fields with nested query
+                if field.startswith('resources.'):
+                    queries.append(
+                        Q('nested', path='resources', query=Q("match", **{
+                            field: {
+                                "query": query,
+                                "fuzziness": "AUTO"  # Enable fuzzy matching
+                            }
+                        }))
+                    )
+                # Handle metadata fields with nested query
+                elif field.startswith('metadata.'):
+                    queries.append(
+                        Q('nested', path='metadata', query=Q("match", **{field: query}))
+                    )
+                else:
+                    # Handle non-nested fields
+                    queries.append(Q("match", **{field: query}))
         else:
             queries = [Q("match_all")]
-
+        print(queries)
         return Q("bool", should=queries, minimum_should_match=1)
 
     # def add_aggregations(self, search: Search):
