@@ -24,7 +24,7 @@ class DatasetDocument(Document):
         })
     })
 
-    resources = fields.ObjectField(
+    resources = fields.NestedField(
         properties={
             'name': fields.TextField(
                 analyzer=ngram_analyser

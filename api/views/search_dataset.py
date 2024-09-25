@@ -99,9 +99,15 @@ class SearchDataset(PaginatedElasticSearchAPIView):
 
     def generate_q_expression(self, query):
         if query:
-            queries = [Q("match", **{field: query}) for field in self.searchable_fields]
+            # queries = [Q("match", **{field: query}) for field in self.searchable_fields]
+            queries = [
+                Q("match", **{field: query}) if not field.startswith('resources.') else
+                Q('nested', path='resources', query=Q("match", **{field: query}))
+                for field in self.searchable_fields
+            ]
         else:
             queries = [Q("match_all")]
+
         return Q("bool", should=queries, minimum_should_match=1)
 
     # def add_aggregations(self, search: Search):
