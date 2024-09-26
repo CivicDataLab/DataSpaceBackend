@@ -6,8 +6,10 @@ import strawberry
 import strawberry_django
 from pyecharts import options as opts
 from pyecharts.charts import Line, Bar, Geo
+from pyecharts.charts.basic_charts.geo import GeoChartBase
 from pyecharts.charts.chart import RectChart
 from pyecharts.globals import GeoType
+
 from strawberry.scalars import JSON
 
 from api.models import ResourceChartDetails
@@ -25,7 +27,7 @@ CHART_TYPE_MAP = {
 }
 
 
-def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart]:
+def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart | GeoChartBase]:
     # Load the data
     data = pd.read_csv(chart_details.resource.resourcefiledetails.file.path)
     # Determine the chart class dynamically based on chart_type
@@ -39,28 +41,35 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart]:
         value_col = chart_details.value_column.field_name
         with open(geojson_file, 'r') as f:
             geojson = json.load(f)
-        # Register the map with a custom name "ASSAM"
-        # from pyecharts.globals import CurrentConfig
-        #
-        # CurrentConfig.GEO_MAP_PATHS["custom:ASSAM_DISTRICT"] = geojson
-        from pyecharts.datasets import register_files
-        register_files({"ASSAM_DISTRICT":geojson_file})  # Register custom map
         district_values = data[[district_col, value_col]].values.tolist()
-        geo = (
-            Geo()
-            .add_schema(maptype="ASSAM_DISTRICT")
-            .add(
-                series_name="District Data",
-                data_pair=district_values,
-                type_=GeoType.HEATMAP  # You can also use SCATTER or EFFECT_SCATTER
-            )
-            .set_series_opts(label_opts=opts.LabelOpts(is_show=False))  # Hide labels
-            .set_global_opts(
-                title_opts=opts.TitleOpts(title="Assam District Data"),
-                visualmap_opts=opts.VisualMapOpts(max_=data[value_col].max())  # Visual scale
-            )
+        geo_chart = Geo()
+        geo_chart.add_coordinate_json(geojson)
+        geo_chart.add(
+            series_name="District Data",
+            data_pair=district_values,
+            type_=GeoType.HEATMAP  # You can also use SCATTER or EFFECT_SCATTER
         )
-        return geo
+        geo_chart.set_series_opts(label_opts=opts.LabelOpts(is_show=False))  # Hide labels
+        geo_chart.set_global_opts(
+            title_opts=opts.TitleOpts(title="Assam District Data"),
+            visualmap_opts=opts.VisualMapOpts(max_=data[value_col].max())  # Visual scale
+        )
+
+        return geo_chart
+    elif chart_details.chart_type == "ASSAM_RC":
+        geojson_file = "api/types/map_base/assam_revenue_circles.geojson"
+        rc_col = chart_details.region_column.field_name
+        value_col = chart_details.value_column.field_name
+        with open(geojson_file, 'r') as f:
+            geojson = json.load(f)
+        rc_values = data[[rc_col, value_col]].values.tolist()
+        geo_chart = Geo()
+        geo_chart.add_coordinate_json(geojson)
+        geo_chart.add(
+            series_name="RC Data",
+            data_pair=rc_values,
+            type_=GeoType.HEATMAP)  # You can also use SCATTER or EFFECT_SCATTER
+        return geo_chart
     # Ensure that x_axis_column and y_axis_column exist
     if not chart_details.x_axis_column or not chart_details.y_axis_column:
         return None
