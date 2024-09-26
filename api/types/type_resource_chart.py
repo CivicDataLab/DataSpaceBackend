@@ -52,16 +52,18 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart]:
     if chart_details.chart_type == "BAR_HORIZONTAL":
         chart.reversal_axis()
         chart.set_series_opts(label_opts=opts.LabelOpts(position="right"))  # Adjust label for horizontal bars
-        chart.set_global_opts(xaxis_opts=opts.AxisOpts(type_="category", name=chart_details.y_axis_label),
-                              yaxis_opts=opts.AxisOpts(type_="value", name=chart_details.x_axis_label))
+        chart.set_global_opts(
+            legend_opts=opts.LegendOpts(is_show=chart_details.show_legend),
+            xaxis_opts=opts.AxisOpts(type_="category", name=chart_details.y_axis_label),
+            yaxis_opts=opts.AxisOpts(type_="value", name=chart_details.x_axis_label))
 
-    # Global options like title, description, legend, etc.
-    chart.set_global_opts(
-        # title_opts=opts.TitleOpts(title=chart_details.name, subtitle=chart_details.description),
-        legend_opts=opts.LegendOpts(is_show=chart_details.show_legend),
-        xaxis_opts=opts.AxisOpts(name=chart_details.x_axis_label),
-        yaxis_opts=opts.AxisOpts(name=chart_details.y_axis_label),
-    )
+    else:
+        chart.set_global_opts(
+            # title_opts=opts.TitleOpts(title=chart_details.name, subtitle=chart_details.description),
+            legend_opts=opts.LegendOpts(is_show=chart_details.show_legend),
+            xaxis_opts=opts.AxisOpts(name=chart_details.x_axis_label),
+            yaxis_opts=opts.AxisOpts(name=chart_details.y_axis_label),
+        )
 
     # Set horizontal/vertical layout based on chart type
 
