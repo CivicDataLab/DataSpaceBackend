@@ -14,21 +14,55 @@ from api.models import ResourceChartDetails
 from api.types import TypeResource
 from api.types.type_resource import TypeResourceSchema
 
+# Define a mapping for chart types
+CHART_TYPE_MAP = {
+    "BAR_VERTICAL": Bar,
+    "BAR_HORIZONTAL": Bar,
+    "LINE": Line,
+    # Add more chart types here
+}
+
 
 def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart]:
+    # Ensure that x_axis_column and y_axis_column exist
     if not chart_details.x_axis_column or not chart_details.y_axis_column:
         return None
+
+    # Load the data
     data = pd.read_csv(chart_details.resource.resourcefiledetails.file.path)
+
+    # Perform aggregation based on chart details
     metrics = data.groupby(chart_details.x_axis_column.field_name).agg(
-        {chart_details.y_axis_column.field_name: chart_details.aggregate_type.lower()}).reset_index()
+        {chart_details.y_axis_column.field_name: chart_details.aggregate_type.lower()}
+    ).reset_index()
+
+    # Rename the columns based on x-axis and y-axis
     metrics.columns = [chart_details.x_axis_column.field_name, chart_details.y_axis_column.field_name]
-    chart = (
-        Bar()
-        .add_xaxis(metrics[chart_details.x_axis_column.field_name].tolist())
-        .add_yaxis(chart_details.y_axis_label, metrics[chart_details.y_axis_column.field_name].tolist())
-        # .add_yaxis("dislike", [randrange(0, 100) for _ in range(6)])
-        # .set_global_opts(title_opts=opts.TitleOpts(title=chart_details.name, subtitle=chart_details.description))
+
+    # Determine the chart class dynamically based on chart_type
+    chart_class = CHART_TYPE_MAP.get(chart_details.chart_type)
+    if not chart_class:
+        return None  # If chart type is not supported
+
+    chart = chart_class()
+
+    # For BAR_HORIZONTAL, switch x-axis and y-axis
+    if chart_details.chart_type == "BAR_HORIZONTAL":
+        chart.add_yaxis(chart_details.y_axis_label, metrics[chart_details.y_axis_column.field_name].tolist())
+        chart.add_xaxis(metrics[chart_details.x_axis_column.field_name].tolist())
+        chart.reversal_axis()  # This is used to flip axis for horizontal bar
+    else:
+        chart.add_xaxis(metrics[chart_details.x_axis_column.field_name].tolist())
+        chart.add_yaxis(chart_details.y_axis_label, metrics[chart_details.y_axis_column.field_name].tolist())
+
+    # Global options like title, description, legend, etc.
+    chart.set_global_opts(
+        title_opts=opts.TitleOpts(title=chart_details.name, subtitle=chart_details.description),
+        legend_opts=opts.LegendOpts(is_show=chart_details.show_legend),
+        xaxis_opts=opts.AxisOpts(name=chart_details.x_axis_label),
+        yaxis_opts=opts.AxisOpts(name=chart_details.y_axis_label)
     )
+
     return chart
 
 
