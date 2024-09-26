@@ -46,25 +46,25 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart]:
 
     chart = chart_class()
 
-    # For BAR_HORIZONTAL, switch x-axis and y-axis
-    if chart_details.chart_type == "BAR_HORIZONTAL":
-        chart.add_yaxis(chart_details.y_axis_label, metrics[chart_details.y_axis_column.field_name].tolist())
-        chart.add_xaxis(metrics[chart_details.x_axis_column.field_name].tolist())
-        chart.reversal_axis()  # This is used to flip axis for horizontal bar
-    else:
-        chart.add_xaxis(metrics[chart_details.x_axis_column.field_name].tolist())
-        chart.add_yaxis(chart_details.y_axis_label, metrics[chart_details.y_axis_column.field_name].tolist())
+    # Add x and y axis data
+    chart.add_xaxis(metrics[chart_details.x_axis_column.field_name].tolist())
+    chart.add_yaxis(chart_details.y_axis_label, metrics[chart_details.y_axis_column.field_name].tolist())
 
     # Global options like title, description, legend, etc.
     chart.set_global_opts(
         title_opts=opts.TitleOpts(title=chart_details.name, subtitle=chart_details.description),
         legend_opts=opts.LegendOpts(is_show=chart_details.show_legend),
         xaxis_opts=opts.AxisOpts(name=chart_details.x_axis_label),
-        yaxis_opts=opts.AxisOpts(name=chart_details.y_axis_label)
+        yaxis_opts=opts.AxisOpts(name=chart_details.y_axis_label),
     )
 
-    return chart
+    # Set horizontal/vertical layout based on chart type
+    if chart_details.chart_type == "BAR_HORIZONTAL":
+        chart.set_series_opts(label_opts=opts.LabelOpts(position="right"))  # Adjust label for horizontal bars
+        chart.set_global_opts(xaxis_opts=opts.AxisOpts(type_="category", name=chart_details.y_axis_label),
+                              yaxis_opts=opts.AxisOpts(type_="value", name=chart_details.x_axis_label))
 
+    return chart
 
 @strawberry_django.type(ResourceChartDetails, fields="__all__")
 class TypeResourceChart:
