@@ -46,29 +46,26 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart]:
 
     chart = chart_class()
 
-    # Add x and y axis data
-    if chart_details.chart_type == "BAR_HORIZONTAL":
-        chart.add_xaxis(metrics[chart_details.y_axis_column.field_name].tolist())
-        chart.add_yaxis(chart_details.x_axis_label, metrics[chart_details.x_axis_column.field_name].tolist())
-        chart.reversal_axis()
-        chart.set_series_opts(label_opts=opts.LabelOpts(position="right"))  # Adjust label for horizontal bars
-        chart.set_global_opts(
-            legend_opts=opts.LegendOpts(is_show=chart_details.show_legend),
-            xaxis_opts=opts.AxisOpts(type_="category", name=chart_details.y_axis_label),
-            yaxis_opts=opts.AxisOpts(type_="value", name=chart_details.x_axis_label))
+    # Add x and y axis data (no swapping)
+    chart.add_xaxis(metrics[chart_details.x_axis_column.field_name].tolist())
+    chart.add_yaxis(chart_details.y_axis_label, metrics[chart_details.y_axis_column.field_name].tolist())
 
-    else:
-        chart.add_xaxis(metrics[chart_details.x_axis_column.field_name].tolist())
-        chart.add_yaxis(chart_details.y_axis_label, metrics[chart_details.y_axis_column.field_name].tolist())
+    # Configure horizontal or vertical layout based on chart_type
+    if chart_details.chart_type == "BAR_HORIZONTAL":
+        chart.reversal_axis()  # Correctly renders bars horizontally
+        chart.set_series_opts(label_opts=opts.LabelOpts(position="right"))  # Labels on right for horizontal bars
         chart.set_global_opts(
-            # title_opts=opts.TitleOpts(title=chart_details.name, subtitle=chart_details.description),
             legend_opts=opts.LegendOpts(is_show=chart_details.show_legend),
-            xaxis_opts=opts.AxisOpts(name=chart_details.x_axis_label),
-            yaxis_opts=opts.AxisOpts(name=chart_details.y_axis_label),
+            xaxis_opts=opts.AxisOpts(type_="value", name=chart_details.y_axis_label),  # Value on x-axis for horizontal
+            yaxis_opts=opts.AxisOpts(type_="category", name=chart_details.x_axis_label)  # Category on y-axis for horizontal
         )
 
-    # Set horizontal/vertical layout based on chart type
-
+    else:  # For BAR_VERTICAL and other chart types
+        chart.set_global_opts(
+            legend_opts=opts.LegendOpts(is_show=chart_details.show_legend),
+            xaxis_opts=opts.AxisOpts(type_="category", name=chart_details.x_axis_label),  # Category on x-axis
+            yaxis_opts=opts.AxisOpts(type_="value", name=chart_details.y_axis_label)  # Value on y-axis
+        )
 
     return chart
 
