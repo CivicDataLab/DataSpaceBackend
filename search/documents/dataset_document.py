@@ -1,6 +1,7 @@
 from django_elasticsearch_dsl import Document, fields, Index, KeywordField
 from elasticsearch_dsl import Keyword
 
+from api.enums import DatasetStatus
 from api.models import Dataset, Resource, Metadata, DatasetMetadata
 from dataexbackend import settings
 from search.documents.analysers import html_strip, ngram_analyser
@@ -49,6 +50,8 @@ class DatasetDocument(Document):
         }
     )
 
+    status = fields.KeywordField()
+
     tags = fields.TextField(
         attr='tags_indexing',
         analyzer=ngram_analyser,
@@ -90,6 +93,16 @@ class DatasetDocument(Document):
         ]
 
         related_models = [Resource, Metadata, DatasetMetadata]
+
+    def save(self,*args,**kwargs,):
+        if self.status is DatasetStatus.PUBLISHED:
+            super().save(*args, **kwargs)
+        else:
+            self.delete(ignore=404)
+
+    def delete(self, *args, **kwargs):
+        # Remove the document from Elasticsearch index
+        super().delete(*args, **kwargs)
 
     # def get_queryset(self):
     #     return super(DatasetDocument, self).get_queryset().select_related(
