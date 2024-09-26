@@ -40,13 +40,14 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart]:
         with open(geojson_file, 'r') as f:
             geojson = json.load(f)
         # Register the map with a custom name "ASSAM"
-        from pyecharts.datasets import register_map
+        from pyecharts.globals import CurrentConfig
 
-        register_map("ASSAM_DISTRICT", geojson)  # Register custom map
+        CurrentConfig.GEO_MAP_PATHS["custom:ASSAM_DISTRICT"] = geojson
+        # register_map("ASSAM_DISTRICT", geojson)  # Register custom map
         district_values = data[[district_col, value_col]].values.tolist()
         geo = (
             Geo()
-            .add_schema(maptype="ASSAM_DISTRICT")
+            .add_schema(maptype="custom:ASSAM_DISTRICT")
             .add(
                 series_name="District Data",
                 data_pair=district_values,
