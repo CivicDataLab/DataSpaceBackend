@@ -34,7 +34,7 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart]:
         return None  # If chart type is not supported
 
     if chart_details.chart_type == "ASSAM_DISTRICT":
-        geojson_file = "api/geojson/assam_districts.json"
+        geojson_file = "api/types/map_base/assam_districts.geojson"
         district_col = chart_details.region_column.field_name
         value_col = chart_details.value_column.field_name
         with open(geojson_file, 'r') as f:
