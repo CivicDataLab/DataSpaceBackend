@@ -33,6 +33,8 @@ class ResourceChartInput:
     x_axis_label: Optional[str] = ""
     y_axis_label: Optional[str] = ""
     x_axis_Column: Optional[str]
+    region_Column: Optional[str]
+    value_Column: Optional[str]
     y_axis_Column: Optional[str]
     show_legend: Optional[bool] = True
     aggregate_type: AggregateType = AggregateType.NONE
@@ -54,6 +56,12 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
     if chart_input.y_axis_Column:
         field = ResourceSchema.objects.get(id=chart_input.y_axis_Column)
         chart.y_axis_column = field
+    if chart_input.region_Column:
+        field = ResourceSchema.objects.get(id=chart_input.region_Column)
+        chart.region_column = field
+    if chart_input.value_Column:
+        field = ResourceSchema.objects.get(id=chart_input.value_Column)
+        chart.value_column = field
     chart.save()
 
 

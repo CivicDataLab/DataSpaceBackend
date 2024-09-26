@@ -83,7 +83,8 @@ class ChartTypes(models.TextChoices):
     BAR_VERTICAL = "BAR_VERTICAL"
     BAR_HORIZONTAL = "BAR_HORIZONTAL"
     LINE = "LINE"
-    COLUMN = "COLUMN"
+    ASSAM_DISTRICT = "ASSAM_DISTRICT"
+    ASSAM_RC = "ASSAM_RC"
 
 
 class AggregateType(models.TextChoices):

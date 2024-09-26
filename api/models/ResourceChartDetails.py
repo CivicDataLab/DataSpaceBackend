@@ -20,3 +20,8 @@ class ResourceChartDetails(models.Model):
     show_legend = models.BooleanField(default=False)
     aggregate_type = models.CharField(max_length=50, choices=AggregateType.choices, default=AggregateType.NONE,
                                       blank=False, unique=False)
+    region_column = models.ForeignKey(ResourceSchema, on_delete=models.CASCADE, null=True, blank=True, related_name="region")
+    value_column = models.ForeignKey(ResourceSchema, on_delete=models.CASCADE, null=True, blank=True, related_name="value")
+
+    def __str__(self):
+        return self.name

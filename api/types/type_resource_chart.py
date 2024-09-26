@@ -6,7 +6,7 @@ import pandas as pd
 import strawberry
 import strawberry_django
 from pyecharts import options as opts
-from pyecharts.charts import Line, Bar
+from pyecharts.charts import Line, Bar, Map
 from pyecharts.charts.chart import RectChart
 from strawberry.scalars import JSON
 
@@ -19,11 +19,15 @@ CHART_TYPE_MAP = {
     "BAR_VERTICAL": Bar,
     "BAR_HORIZONTAL": Bar,
     "LINE": Line,
+    "ASSAM_DISTRICT": Map,
+    "ASSAM_RC": Map
     # Add more chart types here
 }
 
 
 def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart]:
+    if chart_details.chart_type == "ASSAM_DISTRICT":
+        return None
     # Ensure that x_axis_column and y_axis_column exist
     if not chart_details.x_axis_column or not chart_details.y_axis_column:
         return None
