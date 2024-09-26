@@ -5,9 +5,9 @@ import pandas as pd
 import strawberry
 import strawberry_django
 from pyecharts import options as opts
-from pyecharts.charts import Line, Bar, Geo
+from pyecharts.charts import Line, Bar, Geo, Map
 from pyecharts.charts.basic_charts.geo import GeoChartBase
-from pyecharts.charts.chart import RectChart
+from pyecharts.charts.chart import Chart
 from pyecharts.globals import GeoType
 
 from strawberry.scalars import JSON
@@ -27,7 +27,7 @@ CHART_TYPE_MAP = {
 }
 
 
-def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart | GeoChartBase]:
+def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
     # Load the data
     data = pd.read_csv(chart_details.resource.resourcefiledetails.file.path)
     # Determine the chart class dynamically based on chart_type
@@ -42,12 +42,12 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[RectChart | GeoC
         with open(geojson_file, 'r') as f:
             geojson = json.load(f)
         district_values = data[[district_col, value_col]].values.tolist()
-        geo_chart = Geo()
-        geo_chart.add_coordinate_json(geojson)
+        geo_chart = Map()
+        geo_chart.add_geo_json(geojson)
         geo_chart.add(
             series_name="District Data",
             data_pair=district_values,
-            type_=GeoType.HEATMAP  # You can also use SCATTER or EFFECT_SCATTER
+            name_property="district"
         )
         geo_chart.set_series_opts(label_opts=opts.LabelOpts(is_show=False))  # Hide labels
         geo_chart.set_global_opts(
