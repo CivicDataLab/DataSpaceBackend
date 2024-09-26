@@ -104,6 +104,8 @@ class TypeResourceChart:
     chart: JSON
     x_axis_column: Optional[TypeResourceSchema]
     y_axis_column: Optional[TypeResourceSchema]
+    region_column: Optional[TypeResourceSchema]
+    value_column: Optional[TypeResourceSchema]
 
     @strawberry.field
     def chart(self: ResourceChartDetails, info) -> JSON:
