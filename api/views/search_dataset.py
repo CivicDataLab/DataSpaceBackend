@@ -89,7 +89,8 @@ class SearchDataset(PaginatedElasticSearchAPIView):
                                    field=aggregation_field)
 
         if aggregate_fields:
-            filterable_metadata = Metadata.objects.filter(filterable=True).values(['label'])
+            filterable_metadata = Metadata.objects.filter(filterable=True).values('label')
+            filterable_metadata = [meta['label'] for meta in filterable_metadata]
 
             metadata_bucket = search.aggs.bucket('metadata', 'nested', path='metadata')
             composite_agg = A('composite', sources=[
