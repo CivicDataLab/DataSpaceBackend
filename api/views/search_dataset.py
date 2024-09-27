@@ -89,13 +89,21 @@ class SearchDataset(PaginatedElasticSearchAPIView):
                                    field=aggregation_field)
 
         if aggregate_fields:
+            filterable_metadata = Metadata.objects.filter(filterable=True).values(['label'])
+
             metadata_bucket = search.aggs.bucket('metadata', 'nested', path='metadata')
-            # for field in aggregate_fields:
             composite_agg = A('composite', sources=[
                 {'metadata_label': {'terms': {'field': 'metadata.metadata_item.label'}}},
                 {'metadata_value': {'terms': {'field': 'metadata.value'}}}
-            ])
-            metadata_bucket.bucket("composite_agg", composite_agg)
+            ], size=10000)
+            metadata_filter = A('filter', {
+                'bool': {
+                    'must': [
+                        {'terms': {'metadata.metadata_item.label': filterable_metadata}}  # Exclude labels here
+                    ]
+                }
+            })
+            metadata_bucket.bucket('filtered_metadata', metadata_filter).bucket('composite_agg', composite_agg)
         return search
 
     def generate_q_expression(self, query):
