@@ -28,7 +28,7 @@ CHART_TYPE_MAP = {
 
 
 def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
-    if chart_details.resource.resourcefiledetails.format != "csv":
+    if chart_details.resource.resourcefiledetails.format.lower() != "csv":
         return None
     # Load the data
     data = pd.read_csv(chart_details.resource.resourcefiledetails.file.path)
