@@ -44,12 +44,15 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
         with open(geojson_file, 'r') as f:
             geojson = json.load(f)
         district_values = data[[district_col, value_col]].values.tolist()
-        geo_chart = Map()
-        geo_chart.add_geo_json(geojson)
+        geo_chart = Map(init_opts=opts.InitOpts(width="1000px", height="460px"))
+        # geo_chart.add_geo_json(geojson)
+        geo_chart.add_js_funcs(f"echarts.registerMap('assam', {json.dumps(geojson)})")
+
         geo_chart.add(
             series_name="District Data",
             data_pair=district_values,
-            name_property="district"
+            maptype='assam',  # The map type must match the name used in the registerMap call
+            is_map_symbol_show=False  # Hide default map markers
         )
         geo_chart.set_series_opts(label_opts=opts.LabelOpts(is_show=False))  # Hide labels
         geo_chart.set_global_opts(
