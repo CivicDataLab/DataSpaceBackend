@@ -74,10 +74,11 @@ class PaginatedElasticSearchAPIView(APIView):
                 aggregations["categories"][agg["key"]] = agg["doc_count"]
 
             tags_agg = aggregations["tags"]["buckets"]
-            aggregations.pop("tags")
-            aggregations["tags"] = {}
-            for agg in tags_agg:
-                aggregations["tags"][agg["key"]] = agg["doc_count"]
+            # TODO: Enable tags once DRR tags in place
+            # aggregations.pop("tags")
+            # aggregations["tags"] = {}
+            # for agg in tags_agg:
+            #     aggregations["tags"][agg["key"]] = agg["doc_count"]
 
             formats_agg = aggregations["formats"]["buckets"]
             aggregations.pop("formats")
