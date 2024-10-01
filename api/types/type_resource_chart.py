@@ -1,5 +1,5 @@
 import json
-from typing import Optional
+from typing import Optional, Tuple, List
 
 import pandas as pd
 import strawberry
@@ -27,7 +27,7 @@ CHART_TYPE_MAP = {
 }
 
 
-def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
+def chart_base(chart_details: ResourceChartDetails) -> None | tuple[Chart, list[str]]:
     if chart_details.resource.resourcefiledetails.format.lower() != "csv":
         return None
     # Load the data
@@ -46,15 +46,15 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
         district_values = data[[district_col, value_col]].values.tolist()
         # geo_chart = Map(init_opts=opts.InitOpts(width="1000px", height="460px"))
         # # geo_chart.add_geo_json(geojson)
-        # geo_chart.add_js_funcs(f"echarts.registerMap('assam', {json.dumps(geojson)})")
-        geo_chart = Map()\
+        geo_chart = Map() \
+            .add_js_funcs(f"echarts.registerMap('custom_geo_json', {json.dumps(geojson)})") \
             .add(
-                series_name="District Data",
-                data_pair=district_values,
-                maptype="custom_geo_json",
-            )\
-            .add_geo_json(geo_json=geojson)\
-            .set_global_opts(title_opts=opts.TitleOpts(title="Assam Districts"))\
+            series_name="District Data",
+            data_pair=district_values,
+            maptype="custom_geo_json",
+        ) \
+            .add_geo_json(geo_json=geojson) \
+            .set_global_opts(title_opts=opts.TitleOpts(title="Assam Districts")) \
             .set_series_opts(label_opts=opts.LabelOpts(is_show=False))
         # geo_chart.add(
         #     series_name="District Data",
@@ -67,8 +67,8 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
         #     title_opts=opts.TitleOpts(title="Assam District Data"),
         #     visualmap_opts=opts.VisualMapOpts(max_=data[value_col].max())  # Visual scale
         # )
-
-        return geo_chart
+        js_function = f"echarts.registerMap('custom_geo_json', {json.dumps(geojson)})"
+        return geo_chart, [js_function]
     elif chart_details.chart_type == "ASSAM_RC":
         geojson_file = "api/types/map_base/assam_revenue_circles.geojson"
         rc_col = chart_details.region_column.field_name
@@ -82,7 +82,7 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
             series_name="RC Data",
             data_pair=rc_values,
             type_=GeoType.HEATMAP)  # You can also use SCATTER or EFFECT_SCATTER
-        return geo_chart
+        return geo_chart, []
     # Ensure that x_axis_column and y_axis_column exist
     if not chart_details.x_axis_column or not chart_details.y_axis_column:
         return None
@@ -119,7 +119,7 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
             yaxis_opts=opts.AxisOpts(type_="value", name=chart_details.y_axis_label)  # Value on y-axis
         )
 
-    return chart
+    return chart, []
 
 
 @strawberry_django.type(ResourceChartDetails, fields="__all__")
@@ -133,8 +133,13 @@ class TypeResourceChart:
 
     @strawberry.field
     def chart(self: ResourceChartDetails, info) -> JSON:
-        base_chart = chart_base(self)
+        base_chart, js_functions = chart_base(self)
         if base_chart:
-            return json.loads(base_chart.dump_options_with_quotes())
+            print(base_chart.js_functions.items)
+            options = base_chart.dump_options_with_quotes()
+            if js_functions:
+                # TODO: handle multiple js functions
+                options = options.rstrip('}') + f', "js_funcs": "{js_functions[0]}"' + '}'
+            return options
         else:
             return {}

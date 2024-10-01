@@ -73,7 +73,7 @@ def get_custom_webdriver():
 
 
 async def generate_chart(resource_chart: ResourceChartDetails):
-    chart_ = await sync_to_async(chart_base)(resource_chart)
+    chart_, js_fun = await sync_to_async(chart_base)(resource_chart)
     chart_.render("snapshot.html")
     image_file_name = "snapshot.png"
     make_snapshot(snapshot, "snapshot.html", image_file_name, driver=(get_custom_webdriver()))
