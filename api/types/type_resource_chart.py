@@ -137,9 +137,9 @@ class TypeResourceChart:
         if base_chart:
             print(base_chart.js_functions.items)
             options = base_chart.dump_options_with_quotes()
-            if js_functions:
-                # TODO: handle multiple js functions
-                options = options.rstrip('}') + f', "js_funcs": "{js_functions[0]}"' + '}'
-            return options
+            # if js_functions:
+            #     # TODO: handle multiple js functions
+            #     options = options.rstrip('}') + f', "js_funcs": "{js_functions[0]}"' + '}'
+            return {"options": options,  "jsFuncs": js_functions}
         else:
             return {}
