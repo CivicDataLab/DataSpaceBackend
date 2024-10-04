@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from django.db import models
 
 from api.enums import MetadataDataTypes
@@ -16,22 +19,63 @@ class DatasetMetadata(models.Model):
         """
         metadata = self.metadata_item
         options = metadata.options
+        value =self.value
+        validation_methods = {
+            MetadataDataTypes.STRING: self._validate_string,
+            MetadataDataTypes.NUMBER: self._validate_number,
+            MetadataDataTypes.SELECT: self._validate_select,
+            MetadataDataTypes.MULTISELECT: self._validate_multiselect,
+            MetadataDataTypes.DATE: self._validate_date,
+            MetadataDataTypes.URL: self._validate_url,
+        }
 
-        if not options:
-            return
+        # Get the corresponding validation method based on the data_type
+        validate_method = validation_methods.get(metadata.data_type)
 
-        if metadata.data_type == MetadataDataTypes.SELECT:
-            # Ensure the value is one of the available options
-            if self.value not in options:
-                raise ValidationError(f"Invalid value: {self.value}. Must be one of {options}.")
+        if validate_method:
+            validate_method(metadata, value)
+        else:
+            raise ValidationError(f"Unsupported metadata type: {metadata.data_type}")
 
-        elif metadata.data_type == MetadataDataTypes.MULTISELECT:
-            # For multiselect, split the value and ensure all selected items are in options
-            selected_values = [v.strip() for v in self.value.split(",")]
-            invalid_values = [v for v in selected_values if v not in options]
+    def _validate_string(self, metadata, value):
+        """Validate string type."""
+        if not isinstance(value, str):
+            raise ValidationError(f"Value for '{metadata.label}' must be a string.")
 
-            if invalid_values:
-                raise ValidationError(f"Invalid values: {', '.join(invalid_values)}. Must be one of {options}.")
+    def _validate_number(self, metadata, value):
+        """Validate number type."""
+        try:
+            float(value)
+        except ValueError:
+            raise ValidationError(f"Value for '{metadata.label}' must be a valid number.")
+
+    def _validate_select(self, metadata, value):
+        """Validate singleselect type."""
+        if value not in metadata.options:
+            raise ValidationError(
+                f"Invalid value: '{value}' for '{metadata.label}'. Must be one of {metadata.options}.")
+
+    def _validate_multiselect(self, metadata, value):
+        """Validate multiselect type."""
+        selected_values = [v.strip() for v in value.split(",")]
+        invalid_values = [v for v in selected_values if v not in metadata.options]
+        if invalid_values:
+            raise ValidationError(f"Invalid values: {', '.join(invalid_values)}. Must be one of {metadata.options}.")
+
+    def _validate_date(self, metadata, value):
+        """Validate date type."""
+        try:
+            datetime.strptime(value, "%Y-%m-%d")
+        except ValueError:
+            raise ValidationError(f"Value for '{metadata.label}' must be a valid date in YYYY-MM-DD format.")
+
+    def _validate_url(self, metadata, value):
+        """Validate URL type."""
+        validator = URLValidator()
+        try:
+            validator(value)
+        except ValidationError:
+            raise ValidationError(f"Value for '{metadata.label}' must be a valid URL.")
 
     def save(self, *args, **kwargs):
         """
