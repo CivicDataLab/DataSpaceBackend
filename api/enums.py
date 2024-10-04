@@ -52,6 +52,8 @@ class MetadataDataTypes(models.TextChoices):
     SELECT = "SELECT"
     MULTISELECT = "MULTISELECT"
     DATE = "DATE"
+    URL = "URL"
+
 
 
 class MetadataTypes(models.TextChoices):
