@@ -55,7 +55,6 @@ class MetadataDataTypes(models.TextChoices):
     URL = "URL"
 
 
-
 class MetadataTypes(models.TextChoices):
     REQUIRED = "REQUIRED"
     OPTIONAL = "OPTIONAL"

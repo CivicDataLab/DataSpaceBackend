@@ -5,12 +5,13 @@ from django.core.validators import URLValidator
 from django.db import models
 
 from api.enums import MetadataDataTypes
+from api.metadata_validators import VALIDATOR_MAP
 from api.models import Dataset, Metadata
 
 
 class DatasetMetadata(models.Model):
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, null=False, blank=False, related_name="metadata")
-    metadata_item = models.ForeignKey(Metadata, on_delete=models.CASCADE, null=False, blank=False,)
+    metadata_item = models.ForeignKey(Metadata, on_delete=models.CASCADE, null=False, blank=False, )
     value = models.CharField(max_length=1000, unique=False)
 
     def clean(self):
@@ -19,7 +20,29 @@ class DatasetMetadata(models.Model):
         """
         metadata = self.metadata_item
         options = metadata.options
-        value =self.value
+        value = self.value
+        self._validate_data_type(metadata, value)
+        self._apply_custom_validators(metadata, value)
+
+    def _apply_custom_validators(self, metadata, value):
+        """
+        Apply user-selected custom validators.
+        """
+        selected_validators = metadata.validator  # Assuming this is a list of validator names
+
+        for validator_name in selected_validators:
+            validator = VALIDATOR_MAP.get(validator_name, None)
+
+            if validator:
+                if validator_name == "regex_validator":
+                    pattern = metadata.validator_options  # Example: storing pattern in options
+                    validator(value, pattern)
+                else:
+                    validator(value)
+            else:
+                raise ValidationError(f"Unknown validator: {validator_name}")
+
+    def _validate_data_type(self, metadata, value):
         validation_methods = {
             MetadataDataTypes.STRING: self._validate_string,
             MetadataDataTypes.NUMBER: self._validate_number,
@@ -28,10 +51,8 @@ class DatasetMetadata(models.Model):
             MetadataDataTypes.DATE: self._validate_date,
             MetadataDataTypes.URL: self._validate_url,
         }
-
         # Get the corresponding validation method based on the data_type
-        validate_method = validation_methods.get(metadata.data_type)
-
+        validate_method = validation_methods.get(metadata.data_type, None)
         if validate_method:
             validate_method(metadata, value)
         else:
