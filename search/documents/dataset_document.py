@@ -106,7 +106,7 @@ class DatasetDocument(Document):
         related_models = [Resource, Metadata, DatasetMetadata]
 
     def save(self,*args,**kwargs,):
-        if self.status is DatasetStatus.PUBLISHED:
+        if self.status == "PUBLISHED":
             super().save(*args, **kwargs)
         else:
             self.delete(ignore=404)
