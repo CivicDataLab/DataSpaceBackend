@@ -29,13 +29,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-af%#657wf@f-hclfimni96qy07fyhjbglc!@^98jpn9z%#9b6%'
 
 # load env and variables
-DB_ENGINE = os.getenv('DB_ENGINE', "django.db.backends.sqlite3"),
-DB_NAME = os.getenv('DB_NAME', str(BASE_DIR / "db.sqlite3")),
-DB_USER = os.getenv('DB_USER', "DB_USER"),
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'DB_PASSWORD'),
-DB_HOST = os.getenv('DB_HOST', 'DB_HOST'),
-DB_PORT = os.getenv('DB_PORT', 'DB_PORT'),
-WELCOME_TEXT = os.getenv('WELCOME_TEXT', 'Hello World'),
+DB_ENGINE = env('DB_ENGINE', "django.db.backends.sqlite3"),
+DB_NAME = env('DB_NAME', str(BASE_DIR / "db.sqlite3")),
+DB_USER = env('DB_USER', "DB_USER"),
+DB_PASSWORD = env('DB_PASSWORD', 'DB_PASSWORD'),
+DB_HOST = env('DB_HOST', 'DB_HOST'),
+DB_PORT = env('DB_PORT', 'DB_PORT'),
+WELCOME_TEXT = env('WELCOME_TEXT', 'Hello World'),
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', True),
