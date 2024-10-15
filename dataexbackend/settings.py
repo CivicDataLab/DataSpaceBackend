@@ -30,13 +30,13 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 SECRET_KEY = 'django-insecure-af%#657wf@f-hclfimni96qy07fyhjbglc!@^98jpn9z%#9b6%'
 
 # load env and variables
-DB_ENGINE = env('DB_ENGINE', "django.db.backends.sqlite3"),
-DB_NAME = env('DB_NAME', str(BASE_DIR / "db.sqlite3")),
-DB_USER = env('DB_USER', "DB_USER"),
-DB_PASSWORD = env('DB_PASSWORD', 'DB_PASSWORD'),
-DB_HOST = env('DB_HOST', 'DB_HOST'),
-DB_PORT = env('DB_PORT', 'DB_PORT'),
-WELCOME_TEXT = env('WELCOME_TEXT', 'Hello World'),
+DB_ENGINE = env('DB_ENGINE', default="django.db.backends.sqlite3"),
+DB_NAME = env('DB_NAME', default=str(BASE_DIR / "db.sqlite3")),
+DB_USER = env('DB_USER', default="DB_USER"),
+DB_PASSWORD = env('DB_PASSWORD', default='DB_PASSWORD'),
+DB_HOST = env('DB_HOST', default='DB_HOST'),
+DB_PORT = env('DB_PORT', default='DB_PORT'),
+WELCOME_TEXT = env('WELCOME_TEXT', default='Hello World'),
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG', True),
