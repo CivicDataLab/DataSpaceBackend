@@ -118,10 +118,8 @@ class DatasetDocument(Document):
         # Remove the document from Elasticsearch index
         super().delete(*args, **kwargs)
 
-    # def get_queryset(self):
-    #     return super(DatasetDocument, self).get_queryset().select_related(
-    #         'DatasetMetadata'
-    #     )
+    def get_queryset(self):
+        return super(DatasetDocument, self).get_queryset().filter(status=DatasetStatus.PUBLISHED)
 
     def get_instances_from_related(self, related_instance):
         if isinstance(related_instance, Resource):
