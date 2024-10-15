@@ -12,6 +12,7 @@ RUN echo 'deb http://archive.debian.org/debian stretch main contrib non-free' >>
 WORKDIR /code
 COPY . /code/
 
+RUN pip install psycopg2-binary
 RUN pip install -r requirements.txt
 #RUN python manage.py migrate
 
