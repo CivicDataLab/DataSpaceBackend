@@ -18,6 +18,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='metadata',
             name='validator',
-            field=models.JSONField(blank=True, default=list),
+            field=models.JSONField(blank=True, null=True, default=list),
         ),
     ]
