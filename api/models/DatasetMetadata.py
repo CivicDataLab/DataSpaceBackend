@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import models
 
-from api.enums import MetadataDataTypes
+from api.enums import MetadataDataTypes, MetadataTypes
 from api.metadata_validators import VALIDATOR_MAP
 from api.models import Dataset, Metadata
 
@@ -19,7 +19,6 @@ class DatasetMetadata(models.Model):
         Custom validation logic to validate the value against metadata_item's options.
         """
         metadata = self.metadata_item
-        options = metadata.options
         value = self.value
         self._validate_data_type(metadata, value)
         self._apply_custom_validators(metadata, value)
@@ -53,8 +52,17 @@ class DatasetMetadata(models.Model):
         }
         # Get the corresponding validation method based on the data_type
         validate_method = validation_methods.get(metadata.data_type, None)
+        if not value and self.metadata_item.type is MetadataTypes.REQUIRED:
+            raise ValidationError(f"Required value not sent for: {metadata.label}")
         if validate_method:
-            validate_method(metadata, value)
+            try:
+                validate_method(metadata, value)
+            except ValidationError as e:
+                if self.metadata_item.type is MetadataTypes.REQUIRED:
+                    raise e
+                else:
+                    # TODO: handle above
+                    self.value = ""
         else:
             raise ValidationError(f"Unsupported metadata type: {metadata.data_type}")
 
