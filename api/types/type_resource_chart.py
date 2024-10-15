@@ -141,6 +141,6 @@ class TypeResourceChart:
             #     # TODO: handle multiple js functions
             #     options = options.rstrip('}') + f', "js_funcs": "{js_functions[0]}"' + '}'
             # return {"options": options,  "jsFuncs": js_functions}
-            return options
+            return json.loads(options)
         else:
             return {}
