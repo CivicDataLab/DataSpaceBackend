@@ -105,8 +105,8 @@ class DatasetDocument(Document):
 
         related_models = [Resource, Metadata, DatasetMetadata]
 
-    def should_index_object(self, **kwargs):
-        return self.status == DatasetStatus.PUBLISHED
+    def should_index_object(self, obj):
+        return obj.status == DatasetStatus.PUBLISHED
 
     def save(self,*args,**kwargs,):
         if self.status == "PUBLISHED":
