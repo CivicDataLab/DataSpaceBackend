@@ -29,13 +29,13 @@ CHART_TYPE_MAP = {
 
 def chart_base(chart_details: ResourceChartDetails) -> None | tuple[Chart, list[str]]:
     if chart_details.resource.resourcefiledetails.format.lower() != "csv":
-        return None
+        return None, None
     # Load the data
     data = pd.read_csv(chart_details.resource.resourcefiledetails.file.path)
     # Determine the chart class dynamically based on chart_type
     chart_class = CHART_TYPE_MAP.get(chart_details.chart_type)
     if not chart_class:
-        return None  # If chart type is not supported
+        return None, None  # If chart type is not supported
 
     if chart_details.chart_type == "ASSAM_DISTRICT":
         geojson_file = "api/types/map_base/assam_districts.geojson"
@@ -85,7 +85,7 @@ def chart_base(chart_details: ResourceChartDetails) -> None | tuple[Chart, list[
         return geo_chart, []
     # Ensure that x_axis_column and y_axis_column exist
     if not chart_details.x_axis_column or not chart_details.y_axis_column:
-        return None
+        return None, None
 
     # Perform aggregation based on chart details
     metrics = data.groupby(chart_details.x_axis_column.field_name).agg(
@@ -140,6 +140,7 @@ class TypeResourceChart:
             # if js_functions:
             #     # TODO: handle multiple js functions
             #     options = options.rstrip('}') + f', "js_funcs": "{js_functions[0]}"' + '}'
-            return {"options": options,  "jsFuncs": js_functions}
+            # return {"options": options,  "jsFuncs": js_functions}
+            return options
         else:
             return {}
