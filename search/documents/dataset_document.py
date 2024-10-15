@@ -83,6 +83,17 @@ class DatasetDocument(Document):
 
     # tags = Keyword(multi=True)
 
+    def prepare_metadata(self, instance):
+        """Preprocess comma-separated metadata values into arrays."""
+        processed_metadata = []
+        for meta in instance.metadata.all():
+            value_list = [val.strip() for val in meta.value.split(",")] if "," in meta.value else [meta.value]
+            processed_metadata.append({
+                'value': value_list,
+                'metadata_item': {'label': meta.metadata_item.label}
+            })
+        return processed_metadata
+
     class Django:
         model = Dataset
 
