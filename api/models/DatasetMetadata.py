@@ -102,8 +102,11 @@ class DatasetMetadata(models.Model):
         """
         Override save to apply validation before saving.
         """
-        self.clean()  # Call custom clean method to trigger validation
-        super(DatasetMetadata, self).save(*args, **kwargs)
+        try:
+            self.clean()  # Call custom clean method to trigger validation
+            super(DatasetMetadata, self).save(*args, **kwargs)
+        except ValidationError as e:
+            raise Exception(f"Something went wrong while saving metadata with error {e.message}")
 
     def __str__(self):
         return f"{self.dataset.title} - {self.metadata_item.label}: {self.value}"

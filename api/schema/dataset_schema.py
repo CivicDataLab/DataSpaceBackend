@@ -47,7 +47,6 @@ def _add_update_dataset_metadata(dataset: Dataset, metadata_input: List[DSMetada
                 raise ValueError(f"Metadata with ID {metadata_input_item.id} is not enabled.")
             ds_metadata = DatasetMetadata(dataset=dataset, metadata_item=metadata_field,
                                           value=metadata_input_item.value)
-            # TODO: apply validations from metadata validations
             ds_metadata.save()
         except Metadata.DoesNotExist as e:
             _delete_existing_metadata(dataset)
