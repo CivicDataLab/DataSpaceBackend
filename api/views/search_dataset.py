@@ -1,3 +1,5 @@
+import ast
+
 from elasticsearch_dsl import Q, Search, A
 from rest_framework import serializers
 
@@ -18,21 +20,33 @@ class DatasetMetadataSerializer(serializers.ModelSerializer):
         model = DatasetMetadata
         fields = ["metadata_item", "value"]
 
-    # Override to convert list to comma-separated string when representing
+    # Override to convert list or stringified array to comma-separated string when representing
     def to_representation(self, instance):
         representation = super().to_representation(instance)
 
-        # Convert the `value` to a comma-separated string if it is a list
-        if isinstance(representation['value'], list):
-            representation['value'] = ', '.join(representation['value'])
+        # Check if the value is a stringified array and convert it into a list
+        if isinstance(representation['value'], str):
+            try:
+                # Convert stringified array (e.g., "['Monthly']") to a list
+                value_list = ast.literal_eval(representation['value'])
+                # If it is a list, convert to comma-separated string
+                if isinstance(value_list, list):
+                    representation['value'] = ', '.join(value_list)
+            except (ValueError, SyntaxError):
+                # If it's not a stringified array, leave it as is
+                pass
 
         return representation
 
-    # Override to convert comma-separated string back to list during validation
+    # Override to handle input and convert comma-separated string to list when validating
     def to_internal_value(self, data):
-        # Convert the `value` field to a list if it is a comma-separated string
         if isinstance(data.get('value'), str):
-            data['value'] = data['value'].split(', ')
+            try:
+                # If the value is a comma-separated string, convert it to a list
+                data['value'] = data['value'].split(', ')
+            except (ValueError, SyntaxError):
+                # If there's an error, just keep the original string value
+                pass
 
         return super().to_internal_value(data)
 
