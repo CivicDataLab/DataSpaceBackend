@@ -13,6 +13,7 @@ from api.types.type_category import TypeCategory
 @strawberry_django.filter(Dataset)
 class DatasetFilter:
     id: uuid.UUID
+    status: str
 
 
 @strawberry_django.type(Tag, fields="__all__")
