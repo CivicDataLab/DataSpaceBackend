@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 
 import strawberry
 import strawberry_django
@@ -15,8 +15,8 @@ dataset_status = strawberry.enum(DatasetStatus)
 
 @strawberry_django.filter(Dataset)
 class DatasetFilter:
-    id: uuid.UUID
-    status: dataset_status
+    id: Optional[uuid.UUID]
+    status: Optional[dataset_status]
 
 
 @strawberry_django.type(Tag, fields="__all__")
