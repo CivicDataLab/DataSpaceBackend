@@ -22,7 +22,7 @@ class TypeTag:
 
 @strawberry_django.order(Dataset)
 class DatasetOrder:
-    name: strawberry.auto
+    title: strawberry.auto
     created: strawberry.auto
     modified: strawberry.auto
 
