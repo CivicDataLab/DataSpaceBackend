@@ -4,16 +4,19 @@ from typing import List
 import strawberry
 import strawberry_django
 
+from api.enums import DatasetStatus
 from api.models import Dataset, DatasetMetadata, Resource, AccessModel, Tag
 from api.types import TypeDatasetMetadata, TypeResource
 from api.types.type_access_model import TypeAccessModel
 from api.types.type_category import TypeCategory
 
+dataset_status = strawberry.enum(DatasetStatus)
+
 
 @strawberry_django.filter(Dataset)
 class DatasetFilter:
     id: uuid.UUID
-    status: str
+    status: dataset_status
 
 
 @strawberry_django.type(Tag, fields="__all__")
