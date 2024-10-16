@@ -18,6 +18,24 @@ class DatasetMetadataSerializer(serializers.ModelSerializer):
         model = DatasetMetadata
         fields = ["metadata_item", "value"]
 
+    # Override to convert list to comma-separated string when representing
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+
+        # Convert the `value` to a comma-separated string if it is a list
+        if isinstance(representation['value'], list):
+            representation['value'] = ', '.join(representation['value'])
+
+        return representation
+
+    # Override to convert comma-separated string back to list during validation
+    def to_internal_value(self, data):
+        # Convert the `value` field to a list if it is a comma-separated string
+        if isinstance(data.get('value'), str):
+            data['value'] = data['value'].split(', ')
+
+        return super().to_internal_value(data)
+
 
 class DatasetDocumentSerializer(serializers.ModelSerializer):
     metadata = DatasetMetadataSerializer(many=True)
@@ -46,7 +64,8 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         #     f"metadata.{e.label}" if e.model == MetadataModels.DATASET else f"resource.{e.label}"
         #     for e in enabled_metadata
         # ]
-        searchable_fields.extend(["tags", "description", "resources.description", "resources.name", "title", "metadata.value"])
+        searchable_fields.extend(
+            ["tags", "description", "resources.description", "resources.name", "title", "metadata.value"])
         aggregations = {"tags.raw": "terms", "categories.raw": "terms", "formats.raw": "terms"}
         for metadata in enabled_metadata:
             if metadata.filterable:
