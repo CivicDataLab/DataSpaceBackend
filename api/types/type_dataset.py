@@ -20,7 +20,14 @@ class TypeTag:
     pass
 
 
-@strawberry_django.type(Dataset, fields="__all__", filters=DatasetFilter, pagination=True)
+@strawberry_django.order(Dataset)
+class DatasetOrder:
+    name: strawberry.auto
+    created: strawberry.auto
+    modified: strawberry.auto
+
+
+@strawberry_django.type(Dataset, fields="__all__", filters=DatasetFilter, pagination=True, order=DatasetOrder)
 class TypeDataset:
     metadata: List[TypeDatasetMetadata]
     resources: List["TypeResource"]
