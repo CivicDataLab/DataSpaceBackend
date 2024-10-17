@@ -65,6 +65,7 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
     'referer',
     'organization',
+    'dataspace',
     'token',
 ]
 
