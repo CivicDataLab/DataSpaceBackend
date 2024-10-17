@@ -7,6 +7,7 @@ import strawberry_django
 
 from api import types, models
 from api.types import TypeDataset
+from api.types.type_dataset import DatasetFilter, DatasetOrder
 from api.utils.enums import DatasetStatus
 from api.models import Dataset, Metadata, Category
 from api.models.Dataset import Tag
@@ -78,7 +79,7 @@ def _add_update_dataset_categories(dataset: Dataset, categories: list[uuid.UUID]
 
 @strawberry.type
 class Query:
-    @strawberry_django.field
+    @strawberry_django.field(filters=DatasetFilter, pagination=True, order=DatasetOrder)
     def datasets(self, info) -> List[TypeDataset]:
         organization = info.context.request.context.get('organization')
         dataspace = info.context.request.context.get('dataspace')
