@@ -12,6 +12,7 @@ import api.schema.category_schema
 import api.schema.organization_schema
 import api.schema.dataspace_schema
 import api.schema.resource_chart_schema
+import api.schema.usecase_schema
 from api.types import TypeDataset, TypeMetadata, TypeResource
 from api.types.type_dataset import TypeTag
 from api.types.type_dataspace import TypeDataSpace
@@ -52,6 +53,7 @@ Mutation = merge_types(
         api.schema.organization_schema.Mutation,
         api.schema.dataspace_schema.Mutation,
         api.schema.resource_chart_schema.Mutation,
+        api.schema.usecase_schema.Mutation,
     ),
 )
 schema = strawberry.Schema(
