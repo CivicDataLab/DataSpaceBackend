@@ -13,7 +13,6 @@ from api.models import Dataset, Metadata, Category
 from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata
 
-
 @strawberry.input
 class DSMetadataItemType:
     id: str
@@ -80,15 +79,28 @@ def _add_update_dataset_categories(dataset: Dataset, categories: list[uuid.UUID]
 @strawberry.type
 class Query:
     @strawberry_django.field(filters=DatasetFilter, pagination=True, order=DatasetOrder)
-    def datasets(self, info) -> List[TypeDataset]:
+    def datasets(self, info, filters=None, pagination=None, order=None) -> List[TypeDataset]:
         organization = info.context.request.context.get('organization')
         dataspace = info.context.request.context.get('dataspace')
-        if dataspace:
-            return Dataset.objects.filter(dataspace=dataspace)
-        if organization:
-            return Dataset.objects.filter(organization=organization)
-        return Dataset.objects.all()
 
+        # Base queryset filtering by organization or dataspace
+        if dataspace:
+            queryset = Dataset.objects.filter(dataspace=dataspace)
+        elif organization:
+            queryset = Dataset.objects.filter(organization=organization)
+        else:
+            queryset = Dataset.objects.all()
+
+        # Apply Strawberry Django filters
+        queryset = strawberry_django.filters.apply(filters, queryset)
+
+        # Apply ordering
+        queryset = strawberry_django.ordering.apply(order, queryset)
+
+        # Apply pagination
+        queryset = strawberry_django.pagination.apply(pagination, queryset)
+
+        return queryset
 
 @strawberry.type
 class Mutation:
