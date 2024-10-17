@@ -6,6 +6,7 @@ import strawberry
 import strawberry_django
 
 from api import types, models
+from api.types import TypeDataset
 from api.utils.enums import DatasetStatus
 from api.models import Dataset, Metadata, Category
 from api.models.Dataset import Tag
@@ -76,12 +77,26 @@ def _add_update_dataset_categories(dataset: Dataset, categories: list[uuid.UUID]
 
 
 @strawberry.type
+class Query:
+    @strawberry_django.field
+    def datasets(self, info) -> List[TypeDataset]:
+        organization = info.context.request.context.get('organization')
+        dataspace = info.context.request.context.get('dataspace')
+        if dataspace:
+            return Dataset.objects.filter(dataspace=dataspace)
+        if organization:
+            return Dataset.objects.filter(organization=organization)
+        return Dataset.objects.all()
+
+
+@strawberry.type
 class Mutation:
     # @strawberry_django.input_mutation()
     @strawberry_django.mutation(handle_django_errors=True)
-    def add_dataset(self) -> types.TypeDataset:
-        # TODO: capture organisation
+    def add_dataset(self, info) -> types.TypeDataset:
         dataset: Dataset = models.Dataset()
+        dataset.organization = info.context.request.context.get('organization')
+        dataset.dataspace = info.context.request.context.get('dataspace')
         now = datetime.datetime.now()
         dataset.title = f"New dataset {now.strftime('%d %b %Y - %H:%M')}"
         # sync_to_async(dataset.save)()

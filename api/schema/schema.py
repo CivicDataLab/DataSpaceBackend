@@ -17,12 +17,10 @@ from api.types import TypeDataset, TypeMetadata, TypeResource
 from api.types.type_dataset import TypeTag
 from api.types.type_dataspace import TypeDataSpace
 from api.types.type_organization import TypeOrganization
-from api.types.type_usecase import TypeUseCase
 
 
 @strawberry.type
 class DefaultQuery:
-    datasets: list[TypeDataset] = strawberry_django.field()
     organisations: list[TypeOrganization] = strawberry_django.field()
     dataspaces: list[TypeDataSpace] = strawberry_django.field()
     metadata: list[TypeMetadata] = strawberry_django.field()
