@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 
-from api.utls.enums import DatasetStatus
+from api.utils.enums import DatasetStatus
 from api.models import Organization, Category, DataSpace
 
 

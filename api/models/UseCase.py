@@ -1,8 +1,8 @@
 from django.db import models
 from django.utils.text import slugify
 
-from api.utls.enums import UseCaseStatus
-from api.utls.file_paths import _use_case_directory_path
+from api.utils.enums import UseCaseStatus
+from api.utils.file_paths import _use_case_directory_path
 
 
 class UseCase(models.Model):

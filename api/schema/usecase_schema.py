@@ -6,7 +6,7 @@ from strawberry import auto
 from strawberry_django import NodeInput
 from strawberry_django.mutations import mutations
 
-from api.utls.enums import UseCaseStatus
+from api.utils.enums import UseCaseStatus
 from api.models import UseCase, Dataset
 from api.types.type_usecase import TypeUseCase
 

@@ -4,7 +4,7 @@ from typing import List, Optional
 import strawberry
 import strawberry_django
 
-from api.utls.enums import DatasetStatus
+from api.utils.enums import DatasetStatus
 from api.models import Dataset, DatasetMetadata, Resource, AccessModel, Tag
 from api.types import TypeDatasetMetadata, TypeResource
 from api.types.type_access_model import TypeAccessModel

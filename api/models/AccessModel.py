@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 
-from api.utls.enums import AccessTypes
+from api.utils.enums import AccessTypes
 from api.models import Organization, Dataset, Resource, ResourceSchema
 
 

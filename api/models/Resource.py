@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 
-from api.utls.enums import DataType
+from api.utils.enums import DataType
 from api.models import Dataset
 
 

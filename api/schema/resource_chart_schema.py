@@ -4,7 +4,7 @@ from typing import Optional
 import strawberry
 import strawberry_django
 
-from api.utls.enums import ChartTypes, AggregateType
+from api.utils.enums import ChartTypes, AggregateType
 from api.models import ResourceChartDetails, Resource, ResourceSchema
 from api.types import TypeResourceChart
 
