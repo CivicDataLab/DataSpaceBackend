@@ -19,9 +19,9 @@ def _dataspace_directory_path(ds, filename):
 
     """
 
-    ds_name = ds.title
+    ds_name = ds.name
     _, extension = os.path.splitext(filename)
-    return f"files/public/organizations/{ds_name}/{extension[1:]}/{filename}"
+    return f"files/public/dataspace/{ds_name}/{extension[1:]}/{filename}"
 
 
 def _organization_file_directory_path(org, filename):
