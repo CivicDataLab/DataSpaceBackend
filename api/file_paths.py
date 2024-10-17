@@ -13,13 +13,13 @@ def _organization_directory_path(org, filename):
     return f"files/public/organizations/{org_name}/{extension[1:]}/{filename}"
 
 
-def _dataspace_directory_path(org, filename):
+def _dataspace_directory_path(ds, filename):
     """
     Create a directory path to upload the dataspace logo
 
     """
 
-    ds_name = org.title
+    ds_name = ds.title
     _, extension = os.path.splitext(filename)
     return f"files/public/organizations/{ds_name}/{extension[1:]}/{filename}"
 
