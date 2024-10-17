@@ -75,7 +75,7 @@ class Mutation:
         return use_case
 
     @strawberry_django.mutation(handle_django_errors=True)
-    def publish_use_case(self, info, use_case_id: int):
+    def publish_use_case(self, info, use_case_id: int) -> TypeUseCase:
         """
         Publishes a use case.
         """
@@ -88,7 +88,7 @@ class Mutation:
         return use_case
 
     @strawberry_django.mutation(handle_django_errors=True)
-    def unpublish_use_case(self, info, use_case_id: int):
+    def unpublish_use_case(self, info, use_case_id: int) -> TypeUseCase:
         """
         Unpublishes a use case.
         """
@@ -101,7 +101,7 @@ class Mutation:
         return use_case
 
     @strawberry_django.mutation(handle_django_errors=True)
-    def archive_use_case(self, info, use_case_id: int):
+    def archive_use_case(self, info, use_case_id: int) -> TypeUseCase:
         """
         Archives a use case.
         """
