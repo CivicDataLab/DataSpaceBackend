@@ -3,7 +3,7 @@ import uuid
 from django.db import models
 
 from api.enums import DatasetStatus
-from api.models import Organization, Category
+from api.models import Organization, Category, DataSpace
 
 
 class Tag(models.Model):
@@ -22,6 +22,7 @@ class Dataset(models.Model):
     title = models.CharField(max_length=300, unique=False, blank=True)
     description = models.CharField(max_length=1000, unique=False, blank=True)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
+    dataspace = models.ForeignKey(DataSpace, on_delete=models.CASCADE, null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     tags = models.ManyToManyField(Tag, blank=True)

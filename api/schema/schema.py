@@ -10,9 +10,11 @@ import api.schema.resource_schema
 import api.schema.access_model_schema
 import api.schema.category_schema
 import api.schema.organization_schema
+import api.schema.dataspace_schema
 import api.schema.resource_chart_schema
 from api.types import TypeDataset, TypeMetadata, TypeResource
 from api.types.type_dataset import TypeTag
+from api.types.type_dataspace import TypeDataSpace
 from api.types.type_organization import TypeOrganization
 
 
@@ -20,6 +22,7 @@ from api.types.type_organization import TypeOrganization
 class DefaultQuery:
     datasets: list[TypeDataset] = strawberry_django.field()
     organisations: list[TypeOrganization] = strawberry_django.field()
+    dataspaces: list[TypeDataSpace] = strawberry_django.field()
     metadata: list[TypeMetadata] = strawberry_django.field()
     resource: list[TypeResource] = strawberry_django.field()
     tags: list[TypeTag] = strawberry_django.field()
@@ -45,6 +48,7 @@ Mutation = merge_types(
         api.schema.access_model_schema.Mutation,
         api.schema.category_schema.Mutation,
         api.schema.organization_schema.Mutation,
+        api.schema.dataspace_schema.Mutation,
         api.schema.resource_chart_schema.Mutation,
     ),
 )

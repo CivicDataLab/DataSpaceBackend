@@ -1,4 +1,5 @@
 from api.models.Organization import Organization
+from api.models.DataSpace import DataSpace
 from api.models.Geography import Geography
 from api.models.Category import Category
 from api.models.Dataset import Dataset
