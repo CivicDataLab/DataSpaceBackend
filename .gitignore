@@ -153,3 +153,4 @@ resources/
 
 #local env file
 .env
+api/migrations/*
