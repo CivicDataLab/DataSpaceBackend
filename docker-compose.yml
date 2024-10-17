@@ -103,7 +103,7 @@ services:
       telemetry_elasticsearch:
         condition: service_healthy
     ports:
-      - 127.0.0.1:5601:5601
+      - 5601:5601
 
   apm-server:
     image: docker.elastic.co/apm/apm-server:7.16.2
@@ -156,7 +156,7 @@ services:
       apm-server:
         condition: service_healthy
     ports:
-      - 127.0.0.1:4317:4317
+      - 4317:4317
       
 volumes:
   backend_db_data:
