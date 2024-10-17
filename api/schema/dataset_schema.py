@@ -4,14 +4,15 @@ from typing import List, Optional
 
 import strawberry
 import strawberry_django
+from strawberry_django.pagination import OffsetPaginationInput
 
 from api import types, models
-from api.types import TypeDataset
-from api.types.type_dataset import DatasetFilter, DatasetOrder
-from api.utils.enums import DatasetStatus
 from api.models import Dataset, Metadata, Category
 from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata
+from api.types import TypeDataset
+from api.types.type_dataset import DatasetFilter, DatasetOrder
+from api.utils.enums import DatasetStatus
 
 
 @strawberry.input
@@ -80,8 +81,10 @@ def _add_update_dataset_categories(dataset: Dataset, categories: list[uuid.UUID]
 @strawberry.type
 class Query:
     @strawberry_django.field(filters=DatasetFilter, pagination=True, order=DatasetOrder)
-    def datasets(self, info, filters: Optional[DatasetFilter] = None, pagination: Optional[bool] = None,
-                 order: Optional[DatasetOrder] = None) -> List[TypeDataset]:
+    def datasets(self, info,
+                 filters: DatasetFilter | None = strawberry.UNSET,
+                 pagination: OffsetPaginationInput | None = strawberry.UNSET,
+                 order: DatasetOrder | None = strawberry.UNSET) -> List[TypeDataset]:
         organization = info.context.request.context.get('organization')
         dataspace = info.context.request.context.get('dataspace')
 
@@ -93,14 +96,14 @@ class Query:
         else:
             queryset = Dataset.objects.all()
 
-        # Apply Strawberry Django filters
-        queryset = strawberry_django.filters.apply(filters, queryset)
+        if filters is not strawberry.UNSET:
+            queryset = strawberry_django.filters.apply(filters, queryset, info)
 
-        # Apply ordering
-        queryset = strawberry_django.ordering.apply(order, queryset)
+        if order is not strawberry.UNSET:
+            queryset = strawberry_django.ordering.apply(order, queryset, info)
 
-        # Apply pagination
-        queryset = strawberry_django.pagination.apply(pagination, queryset)
+        if pagination is not strawberry.UNSET:
+            queryset = strawberry_django.pagination.apply(pagination, queryset, info)
 
         return queryset
 
