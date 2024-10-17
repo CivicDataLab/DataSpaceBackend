@@ -80,7 +80,8 @@ def _add_update_dataset_categories(dataset: Dataset, categories: list[uuid.UUID]
 @strawberry.type
 class Query:
     @strawberry_django.field(filters=DatasetFilter, pagination=True, order=DatasetOrder)
-    def datasets(self, info, filters: DatasetFilter = None, pagination: bool = None, order:DatasetOrder=None) -> List[TypeDataset]:
+    def datasets(self, info, filters: Optional[DatasetFilter] = None, pagination: Optional[bool] = None,
+                 order: Optional[DatasetOrder] = None) -> List[TypeDataset]:
         organization = info.context.request.context.get('organization')
         dataspace = info.context.request.context.get('dataspace')
 
