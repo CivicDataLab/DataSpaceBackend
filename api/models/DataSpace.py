@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils.text import slugify
 
-from api.file_paths import _dataspace_directory_path
+from api.utls.file_paths import _dataspace_directory_path
 
 
 class DataSpace(models.Model):

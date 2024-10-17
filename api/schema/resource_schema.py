@@ -8,8 +8,8 @@ import strawberry
 import strawberry_django
 from strawberry.file_uploads import Upload
 
-from api.constants import FORMAT_MAPPING
-from api.file_utils import file_validation
+from api.utls.constants import FORMAT_MAPPING
+from api.utls.file_utils import file_validation
 from api.models import Resource, Dataset, ResourceFileDetails, ResourcePreviewDetails
 from api.models.ResourceSchema import ResourceSchema
 from api.types import TypeResource

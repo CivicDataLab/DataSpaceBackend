@@ -6,7 +6,7 @@ import strawberry
 import strawberry_django
 
 from api import types, models
-from api.enums import DatasetStatus
+from api.utls.enums import DatasetStatus
 from api.models import Dataset, Metadata, Category
 from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata

@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 
-from api.enums import ChartTypes, AggregateType
+from api.utls.enums import ChartTypes, AggregateType
 from api.models import Resource, ResourceSchema
 
 

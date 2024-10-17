@@ -1,6 +1,6 @@
 from django.db import models
 
-from api.enums import MetadataStandards, MetadataDataTypes, MetadataTypes, MetadataModels
+from api.utls.enums import MetadataStandards, MetadataDataTypes, MetadataTypes, MetadataModels
 
 
 class Metadata(models.Model):

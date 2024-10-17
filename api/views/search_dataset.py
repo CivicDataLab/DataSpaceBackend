@@ -4,7 +4,6 @@ from elasticsearch_dsl import Q, Search, A
 from rest_framework import serializers
 
 from search.documents import DatasetDocument
-from api.enums import MetadataModels
 from api.models import DatasetMetadata, Metadata, Dataset
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
 

@@ -1,6 +1,6 @@
 from django.db import models
 
-from api.enums import FieldTypes
+from api.utls.enums import FieldTypes
 from api.models import Resource
 
 

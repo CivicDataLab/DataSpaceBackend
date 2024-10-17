@@ -1,8 +1,8 @@
 from django.db import models
 from django.utils.text import slugify
 
-from api.enums import OrganizationTypes
-from api.file_paths import _organization_directory_path
+from api.utls.enums import OrganizationTypes
+from api.utls.file_paths import _organization_directory_path
 
 
 class Organization(models.Model):

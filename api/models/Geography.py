@@ -1,6 +1,6 @@
 from django.db import models
 
-from api.enums import GeoTypes
+from api.utls.enums import GeoTypes
 
 
 class Geography(models.Model):

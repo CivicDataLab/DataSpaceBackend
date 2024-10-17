@@ -4,8 +4,8 @@ from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 from django.db import models
 
-from api.enums import MetadataDataTypes, MetadataTypes
-from api.metadata_validators import VALIDATOR_MAP
+from api.utls.enums import MetadataDataTypes, MetadataTypes
+from api.utls.metadata_validators import VALIDATOR_MAP
 from api.models import Dataset, Metadata
 
 
