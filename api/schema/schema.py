@@ -32,6 +32,7 @@ Query = merge_types(
     "Query",
     (
         DefaultQuery,
+        api.schema.dataset_schema.Query,
         api.schema.resource_schema.Query,
         api.schema.access_model_schema.Query,
         api.schema.category_schema.Query,
