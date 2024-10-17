@@ -24,7 +24,6 @@ from api.types.type_usecase import TypeUseCase
 class DefaultQuery:
     datasets: list[TypeDataset] = strawberry_django.field()
     organisations: list[TypeOrganization] = strawberry_django.field()
-    usecases: list[TypeUseCase] = strawberry_django.field()
     dataspaces: list[TypeDataSpace] = strawberry_django.field()
     metadata: list[TypeMetadata] = strawberry_django.field()
     resource: list[TypeResource] = strawberry_django.field()
@@ -38,7 +37,8 @@ Query = merge_types(
         api.schema.resource_schema.Query,
         api.schema.access_model_schema.Query,
         api.schema.category_schema.Query,
-        api.schema.resource_chart_schema.Query
+        api.schema.resource_chart_schema.Query,
+        api.schema.usecase_schema.Query
     ),
 )
 
