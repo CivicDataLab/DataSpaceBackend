@@ -80,6 +80,12 @@ class DatasetStatus(models.TextChoices):
     ARCHIVED = "ARCHIVED"
 
 
+class UseCaseStatus(models.TextChoices):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"
+
+
 class ChartTypes(models.TextChoices):
     BAR_VERTICAL = "BAR_VERTICAL"
     BAR_HORIZONTAL = "BAR_HORIZONTAL"

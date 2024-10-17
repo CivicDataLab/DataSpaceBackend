@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.text import slugify
 
+from api.enums import UseCaseStatus
 from api.file_paths import _use_case_directory_path
 
 
@@ -13,6 +14,7 @@ class UseCase(models.Model):
     website = models.URLField(blank=True)
     contact_email = models.EmailField(blank=True, null=True)
     slug = models.SlugField(max_length=75, null=True, blank=False, unique=True)
+    status = models.CharField(max_length=50, default=UseCaseStatus.DRAFT, choices=UseCaseStatus.choices)
     datasets = models.ManyToManyField('Dataset', blank=True)
 
     def save(self, *args, **kwargs):
