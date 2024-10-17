@@ -14,7 +14,14 @@ class UseCaseFilter:
     slug: auto
 
 
-@strawberry_django.type(UseCase, pagination=True, fields="__all__", filters=UseCaseFilter)
+@strawberry_django.order(UseCase)
+class UseCaseOrder:
+    title: strawberry.auto
+    created: strawberry.auto
+    modified: strawberry.auto
+
+
+@strawberry_django.type(UseCase, pagination=True, fields="__all__", filters=UseCaseFilter, order=UseCaseOrder)
 class TypeUseCase:
     dataset_count: int
     datasets: Optional[list[TypeDataset]]
