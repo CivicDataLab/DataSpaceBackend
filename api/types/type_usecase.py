@@ -6,12 +6,16 @@ from strawberry import auto
 
 from api.models import UseCase
 from api.types import TypeDataset
+from api.utils.enums import UseCaseStatus
+
+use_case_status = strawberry.enum(UseCaseStatus)
 
 
 @strawberry_django.filter(UseCase)
 class UseCaseFilter:
     id: auto
     slug: auto
+    status: Optional[use_case_status]
 
 
 @strawberry_django.order(UseCase)
