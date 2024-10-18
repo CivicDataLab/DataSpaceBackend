@@ -18,6 +18,7 @@ class UseCaseInput:
 
 @strawberry_django.partial(UseCase, fields="__all__", exclude=["datasets"])
 class UseCaseInputPartial:
+    id: str
     slug: auto
 
 
@@ -30,7 +31,15 @@ class Query:
 class Mutation:
     create_use_case: TypeUseCase = mutations.create(UseCaseInput)
     update_use_case: TypeUseCase = mutations.update(UseCaseInputPartial, key_attr="id")
-    delete_use_case: TypeUseCase = mutations.delete(NodeInput)
+
+    @strawberry_django.mutation(handle_django_errors=False)
+    def delete_use_case(self, use_case_id: str) -> bool:
+        try:
+            use_case = UseCase.objects.get(id=use_case_id)
+        except UseCase.DoesNotExist as e:
+            raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+        use_case.delete()
+        return True
 
     @strawberry_django.mutation(handle_django_errors=True)
     def add_dataset_to_use_case(self, info, use_case_id: int, dataset_id: uuid.UUID) -> TypeUseCase:
