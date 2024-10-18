@@ -13,7 +13,7 @@ class UseCase(models.Model):
     modified = models.DateTimeField(auto_now=True)
     website = models.URLField(blank=True)
     contact_email = models.EmailField(blank=True, null=True)
-    slug = models.SlugField(max_length=75, null=True, blank=False, unique=True)
+    slug = models.SlugField(max_length=75, null=True, blank=True, unique=True)
     status = models.CharField(max_length=50, default=UseCaseStatus.DRAFT, choices=UseCaseStatus.choices)
     datasets = models.ManyToManyField('Dataset', blank=True)
 
