@@ -11,7 +11,7 @@ from api.models import UseCase, Dataset
 from api.types.type_usecase import TypeUseCase
 
 
-@strawberry_django.input(UseCase, fields="__all__", exclude=["datasets"])
+@strawberry_django.input(UseCase, fields="__all__", exclude=["datasets", "slug"])
 class UseCaseInput:
     pass
 
