@@ -6,8 +6,8 @@ from api.utils.file_paths import _use_case_directory_path
 
 
 class UseCase(models.Model):
-    title = models.CharField(max_length=200, unique=True)
-    description = models.CharField(max_length=1000)
+    title = models.CharField(max_length=200, unique=True, blank=True, null=True)
+    description = models.CharField(max_length=1000, blank=True, null=True)
     logo = models.ImageField(upload_to=_use_case_directory_path, blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
