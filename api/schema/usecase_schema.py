@@ -1,3 +1,4 @@
+import datetime
 import uuid
 
 import strawberry
@@ -31,6 +32,15 @@ class Query:
 class Mutation:
     create_use_case: TypeUseCase = mutations.create(UseCaseInput)
     update_use_case: TypeUseCase = mutations.update(UseCaseInputPartial, key_attr="id")
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def add_use_case(self, info) -> TypeUseCase:
+        use_case: UseCase = UseCase()
+        now = datetime.datetime.now()
+        use_case.title = f"New use_case {now.strftime('%d %b %Y - %H:%M')}"
+        # sync_to_async(use_case.save)()
+        use_case.save()
+        return use_case
 
     @strawberry_django.mutation(handle_django_errors=False)
     def delete_use_case(self, use_case_id: str) -> bool:
