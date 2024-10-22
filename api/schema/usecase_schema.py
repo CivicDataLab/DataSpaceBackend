@@ -4,7 +4,6 @@ import uuid
 import strawberry
 import strawberry_django
 from strawberry import auto
-from strawberry_django import NodeInput
 from strawberry_django.mutations import mutations
 
 from api.utils.enums import UseCaseStatus
