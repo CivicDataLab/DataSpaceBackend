@@ -10,23 +10,23 @@ class ContextMiddleware:
 
     def __call__(self, request):
         auth_token = request.headers.get('authorization', None)
-        organization_id = request.headers.get('organization', None)
-        dataspace_id = request.headers.get('dataspace', None)
+        organization_slug = request.headers.get('organization', None)
+        dataspace_slug = request.headers.get('dataspace', None)
 
         # Validate and load the organization and dataspace objects
         try:
-            if organization_id is None:
+            if organization_slug is None:
                 organization = None
             else:
-                organization = get_object_or_404(Organization, id=organization_id)
-            if dataspace_id is None:
+                organization = get_object_or_404(Organization, slug=organization_slug)
+            if dataspace_slug is None:
                 dataspace = None
             else:
-                dataspace = get_object_or_404(DataSpace, id=dataspace_id)
+                dataspace = get_object_or_404(DataSpace, slug=dataspace_slug)
         except Organization.DoesNotExist:
-            return JsonResponse({"error": "Invalid organization ID"}, status=400)
+            return JsonResponse({"error": "Invalid organization slug"}, status=400)
         except DataSpace.DoesNotExist:
-            return JsonResponse({"error": "Invalid group ID"}, status=400)
+            return JsonResponse({"error": "Invalid group slug"}, status=400)
 
         # TODO: resolve auth_token to user object before passing
         request.context = {
