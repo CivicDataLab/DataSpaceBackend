@@ -1,16 +1,12 @@
 import json
-from typing import Optional, Tuple, List
+from typing import Optional
 
 import pandas as pd
 import strawberry
 import strawberry_django
 from pyecharts import options as opts
-from pyecharts.charts import Line, Bar, Geo, Map, Page
-from pyecharts.charts.basic_charts.geo import GeoChartBase
+from pyecharts.charts import Line, Bar, Geo, Map
 from pyecharts.charts.chart import Chart
-from pyecharts.commons.utils import JsCode
-from pyecharts.globals import GeoType
-
 from strawberry.scalars import JSON
 
 from api.models import ResourceChartDetails
@@ -43,46 +39,13 @@ def chart_base(chart_details: ResourceChartDetails) -> None | Chart:
         value_col = chart_details.value_column.field_name
         data[district_col] = data[district_col].str.upper()
         district_values = data[[district_col, value_col]].values.tolist()
-        geo_chart = Map(init_opts=opts.InitOpts(width="1000px", height="100")) \
-            .add(
-            series_name="District Data",
-            data_pair=district_values,
-            maptype="assam_district",
-        ) \
-            .set_global_opts(title_opts=opts.TitleOpts(title="Assam Districts")) \
-            .set_series_opts(label_opts=opts.LabelOpts(is_show=chart_details.show_legend))
-        print(data[value_col].max(), data[value_col].min())
-        geo_chart.set_global_opts(
-            title_opts=opts.TitleOpts(title="Assam District Data"),
-            visualmap_opts=opts.VisualMapOpts(
-                max_=int(data[value_col].max()),
-                min_=int(data[value_col].min()),
-                # range_color=["#313695", "#4575b4", "#74add1", "#abd9e9", "#e0f3f8",
-                #              "#ffffbf", "#fee090", "#fdae61", "#f46d43", "#d73027",
-                #              "#a50026", ],
-                range_text=["High", "Low"],
-                range_size=[10],
-                is_calculable=True,
-                orient="vertical",
-                pos_left="right",
-                pos_top="bottom",
-            )
-        )
-        return geo_chart
+        return _get_map_chart(chart_details, data, district_values, value_col)
     elif chart_details.chart_type == "ASSAM_RC":
-        geojson_file = "api/types/map_base/assam_revenue_circles.geojson"
         rc_col = chart_details.region_column.field_name
         value_col = chart_details.value_column.field_name
-        with open(geojson_file, 'r') as f:
-            geojson = json.load(f)
+        data[rc_col] = data[rc_col].str.upper()
         rc_values = data[[rc_col, value_col]].values.tolist()
-        geo_chart = Geo()
-        geo_chart.add_coordinate_json(geojson)
-        geo_chart.add(
-            series_name="RC Data",
-            data_pair=rc_values,
-            type_=GeoType.HEATMAP)  # You can also use SCATTER or EFFECT_SCATTER
-        return geo_chart
+        return _get_map_chart(chart_details, data, rc_values, value_col)
     # Ensure that x_axis_column and y_axis_column exist
     if not chart_details.x_axis_column or not chart_details.y_axis_column:
         return None
@@ -120,6 +83,34 @@ def chart_base(chart_details: ResourceChartDetails) -> None | Chart:
         )
 
     return chart
+
+
+def _get_map_chart(chart_details, data, values, value_col):
+    geo_chart = Map(init_opts=opts.InitOpts(width="1000px", height="100")) \
+        .add(
+        series_name="District Data",
+        data_pair=values,
+        maptype=f"{chart_details.chart_type.lower().replace('', '')}",
+    ) \
+        .set_global_opts(title_opts=opts.TitleOpts(title="Assam Districts")) \
+        .set_series_opts(label_opts=opts.LabelOpts(is_show=chart_details.show_legend))
+    geo_chart.set_global_opts(
+        title_opts=opts.TitleOpts(title="Assam District Data"),
+        visualmap_opts=opts.VisualMapOpts(
+            max_=int(data[value_col].max()),
+            min_=int(data[value_col].min()),
+            # range_color=["#313695", "#4575b4", "#74add1", "#abd9e9", "#e0f3f8",
+            #              "#ffffbf", "#fee090", "#fdae61", "#f46d43", "#d73027",
+            #              "#a50026", ],
+            range_text=["High", "Low"],
+            range_size=[10],
+            is_calculable=True,
+            orient="vertical",
+            pos_left="right",
+            pos_top="bottom",
+        )
+    )
+    return geo_chart
 
 
 @strawberry_django.type(ResourceChartDetails, fields="__all__")
