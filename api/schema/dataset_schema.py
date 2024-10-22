@@ -166,6 +166,17 @@ class Mutation:
         dataset.save()
         return dataset
 
+    @strawberry_django.mutation(handle_django_errors=True)
+    def un_publish_dataset(self, dataset_id: uuid.UUID) -> types.TypeDataset:
+        try:
+            dataset = Dataset.objects.get(id=dataset_id)
+        except Dataset.DoesNotExist as e:
+            raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
+        # TODO: validate dataset
+        dataset.status = DatasetStatus.DRAFT
+        dataset.save()
+        return dataset
+
     @strawberry_django.mutation(handle_django_errors=False)
     def delete_dataset(self, dataset_id: uuid.UUID) -> bool:
         try:
