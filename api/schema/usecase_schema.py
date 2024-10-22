@@ -88,7 +88,7 @@ class Mutation:
             use_case = UseCase.objects.get(id=use_case_id)
         except UseCase.DoesNotExist as e:
             raise ValueError(f"Use Case with ID {use_case_id} doesn't exist")
-        use_case.datasets = datasets
+        use_case.datasets.set(datasets)
         use_case.save()
         return use_case
 
