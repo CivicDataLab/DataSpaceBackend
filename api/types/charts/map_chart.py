@@ -6,7 +6,9 @@ from api.types.charts.chart_utils import _get_map_chart
 
 
 class MapChart(BaseChart):
-    def create_chart(self) -> Chart:
+    def create_chart(self) -> Chart | None:
+        if not self.chart_details.region_column or not self.chart_details.value_column:
+            return None
         region_col = self.chart_details.region_column.field_name
         value_col = self.chart_details.value_column.field_name
         region_values = self.process_data(region_col, value_col)
