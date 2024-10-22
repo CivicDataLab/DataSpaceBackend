@@ -13,6 +13,17 @@ def _organization_directory_path(org, filename):
     return f"files/public/organizations/{org_name}/{extension[1:]}/{filename}"
 
 
+def _chart_image_directory_path(chart, filename):
+    """
+    Create a directory path to upload the organization logo
+
+    """
+
+    chart_name = chart.name
+    _, extension = os.path.splitext(filename)
+    return f"files/chart_images/{chart_name}/{extension[1:]}/{filename}"
+
+
 def _dataspace_directory_path(ds, filename):
     """
     Create a directory path to upload the dataspace logo

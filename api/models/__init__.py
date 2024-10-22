@@ -15,3 +15,4 @@ from api.models.ResourceMetadata import ResourceMetadata
 from api.models.AccessModel import AccessModel
 from api.models.AccessModel import AccessModelResource
 from api.models.UseCase import UseCase
+from api.models.ResourceChartImage import ResourceChartImage
