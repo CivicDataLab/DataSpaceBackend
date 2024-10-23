@@ -19,7 +19,7 @@ class MapChart(BaseChart):
         """
         Aggregate data based on region and value columns and return the resulting DataFrame.
         """
-        if self.chart_details.aggregate_type is not AggregateType.NONE:
+        if self.chart_details.aggregate_type != AggregateType.NONE:
             metrics = self.data.groupby(self.chart_details.region_column.field_name).agg(
                 {self.chart_details.value_column.field_name: self.chart_details.aggregate_type.lower()}
             ).reset_index()
