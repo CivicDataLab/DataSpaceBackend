@@ -22,6 +22,7 @@ class ResourceChartDetails(models.Model):
                                       blank=False, unique=False)
     region_column = models.ForeignKey(ResourceSchema, on_delete=models.CASCADE, null=True, blank=True, related_name="region")
     value_column = models.ForeignKey(ResourceSchema, on_delete=models.CASCADE, null=True, blank=True, related_name="value")
+    modified = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name

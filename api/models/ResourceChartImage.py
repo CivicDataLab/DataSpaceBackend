@@ -12,3 +12,4 @@ class ResourceChartImage(models.Model):
     description = models.CharField(max_length=1000, unique=False, blank=True)
     image = models.ImageField(upload_to=_chart_image_directory_path, blank=True, null=True)
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, null=True, blank=True, related_name='chart_images')
+    modified = models.DateTimeField(auto_now=True)
