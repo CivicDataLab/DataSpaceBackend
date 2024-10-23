@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from typing import Optional
 
@@ -67,6 +68,19 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
 
 @strawberry.type
 class Mutation:
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def add_dataset(self, info, resource:uuid.UUID) -> TypeResourceChart:
+        resource_chart: ResourceChartDetails = ResourceChartDetails()
+        now = datetime.datetime.now()
+        resource_chart.name = f"New chart {now.strftime('%d %b %Y - %H:%M')}"
+        try:
+            resource = Resource.objects.get(id=resource)
+        except Resource.DoesNotExist as e:
+            raise ValueError(f"Resource with ID {resource} does not exist.")
+        resource_chart.resource = resource
+        resource_chart.save()
+        return resource_chart
     @strawberry_django.mutation(handle_django_errors=True)
     def edit_resource_chart(self, chart_input: ResourceChartInput) -> TypeResourceChart:
         if not chart_input.chart_id:
