@@ -118,38 +118,8 @@ class Query:
         resource_ids = Resource.objects.filter(dataset_id=dataset_id).values_list('id', flat=True)
         chart_details = ResourceChartDetails.objects.filter(resource_id__in=resource_ids).order_by("modified")
 
-        # Map the queryset to the appropriate GraphQL types
-        chart_images_data = [
-            {
-                "type": "image",
-                "id": img.id,
-                "name": img.name,
-                "description": img.description,
-                "image": img.image.url if img.image else None,
-                "dataset_id": img.dataset_id,
-            }
-            for img in chart_images
-        ]
-
-        chart_details_data = [
-            {
-                "type": "chart",
-                "id": det.id,
-                "name": det.name,
-                "description": det.description,
-                "chart_type": det.chart_type,
-                "x_axis_label": det.x_axis_label,
-                "y_axis_label": det.y_axis_label,
-                "show_legend": det.show_legend,
-                "aggregate_type": det.aggregate_type,
-                "region_column": str(det.region_column),
-                "value_column": str(det.value_column),
-            }
-            for det in chart_details
-        ]
-
         # Combine both chart_images_data and chart_details_data into a single list
-        combined_list = chart_images_data + chart_details_data
+        combined_list = chart_images + chart_details
 
         # Sort the combined list by the selected field (e.g., `name`)
         sorted_list = sorted(combined_list, key=lambda x: x.get("modified"), reverse=True)
