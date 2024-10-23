@@ -72,6 +72,7 @@ class FieldTypes(models.TextChoices):
     NUMBER = "NUMBER"
     INTEGER = "INTEGER"
     DATE = "DATE"
+    BOOLEAN = "BOOLEAN"
 
 
 class DatasetStatus(models.TextChoices):
