@@ -109,20 +109,19 @@ class Query:
         return queryset
 
     @strawberry.mutation
-    def get_chart_data(self, dataset_id: uuid.UUID) -> List[
-        Union[TypeResourceChartImage, TypeResourceChart]]:
+    def get_chart_data(self, dataset_id: uuid.UUID) -> List[Union[TypeResourceChartImage, TypeResourceChart]]:
         # Fetch ResourceChartImage for the dataset
-        chart_images = ResourceChartImage.objects.filter(dataset_id=dataset_id).order_by("modified")
+        chart_images = list(ResourceChartImage.objects.filter(dataset_id=dataset_id).order_by("modified"))
 
         # Fetch ResourceChartDetails based on the related Resource in the same dataset
         resource_ids = Resource.objects.filter(dataset_id=dataset_id).values_list('id', flat=True)
-        chart_details = ResourceChartDetails.objects.filter(resource_id__in=resource_ids).order_by("modified")
+        chart_details = list(ResourceChartDetails.objects.filter(resource_id__in=resource_ids).order_by("modified"))
 
-        # Combine both chart_images_data and chart_details_data into a single list
+        # Combine both chart_images and chart_details into a single list
         combined_list = chart_images + chart_details
 
-        # Sort the combined list by the selected field (e.g., `name`)
-        sorted_list = sorted(combined_list, key=lambda x: x.get("modified"), reverse=True)
+        # Sort the combined list by the 'modified' field in descending order
+        sorted_list = sorted(combined_list, key=lambda x: x.modified, reverse=True)
 
         return sorted_list
 
