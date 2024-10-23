@@ -152,8 +152,7 @@ class Query:
         combined_list = chart_images_data + chart_details_data
 
         # Sort the combined list by the selected field (e.g., `name`)
-        reverse_sort = True if sort_order.lower() == "desc" else False
-        sorted_list = sorted(combined_list, key=lambda x: x.get(sort_by, ""), reverse=reverse_sort)
+        sorted_list = sorted(combined_list, key=lambda x: x.get("modified"), reverse=True)
 
         return sorted_list
 
