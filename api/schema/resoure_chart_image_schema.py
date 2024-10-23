@@ -1,10 +1,11 @@
 import datetime
+import uuid
 
 import strawberry
 import strawberry_django
 from strawberry_django.mutations import mutations
 
-from api.models import ResourceChartImage
+from api.models import ResourceChartImage, Dataset
 from api.types.type_resource_chart_image import TypeResourceChartImage
 
 
@@ -26,13 +27,19 @@ class Query:
 @strawberry.type
 class Mutation:
     create_resource_chart_image: TypeResourceChartImage = mutations.create(ResourceChartImageInput)
-    update_resource_chart_image: TypeResourceChartImage = mutations.update(ResourceChartImageInputPartial, key_attr="id")
+    update_resource_chart_image: TypeResourceChartImage = mutations.update(ResourceChartImageInputPartial,
+                                                                           key_attr="id")
 
     @strawberry_django.mutation(handle_django_errors=True)
-    def add_resource_chart_image(self, info) -> TypeResourceChartImage:
+    def add_resource_chart_image(self, info, dataset: uuid.UUID) -> TypeResourceChartImage:
+        try:
+            dataset = Dataset.objects.get(id=dataset)
+        except Dataset.DoesNotExist as e:
+            raise ValueError(f"Dataset with ID {dataset} does not exist.")
         resource_chart_image: ResourceChartImage = ResourceChartImage()
         now = datetime.datetime.now()
         resource_chart_image.title = f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M')}"
+        resource_chart_image.dataset = dataset
         resource_chart_image.save()
         return resource_chart_image
 
