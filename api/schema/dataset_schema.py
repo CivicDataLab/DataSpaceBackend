@@ -1,17 +1,18 @@
 import datetime
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import strawberry
 import strawberry_django
 from strawberry_django.pagination import OffsetPaginationInput
 
 from api import types, models
-from api.models import Dataset, Metadata, Category
+from api.models import Dataset, Metadata, Category, ResourceChartImage, Resource, ResourceChartDetails
 from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata
-from api.types import TypeDataset
+from api.types import TypeDataset, TypeResourceChart
 from api.types.type_dataset import DatasetFilter, DatasetOrder
+from api.types.type_resource_chart_image import TypeResourceChartImage
 from api.utils.enums import DatasetStatus
 
 
@@ -106,6 +107,55 @@ class Query:
             queryset = strawberry_django.pagination.apply(pagination, queryset, info)
 
         return queryset
+
+    @strawberry.mutation
+    def get_chart_data(self, dataset_id: uuid.UUID) -> List[
+        Union[TypeResourceChartImage, TypeResourceChart]]:
+        # Fetch ResourceChartImage for the dataset
+        chart_images = ResourceChartImage.objects.filter(dataset_id=dataset_id).order_by("modified")
+
+        # Fetch ResourceChartDetails based on the related Resource in the same dataset
+        resource_ids = Resource.objects.filter(dataset_id=dataset_id).values_list('id', flat=True)
+        chart_details = ResourceChartDetails.objects.filter(resource_id__in=resource_ids).order_by("modified")
+
+        # Map the queryset to the appropriate GraphQL types
+        chart_images_data = [
+            {
+                "type": "image",
+                "id": img.id,
+                "name": img.name,
+                "description": img.description,
+                "image": img.image.url if img.image else None,
+                "dataset_id": img.dataset_id,
+            }
+            for img in chart_images
+        ]
+
+        chart_details_data = [
+            {
+                "type": "chart",
+                "id": det.id,
+                "name": det.name,
+                "description": det.description,
+                "chart_type": det.chart_type,
+                "x_axis_label": det.x_axis_label,
+                "y_axis_label": det.y_axis_label,
+                "show_legend": det.show_legend,
+                "aggregate_type": det.aggregate_type,
+                "region_column": str(det.region_column),
+                "value_column": str(det.value_column),
+            }
+            for det in chart_details
+        ]
+
+        # Combine both chart_images_data and chart_details_data into a single list
+        combined_list = chart_images_data + chart_details_data
+
+        # Sort the combined list by the selected field (e.g., `name`)
+        reverse_sort = True if sort_order.lower() == "desc" else False
+        sorted_list = sorted(combined_list, key=lambda x: x.get(sort_by, ""), reverse=reverse_sort)
+
+        return sorted_list
 
 
 @strawberry.type
