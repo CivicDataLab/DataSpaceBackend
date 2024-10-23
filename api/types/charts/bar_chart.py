@@ -9,6 +9,7 @@ from api.utils.enums import AggregateType
 
 @register_chart('BAR_HORIZONTAL')
 @register_chart('BAR_VERTICAL')
+@register_chart('LINE')
 class BarChart(BaseChart):
     def create_chart(self) -> Chart | None:
         if not self.chart_details.x_axis_column or not self.chart_details.y_axis_column:
