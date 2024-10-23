@@ -38,7 +38,7 @@ class Mutation:
             raise ValueError(f"Dataset with ID {dataset} does not exist.")
         resource_chart_image: ResourceChartImage = ResourceChartImage()
         now = datetime.datetime.now()
-        resource_chart_image.title = f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M')}"
+        resource_chart_image.name = f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M')}"
         resource_chart_image.dataset = dataset
         resource_chart_image.save()
         return resource_chart_image
