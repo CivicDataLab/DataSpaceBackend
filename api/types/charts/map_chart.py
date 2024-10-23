@@ -24,10 +24,10 @@ class MapChart(BaseChart):
                 {self.chart_details.value_column.field_name: self.chart_details.aggregate_type.lower()}
             ).reset_index()
 
-            metrics.columns = [self.chart_details.x_axis_column.field_name, self.chart_details.y_axis_column.field_name]
+            metrics.columns = [self.chart_details.region_column.field_name, self.chart_details.value_column.field_name]
             return metrics
         else:
-            return self.data[[self.chart_details.x_axis_column.field_name, self.chart_details.y_axis_column.field_name]]
+            return self.data[[self.chart_details.region_column.field_name, self.chart_details.value_column.field_name]]
 
     def process_data(self) -> list:
         data = self.aggregate_data()
