@@ -70,7 +70,7 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
 class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=True)
-    def add_dataset(self, info, resource:uuid.UUID) -> TypeResourceChart:
+    def add_resource_chart(self, info, resource:uuid.UUID) -> TypeResourceChart:
         resource_chart: ResourceChartDetails = ResourceChartDetails()
         now = datetime.datetime.now()
         resource_chart.name = f"New chart {now.strftime('%d %b %Y - %H:%M')}"
