@@ -4,6 +4,7 @@ from pyecharts.charts.chart import Chart
 
 from api.types.charts.base_chart import BaseChart
 from api.types.charts.chart_registry import register_chart
+from api.utils.enums import AggregateType
 
 
 @register_chart('BAR_HORIZONTAL')
@@ -52,13 +53,16 @@ class BarChart(BaseChart):
         """
         Aggregate data based on x and y axis columns and return the resulting DataFrame.
         """
-        metrics = self.data.groupby(self.chart_details.x_axis_column.field_name).agg(
-            {self.chart_details.y_axis_column.field_name: self.chart_details.aggregate_type.lower()}
-        ).reset_index()
+        if self.chart_details.aggregate_type is not AggregateType.NONE:
+            metrics = self.data.groupby(self.chart_details.x_axis_column.field_name).agg(
+                {self.chart_details.y_axis_column.field_name: self.chart_details.aggregate_type.lower()}
+            ).reset_index()
 
-        # Rename columns for clarity
-        metrics.columns = [self.chart_details.x_axis_column.field_name, self.chart_details.y_axis_column.field_name]
-        return metrics
+            # Rename columns for clarity
+            metrics.columns = [self.chart_details.x_axis_column.field_name, self.chart_details.y_axis_column.field_name]
+            return metrics
+        else:
+            return self.data[[self.chart_details.x_axis_column.field_name, self.chart_details.y_axis_column.field_name]]
 
     def initialize_chart(self, metrics: pd.DataFrame) -> Chart:
         """
