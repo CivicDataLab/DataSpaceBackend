@@ -26,7 +26,3 @@ class BaseChart(ABC):
 
     def get_chart_class(self):
         return CHART_TYPE_MAP.get(self.chart_details.chart_type)
-
-    def process_data(self, region_col: str, value_col: str) -> list:
-        self.data[region_col] = self.data[region_col].str.upper()
-        return self.data[[region_col, value_col]].values.tolist()

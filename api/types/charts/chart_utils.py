@@ -4,16 +4,17 @@ from pyecharts.charts import Map
 from api.models import ResourceChartDetails
 
 
-def _get_map_chart(chart_details: ResourceChartDetails, data, values, value_col):
-    geo_chart = Map(init_opts=opts.InitOpts(width="1000px", height="100")) \
+def _get_map_chart(chart_details: ResourceChartDetails, data, values):
+    value_col = chart_details.value_column.field_name
+    map_chart = Map(init_opts=opts.InitOpts(width="1000px", height="100")) \
         .add(
         series_name=value_col,
         data_pair=values,
         maptype=f"{chart_details.chart_type.lower().replace('', '')}",
-    ) \
-        .set_global_opts(title_opts=opts.TitleOpts(title=chart_details.name)) \
-        .set_series_opts(label_opts=opts.LabelOpts(is_show=chart_details.show_legend))
-    geo_chart.set_global_opts(
+    )
+    # map_chart.set_global_opts(title_opts=opts.TitleOpts(title=chart_details.name)) \
+    map_chart.set_series_opts(label_opts=opts.LabelOpts(is_show=chart_details.show_legend))
+    map_chart.set_global_opts(
         title_opts=opts.TitleOpts(title=chart_details.name),
         visualmap_opts=opts.VisualMapOpts(
             max_=int(data[value_col].max()),
@@ -29,4 +30,4 @@ def _get_map_chart(chart_details: ResourceChartDetails, data, values, value_col)
             pos_top="bottom",
         )
     )
-    return geo_chart
+    return map_chart
