@@ -30,11 +30,15 @@ class MapChart(BaseChart):
             return self.data[[self.chart_details.region_column.field_name, self.chart_details.value_column.field_name]]
 
     def process_data(self) -> list:
-        data = self.aggregate_data()
-        region_col = self.chart_details.region_column.field_name
-        value_col = self.chart_details.value_column.field_name
-        data[region_col] = data[region_col].str.upper()
-        return data[[region_col, value_col]].values.tolist()
+        try:
+            data = self.aggregate_data()
+            region_col = self.chart_details.region_column.field_name
+            value_col = self.chart_details.value_column.field_name
+            data[region_col] = data[region_col].str.upper()
+            return data[[region_col, value_col]].values.tolist()
+        except Exception as e:
+            print("Error while creating chart", e)
+            return None
 
 
 @register_chart('ASSAM_DISTRICT')
