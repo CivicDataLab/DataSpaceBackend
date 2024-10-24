@@ -11,9 +11,12 @@ class MapChart(BaseChart):
     def create_chart(self) -> Chart | None:
         if not self.chart_details.region_column or not self.chart_details.value_column:
             return None
-
-        region_values = self.process_data()
-        return _get_map_chart(self.chart_details, self.data, region_values)
+        try:
+            region_values = self.process_data()
+            return _get_map_chart(self.chart_details, self.data, region_values)
+        except Exception as e:
+            print("Error while creating chart", e)
+            return None
 
     def aggregate_data(self) -> pd.DataFrame:
         """
@@ -30,15 +33,11 @@ class MapChart(BaseChart):
             return self.data[[self.chart_details.region_column.field_name, self.chart_details.value_column.field_name]]
 
     def process_data(self) -> list:
-        try:
-            data = self.aggregate_data()
-            region_col = self.chart_details.region_column.field_name
-            value_col = self.chart_details.value_column.field_name
-            data[region_col] = data[region_col].str.upper()
-            return data[[region_col, value_col]].values.tolist()
-        except Exception as e:
-            print("Error while creating chart", e)
-            return None
+        data = self.aggregate_data()
+        region_col = self.chart_details.region_column.field_name
+        value_col = self.chart_details.value_column.field_name
+        data[region_col] = data[region_col].str.upper()
+        return data[[region_col, value_col]].values.tolist()
 
 
 @register_chart('ASSAM_DISTRICT')
