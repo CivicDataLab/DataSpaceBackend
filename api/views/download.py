@@ -10,13 +10,18 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from snapshot_selenium import snapshot
 
-from api.models import Resource, ResourceChartDetails
+from api.models import Resource, ResourceChartDetails, ResourceChartImage
 from api.types.type_resource_chart import chart_base
 
 
 @sync_to_async
 def get_resource_chart(id):
     return ResourceChartDetails.objects.get(pk=id)
+
+
+@sync_to_async
+def get_resource_chart_image(id):
+    return ResourceChartImage.objects.get(pk=id)
 
 
 @sync_to_async
@@ -31,7 +36,14 @@ async def download(request, type, id):
             resource = await get_resource(id)
         except ObjectDoesNotExist:
             return HttpResponse("Resource not found", content_type='text/plain')
-        return await sync_to_async(get_file_response)(resource)
+        return await sync_to_async(get_file_resource_response)(resource)
+
+    elif type == "chart_image":
+        try:
+            chart_image = await get_resource_chart_image(id)
+        except ObjectDoesNotExist:
+            return HttpResponse("Chart image not found", content_type='text/plain')
+        return await sync_to_async(get_file_chart_image_response)(chart_image)
 
     elif type == "chart":
         try:
@@ -47,12 +59,24 @@ async def download(request, type, id):
             return HttpResponse("Chart not found", content_type='text/plain')
 
 
-def get_file_response(resource):
+def get_file_resource_response(resource: Resource):
     file_path = resource.resourcefiledetails.file.name
     if len(file_path):
         # Use magic to get MIME type
         mime_type = magic.from_buffer(resource.resourcefiledetails.file.read(), mime=True)
         response = HttpResponse(resource.resourcefiledetails.file, content_type=mime_type)
+        response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
+    else:
+        response = HttpResponse("File doesn't exist", content_type='text/plain')
+    return response
+
+
+def get_file_chart_image_response(chart_image: ResourceChartImage):
+    file_path = chart_image.image.name
+    if len(file_path):
+        # Use magic to get MIME type
+        mime_type = magic.from_buffer(chart_image.image.read(), mime=True)
+        response = HttpResponse(chart_image.image, content_type=mime_type)
         response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
     else:
         response = HttpResponse("File doesn't exist", content_type='text/plain')
