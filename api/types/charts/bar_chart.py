@@ -54,7 +54,7 @@ class BarChart(BaseChart):
         """
         Aggregate data based on x and y axis columns and return the resulting DataFrame.
         """
-        if self.chart_details.aggregate_type is not AggregateType.NONE:
+        if self.chart_details.aggregate_type != AggregateType.NONE:
             metrics = self.data.groupby(self.chart_details.x_axis_column.field_name).agg(
                 {self.chart_details.y_axis_column.field_name: self.chart_details.aggregate_type.lower()}
             ).reset_index()
