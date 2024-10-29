@@ -22,12 +22,9 @@ class ResourceChartImageInputPartial:
 @strawberry.type(name="Query")
 class Query:
     resource_chart_images: list[TypeResourceChartImage] = strawberry_django.field()
-
-    @strawberry.type(name="Query")
-    class Query:
-        @strawberry_django.field
-        def dataset_resource_charts(self, info, dataset_id: uuid.UUID) -> list[TypeResourceChartImage]:
-            return ResourceChartImage.objects.filter(dataset_id=dataset_id)
+    @strawberry_django.field
+    def dataset_resource_charts(self, info, dataset_id: uuid.UUID) -> list[TypeResourceChartImage]:
+        return ResourceChartImage.objects.filter(dataset_id=dataset_id)
 
 
 @strawberry.type
