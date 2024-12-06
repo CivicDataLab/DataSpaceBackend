@@ -15,8 +15,11 @@ class BarChart(BaseChart):
         if not self.chart_details.x_axis_column or not self.chart_details.y_axis_column:
             return None
 
+        # Filter data
+        filtered_data = self.filter_data()
+
         # Perform aggregation
-        metrics = self.aggregate_data()
+        metrics = self.aggregate_data(filtered_data)
 
         # Initialize the chart
         chart = self.initialize_chart(metrics)
@@ -24,6 +27,44 @@ class BarChart(BaseChart):
         self.configure_chart(chart)
 
         return chart
+
+    def filter_data(self) -> pd.DataFrame:
+        """
+        Filter the data based on the chart_details filters.
+        """
+        filtered_data = self.data
+
+        if self.chart_details.filters:
+            conditions = []
+            for filter_condition in self.chart_details.filters:
+                column = filter_condition.column.field_name
+                operator = filter_condition.operator
+                value = filter_condition.value
+
+                if operator == '==':
+                    conditions.append(filtered_data[column] == value)
+                elif operator == '!=':
+                    conditions.append(filtered_data[column] != value)
+                elif operator == '>':
+                    conditions.append(filtered_data[column] > value)
+                elif operator == '<':
+                    conditions.append(filtered_data[column] < value)
+                elif operator == '>=':
+                    conditions.append(filtered_data[column] >= value)
+                elif operator == '<=':
+                    conditions.append(filtered_data[column] <= value)
+                elif operator == 'in':
+                    conditions.append(filtered_data[column].isin(value))
+                elif operator == 'not in':
+                    conditions.append(~filtered_data[column].isin(value))
+
+            combined_condition = conditions[0]
+            for condition in conditions[1:]:
+                combined_condition &= condition
+
+            filtered_data = filtered_data[combined_condition]
+
+        return filtered_data
 
     def configure_chart(self, chart: Chart) -> None:
         """
@@ -50,12 +91,12 @@ class BarChart(BaseChart):
             chart.set_series_opts(
                 label_opts=opts.LabelOpts(position="right"))  # Labels on right side for horizontal bars
 
-    def aggregate_data(self) -> pd.DataFrame:
+    def aggregate_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Aggregate data based on x and y axis columns and return the resulting DataFrame.
         """
         if self.chart_details.aggregate_type != AggregateType.NONE:
-            metrics = self.data.groupby(self.chart_details.x_axis_column.field_name).agg(
+            metrics = data.groupby(self.chart_details.x_axis_column.field_name).agg(
                 {self.chart_details.y_axis_column.field_name: self.chart_details.aggregate_type.lower()}
             ).reset_index()
 
@@ -63,7 +104,7 @@ class BarChart(BaseChart):
             metrics.columns = [self.chart_details.x_axis_column.field_name, self.chart_details.y_axis_column.field_name]
             return metrics
         else:
-            return self.data[[self.chart_details.x_axis_column.field_name, self.chart_details.y_axis_column.field_name]]
+            return data[[self.chart_details.x_axis_column.field_name, self.chart_details.y_axis_column.field_name]]
 
     def initialize_chart(self, metrics: pd.DataFrame) -> Chart:
         """
