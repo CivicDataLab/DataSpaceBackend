@@ -28,44 +28,6 @@ class BarChart(BaseChart):
 
         return chart
 
-    def filter_data(self) -> pd.DataFrame:
-        """
-        Filter the data based on the chart_details filters.
-        """
-        filtered_data = self.data
-
-        if self.chart_details.filters:
-            conditions = []
-            for filter_condition in self.chart_details.filters:
-                column = filter_condition.column.field_name
-                operator = filter_condition.operator
-                value = filter_condition.value
-
-                if operator == '==':
-                    conditions.append(filtered_data[column] == value)
-                elif operator == '!=':
-                    conditions.append(filtered_data[column] != value)
-                elif operator == '>':
-                    conditions.append(filtered_data[column] > value)
-                elif operator == '<':
-                    conditions.append(filtered_data[column] < value)
-                elif operator == '>=':
-                    conditions.append(filtered_data[column] >= value)
-                elif operator == '<=':
-                    conditions.append(filtered_data[column] <= value)
-                elif operator == 'in':
-                    conditions.append(filtered_data[column].isin(value))
-                elif operator == 'not in':
-                    conditions.append(~filtered_data[column].isin(value))
-
-            combined_condition = conditions[0]
-            for condition in conditions[1:]:
-                combined_condition &= condition
-
-            filtered_data = filtered_data[combined_condition]
-
-        return filtered_data
-
     def configure_chart(self, chart: Chart) -> None:
         """
         Configure global options and axis settings based on chart type (horizontal or vertical).
