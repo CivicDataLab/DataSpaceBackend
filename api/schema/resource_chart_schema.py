@@ -1,13 +1,13 @@
 import datetime
 import uuid
-from typing import Optional
+from typing import Optional, List
 
 import strawberry
 import strawberry_django
 
-from api.utils.enums import ChartTypes, AggregateType
 from api.models import ResourceChartDetails, Resource, ResourceSchema
 from api.types import TypeResourceChart
+from api.utils.enums import ChartTypes, AggregateType
 
 ChartType = strawberry.enum(ChartTypes)
 AggregateType = strawberry.enum(AggregateType)
@@ -24,6 +24,13 @@ class Query:
         return ResourceChartDetails.objects.get(id=chart_details_id)
 
 
+@strawberry.input
+class FilterInput:
+    column: str
+    operator: str
+    value: str
+
+
 @strawberry_django.input(ResourceChartDetails)
 class ResourceChartInput:
     chart_id: Optional[uuid.UUID]
@@ -38,6 +45,7 @@ class ResourceChartInput:
     value_Column: Optional[str]
     y_axis_Column: Optional[str]
     show_legend: Optional[bool] = True
+    filters: Optional[List[FilterInput]] = None
     aggregate_type: AggregateType = AggregateType.NONE
 
 
@@ -63,6 +71,8 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
     if chart_input.value_Column:
         field = ResourceSchema.objects.get(id=chart_input.value_Column)
         chart.value_column = field
+    if chart_input.filters:
+        chart.filters = chart_input.filters
     chart.save()
 
 
@@ -70,7 +80,7 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
 class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=True)
-    def add_resource_chart(self, info, resource:uuid.UUID) -> TypeResourceChart:
+    def add_resource_chart(self, info, resource: uuid.UUID) -> TypeResourceChart:
         resource_chart: ResourceChartDetails = ResourceChartDetails()
         now = datetime.datetime.now()
         resource_chart.name = f"New chart {now.strftime('%d %b %Y - %H:%M')}"
@@ -81,6 +91,7 @@ class Mutation:
         resource_chart.resource = resource
         resource_chart.save()
         return resource_chart
+
     @strawberry_django.mutation(handle_django_errors=True)
     def edit_resource_chart(self, chart_input: ResourceChartInput) -> TypeResourceChart:
         if not chart_input.chart_id:
