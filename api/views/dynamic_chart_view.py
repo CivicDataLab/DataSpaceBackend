@@ -40,12 +40,12 @@ async def create_chart_details(request_details, resource):
         x_axis_label=x_axis_label,
         y_axis_label=y_axis_label,
         x_axis_column=await sync_to_async(ResourceSchema.objects.get)(
-            field_name=x_axis_column) if x_axis_column else None,
+            field_name=x_axis_column, resource=resource) if x_axis_column else None,
         y_axis_column=await sync_to_async(ResourceSchema.objects.get)(
-            field_name=y_axis_column) if y_axis_column else None,
+            field_name=y_axis_column, resource=resource) if y_axis_column else None,
         region_column=await sync_to_async(ResourceSchema.objects.get)(
-            field_name=region_column) if region_column else None,
-        value_column=await sync_to_async(ResourceSchema.objects.get)(field_name=value_column) if value_column else None,
+            field_name=region_column, resource=resource) if region_column else None,
+        value_column=await sync_to_async(ResourceSchema.objects.get)(field_name=value_column, resource=resource) if value_column else None,
         aggregate_type=aggregate_type,
         show_legend=show_legend
     )
