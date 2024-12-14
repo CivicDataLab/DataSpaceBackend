@@ -61,7 +61,7 @@ async def generate_dynamic_chart(request, resource_id):
             return JsonResponse({'error': 'Resource not found'}, status=404)
 
         # Validate and process chart details
-        chart_details = await create_chart_details(request.body, resource)
+        chart_details = await create_chart_details(json.loads(request.body), resource)
         if isinstance(chart_details, JsonResponse):
             return chart_details
 
