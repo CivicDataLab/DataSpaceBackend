@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from api.models import ResourceChartDetails, ResourceSchema, Resource
 from api.types.type_resource_chart import chart_base
 from api.utils.enums import ChartTypes
+from api.views.download_view import generate_chart
 
 
 async def create_chart_details(request_details, resource):
@@ -75,10 +76,9 @@ async def generate_dynamic_chart(request, resource_id):
                 return JsonResponse({'error': 'Failed to generate chart'}, status=400)
 
             if response_type == 'file':
-                # Render chart to a file and return it
-                file_path = f"/tmp/chart_{resource_id}.png"
-                chart.render(file_path)
-                return FileResponse(open(file_path, 'rb'), as_attachment=True, filename="chart.png")
+                response = await generate_chart(chart_details)
+                response['Content-Disposition'] = 'attachment; filename="chart.png"'
+                return response
 
             # Default response: JSON
             return JsonResponse(json.loads(chart.dump_options_with_quotes()), safe=False)
