@@ -1,7 +1,8 @@
 import json
 
 from asgiref.sync import sync_to_async
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
+from django.views.decorators.csrf import csrf_exempt
 
 from api.models import ResourceChartDetails, ResourceSchema, Resource
 from api.types.type_resource_chart import chart_base
@@ -50,6 +51,7 @@ async def create_chart_details(request, resource):
     )
 
 
+@csrf_exempt
 async def generate_dynamic_chart(request, resource_id):
     if request.method == "POST":
         try:
@@ -63,15 +65,25 @@ async def generate_dynamic_chart(request, resource_id):
         if isinstance(chart_details, JsonResponse):
             return chart_details
 
+        # Determine response type (default: json)
+        response_type = request.GET.get('response_type', 'json').lower()
+
         # Generate the chart using chart_base
         try:
             chart = await sync_to_async(chart_base)(chart_details)
-            if chart:
-                return JsonResponse(json.loads(chart.dump_options_with_quotes()), safe=False)
-            else:
+            if not chart:
                 return JsonResponse({'error': 'Failed to generate chart'}, status=400)
+
+            if response_type == 'file':
+                # Render chart to a file and return it
+                file_path = f"/tmp/chart_{resource_id}.png"
+                chart.render(file_path)
+                return FileResponse(open(file_path, 'rb'), as_attachment=True, filename="chart.png")
+
+            # Default response: JSON
+            return JsonResponse(json.loads(chart.dump_options_with_quotes()), safe=False)
+
         except Exception as e:
             return JsonResponse({'error': f'Error generating chart: {e}'}, status=500)
 
-    else:
-        return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
+    return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
