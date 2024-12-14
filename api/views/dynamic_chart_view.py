@@ -9,17 +9,17 @@ from api.types.type_resource_chart import chart_base
 from api.utils.enums import ChartTypes
 
 
-async def create_chart_details(request, resource):
+async def create_chart_details(request_details, resource):
     # Parse parameters from the request
-    chart_type = request.POST.get('chart_type')
-    x_axis_label = request.POST.get('x_axis_label', 'X-Axis')
-    y_axis_label = request.POST.get('y_axis_label', 'Y-Axis')
-    x_axis_column = request.POST.get('x_axis_column')
-    y_axis_column = request.POST.get('y_axis_column')
-    region_column = request.POST.get('region_column')
-    value_column = request.POST.get('value_column')
-    aggregate_type = request.POST.get('aggregate_type', 'none')
-    show_legend = request.POST.get('show_legend', False)
+    chart_type = request_details.get('chart_type')
+    x_axis_label = request_details.get('x_axis_label', 'X-Axis')
+    y_axis_label = request_details.get('y_axis_label', 'Y-Axis')
+    x_axis_column = request_details.get('x_axis_column')
+    y_axis_column = request_details.get('y_axis_column')
+    region_column = request_details.get('region_column')
+    value_column = request_details.get('value_column')
+    aggregate_type = request_details.get('aggregate_type', 'none')
+    show_legend = request_details.get('show_legend', False)
 
     # Validate chart type
     if chart_type not in ChartTypes.values:
@@ -61,7 +61,7 @@ async def generate_dynamic_chart(request, resource_id):
             return JsonResponse({'error': 'Resource not found'}, status=404)
 
         # Validate and process chart details
-        chart_details = await create_chart_details(request, resource)
+        chart_details = await create_chart_details(request.body, resource)
         if isinstance(chart_details, JsonResponse):
             return chart_details
 
