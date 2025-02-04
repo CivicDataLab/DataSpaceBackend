@@ -55,8 +55,10 @@ class BaseChart(ABC):
                 elif operator == '<=':
                     conditions.append(filtered_data[column] <= value)
                 elif operator == 'in':
+                    value = [val.strip() for val in value.split(",")] if "," in value else [value]
                     conditions.append(filtered_data[column].isin(value))
                 elif operator == 'not in':
+                    value = [val.strip() for val in value.split(",")] if "," in value else [value]
                     conditions.append(~filtered_data[column].isin(value))
 
             combined_condition = conditions[0]
