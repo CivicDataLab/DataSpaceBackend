@@ -9,6 +9,8 @@ from api.models import ResourceChartDetails
 CHART_TYPE_MAP = {
     "BAR_VERTICAL": Bar,
     "BAR_HORIZONTAL": Bar,
+    "GROUPED_BAR_VERTICAL": Bar,
+    "GROUPED_BAR_HORIZONTAL": Bar,
     "LINE": Line,
     "ASSAM_DISTRICT": Map,
     "ASSAM_RC": Map
