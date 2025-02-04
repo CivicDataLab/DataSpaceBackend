@@ -38,9 +38,9 @@ class BaseChart(ABC):
         if self.chart_details.filters:
             conditions = []
             for filter_condition in self.chart_details.filters:
-                column = filter_condition.column.field_name
-                operator = filter_condition.operator
-                value = filter_condition.value
+                column = filter_condition['column'].field_name
+                operator = filter_condition['operator']
+                value = filter_condition['value']
 
                 if operator == '==':
                     conditions.append(filtered_data[column] == value)
