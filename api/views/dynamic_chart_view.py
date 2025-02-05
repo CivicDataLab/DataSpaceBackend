@@ -17,10 +17,20 @@ async def create_chart_details(request_details, resource):
     y_axis_label = request_details.get('y_axis_label', 'Y-Axis')
     x_axis_column = request_details.get('x_axis_column')
     y_axis_column = request_details.get('y_axis_column')
+    y_axis_column_list = request_details.get('y_axis_column_list').split(',')
     region_column = request_details.get('region_column')
     value_column = request_details.get('value_column')
     aggregate_type = request_details.get('aggregate_type', 'none')
     show_legend = request_details.get('show_legend', False)
+    request_filters = request_details.get('filters', [])
+    filters = []
+    for request_filter in request_filters:
+        filter = {}
+        filter['column'] = await sync_to_async(ResourceSchema.objects.get)(field_name=request_filter['column'],
+                                                                           resource=resource)
+        filter['operator'] = request_filter['operator']
+        filter['value'] = request_filter['value']
+        filters.append(filter)
 
     # Validate chart type
     if chart_type not in ChartTypes.values:
@@ -48,7 +58,10 @@ async def create_chart_details(request_details, resource):
             field_name=region_column, resource=resource) if region_column else None,
         value_column=await sync_to_async(ResourceSchema.objects.get)(field_name=value_column, resource=resource) if value_column else None,
         aggregate_type=aggregate_type,
-        show_legend=show_legend
+        show_legend=show_legend,
+        y_axis_column_list=[await sync_to_async(ResourceSchema.objects.get)(
+            field_name=column, resource=resource) for column in y_axis_column_list] if y_axis_column_list else None,
+        filters=filters
     )
 
 

@@ -9,6 +9,8 @@ from api.models import ResourceChartDetails
 CHART_TYPE_MAP = {
     "BAR_VERTICAL": Bar,
     "BAR_HORIZONTAL": Bar,
+    "GROUPED_BAR_VERTICAL": Bar,
+    "GROUPED_BAR_HORIZONTAL": Bar,
     "LINE": Line,
     "ASSAM_DISTRICT": Map,
     "ASSAM_RC": Map
@@ -27,40 +29,38 @@ class BaseChart(ABC):
     def get_chart_class(self):
         return CHART_TYPE_MAP.get(self.chart_details.chart_type)
 
+    def _process_value(self, value: str, operator: str) -> any:
+        """Process the filter value based on the operator."""
+        if operator in ('in', 'not in'):
+            return [val.strip() for val in value.split(",")] if "," in value else [value]
+        return value
+
     def filter_data(self) -> pd.DataFrame:
         """
         Filter the data based on the chart_details filters.
         """
         filtered_data = self.data
+        if not self.chart_details.filters:
+            return filtered_data
 
-        if self.chart_details.filters:
-            conditions = []
-            for filter_condition in self.chart_details.filters:
-                column = filter_condition.column.field_name
-                operator = filter_condition.operator
-                value = filter_condition.value
+        operator_map = {
+            '==': lambda col, val: col == val,
+            '!=': lambda col, val: col != val,
+            '>': lambda col, val: col > val,
+            '<': lambda col, val: col < val,
+            '>=': lambda col, val: col >= val,
+            '<=': lambda col, val: col <= val,
+            'in': lambda col, val: col.isin(val),
+            'not in': lambda col, val: ~col.isin(val)
+        }
 
-                if operator == '==':
-                    conditions.append(filtered_data[column] == value)
-                elif operator == '!=':
-                    conditions.append(filtered_data[column] != value)
-                elif operator == '>':
-                    conditions.append(filtered_data[column] > value)
-                elif operator == '<':
-                    conditions.append(filtered_data[column] < value)
-                elif operator == '>=':
-                    conditions.append(filtered_data[column] >= value)
-                elif operator == '<=':
-                    conditions.append(filtered_data[column] <= value)
-                elif operator == 'in':
-                    conditions.append(filtered_data[column].isin(value))
-                elif operator == 'not in':
-                    conditions.append(~filtered_data[column].isin(value))
+        conditions = []
+        for filter_condition in self.chart_details.filters:
+            column = filter_condition['column'].field_name
+            operator = filter_condition['operator']
+            value = self._process_value(filter_condition['value'], operator)
+            
+            if operator in operator_map:
+                conditions.append(operator_map[operator](filtered_data[column], value))
 
-            combined_condition = conditions[0]
-            for condition in conditions[1:]:
-                combined_condition &= condition
-
-            filtered_data = filtered_data[combined_condition]
-
-        return filtered_data
+        return filtered_data[pd.concat(conditions, axis=1).all(axis=1)] if conditions else filtered_data
