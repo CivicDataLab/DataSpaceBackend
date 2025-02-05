@@ -9,7 +9,7 @@ from api.utils.enums import AggregateType
 
 class MapChart(BaseChart):
     def create_chart(self) -> Chart | None:
-        if not self.chart_details.region_column or not self.chart_details.value_column:
+        if 'region_column' not in self.options or 'value_column' not in self.options:
             return None
         try:
             region_values = self.process_data()
@@ -22,20 +22,26 @@ class MapChart(BaseChart):
         """
         Aggregate data based on region and value columns and return the resulting DataFrame.
         """
-        if self.chart_details.aggregate_type != AggregateType.NONE:
-            metrics = self.data.groupby(self.chart_details.region_column.field_name).agg(
-                {self.chart_details.value_column.field_name: self.chart_details.aggregate_type.lower()}
+        region_column = self.options['region_column']
+        value_column = self.options['value_column']
+        aggregate_type = self.options.get('aggregate_type', 'none')
+
+        if aggregate_type != 'none':
+            metrics = self.data.groupby(region_column.field_name).agg(
+                {value_column.field_name: aggregate_type.lower()}
             ).reset_index()
 
-            metrics.columns = [self.chart_details.region_column.field_name, self.chart_details.value_column.field_name]
+            metrics.columns = [region_column.field_name, value_column.field_name]
             return metrics
         else:
-            return self.data[[self.chart_details.region_column.field_name, self.chart_details.value_column.field_name]]
+            return self.data[[region_column.field_name, value_column.field_name]]
 
     def process_data(self) -> list:
         data = self.aggregate_data()
-        region_col = self.chart_details.region_column.field_name
-        value_col = self.chart_details.value_column.field_name
+        region_column = self.options['region_column']
+        value_column = self.options['value_column']
+        region_col = region_column.field_name
+        value_col = value_column.field_name
         data[region_col] = data[region_col].str.upper()
         return data[[region_col, value_col]].values.tolist()
 

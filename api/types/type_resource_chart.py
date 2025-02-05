@@ -36,11 +36,9 @@ def chart_base(chart_details: ResourceChartDetails) -> None | Chart:
 @strawberry_django.type(ResourceChartDetails, fields="__all__")
 class TypeResourceChart:
     resource: TypeResource
-    chart: JSON
-    x_axis_column: Optional[TypeResourceSchema]
-    y_axis_column: Optional[TypeResourceSchema]
-    region_column: Optional[TypeResourceSchema]
-    value_column: Optional[TypeResourceSchema]
+    chart_type: str
+    options: JSON
+    filters: JSON
 
     @strawberry.field
     def chart(self: ResourceChartDetails, info) -> JSON:

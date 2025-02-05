@@ -21,6 +21,7 @@ class BaseChart(ABC):
     def __init__(self, chart_details: ResourceChartDetails, data: pd.DataFrame):
         self.chart_details = chart_details
         self.data = data
+        self.options = chart_details.options
 
     @abstractmethod
     def create_chart(self) -> Chart:

@@ -12,7 +12,7 @@ from api.utils.enums import AggregateType
 @register_chart('LINE')
 class BarChart(BaseChart):
     def create_chart(self) -> Chart | None:
-        if not self.chart_details.x_axis_column or not self.chart_details.y_axis_column:
+        if 'x_axis_column' not in self.options or 'y_axis_column' not in self.options:
             return None
 
         # Filter data
@@ -37,14 +37,14 @@ class BarChart(BaseChart):
 
         # Common configuration
         chart.set_global_opts(
-            legend_opts=opts.LegendOpts(is_show=self.chart_details.show_legend),
+            legend_opts=opts.LegendOpts(is_show=self.options.get('show_legend', False)),
             xaxis_opts=opts.AxisOpts(
                 type_="value" if is_horizontal else "category",
-                name=self.chart_details.y_axis_label if is_horizontal else self.chart_details.x_axis_label
+                name=self.options.get('y_axis_label', 'Y-Axis') if is_horizontal else self.options.get('x_axis_label', 'X-Axis')
             ),
             yaxis_opts=opts.AxisOpts(
                 type_="category" if is_horizontal else "value",
-                name=self.chart_details.x_axis_label if is_horizontal else self.chart_details.y_axis_label
+                name=self.options.get('x_axis_label', 'X-Axis') if is_horizontal else self.options.get('y_axis_label', 'Y-Axis')
             )
         )
 
@@ -57,16 +57,20 @@ class BarChart(BaseChart):
         """
         Aggregate data based on x and y axis columns and return the resulting DataFrame.
         """
-        if self.chart_details.aggregate_type != AggregateType.NONE:
-            metrics = data.groupby(self.chart_details.x_axis_column.field_name).agg(
-                {self.chart_details.y_axis_column.field_name: self.chart_details.aggregate_type.lower()}
+        x_axis_column = self.options['x_axis_column']
+        y_axis_column = self.options['y_axis_column']
+        aggregate_type = self.options.get('aggregate_type', 'none')
+
+        if aggregate_type != 'none':
+            metrics = data.groupby(x_axis_column.field_name).agg(
+                {y_axis_column.field_name: aggregate_type.lower()}
             ).reset_index()
 
             # Rename columns for clarity
-            metrics.columns = [self.chart_details.x_axis_column.field_name, self.chart_details.y_axis_column.field_name]
+            metrics.columns = [x_axis_column.field_name, y_axis_column.field_name]
             return metrics
         else:
-            return data[[self.chart_details.x_axis_column.field_name, self.chart_details.y_axis_column.field_name]]
+            return data[[x_axis_column.field_name, y_axis_column.field_name]]
 
     def initialize_chart(self, metrics: pd.DataFrame) -> Chart:
         """
@@ -75,8 +79,14 @@ class BarChart(BaseChart):
         chart_class = self.get_chart_class()  # Dynamically fetch the chart class
         chart = chart_class()
 
+        x_axis_column = self.options['x_axis_column']
+        y_axis_column = self.options['y_axis_column']
+
         # Add x and y axis data
-        chart.add_xaxis(metrics[self.chart_details.x_axis_column.field_name].tolist())
-        chart.add_yaxis(self.chart_details.y_axis_label, metrics[self.chart_details.y_axis_column.field_name].tolist())
+        chart.add_xaxis(metrics[x_axis_column.field_name].tolist())
+        chart.add_yaxis(
+            self.options.get('y_axis_label', 'Y-Axis'), 
+            metrics[y_axis_column.field_name].tolist()
+        )
 
         return chart

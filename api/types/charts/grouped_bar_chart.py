@@ -11,7 +11,7 @@ from api.utils.enums import AggregateType
 @register_chart('GROUPED_BAR_VERTICAL')
 class GroupedBarChart(BaseChart):
     def create_chart(self) -> Chart | None:
-        if not self.chart_details.x_axis_column or not self.chart_details.y_axis_column_list:
+        if 'x_axis_column' not in self.options or 'y_axis_column_list' not in self.options:
             return None
 
         # Filter data
@@ -36,14 +36,14 @@ class GroupedBarChart(BaseChart):
 
         # Common configuration
         chart.set_global_opts(
-            legend_opts=opts.LegendOpts(is_show=self.chart_details.show_legend),
+            legend_opts=opts.LegendOpts(is_show=self.options.get('show_legend', False)),
             xaxis_opts=opts.AxisOpts(
                 type_="value" if is_horizontal else "category",
-                name=self.chart_details.y_axis_label if is_horizontal else self.chart_details.x_axis_label
+                name=self.options.get('y_axis_label', 'Y-Axis') if is_horizontal else self.options.get('x_axis_label', 'X-Axis')
             ),
             yaxis_opts=opts.AxisOpts(
                 type_="category" if is_horizontal else "value",
-                name=self.chart_details.x_axis_label if is_horizontal else self.chart_details.y_axis_label
+                name=self.options.get('x_axis_label', 'X-Axis') if is_horizontal else self.options.get('y_axis_label', 'Y-Axis')
             )
         )
 
@@ -74,9 +74,12 @@ class GroupedBarChart(BaseChart):
         chart_class = self.get_chart_class()  # Dynamically fetch the chart class
         chart = chart_class()
 
+        x_axis_column = self.options['x_axis_column']
+        y_axis_column_list = self.options['y_axis_column_list']
+
         # Add x and y axis data
-        chart.add_xaxis(filtered_data[self.chart_details.x_axis_column.field_name].tolist())
-        for y_axis_column in self.chart_details.y_axis_column_list:
+        chart.add_xaxis(filtered_data[x_axis_column.field_name].tolist())
+        for y_axis_column in y_axis_column_list:
             chart.add_yaxis(y_axis_column.field_name, filtered_data[y_axis_column.field_name].tolist())
 
         return chart

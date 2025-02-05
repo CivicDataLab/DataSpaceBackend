@@ -13,15 +13,12 @@ from api.views.download_view import generate_chart
 async def create_chart_details(request_details, resource):
     # Parse parameters from the request
     chart_type = request_details.get('chart_type')
-    x_axis_label = request_details.get('x_axis_label', 'X-Axis')
-    y_axis_label = request_details.get('y_axis_label', 'Y-Axis')
-    x_axis_column = request_details.get('x_axis_column')
-    y_axis_column = request_details.get('y_axis_column')
-    y_axis_column_list = request_details.get('y_axis_column_list').split(',')
-    region_column = request_details.get('region_column')
-    value_column = request_details.get('value_column')
-    aggregate_type = request_details.get('aggregate_type', 'none')
-    show_legend = request_details.get('show_legend', False)
+
+    # Validate chart type
+    if chart_type not in ChartTypes.values:
+        return JsonResponse({'error': f'Unsupported chart type: {chart_type}'}, status=400)
+
+    # Extract filters
     request_filters = request_details.get('filters', [])
     filters = []
     for request_filter in request_filters:
@@ -32,35 +29,50 @@ async def create_chart_details(request_details, resource):
         filter['value'] = request_filter['value']
         filters.append(filter)
 
-    # Validate chart type
-    if chart_type not in ChartTypes.values:
-        return JsonResponse({'error': f'Unsupported chart type: {chart_type}'}, status=400)
+    # Build options dictionary
+    options = {
+        'x_axis_label': request_details.get('x_axis_label', 'X-Axis'),
+        'y_axis_label': request_details.get('y_axis_label', 'Y-Axis'),
+        'show_legend': request_details.get('show_legend', False),
+        'aggregate_type': request_details.get('aggregate_type', 'none')
+    }
+
+    # Add column references to options
+    if x_axis_column := request_details.get('x_axis_column'):
+        options['x_axis_column'] = await sync_to_async(ResourceSchema.objects.get)(
+            field_name=x_axis_column, resource=resource)
+    
+    if y_axis_column := request_details.get('y_axis_column'):
+        options['y_axis_column'] = await sync_to_async(ResourceSchema.objects.get)(
+            field_name=y_axis_column, resource=resource)
+
+    if region_column := request_details.get('region_column'):
+        options['region_column'] = await sync_to_async(ResourceSchema.objects.get)(
+            field_name=region_column, resource=resource)
+
+    if value_column := request_details.get('value_column'):
+        options['value_column'] = await sync_to_async(ResourceSchema.objects.get)(
+            field_name=value_column, resource=resource)
+
+    if y_axis_column_list := request_details.get('y_axis_column_list'):
+        options['y_axis_column_list'] = [
+            await sync_to_async(ResourceSchema.objects.get)(field_name=column, resource=resource) 
+            for column in y_axis_column_list.split(',')
+        ]
 
     # Validate required columns based on chart type
     if chart_type in ['BAR_VERTICAL', 'BAR_HORIZONTAL', 'LINE']:
-        if not x_axis_column or not y_axis_column:
+        if 'x_axis_column' not in options or 'y_axis_column' not in options:
             return JsonResponse({'error': 'Missing required parameters: x_axis_column or y_axis_column'}, status=400)
     elif chart_type in ['ASSAM_DISTRICT', 'ASSAM_RC']:
-        if not region_column or not value_column:
+        if 'region_column' not in options or 'value_column' not in options:
             return JsonResponse({'error': 'Missing required parameters: region_column or value_column'}, status=400)
 
-    # Dynamically create ResourceChartDetails instance without saving it
+    # Create ResourceChartDetails instance without saving it
     return ResourceChartDetails(
         resource=resource,
         chart_type=chart_type,
-        x_axis_label=x_axis_label,
-        y_axis_label=y_axis_label,
-        x_axis_column=await sync_to_async(ResourceSchema.objects.get)(
-            field_name=x_axis_column, resource=resource) if x_axis_column else None,
-        y_axis_column=await sync_to_async(ResourceSchema.objects.get)(
-            field_name=y_axis_column, resource=resource) if y_axis_column else None,
-        region_column=await sync_to_async(ResourceSchema.objects.get)(
-            field_name=region_column, resource=resource) if region_column else None,
-        value_column=await sync_to_async(ResourceSchema.objects.get)(field_name=value_column, resource=resource) if value_column else None,
-        aggregate_type=aggregate_type,
-        show_legend=show_legend,
-        y_axis_column_list=[await sync_to_async(ResourceSchema.objects.get)(
-            field_name=column, resource=resource) for column in y_axis_column_list] if y_axis_column_list else None,
+        options=options,
         filters=filters
     )
 

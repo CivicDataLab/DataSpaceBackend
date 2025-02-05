@@ -38,39 +38,17 @@ class ResourceChartInput:
     name: Optional[str]
     description: Optional[str]
     type: ChartType
-    x_axis_label: Optional[str] = ""
-    y_axis_label: Optional[str] = ""
-    x_axis_Column: Optional[str]
-    region_Column: Optional[str]
-    value_Column: Optional[str]
-    y_axis_Column: Optional[str]
-    show_legend: Optional[bool] = True
+    options: Optional[dict] = {}
     filters: Optional[List[FilterInput]] = None
-    aggregate_type: AggregateType = AggregateType.NONE
 
 
 def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChartInput, resource: Resource):
     chart.chart_type = chart_input.type
-    chart.show_legend = chart_input.show_legend
-    chart.aggregate_type = chart_input.aggregate_type
-    chart.x_axis_label = chart_input.x_axis_label
-    chart.y_axis_label = chart_input.y_axis_label
+    chart.options = chart_input.options
     if chart_input.name:
         chart.name = chart_input.name
     if chart_input.description:
         chart.description = chart_input.description
-    if chart_input.x_axis_Column:
-        field = ResourceSchema.objects.get(id=chart_input.x_axis_Column)
-        chart.x_axis_column = field
-    if chart_input.y_axis_Column:
-        field = ResourceSchema.objects.get(id=chart_input.y_axis_Column)
-        chart.y_axis_column = field
-    if chart_input.region_Column:
-        field = ResourceSchema.objects.get(id=chart_input.region_Column)
-        chart.region_column = field
-    if chart_input.value_Column:
-        field = ResourceSchema.objects.get(id=chart_input.value_Column)
-        chart.value_column = field
     if chart_input.filters:
         chart.filters = chart_input.filters
     chart.save()
