@@ -34,13 +34,20 @@ class FilterInput:
 
 
 @strawberry.input
+class YAxisColumnConfig:
+    field_name: str
+    label: Optional[str] = None
+    color: Optional[str] = None
+
+
+@strawberry.input
 class ChartOptions:
     x_axis_label: str = "X-Axis"
     y_axis_label: str = "Y-Axis"
     show_legend: bool = False
     aggregate_type: str = "none"
     x_axis_column: Optional[str] = None
-    y_axis_column: List[str] = field(default_factory=list)
+    y_axis_column: List[YAxisColumnConfig] = field(default_factory=list)
     region_column: Optional[str] = None
     value_column: Optional[str] = None
 
@@ -70,8 +77,12 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
             elif field_name == 'y_axis_column':
                 if value:  # Only process if list is not empty
                     options[field_name] = [
-                        ResourceSchema.objects.get(id=column_id)
-                        for column_id in value
+                        {
+                            'field': ResourceSchema.objects.get(id=column['field_name']),
+                            'label': column['label'],
+                            'color': column.get('color')
+                        }
+                        for column in value
                     ]
             else:
                 options[field_name] = value

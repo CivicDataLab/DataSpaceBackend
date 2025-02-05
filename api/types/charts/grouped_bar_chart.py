@@ -20,10 +20,7 @@ class GroupedBarChart(BaseChart):
             return None
 
         # Filter data
-        filtered_data = self.filter_data()
-
-        # Perform aggregation
-        # metrics = self.aggregate_data(filtered_data)
+        filtered_data = self.filter_data()        
 
         # Initialize the chart
         chart = self.initialize_chart(filtered_data)
@@ -55,22 +52,22 @@ class GroupedBarChart(BaseChart):
         if is_horizontal:
             chart.reversal_axis()  # Flip axis for horizontal bar chart
             chart.set_series_opts(
-                label_opts=opts.LabelOpts(position="right"))  # Labels on right side for horizontal bars
-
-    # def aggregate_data(self, data: pd.DataFrame) -> pd.DataFrame:
-    #     """
-    #     Aggregate data based on x and y axis columns and return the resulting DataFrame.
-    #     """
-    #     if self.chart_details.aggregate_type != AggregateType.NONE:
-    #         metrics = data.groupby(self.chart_details.x_axis_column.field_name).agg(
-    #             {self.chart_details.y_axis_column.field_name: self.chart_details.aggregate_type.lower()}
-    #         ).reset_index()
-
-    #         # Rename columns for clarity
-    #         metrics.columns = [self.chart_details.x_axis_column.field_name, self.chart_details.y_axis_column.field_name]
-    #         return metrics
-    #     else:
-    #         return data[[self.chart_details.x_axis_column.field_name, self.chart_details.y_axis_column.field_name]]
+                label_opts=opts.LabelOpts(
+                    position="right",
+                    rotate=-90,
+                    font_size=12,
+                    color="#000"
+                )
+            )
+        else:
+            chart.set_series_opts(
+                label_opts=opts.LabelOpts(
+                    position="top",
+                    rotate=-90,
+                    font_size=12,
+                    color="#000"
+                )
+            )
 
     def initialize_chart(self, filtered_data: pd.DataFrame) -> Chart:
         """
@@ -85,6 +82,11 @@ class GroupedBarChart(BaseChart):
         # Add x and y axis data
         chart.add_xaxis(filtered_data[x_axis_column.field_name].tolist())
         for y_axis_column in y_axis_columns:
-            chart.add_yaxis(y_axis_column.field_name, filtered_data[y_axis_column.field_name].tolist())
+            chart.add_yaxis(
+                series_name=y_axis_column.get('label', y_axis_column['field_name']),
+                y_axis=filtered_data[y_axis_column['field'].field_name].tolist(),
+                itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
+                color = y_axis_column.get('color')
+            )
 
         return chart

@@ -57,14 +57,30 @@ class BarChart(BaseChart):
         if is_horizontal:
             chart.reversal_axis()  # Flip axis for horizontal bar chart
             chart.set_series_opts(
-                label_opts=opts.LabelOpts(position="right"))  # Labels on right side for horizontal bars
+                label_opts=opts.LabelOpts(
+                    position="right",
+                    rotate=-90,
+                    font_size=12,
+                    color='#000'
+                )
+            )
+        else:
+            chart.set_series_opts(
+                label_opts=opts.LabelOpts(
+                    position="top",
+                    rotate=-90,
+                    font_size=12,
+                    color='#000'
+                )
+            )
+
 
     def aggregate_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Aggregate data based on x and y axis columns and return the resulting DataFrame.
         """
         x_axis_column = self.options['x_axis_column']
-        y_axis_column = self.options['y_axis_column']
+        y_axis_column = self.options['y_axis_column']['field']
         aggregate_type = self.options.get('aggregate_type', 'none')
 
         if aggregate_type != 'none':
@@ -86,13 +102,21 @@ class BarChart(BaseChart):
         chart = chart_class()
 
         x_axis_column = self.options['x_axis_column']
-        y_axis_column = self.options['y_axis_column']
+        y_axis_column = self.options['y_axis_column']['field']
 
         # Add x and y axis data
         chart.add_xaxis(metrics[x_axis_column.field_name].tolist())
         chart.add_yaxis(
             self.options.get('y_axis_label', 'Y-Axis'), 
-            metrics[y_axis_column.field_name].tolist()
+            metrics[y_axis_column.field_name].tolist(),
+            itemstyle_opts=opts.ItemStyleOpts(color=self.options['y_axis_column']['color']),
+            label_opts=opts.LabelOpts(
+                position="top",
+                rotate=-90,
+                font_size=12,
+                color='#000'
+            ),
+            color = self.options['y_axis_column']['color']
         )
 
         return chart

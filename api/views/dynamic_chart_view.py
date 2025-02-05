@@ -42,17 +42,21 @@ async def create_chart_details(request_details, resource):
         options['x_axis_column'] = await sync_to_async(ResourceSchema.objects.get)(
             field_name=x_axis_column, resource=resource)
 
-    # Handle y-axis columns
+    # Handle y-axis columns with configuration
     y_axis_columns = []
     
-    # Then check for y-axis column list
-    if y_axis_column_list := request_details.get('y_axis_column_list'):
-        columns = y_axis_column_list.split(',')
-        for column in columns:
-            if column not in [col.field_name for col in y_axis_columns]:  # Avoid duplicates
-                y_axis_columns.append(await sync_to_async(ResourceSchema.objects.get)(
-                    field_name=column, resource=resource))
-    
+    # Handle y-axis column configurations
+    if y_axis_configs := request_details.get('y_axis_column', []):
+        for config in y_axis_configs:
+            
+            field = await sync_to_async(ResourceSchema.objects.get)(
+                field_name=config['field_name'], resource=resource)
+            y_axis_columns.append({
+                'field': field,
+                'label': config.get('label', field.field_name),
+                'color': config.get('color')
+            })
+
     if y_axis_columns:
         options['y_axis_column'] = y_axis_columns
 
