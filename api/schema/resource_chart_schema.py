@@ -5,6 +5,7 @@ from dataclasses import field
 
 import strawberry
 import strawberry_django
+from strawberry.scalars import JSON
 
 from api.models import ResourceChartDetails, Resource, ResourceSchema
 from api.types import TypeResourceChart
@@ -32,6 +33,19 @@ class FilterInput:
     value: str
 
 
+@strawberry.input
+class ChartOptions:
+    x_axis_label: str = "X-Axis"
+    y_axis_label: str = "Y-Axis"
+    show_legend: bool = False
+    aggregate_type: str = "none"
+    x_axis_column: Optional[str] = None
+    y_axis_column: Optional[str] = None
+    region_column: Optional[str] = None
+    value_column: Optional[str] = None
+    y_axis_column_list: Optional[List[str]] = field(default_factory=list)
+
+
 @strawberry_django.input(ResourceChartDetails)
 class ResourceChartInput:
     chart_id: Optional[uuid.UUID]
@@ -39,19 +53,39 @@ class ResourceChartInput:
     name: Optional[str]
     description: Optional[str]
     type: ChartType
-    options: dict = field(default_factory=dict)
+    options: ChartOptions = field(default_factory=ChartOptions)
     filters: List[FilterInput] = field(default_factory=list)
 
 
 def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChartInput, resource: Resource):
     chart.chart_type = chart_input.type
-    chart.options = chart_input.options
+    
+    # Build options dictionary
+    options = {}
+    for field_name, value in vars(chart_input.options).items():
+        if value is not None:
+            if field_name in ['x_axis_column', 'y_axis_column', 'region_column', 'value_column']:
+                if value:  # Only process if value is not empty
+                    field = ResourceSchema.objects.get(id=value)
+                    options[field_name] = field
+            elif field_name == 'y_axis_column_list':
+                if value:  # Only process if list is not empty
+                    options[field_name] = [
+                        ResourceSchema.objects.get(id=column_id)
+                        for column_id in value
+                    ]
+            else:
+                options[field_name] = value
+
     if chart_input.name:
         chart.name = chart_input.name
     if chart_input.description:
         chart.description = chart_input.description
+
+    # Update options and filters
+    chart.options = options
     if chart_input.filters:
-        chart.filters = chart_input.filters
+        chart.filters = [vars(f) for f in chart_input.filters]
     chart.save()
 
 
