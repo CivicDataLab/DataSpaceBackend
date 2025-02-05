@@ -80,13 +80,17 @@ class GroupedBarChart(BaseChart):
         y_axis_columns = self.options['y_axis_column']
 
         # Add x and y axis data
-        chart.add_xaxis(filtered_data[x_axis_column.field_name].tolist())
-        for y_axis_column in y_axis_columns:
-            chart.add_yaxis(
-                series_name=y_axis_column.get('label', y_axis_column['field_name']),
-                y_axis=filtered_data[y_axis_column['field'].field_name].tolist(),
-                itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
-                color = y_axis_column.get('color')
-            )
+        try:
+            chart.add_xaxis(filtered_data[x_axis_column.field_name].tolist())
+            for y_axis_column in y_axis_columns:
+                chart.add_yaxis(
+                    series_name=y_axis_column.get('label', y_axis_column['field_name']),
+                    y_axis=filtered_data[y_axis_column['field'].field_name].tolist(),
+                    itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
+                    color = y_axis_column.get('color')
+                )
+        except Exception as e:
+            print(f"Error adding data to chart: {e}")
+            return None
 
         return chart
