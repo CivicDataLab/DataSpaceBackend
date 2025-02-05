@@ -40,10 +40,9 @@ class ChartOptions:
     show_legend: bool = False
     aggregate_type: str = "none"
     x_axis_column: Optional[str] = None
-    y_axis_column: Optional[str] = None
+    y_axis_column: List[str] = field(default_factory=list)
     region_column: Optional[str] = None
     value_column: Optional[str] = None
-    y_axis_column_list: Optional[List[str]] = field(default_factory=list)
 
 
 @strawberry_django.input(ResourceChartDetails)
@@ -64,11 +63,11 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
     options = {}
     for field_name, value in vars(chart_input.options).items():
         if value is not None:
-            if field_name in ['x_axis_column', 'y_axis_column', 'region_column', 'value_column']:
+            if field_name in ['x_axis_column', 'region_column', 'value_column']:
                 if value:  # Only process if value is not empty
                     field = ResourceSchema.objects.get(id=value)
                     options[field_name] = field
-            elif field_name == 'y_axis_column_list':
+            elif field_name == 'y_axis_column':
                 if value:  # Only process if list is not empty
                     options[field_name] = [
                         ResourceSchema.objects.get(id=column_id)

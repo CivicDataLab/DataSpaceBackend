@@ -15,6 +15,12 @@ class BarChart(BaseChart):
         if 'x_axis_column' not in self.options or 'y_axis_column' not in self.options:
             return None
 
+        # Get the first y-axis column for single bar chart
+        y_axis_columns = self.options['y_axis_column']
+        if not y_axis_columns:
+            return None
+        self.options['y_axis_column'] = y_axis_columns[0]
+
         # Filter data
         filtered_data = self.filter_data()
 

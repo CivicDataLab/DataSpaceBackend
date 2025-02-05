@@ -11,7 +11,12 @@ from api.utils.enums import AggregateType
 @register_chart('GROUPED_BAR_VERTICAL')
 class GroupedBarChart(BaseChart):
     def create_chart(self) -> Chart | None:
-        if 'x_axis_column' not in self.options or 'y_axis_column_list' not in self.options:
+        if 'x_axis_column' not in self.options or 'y_axis_column' not in self.options:
+            return None
+
+        # Check if we have multiple y-axis columns for grouped bar chart
+        y_axis_columns = self.options['y_axis_column']
+        if len(y_axis_columns) <= 1:
             return None
 
         # Filter data
@@ -75,11 +80,11 @@ class GroupedBarChart(BaseChart):
         chart = chart_class()
 
         x_axis_column = self.options['x_axis_column']
-        y_axis_column_list = self.options['y_axis_column_list']
+        y_axis_columns = self.options['y_axis_column']
 
         # Add x and y axis data
         chart.add_xaxis(filtered_data[x_axis_column.field_name].tolist())
-        for y_axis_column in y_axis_column_list:
+        for y_axis_column in y_axis_columns:
             chart.add_yaxis(y_axis_column.field_name, filtered_data[y_axis_column.field_name].tolist())
 
         return chart

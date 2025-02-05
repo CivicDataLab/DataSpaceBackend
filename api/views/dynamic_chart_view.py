@@ -41,10 +41,20 @@ async def create_chart_details(request_details, resource):
     if x_axis_column := request_details.get('x_axis_column'):
         options['x_axis_column'] = await sync_to_async(ResourceSchema.objects.get)(
             field_name=x_axis_column, resource=resource)
+
+    # Handle y-axis columns
+    y_axis_columns = []
     
-    if y_axis_column := request_details.get('y_axis_column'):
-        options['y_axis_column'] = await sync_to_async(ResourceSchema.objects.get)(
-            field_name=y_axis_column, resource=resource)
+    # Then check for y-axis column list
+    if y_axis_column_list := request_details.get('y_axis_column_list'):
+        columns = y_axis_column_list.split(',')
+        for column in columns:
+            if column not in [col.field_name for col in y_axis_columns]:  # Avoid duplicates
+                y_axis_columns.append(await sync_to_async(ResourceSchema.objects.get)(
+                    field_name=column, resource=resource))
+    
+    if y_axis_columns:
+        options['y_axis_column'] = y_axis_columns
 
     if region_column := request_details.get('region_column'):
         options['region_column'] = await sync_to_async(ResourceSchema.objects.get)(
@@ -54,16 +64,17 @@ async def create_chart_details(request_details, resource):
         options['value_column'] = await sync_to_async(ResourceSchema.objects.get)(
             field_name=value_column, resource=resource)
 
-    if y_axis_column_list := request_details.get('y_axis_column_list'):
-        options['y_axis_column_list'] = [
-            await sync_to_async(ResourceSchema.objects.get)(field_name=column, resource=resource) 
-            for column in y_axis_column_list.split(',')
-        ]
-
     # Validate required columns based on chart type
     if chart_type in ['BAR_VERTICAL', 'BAR_HORIZONTAL', 'LINE']:
         if 'x_axis_column' not in options or 'y_axis_column' not in options:
             return JsonResponse({'error': 'Missing required parameters: x_axis_column or y_axis_column'}, status=400)
+        if chart_type != 'GROUPED_BAR_VERTICAL' and chart_type != 'GROUPED_BAR_HORIZONTAL' and len(options['y_axis_column']) > 1:
+            return JsonResponse({'error': 'Single column charts can only have one y_axis_column'}, status=400)
+    elif chart_type in ['GROUPED_BAR_VERTICAL', 'GROUPED_BAR_HORIZONTAL']:
+        if 'x_axis_column' not in options or 'y_axis_column' not in options:
+            return JsonResponse({'error': 'Missing required parameters: x_axis_column or y_axis_column'}, status=400)
+        if len(options['y_axis_column']) <= 1:
+            return JsonResponse({'error': 'Grouped bar charts require multiple y_axis_columns'}, status=400)
     elif chart_type in ['ASSAM_DISTRICT', 'ASSAM_RC']:
         if 'region_column' not in options or 'value_column' not in options:
             return JsonResponse({'error': 'Missing required parameters: region_column or value_column'}, status=400)
