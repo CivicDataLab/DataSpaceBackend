@@ -1,6 +1,7 @@
 import datetime
 import uuid
 from typing import Optional, List
+from dataclasses import field
 
 import strawberry
 import strawberry_django
@@ -38,8 +39,8 @@ class ResourceChartInput:
     name: Optional[str]
     description: Optional[str]
     type: ChartType
-    options: Optional[dict] = {}
-    filters: Optional[List[FilterInput]] = None
+    options: dict = field(default_factory=dict)
+    filters: List[FilterInput] = field(default_factory=list)
 
 
 def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChartInput, resource: Resource):
