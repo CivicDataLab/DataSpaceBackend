@@ -84,8 +84,8 @@ class GroupedBarChart(BaseChart):
             chart.add_xaxis(filtered_data[x_axis_column.field_name].tolist())
             for y_axis_column in y_axis_columns:
                 chart.add_yaxis(
-                    series_name=y_axis_column.get('label', y_axis_column['field'].field_name),
-                    y_axis=filtered_data[y_axis_column['field'].field_name].tolist(),
+                    y_axis_column.get('label', y_axis_column['field'].field_name),
+                    filtered_data[y_axis_column['field'].field_name].tolist(),
                     itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
                     color = y_axis_column.get('color')
                 )
