@@ -44,12 +44,13 @@ class YAxisColumnConfig:
 class ChartOptions:
     x_axis_label: str = "X-Axis"
     y_axis_label: str = "Y-Axis"
-    show_legend: bool = False
-    aggregate_type: str = "none"
     x_axis_column: Optional[str] = None
     y_axis_column: List[YAxisColumnConfig] = field(default_factory=list)
     region_column: Optional[str] = None
     value_column: Optional[str] = None
+    time_column: Optional[str] = None
+    show_legend: bool = False
+    aggregate_type: str = "none"
 
 
 @strawberry_django.input(ResourceChartDetails)
@@ -70,7 +71,7 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
     options = {}
     for field_name, value in vars(chart_input.options).items():
         if value is not None:
-            if field_name in ['x_axis_column', 'region_column', 'value_column']:
+            if field_name in ['x_axis_column', 'region_column', 'value_column', 'time_column']:
                 if value:  # Only process if value is not empty
                     field = ResourceSchema.objects.get(id=value)
                     options[field_name] = field
