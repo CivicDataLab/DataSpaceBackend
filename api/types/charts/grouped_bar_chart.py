@@ -47,18 +47,41 @@ class GroupedBarChart(BaseChart):
                 x_axis_data = sorted([str(time) for time in time_groups.groups.keys() if str(time) in selected_groups])
                 chart.add_xaxis(x_axis_data)
 
+                # Print available columns for debugging
+                print("Available columns:", filtered_data.columns.tolist())
+                
                 # Add data for each metric
                 for y_axis_column in y_axis_columns:
                     metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
                     y_values = []
                     field_name = y_axis_column['field'].field_name
                     
+                    print(f"Processing metric: {metric_name}, field_name: {field_name}")
+                    
                     for time_val in x_axis_data:
                         period_data = time_groups.get_group(time_val)
-                        if field_name in period_data.columns:
-                            y_values.append(period_data[field_name].iloc[0])
+                        
+                        # Try different field name formats
+                        field_variants = [
+                            field_name,
+                            field_name.replace('-', '_'),  # Try with underscores
+                            field_name.replace('_', '-'),  # Try with hyphens
+                            field_name.lower(),            # Try lowercase
+                            field_name.upper()             # Try uppercase
+                        ]
+                        
+                        value = None
+                        for variant in field_variants:
+                            if variant in period_data.columns:
+                                value = period_data[variant].iloc[0]
+                                print(f"Found value {value} for {variant} at {time_val}")
+                                break
+                        
+                        if value is not None:
+                            y_values.append(value)
                         else:
-                            y_values.append(0)  # Default value if field not found
+                            print(f"No value found for {field_name} at {time_val}")
+                            y_values.append(0)
                     
                     chart.add_yaxis(
                         series_name=metric_name,
@@ -98,12 +121,28 @@ class GroupedBarChart(BaseChart):
                             if str(time_val) not in selected_groups:
                                 continue
                                 
-                            # Get the value for this x value and time period
-                            if field_name in period_data.columns:
-                                period_value_map = dict(zip(period_data[x_field], period_data[field_name]))
-                                y_values.append(period_value_map.get(x_val, 0))
+                            # Try different field name formats
+                            field_variants = [
+                                field_name,
+                                field_name.replace('-', '_'),  # Try with underscores
+                                field_name.replace('_', '-'),  # Try with hyphens
+                                field_name.lower(),            # Try lowercase
+                                field_name.upper()             # Try uppercase
+                            ]
+                            
+                            value = None
+                            for variant in field_variants:
+                                if variant in period_data.columns:
+                                    period_value_map = dict(zip(period_data[x_field], period_data[variant]))
+                                    value = period_value_map.get(x_val, 0)
+                                    print(f"Found value {value} for {variant} at {time_val}")
+                                    break
+                            
+                            if value is not None:
+                                y_values.append(value)
                             else:
-                                y_values.append(0)  # Default value if field not found
+                                print(f"No value found for {field_name} at {time_val}")
+                                y_values.append(0)
                     
                     chart.add_yaxis(
                         series_name=metric_name,
