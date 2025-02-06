@@ -34,11 +34,6 @@ class BarChart(BaseChart):
                 init_opts=opts.InitOpts(width="100%", height="600px")
             )
 
-            # Get unique x-axis values from original data
-            x_field = self.options['x_axis_column'].field_name
-            all_x_values = filtered_data[x_field].unique().tolist()
-            all_x_values.sort()  # Sort for consistent ordering
-
             # Group data by time periods
             time_groups = filtered_data.groupby(time_column.field_name)
             selected_groups = self.options.get('time_groups', [])
@@ -47,42 +42,74 @@ class BarChart(BaseChart):
             if not selected_groups:
                 selected_groups = [str(time) for time in time_groups.groups.keys()]
 
-            # Create x-axis labels with time periods
-            x_axis_data = []
-            for x_val in all_x_values:
-                for time_val in time_groups.groups.keys():
-                    if str(time_val) in selected_groups:
-                        x_axis_data.append(f"{x_val} ({time_val})")
+            # If x-axis is same as time column, use time periods directly
+            x_field = self.options['x_axis_column'].field_name
+            if x_field == time_column.field_name:
+                # Sort time periods
+                x_axis_data = sorted([str(time) for time in time_groups.groups.keys() if str(time) in selected_groups])
+                chart.add_xaxis(x_axis_data)
 
-            # Add x-axis
-            chart.add_xaxis(x_axis_data)
+                # Add data for the y-axis column
+                y_axis_column = self.options['y_axis_column']
+                metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
+                y_values = []
+                
+                for time_val in x_axis_data:
+                    period_data = time_groups.get_group(time_val)
+                    y_values.append(period_data[y_axis_column['field'].field_name].iloc[0])
+                
+                chart.add_yaxis(
+                    series_name=metric_name,
+                    y_axis=y_values,
+                    label_opts=opts.LabelOpts(
+                        position="insideRight" if self.chart_details.chart_type == "BAR_HORIZONTAL" else "inside",
+                        rotate=0 if self.chart_details.chart_type == "BAR_HORIZONTAL" else 90,
+                        font_size=12,
+                        color='#000'
+                    ),
+                    itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color'))
+                )
+            else:
+                # Get unique x-axis values from original data
+                all_x_values = filtered_data[x_field].unique().tolist()
+                all_x_values.sort()  # Sort for consistent ordering
 
-            # Add data for the y-axis column
-            y_axis_column = self.options['y_axis_column']
-            metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
-            y_values = []
-            
-            # Generate y values for each x value and time period
-            for x_val in all_x_values:
-                for time_val, period_data in time_groups:
-                    if str(time_val) not in selected_groups:
-                        continue
-                        
-                    # Get the value for this x value and time period
-                    period_value_map = dict(zip(period_data[x_field], period_data[y_axis_column['field'].field_name]))
-                    y_values.append(period_value_map.get(x_val, 0))
-            
-            chart.add_yaxis(
-                series_name=metric_name,
-                y_axis=y_values,
-                label_opts=opts.LabelOpts(
-                    position="insideRight" if self.chart_details.chart_type == "BAR_HORIZONTAL" else "inside",
-                    rotate=0 if self.chart_details.chart_type == "BAR_HORIZONTAL" else 90,
-                    font_size=12,
-                    color='#000'
-                ),
-                itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color'))
-            )
+                # Create x-axis labels with time periods
+                x_axis_data = []
+                for x_val in all_x_values:
+                    for time_val in time_groups.groups.keys():
+                        if str(time_val) in selected_groups:
+                            x_axis_data.append(f"{x_val} ({time_val})")
+
+                # Add x-axis
+                chart.add_xaxis(x_axis_data)
+
+                # Add data for the y-axis column
+                y_axis_column = self.options['y_axis_column']
+                metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
+                y_values = []
+                
+                # Generate y values for each x value and time period
+                for x_val in all_x_values:
+                    for time_val, period_data in time_groups:
+                        if str(time_val) not in selected_groups:
+                            continue
+                            
+                        # Get the value for this x value and time period
+                        period_value_map = dict(zip(period_data[x_field], period_data[y_axis_column['field'].field_name]))
+                        y_values.append(period_value_map.get(x_val, 0))
+                
+                chart.add_yaxis(
+                    series_name=metric_name,
+                    y_axis=y_values,
+                    label_opts=opts.LabelOpts(
+                        position="insideRight" if self.chart_details.chart_type == "BAR_HORIZONTAL" else "inside",
+                        rotate=0 if self.chart_details.chart_type == "BAR_HORIZONTAL" else 90,
+                        font_size=12,
+                        color='#000'
+                    ),
+                    itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color'))
+                )
 
             # Configure global options
             chart.set_global_opts(
