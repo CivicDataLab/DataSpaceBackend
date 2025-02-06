@@ -75,11 +75,7 @@ class GroupedBarChart(BaseChart):
                     rotate=90,
                     font_size=12,
                     color='#000',
-                    formatter=JsCode(f"""
-                        function(params) {{
-                            return "{series_name}";
-                        }}
-                    """)
+                    formatter=series_name
                 ),
                 color=y_axis_column.get('color')
             )
