@@ -32,17 +32,6 @@ class GroupedBarChart(BaseChart):
                 init_opts=opts.InitOpts(width="100%", height="600px")
             )
             
-            # Set chart properties for grouping
-            chart.set_series_opts(
-                label_opts=opts.LabelOpts(position="inside"),
-                markpoint_opts=opts.MarkPointOpts(
-                    data=[
-                        opts.MarkPointItem(type_="max", name="Max"),
-                        opts.MarkPointItem(type_="min", name="Min"),
-                    ]
-                )
-            )
-
             # Group data by time periods
             time_groups = filtered_data.groupby(time_column.field_name)
             selected_groups = self.options.get('time_groups', [])
@@ -58,41 +47,30 @@ class GroupedBarChart(BaseChart):
                 x_axis_data = sorted([str(time) for time in time_groups.groups.keys() if str(time) in selected_groups])
                 chart.add_xaxis(x_axis_data)
 
-                # Print available columns for debugging
-                print("Available columns:", filtered_data.columns.tolist())
-                
                 # Add data for each metric
                 for y_axis_column in y_axis_columns:
                     metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
                     y_values = []
                     field_name = y_axis_column['field'].field_name
                     
-                    print(f"Processing metric: {metric_name}, field_name: {field_name}")
-                    
                     for time_val in x_axis_data:
                         period_data = time_groups.get_group(time_val)
-                        
                         # Try different field name formats
                         field_variants = [
                             field_name,
-                            field_name.replace('-', '_'),  # Try with underscores
-                            field_name.replace('_', '-'),  # Try with hyphens
-                            field_name.lower(),            # Try lowercase
-                            field_name.upper()             # Try uppercase
+                            field_name.replace('-', '_'),
+                            field_name.replace('_', '-'),
+                            field_name.lower(),
+                            field_name.upper()
                         ]
                         
                         value = None
                         for variant in field_variants:
                             if variant in period_data.columns:
-                                value = float(period_data[variant].iloc[0])  # Convert to float
-                                print(f"Found value {value} for {variant} at {time_val}")
+                                value = float(period_data[variant].iloc[0])
                                 break
                         
-                        if value is not None:
-                            y_values.append(value)
-                        else:
-                            print(f"No value found for {field_name} at {time_val}")
-                            y_values.append(0.0)  # Use 0.0 instead of 0
+                        y_values.append(value if value is not None else 0.0)
                     
                     chart.add_yaxis(
                         series_name=metric_name,
@@ -104,13 +82,13 @@ class GroupedBarChart(BaseChart):
                             color='#000'
                         ),
                         itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
-                        category_gap="20%",  # Gap between different category groups
-                        gap="30%"  # Gap between bars in the same category
+                        category_gap="20%",
+                        gap="30%"
                     )
             else:
                 # Get unique x-axis values from original data
                 all_x_values = filtered_data[x_field].unique().tolist()
-                all_x_values.sort()  # Sort for consistent ordering
+                all_x_values.sort()
 
                 # Create x-axis labels with time periods
                 x_axis_data = []
@@ -137,25 +115,20 @@ class GroupedBarChart(BaseChart):
                             # Try different field name formats
                             field_variants = [
                                 field_name,
-                                field_name.replace('-', '_'),  # Try with underscores
-                                field_name.replace('_', '-'),  # Try with hyphens
-                                field_name.lower(),            # Try lowercase
-                                field_name.upper()             # Try uppercase
+                                field_name.replace('-', '_'),
+                                field_name.replace('_', '-'),
+                                field_name.lower(),
+                                field_name.upper()
                             ]
                             
                             value = None
                             for variant in field_variants:
                                 if variant in period_data.columns:
                                     period_value_map = dict(zip(period_data[x_field], period_data[variant]))
-                                    value = float(period_value_map.get(x_val, 0.0))  # Convert to float
-                                    print(f"Found value {value} for {variant} at {time_val}")
+                                    value = float(period_value_map.get(x_val, 0.0))
                                     break
                             
-                            if value is not None:
-                                y_values.append(value)
-                            else:
-                                print(f"No value found for {field_name} at {time_val}")
-                                y_values.append(0.0)  # Use 0.0 instead of 0
+                            y_values.append(value if value is not None else 0.0)
                     
                     chart.add_yaxis(
                         series_name=metric_name,
@@ -167,8 +140,8 @@ class GroupedBarChart(BaseChart):
                             color='#000'
                         ),
                         itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
-                        category_gap="20%",  # Gap between different category groups
-                        gap="30%"  # Gap between bars in the same category
+                        category_gap="20%",
+                        gap="30%"
                     )
 
             # Configure global options
@@ -181,8 +154,7 @@ class GroupedBarChart(BaseChart):
                 xaxis_opts=opts.AxisOpts(
                     type_="category" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "value",
                     name=self.options.get('x_axis_label', 'X-Axis'),
-                    axislabel_opts=opts.LabelOpts(rotate=45),
-                    axispointer_opts=opts.AxisPointerOpts(type_="shadow")
+                    axislabel_opts=opts.LabelOpts(rotate=45)
                 ),
                 yaxis_opts=opts.AxisOpts(
                     type_="value" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "category",
@@ -190,8 +162,7 @@ class GroupedBarChart(BaseChart):
                 ),
                 tooltip_opts=opts.TooltipOpts(
                     trigger="axis",
-                    axis_pointer_type="shadow",
-                    formatter="{b} <br/> {a}: {c}"
+                    axis_pointer_type="shadow"
                 ),
                 datazoom_opts=[
                     opts.DataZoomOpts(range_start=0, range_end=100),
@@ -250,7 +221,7 @@ class GroupedBarChart(BaseChart):
             
             chart.add_yaxis(
                 series_name=series_name,
-                y_axis=[float(value) for value in filtered_data[y_axis_column['field'].field_name].tolist()],  # Convert to float
+                y_axis=[float(value) for value in filtered_data[y_axis_column['field'].field_name].tolist()],  
                 itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
                 label_opts=opts.LabelOpts(
                     position="insideRight" if is_horizontal else "inside",

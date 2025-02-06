@@ -34,17 +34,6 @@ class BarChart(BaseChart):
                 init_opts=opts.InitOpts(width="100%", height="600px")
             )
 
-            # Set chart properties for grouping
-            chart.set_series_opts(
-                label_opts=opts.LabelOpts(position="inside"),
-                markpoint_opts=opts.MarkPointOpts(
-                    data=[
-                        opts.MarkPointItem(type_="max", name="Max"),
-                        opts.MarkPointItem(type_="min", name="Min"),
-                    ]
-                )
-            )
-
             # Group data by time periods
             time_groups = filtered_data.groupby(time_column.field_name)
             selected_groups = self.options.get('time_groups', [])
@@ -64,10 +53,26 @@ class BarChart(BaseChart):
                 y_axis_column = self.options['y_axis_column']
                 metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
                 y_values = []
+                field_name = y_axis_column['field'].field_name
                 
                 for time_val in x_axis_data:
                     period_data = time_groups.get_group(time_val)
-                    y_values.append(float(period_data[y_axis_column['field'].field_name].iloc[0]))
+                    # Try different field name formats
+                    field_variants = [
+                        field_name,
+                        field_name.replace('-', '_'),
+                        field_name.replace('_', '-'),
+                        field_name.lower(),
+                        field_name.upper()
+                    ]
+                    
+                    value = None
+                    for variant in field_variants:
+                        if variant in period_data.columns:
+                            value = float(period_data[variant].iloc[0])
+                            break
+                    
+                    y_values.append(value if value is not None else 0.0)
                 
                 chart.add_yaxis(
                     series_name=metric_name,
@@ -80,6 +85,7 @@ class BarChart(BaseChart):
                     ),
                     itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color'))
                 )
+
             else:
                 # Get unique x-axis values from original data
                 all_x_values = filtered_data[x_field].unique().tolist()
