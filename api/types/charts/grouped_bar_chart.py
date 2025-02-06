@@ -4,7 +4,6 @@ from pyecharts.charts.chart import Chart
 
 from api.types.charts.base_chart import BaseChart
 from api.types.charts.chart_registry import register_chart
-from api.utils.enums import AggregateType
 
 
 @register_chart('GROUPED_BAR_HORIZONTAL')
@@ -87,6 +86,14 @@ class GroupedBarChart(BaseChart):
                     y_axis_column.get('label', y_axis_column['field'].field_name),
                     filtered_data[y_axis_column['field'].field_name].tolist(),
                     itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
+                    label_opts=opts.LabelOpts(
+                        position="insideTop",
+                        rotate=90,
+                        color="#000",
+                        vertical_align="middle",
+                        align="right",
+                        distance=23
+                    ),
                     color = y_axis_column.get('color')
                 )
         except Exception as e:
