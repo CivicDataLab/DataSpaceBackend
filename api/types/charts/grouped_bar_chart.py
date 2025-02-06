@@ -51,10 +51,14 @@ class GroupedBarChart(BaseChart):
                 for y_axis_column in y_axis_columns:
                     metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
                     y_values = []
+                    field_name = y_axis_column['field'].field_name
                     
                     for time_val in x_axis_data:
                         period_data = time_groups.get_group(time_val)
-                        y_values.append(period_data[y_axis_column['field'].field_name].iloc[0])
+                        if field_name in period_data.columns:
+                            y_values.append(period_data[field_name].iloc[0])
+                        else:
+                            y_values.append(0)  # Default value if field not found
                     
                     chart.add_yaxis(
                         series_name=metric_name,
@@ -86,6 +90,7 @@ class GroupedBarChart(BaseChart):
                 for y_axis_column in y_axis_columns:
                     metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
                     y_values = []
+                    field_name = y_axis_column['field'].field_name
                     
                     # Generate y values for each x value and time period
                     for x_val in all_x_values:
@@ -94,8 +99,11 @@ class GroupedBarChart(BaseChart):
                                 continue
                                 
                             # Get the value for this x value and time period
-                            period_value_map = dict(zip(period_data[x_field], period_data[y_axis_column['field'].field_name]))
-                            y_values.append(period_value_map.get(x_val, 0))
+                            if field_name in period_data.columns:
+                                period_value_map = dict(zip(period_data[x_field], period_data[field_name]))
+                                y_values.append(period_value_map.get(x_val, 0))
+                            else:
+                                y_values.append(0)  # Default value if field not found
                     
                     chart.add_yaxis(
                         series_name=metric_name,
