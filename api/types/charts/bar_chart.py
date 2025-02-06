@@ -81,7 +81,8 @@ class BarChart(BaseChart):
                         position="insideRight" if self.chart_details.chart_type == "BAR_HORIZONTAL" else "inside",
                         rotate=0 if self.chart_details.chart_type == "BAR_HORIZONTAL" else 90,
                         font_size=12,
-                        color='#000'
+                        color='#000',
+                        formatter=f"{metric_name}"
                     ),
                     itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color'))
                 )
