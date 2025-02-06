@@ -41,13 +41,13 @@ async def create_chart_details(request_details: dict, resource: Resource) -> Res
             field = await sync_to_async(ResourceSchema.objects.get)(
                 id=config['field_name'])
             
-            # Convert value mapping from JSON
+            # Convert value mapping from list of mappings
             value_mapping = {}
-            if raw_mapping := config.get('value_mapping'):
+            if raw_mappings := config.get('value_mapping', []):
                 value_mapping = {
-                    float(k): str(v) 
-                    for k, v in raw_mapping.items() 
-                    if k is not None and v is not None
+                    float(mapping['key']): str(mapping['value'])
+                    for mapping in raw_mappings
+                    if mapping.get('key') is not None and mapping.get('value') is not None
                 }
             
             y_axis_columns.append({

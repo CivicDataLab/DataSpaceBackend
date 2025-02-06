@@ -33,12 +33,22 @@ class FilterInput:
     value: str
 
 
+@strawberry.type
+class ValueMapping:
+    key: str
+    value: str
+
+@strawberry.input
+class ValueMappingInput:
+    key: str
+    value: str
+
 @strawberry.input
 class YAxisColumnConfig:
     field_name: str
     label: Optional[str] = None
     color: Optional[str] = None
-    value_mapping: Optional[dict[float, str]] = None
+    value_mapping: Optional[List[ValueMapping]] = None
 
 
 @strawberry.input
@@ -59,7 +69,7 @@ class YAxisColumnInput:
     field_name: str
     label: Optional[str] = None
     color: Optional[str] = None
-    value_mapping: Optional[JSON] = None
+    value_mapping: Optional[List[ValueMappingInput]] = None
 
 
 @strawberry.input
@@ -103,7 +113,7 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
                             'field': ResourceSchema.objects.get(id=column['field_name']),
                             'label': column['label'],
                             'color': column.get('color'),
-                            'value_mapping': column.get('value_mapping')
+                            'value_mapping': [ValueMapping(key=k, value=v) for k, v in column.get('value_mapping', {}).items()]
                         }
                         for column in value
                     ]
