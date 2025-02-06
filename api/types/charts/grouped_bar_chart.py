@@ -61,11 +61,13 @@ class GroupedBarChart(BaseChart):
         else:
             chart.set_series_opts(
                 label_opts=opts.LabelOpts(
-                    position="top",
-                    rotate=-90,
-                    font_size=12,
-                    color="#000"
-                )
+                        position="insideTop",
+                        rotate=90,
+                        color="#000",
+                        vertical_align="middle",
+                        horizontal_align="right",
+                        distance=23
+                    )
             )
 
     def initialize_chart(self, filtered_data: pd.DataFrame) -> Chart:
@@ -91,7 +93,7 @@ class GroupedBarChart(BaseChart):
                         rotate=90,
                         color="#000",
                         vertical_align="middle",
-                        align="right",
+                        horizontal_align="right",
                         distance=23
                     ),
                     color = y_axis_column.get('color')
