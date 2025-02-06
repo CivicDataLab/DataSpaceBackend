@@ -65,8 +65,9 @@ class GroupedBarChart(BaseChart):
         # Add x and y axis data
         chart.add_xaxis(filtered_data[x_axis_column.field_name].tolist())
         for y_axis_column in y_axis_columns:
+            series_name = y_axis_column.get('label', y_axis_column['field'].field_name)
             chart.add_yaxis(
-                series_name=y_axis_column.get('label', y_axis_column['field'].field_name),
+                series_name=series_name,
                 y_axis=filtered_data[y_axis_column['field'].field_name].tolist(),
                 itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
                 label_opts=opts.LabelOpts(
@@ -74,10 +75,10 @@ class GroupedBarChart(BaseChart):
                     rotate=90,
                     font_size=12,
                     color='#000',
-                    formatter=JsCode("""
-                        function(params) {
-                            return params.name;
-                        }
+                    formatter=JsCode(f"""
+                        function(params) {{
+                            return "{series_name}";
+                        }}
                     """)
                 ),
                 color=y_axis_column.get('color')

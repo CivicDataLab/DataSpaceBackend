@@ -84,30 +84,33 @@ class BarChart(BaseChart):
         chart = chart_class()
 
         x_axis_column = self.options['x_axis_column']
-        y_axis_column = self.options['y_axis_column']['field']
+        y_axis_column = self.options['y_axis_column']
         
         # Get x-axis values for label formatting
         x_values = metrics[x_axis_column.field_name].tolist()
-        y_values = metrics[y_axis_column.field_name].tolist()
+        y_values = metrics[y_axis_column['field'].field_name].tolist()
+
+        # Get series name from label or field name
+        series_name = y_axis_column.get('label', y_axis_column['field'].field_name)
 
         # Add x and y axis data
         chart.add_xaxis(x_values)
         chart.add_yaxis(
-            self.options.get('y_axis_label', 'Y-Axis'), 
-            y_values,
-            itemstyle_opts=opts.ItemStyleOpts(color=self.options['y_axis_column']['color']),
+            series_name=series_name,
+            y_axis=y_values,
+            itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
             label_opts=opts.LabelOpts(
-                position="right" if self.chart_details.chart_type == "BAR_HORIZONTAL" else "top",
-                rotate=-90,
+                position="right" if self.chart_details.chart_type == "BAR_HORIZONTAL" else "insideTop",
+                rotate=90,
                 font_size=12,
                 color='#000',
-                formatter=JsCode("""
-                    function(params) {
-                        return params.value;
-                    }
+                formatter=JsCode(f"""
+                    function(params) {{
+                        return "{series_name}";
+                    }}
                 """)
             ),
-            color=self.options['y_axis_column']['color']
+            color=y_axis_column.get('color')
         )
 
         return chart
