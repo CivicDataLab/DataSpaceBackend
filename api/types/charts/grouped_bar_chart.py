@@ -157,7 +157,7 @@ class GroupedBarChart(BaseChart):
                                 
                             y_values.append(value)
                             # Map the value to its label if available
-                            y_labels.append(str(value_mapping.get(str(value), value)))
+                            y_labels.append(value_mapping.get(str(value), value))
                     
                     chart.add_yaxis(
                         series_name=metric_name,
