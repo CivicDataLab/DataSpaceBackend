@@ -33,7 +33,7 @@ class FilterInput:
     value: str
 
 
-@strawberry.type
+@strawberry.input
 class ValueMapping:
     key: str
     value: str
