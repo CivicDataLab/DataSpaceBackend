@@ -56,24 +56,6 @@ class BarChart(BaseChart):
 
         if is_horizontal:
             chart.reversal_axis()  # Flip axis for horizontal bar chart
-            chart.set_series_opts(
-                label_opts=opts.LabelOpts(
-                    position="right",
-                    rotate=-90,
-                    font_size=12,
-                    color='#000'
-                )
-            )
-        else:
-            chart.set_series_opts(
-                label_opts=opts.LabelOpts(
-                    position="top",
-                    rotate=-90,
-                    font_size=12,
-                    color='#000'
-                )
-            )
-
 
     def aggregate_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -103,20 +85,29 @@ class BarChart(BaseChart):
 
         x_axis_column = self.options['x_axis_column']
         y_axis_column = self.options['y_axis_column']['field']
+        
+        # Get x-axis values for label formatting
+        x_values = metrics[x_axis_column.field_name].tolist()
+        y_values = metrics[y_axis_column.field_name].tolist()
 
         # Add x and y axis data
-        chart.add_xaxis(metrics[x_axis_column.field_name].tolist())
+        chart.add_xaxis(x_values)
         chart.add_yaxis(
             self.options.get('y_axis_label', 'Y-Axis'), 
-            metrics[y_axis_column.field_name].tolist(),
+            y_values,
             itemstyle_opts=opts.ItemStyleOpts(color=self.options['y_axis_column']['color']),
             label_opts=opts.LabelOpts(
-                position="top",
+                position="right" if self.chart_details.chart_type == "BAR_HORIZONTAL" else "top",
                 rotate=-90,
                 font_size=12,
-                color='#000'
+                color='#000',
+                formatter=JsCode("""
+                    function(params) {
+                        return params.value;
+                    }
+                """)
             ),
-            color = self.options['y_axis_column']['color']
+            color=self.options['y_axis_column']['color']
         )
 
         return chart

@@ -1,6 +1,7 @@
 import pandas as pd
 from pyecharts import options as opts
 from pyecharts.charts.chart import Chart
+from pyecharts.commons.utils import JsCode
 
 from api.types.charts.base_chart import BaseChart
 from api.types.charts.chart_registry import register_chart
@@ -50,25 +51,6 @@ class GroupedBarChart(BaseChart):
 
         if is_horizontal:
             chart.reversal_axis()  # Flip axis for horizontal bar chart
-            chart.set_series_opts(
-                label_opts=opts.LabelOpts(
-                    position="right",
-                    rotate=-90,
-                    font_size=12,
-                    color="#000"
-                )
-            )
-        else:
-            chart.set_series_opts(
-                label_opts=opts.LabelOpts(
-                        position="insideTop",
-                        rotate=90,
-                        color="#000",
-                        vertical_align="middle",
-                        horizontal_align="right",
-                        distance=23
-                    )
-            )
 
     def initialize_chart(self, filtered_data: pd.DataFrame) -> Chart:
         """
@@ -81,25 +63,24 @@ class GroupedBarChart(BaseChart):
         y_axis_columns = self.options['y_axis_column']
 
         # Add x and y axis data
-        try:
-            chart.add_xaxis(filtered_data[x_axis_column.field_name].tolist())
-            for y_axis_column in y_axis_columns:
-                chart.add_yaxis(
-                    y_axis_column.get('label', y_axis_column['field'].field_name),
-                    filtered_data[y_axis_column['field'].field_name].tolist(),
-                    itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
-                    label_opts=opts.LabelOpts(
-                        position="insideTop",
-                        rotate=90,
-                        color="#000",
-                        vertical_align="middle",
-                        horizontal_align="right",
-                        distance=23
-                    ),
-                    color = y_axis_column.get('color')
-                )
-        except Exception as e:
-            print(f"Error adding data to chart: {e}")
-            return None
+        chart.add_xaxis(filtered_data[x_axis_column.field_name].tolist())
+        for y_axis_column in y_axis_columns:
+            chart.add_yaxis(
+                series_name=y_axis_column.get('label', y_axis_column['field'].field_name),
+                y_axis=filtered_data[y_axis_column['field'].field_name].tolist(),
+                itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
+                label_opts=opts.LabelOpts(
+                    position="right" if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else "insideTop",
+                    rotate=90,
+                    font_size=12,
+                    color='#000',
+                    formatter=JsCode("""
+                        function(params) {
+                            return params.name;
+                        }
+                    """)
+                ),
+                color=y_axis_column.get('color')
+            )
 
         return chart
