@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from dataclasses import field
 
 import strawberry
@@ -59,7 +59,7 @@ class YAxisColumnInput:
     field_name: str
     label: Optional[str] = None
     color: Optional[str] = None
-    value_mapping: Optional[Dict[float, str]] = None
+    value_mapping: Optional[JSON] = None
 
 
 @strawberry.input
@@ -124,7 +124,6 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
 
 @strawberry.type
 class Mutation:
-
     @strawberry_django.mutation(handle_django_errors=True)
     def add_resource_chart(self, info, resource: uuid.UUID) -> TypeResourceChart:
         resource_chart: ResourceChartDetails = ResourceChartDetails()

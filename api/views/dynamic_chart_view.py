@@ -40,11 +40,21 @@ async def create_chart_details(request_details: dict, resource: Resource) -> Res
         for config in y_axis_configs:
             field = await sync_to_async(ResourceSchema.objects.get)(
                 id=config['field_name'])
+            
+            # Convert value mapping from JSON
+            value_mapping = {}
+            if raw_mapping := config.get('value_mapping'):
+                value_mapping = {
+                    float(k): str(v) 
+                    for k, v in raw_mapping.items() 
+                    if k is not None and v is not None
+                }
+            
             y_axis_columns.append({
                 'field': field,
                 'label': config.get('label', field.field_name),
                 'color': config.get('color'),
-                'value_mapping': {float(k): str(v) for k, v in config.get('value_mapping', {}).items()}
+                'value_mapping': value_mapping
             })
 
     if y_axis_columns:
