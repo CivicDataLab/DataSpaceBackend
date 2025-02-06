@@ -84,7 +84,7 @@ class GroupedBarChart(BaseChart):
                         value = None
                         for variant in field_variants:
                             if variant in period_data.columns:
-                                value = period_data[variant].iloc[0]
+                                value = float(period_data[variant].iloc[0])  # Convert to float
                                 print(f"Found value {value} for {variant} at {time_val}")
                                 break
                         
@@ -92,7 +92,7 @@ class GroupedBarChart(BaseChart):
                             y_values.append(value)
                         else:
                             print(f"No value found for {field_name} at {time_val}")
-                            y_values.append(0)
+                            y_values.append(0.0)  # Use 0.0 instead of 0
                     
                     chart.add_yaxis(
                         series_name=metric_name,
@@ -147,7 +147,7 @@ class GroupedBarChart(BaseChart):
                             for variant in field_variants:
                                 if variant in period_data.columns:
                                     period_value_map = dict(zip(period_data[x_field], period_data[variant]))
-                                    value = period_value_map.get(x_val, 0)
+                                    value = float(period_value_map.get(x_val, 0.0))  # Convert to float
                                     print(f"Found value {value} for {variant} at {time_val}")
                                     break
                             
@@ -155,7 +155,7 @@ class GroupedBarChart(BaseChart):
                                 y_values.append(value)
                             else:
                                 print(f"No value found for {field_name} at {time_val}")
-                                y_values.append(0)
+                                y_values.append(0.0)  # Use 0.0 instead of 0
                     
                     chart.add_yaxis(
                         series_name=metric_name,
@@ -250,7 +250,7 @@ class GroupedBarChart(BaseChart):
             
             chart.add_yaxis(
                 series_name=series_name,
-                y_axis=filtered_data[y_axis_column['field'].field_name].tolist(),
+                y_axis=[float(value) for value in filtered_data[y_axis_column['field'].field_name].tolist()],  # Convert to float
                 itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
                 label_opts=opts.LabelOpts(
                     position="insideRight" if is_horizontal else "inside",

@@ -67,7 +67,7 @@ class BarChart(BaseChart):
                 
                 for time_val in x_axis_data:
                     period_data = time_groups.get_group(time_val)
-                    y_values.append(period_data[y_axis_column['field'].field_name].iloc[0])
+                    y_values.append(float(period_data[y_axis_column['field'].field_name].iloc[0]))
                 
                 chart.add_yaxis(
                     series_name=metric_name,
@@ -108,7 +108,8 @@ class BarChart(BaseChart):
                             
                         # Get the value for this x value and time period
                         period_value_map = dict(zip(period_data[x_field], period_data[y_axis_column['field'].field_name]))
-                        y_values.append(period_value_map.get(x_val, 0))
+                        value = period_value_map.get(x_val, 0.0)
+                        y_values.append(float(value))
                 
                 chart.add_yaxis(
                     series_name=metric_name,
@@ -224,7 +225,7 @@ class BarChart(BaseChart):
         chart.add_xaxis(x_values)
         chart.add_yaxis(
             series_name=series_name,
-            y_axis=y_values,
+            y_axis=[float(y) for y in y_values],
             itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
             label_opts=opts.LabelOpts(
                 position="insideRight" if is_horizontal else "inside",
