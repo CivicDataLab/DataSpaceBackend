@@ -31,6 +31,17 @@ class GroupedBarChart(BaseChart):
             chart = chart_class(
                 init_opts=opts.InitOpts(width="100%", height="600px")
             )
+            
+            # Set chart properties for grouping
+            chart.set_series_opts(
+                label_opts=opts.LabelOpts(position="inside"),
+                markpoint_opts=opts.MarkPointOpts(
+                    data=[
+                        opts.MarkPointItem(type_="max", name="Max"),
+                        opts.MarkPointItem(type_="min", name="Min"),
+                    ]
+                )
+            )
 
             # Group data by time periods
             time_groups = filtered_data.groupby(time_column.field_name)
@@ -92,7 +103,9 @@ class GroupedBarChart(BaseChart):
                             font_size=12,
                             color='#000'
                         ),
-                        itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color'))
+                        itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
+                        category_gap="20%",  # Gap between different category groups
+                        gap="30%"  # Gap between bars in the same category
                     )
             else:
                 # Get unique x-axis values from original data
@@ -153,7 +166,9 @@ class GroupedBarChart(BaseChart):
                             font_size=12,
                             color='#000'
                         ),
-                        itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color'))
+                        itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
+                        category_gap="20%",  # Gap between different category groups
+                        gap="30%"  # Gap between bars in the same category
                     )
 
             # Configure global options
@@ -166,7 +181,8 @@ class GroupedBarChart(BaseChart):
                 xaxis_opts=opts.AxisOpts(
                     type_="category" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "value",
                     name=self.options.get('x_axis_label', 'X-Axis'),
-                    axislabel_opts=opts.LabelOpts(rotate=45)
+                    axislabel_opts=opts.LabelOpts(rotate=45),
+                    axispointer_opts=opts.AxisPointerOpts(type_="shadow")
                 ),
                 yaxis_opts=opts.AxisOpts(
                     type_="value" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "category",
@@ -174,7 +190,8 @@ class GroupedBarChart(BaseChart):
                 ),
                 tooltip_opts=opts.TooltipOpts(
                     trigger="axis",
-                    axis_pointer_type="shadow"
+                    axis_pointer_type="shadow",
+                    formatter="{b} <br/> {a}: {c}"
                 ),
                 datazoom_opts=[
                     opts.DataZoomOpts(range_start=0, range_end=100),

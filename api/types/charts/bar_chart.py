@@ -34,6 +34,17 @@ class BarChart(BaseChart):
                 init_opts=opts.InitOpts(width="100%", height="600px")
             )
 
+            # Set chart properties for grouping
+            chart.set_series_opts(
+                label_opts=opts.LabelOpts(position="inside"),
+                markpoint_opts=opts.MarkPointOpts(
+                    data=[
+                        opts.MarkPointItem(type_="max", name="Max"),
+                        opts.MarkPointItem(type_="min", name="Min"),
+                    ]
+                )
+            )
+
             # Group data by time periods
             time_groups = filtered_data.groupby(time_column.field_name)
             selected_groups = self.options.get('time_groups', [])
