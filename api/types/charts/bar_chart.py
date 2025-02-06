@@ -92,6 +92,7 @@ class BarChart(BaseChart):
 
         # Get series name from label or field name
         series_name = y_axis_column.get('label', y_axis_column['field'].field_name)
+        is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
 
         # Add x and y axis data
         chart.add_xaxis(x_values)
@@ -100,11 +101,14 @@ class BarChart(BaseChart):
             y_axis=y_values,
             itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
             label_opts=opts.LabelOpts(
-                position="right" if self.chart_details.chart_type == "BAR_HORIZONTAL" else "insideTop",
-                rotate=90,
+                position="insideRight" if is_horizontal else "inside",
+                rotate=0 if is_horizontal else 90,
                 font_size=12,
                 color='#000',
-                formatter=series_name
+                formatter=series_name,
+                vertical_align="middle",
+                horizontal_align="center",
+                distance=0
             ),
             color=y_axis_column.get('color')
         )
