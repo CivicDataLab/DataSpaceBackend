@@ -35,7 +35,7 @@ async def create_chart_details(request_details: dict, resource: Resource) -> Res
             field_name=x_axis_column, resource=resource)
 
     # Handle y-axis columns with configurations
-    if y_axis_configs := request_details.get('y_axis_columns', []):
+    if y_axis_configs := request_details.get('y_axis_column', []):
         y_axis_columns = []
         for config in y_axis_configs:
             field = await sync_to_async(ResourceSchema.objects.get)(
