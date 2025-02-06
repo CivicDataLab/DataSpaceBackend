@@ -35,15 +35,16 @@ async def create_chart_details(request_details: dict, resource: Resource) -> Res
             field_name=x_axis_column, resource=resource)
 
     # Handle y-axis columns with configurations
-    if y_axis_configs := request_details.get('y_axis_column', []):
+    if y_axis_configs := request_details.get('y_axis_columns', []):
         y_axis_columns = []
         for config in y_axis_configs:
             field = await sync_to_async(ResourceSchema.objects.get)(
-                field_name=config['field_name'], resource=resource)
+                id=config['field_name'])
             y_axis_columns.append({
                 'field': field,
                 'label': config.get('label', field.field_name),
-                'color': config.get('color')
+                'color': config.get('color'),
+                'value_mapping': {float(k): str(v) for k, v in config.get('value_mapping', {}).items()}
             })
 
     if y_axis_columns:

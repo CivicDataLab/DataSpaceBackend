@@ -3,6 +3,7 @@ from pyecharts import options as opts
 from pyecharts.charts.chart import Chart
 from pyecharts.charts import Timeline
 from pyecharts.commons.utils import JsCode
+import json
 
 from api.types.charts.base_chart import BaseChart
 from api.types.charts.chart_registry import register_chart
@@ -52,7 +53,9 @@ class GroupedBarChart(BaseChart):
                 for y_axis_column in y_axis_columns:
                     metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
                     y_values = []
+                    y_labels = []
                     field_name = y_axis_column['field'].field_name
+                    value_mapping = y_axis_column.get('value_mapping', {})
                     
                     for time_val in x_axis_data:
                         period_data = time_groups.get_group(time_val)
@@ -71,7 +74,12 @@ class GroupedBarChart(BaseChart):
                                 value = float(period_data[variant].iloc[0])
                                 break
                         
-                        y_values.append(value if value is not None else 0.0)
+                        if value is None:
+                            value = 0.0
+                            
+                        y_values.append(value)
+                        # Map the value to its label if available
+                        y_labels.append(str(value_mapping.get(value, value)))
                     
                     chart.add_yaxis(
                         series_name=metric_name,
@@ -81,12 +89,24 @@ class GroupedBarChart(BaseChart):
                             rotate=0 if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else 90,
                             font_size=12,
                             color='#000',
-                            formatter=f"{metric_name}"
+                            formatter="{c}"
+                        ),
+                        tooltip_opts=opts.TooltipOpts(
+                            formatter="{a}: {c}"
                         ),
                         itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
                         category_gap="20%",
                         gap="30%"
+                    ).set_series_opts(
+                        label_opts=opts.LabelOpts(formatter="{c}")
                     )
+                    
+                    # Update the series data with mapped values
+                    if value_mapping:
+                        chart.options["series"][-1]["data"] = [
+                            {"value": val, "label": label}
+                            for val, label in zip(y_values, y_labels)
+                        ]
             else:
                 # Get unique x-axis values from original data
                 all_x_values = filtered_data[x_field].unique().tolist()
@@ -106,7 +126,9 @@ class GroupedBarChart(BaseChart):
                 for y_axis_column in y_axis_columns:
                     metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
                     y_values = []
+                    y_labels = []
                     field_name = y_axis_column['field'].field_name
+                    value_mapping = y_axis_column.get('value_mapping', {})
                     
                     # Generate y values for each x value and time period
                     for x_val in all_x_values:
@@ -130,7 +152,12 @@ class GroupedBarChart(BaseChart):
                                     value = float(period_value_map.get(x_val, 0.0))
                                     break
                             
-                            y_values.append(value if value is not None else 0.0)
+                            if value is None:
+                                value = 0.0
+                                
+                            y_values.append(value)
+                            # Map the value to its label if available
+                            y_labels.append(str(value_mapping.get(value, value)))
                     
                     chart.add_yaxis(
                         series_name=metric_name,
@@ -140,14 +167,25 @@ class GroupedBarChart(BaseChart):
                             rotate=0 if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else 90,
                             font_size=12,
                             color='#000',
-                            formatter=f"{metric_name}"
+                            formatter="{c}"
+                        ),
+                        tooltip_opts=opts.TooltipOpts(
+                            formatter="{a}: {c}"
                         ),
                         itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
                         category_gap="20%",
                         gap="30%",
                         
+                    ).set_series_opts(
+                        label_opts=opts.LabelOpts(formatter="{c}")
                     )
-
+                    
+                    # Update the series data with mapped values
+                    if value_mapping:
+                        chart.options["series"][-1]["data"] = [
+                            {"value": val, "label": label}
+                            for val, label in zip(y_values, y_labels)
+                        ]
             # Configure global options
             chart.set_global_opts(
                 legend_opts=opts.LegendOpts(

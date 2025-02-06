@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from typing import Optional, List
+from typing import Optional, List, Dict
 from dataclasses import field
 
 import strawberry
@@ -38,6 +38,7 @@ class YAxisColumnConfig:
     field_name: str
     label: Optional[str] = None
     color: Optional[str] = None
+    value_mapping: Optional[dict[float, str]] = None
 
 
 @strawberry.input
@@ -51,6 +52,26 @@ class ChartOptions:
     time_column: Optional[str] = None
     show_legend: bool = False
     aggregate_type: str = "none"
+
+
+@strawberry.input
+class YAxisColumnInput:
+    field_name: str
+    label: Optional[str] = None
+    color: Optional[str] = None
+    value_mapping: Optional[Dict[float, str]] = None
+
+
+@strawberry.input
+class ChartRequestInput:
+    resource_id: str
+    chart_type: str
+    x_axis_column: str
+    y_axis_columns: List[YAxisColumnInput]
+    time_column: str
+    time_groups: Optional[List[str]] = None
+    x_axis_label: Optional[str] = None
+    y_axis_label: Optional[str] = None
 
 
 @strawberry_django.input(ResourceChartDetails)
@@ -81,7 +102,8 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
                         {
                             'field': ResourceSchema.objects.get(id=column['field_name']),
                             'label': column['label'],
-                            'color': column.get('color')
+                            'color': column.get('color'),
+                            'value_mapping': column.get('value_mapping')
                         }
                         for column in value
                     ]
