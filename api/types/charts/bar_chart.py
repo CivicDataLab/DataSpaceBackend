@@ -34,7 +34,6 @@ class BarChart(BaseChart):
             )
             timeline.add_schema(
                 orient="horizontal",
-                is_inverse=False,
                 play_interval=2000,
                 pos_bottom="0%",
                 pos_left="5%",
