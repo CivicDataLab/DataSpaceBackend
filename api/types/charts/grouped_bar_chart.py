@@ -36,10 +36,10 @@ class GroupedBarChart(BaseChart):
             time_groups = filtered_data.groupby(time_column.field_name)
             selected_groups = self.options.get('time_groups', [])
             
-            # If no time groups specified, use 5 most recent periods
+            # If no time groups specified, use all periods
             if not selected_groups:
                 all_periods = sorted([str(time) for time in time_groups.groups.keys()])
-                selected_groups = all_periods[-5:] if len(all_periods) > 5 else all_periods
+                selected_groups = all_periods
 
             # If x-axis is same as time column, use time periods directly
             x_field = self.options['x_axis_column'].field_name
@@ -169,8 +169,18 @@ class GroupedBarChart(BaseChart):
                     axis_pointer_type="shadow"
                 ),
                 datazoom_opts=[
-                    opts.DataZoomOpts(range_start=0, range_end=100),
-                    opts.DataZoomOpts(type_="inside", range_start=0, range_end=100)
+                    opts.DataZoomOpts(
+                        is_show=True,
+                        type_="slider",
+                        range_start=max(0, (len(x_axis_data) - 5) * 100 / len(x_axis_data)) if len(x_axis_data) > 5 else 0,
+                        range_end=100,
+                        pos_bottom="0%"
+                    ),
+                    opts.DataZoomOpts(
+                        type_="inside",
+                        range_start=max(0, (len(x_axis_data) - 5) * 100 / len(x_axis_data)) if len(x_axis_data) > 5 else 0,
+                        range_end=100
+                    )
                 ]
             )
 
