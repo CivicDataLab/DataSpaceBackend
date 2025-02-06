@@ -26,47 +26,92 @@ class GroupedBarChart(BaseChart):
         # Check if time_column is specified for timeline
         time_column = self.options.get('time_column')
         if time_column:
-            # Create timeline instance
-            timeline = Timeline(
+            # Initialize the chart
+            chart_class = self.get_chart_class()
+            chart = chart_class(
                 init_opts=opts.InitOpts(width="100%", height="600px")
             )
-            timeline.add_schema(
-                orient="horizontal",
-                play_interval=2000,
-                pos_bottom="0%",
-                pos_left="5%",
-                pos_right="5%",
-                width="90%",
-                is_auto_play=False,
-                is_inverse=False,
-                is_timeline_show=True,
-                linestyle_opts=opts.LineStyleOpts(color="#ddd", width=1),
-                label_opts=opts.LabelOpts(is_show=True, color="#999"),
-                itemstyle_opts=opts.ItemStyleOpts(color="#A4B7D4")
-            )
+
+            # Get unique x-axis values from original data
+            x_field = self.options['x_axis_column'].field_name
+            all_x_values = filtered_data[x_field].unique().tolist()
+            all_x_values.sort()  # Sort for consistent ordering
 
             # Group data by time periods
             time_groups = filtered_data.groupby(time_column.field_name)
             selected_groups = self.options.get('time_groups', [])
             
-            # Track if we've added any charts
-            has_charts = False
-            
-            for time_val, period_data in time_groups:
-                # Skip if time_groups is specified and this time_val is not in it
-                if selected_groups and str(time_val) not in selected_groups:
-                    continue
-                    
-                chart = self.initialize_chart(period_data)
-                self.configure_chart(chart)
-                timeline.add(chart, str(time_val))
-                has_charts = True
+            # If no time groups specified, use all time periods
+            if not selected_groups:
+                selected_groups = [str(time) for time in time_groups.groups.keys()]
 
-            # If no charts were added (all time groups were filtered out), return None
-            if not has_charts:
-                return None
+            # Create x-axis labels with time periods
+            x_axis_data = []
+            for x_val in all_x_values:
+                for time_val in time_groups.groups.keys():
+                    if str(time_val) in selected_groups:
+                        x_axis_data.append(f"{x_val} ({time_val})")
 
-            return timeline
+            # Add x-axis
+            chart.add_xaxis(x_axis_data)
+
+            # Add data for each metric
+            for y_axis_column in y_axis_columns:
+                metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
+                y_values = []
+                
+                # Generate y values for each x value and time period
+                for x_val in all_x_values:
+                    for time_val, period_data in time_groups:
+                        if str(time_val) not in selected_groups:
+                            continue
+                            
+                        # Get the value for this x value and time period
+                        period_value_map = dict(zip(period_data[x_field], period_data[y_axis_column['field'].field_name]))
+                        y_values.append(period_value_map.get(x_val, 0))
+                
+                chart.add_yaxis(
+                    series_name=metric_name,
+                    y_axis=y_values,
+                    label_opts=opts.LabelOpts(
+                        position="insideRight" if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else "inside",
+                        rotate=0 if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else 90,
+                        font_size=12,
+                        color='#000'
+                    ),
+                    itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color'))
+                )
+
+            # Configure global options
+            chart.set_global_opts(
+                legend_opts=opts.LegendOpts(
+                    is_show=True,
+                    pos_top="5%",
+                    orient="horizontal"
+                ),
+                xaxis_opts=opts.AxisOpts(
+                    type_="category" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "value",
+                    name=self.options.get('x_axis_label', 'X-Axis'),
+                    axislabel_opts=opts.LabelOpts(rotate=45)
+                ),
+                yaxis_opts=opts.AxisOpts(
+                    type_="value" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "category",
+                    name=self.options.get('y_axis_label', 'Y-Axis')
+                ),
+                tooltip_opts=opts.TooltipOpts(
+                    trigger="axis",
+                    axis_pointer_type="shadow"
+                ),
+                datazoom_opts=[
+                    opts.DataZoomOpts(range_start=0, range_end=100),
+                    opts.DataZoomOpts(type_="inside", range_start=0, range_end=100)
+                ]
+            )
+
+            if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
+                chart.reversal_axis()
+
+            return chart
         else:
             # Initialize the chart without timeline
             chart = self.initialize_chart(filtered_data)
