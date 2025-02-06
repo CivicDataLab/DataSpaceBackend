@@ -1,6 +1,7 @@
 import pandas as pd
 from pyecharts import options as opts
 from pyecharts.charts.chart import Chart
+from pyecharts.charts import Timeline
 from pyecharts.commons.utils import JsCode
 
 from api.types.charts.base_chart import BaseChart
@@ -20,14 +21,40 @@ class GroupedBarChart(BaseChart):
             return None
 
         # Filter data
-        filtered_data = self.filter_data()        
+        filtered_data = self.filter_data()
 
-        # Initialize the chart
-        chart = self.initialize_chart(filtered_data)
+        # Check if time_column is specified for timeline
+        time_column = self.options.get('time_column')
+        if time_column:
+            # Create timeline instance
+            timeline = Timeline(
+                init_opts=opts.InitOpts(width="100%", height="600px")
+            )
+            timeline.add_schema(
+                orient="horizontal",
+                is_auto_play=False,
+                is_inverse=False,
+                play_interval=2000,
+                pos_bottom="0%",
+                pos_left="5%",
+                pos_right="5%",
+                width="90%"
+            )
 
-        self.configure_chart(chart)
+            # Group data by time periods
+            time_groups = filtered_data.groupby(time_column.field_name)
+            
+            for time_val, period_data in time_groups:
+                chart = self.initialize_chart(period_data)
+                self.configure_chart(chart)
+                timeline.add(chart, str(time_val))
 
-        return chart
+            return timeline
+        else:
+            # Initialize the chart without timeline
+            chart = self.initialize_chart(filtered_data)
+            self.configure_chart(chart)
+            return chart
 
     def configure_chart(self, chart: Chart) -> None:
         """
