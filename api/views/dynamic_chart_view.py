@@ -47,7 +47,7 @@ async def create_chart_details(request_details: dict, resource: Resource) -> Res
             raw_mappings = config.get('value_mapping', [])
             if len(raw_mappings):
                 value_mapping = {
-                    float(mapping['key']): str(mapping['value'])
+                    str(mapping['key']): str(mapping['value'])
                     for mapping in raw_mappings
                     if mapping.get('key') is not None and mapping.get('value') is not None
                 }
