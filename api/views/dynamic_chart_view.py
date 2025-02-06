@@ -39,7 +39,7 @@ async def create_chart_details(request_details: dict, resource: Resource) -> Res
         y_axis_columns = []
         for config in y_axis_configs:
             field = await sync_to_async(ResourceSchema.objects.get)(
-                field_name=config['field_name'])
+                field_name=config['field_name'], resource=resource)
             
             # Convert value mapping from list of mappings
             value_mapping = {}
