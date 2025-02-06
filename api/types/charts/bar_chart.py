@@ -50,12 +50,20 @@ class BarChart(BaseChart):
             # Group data by time periods
             time_groups = filtered_data.groupby(time_column.field_name)
             
+            # Track if we've added any charts
+            has_charts = False
+            
             for time_val, period_data in time_groups:
                 # Perform aggregation for this time period
                 metrics = self.aggregate_data(period_data)
                 chart = self.initialize_chart(metrics)
                 self.configure_chart(chart)
                 timeline.add(chart, str(time_val))
+                has_charts = True
+
+            # If no charts were added, return None
+            if not has_charts:
+                return None
 
             return timeline
         else:

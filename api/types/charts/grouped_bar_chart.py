@@ -49,6 +49,9 @@ class GroupedBarChart(BaseChart):
             time_groups = filtered_data.groupby(time_column.field_name)
             selected_groups = self.options.get('time_groups', [])
             
+            # Track if we've added any charts
+            has_charts = False
+            
             for time_val, period_data in time_groups:
                 # Skip if time_groups is specified and this time_val is not in it
                 if selected_groups and str(time_val) not in selected_groups:
@@ -57,9 +60,10 @@ class GroupedBarChart(BaseChart):
                 chart = self.initialize_chart(period_data)
                 self.configure_chart(chart)
                 timeline.add(chart, str(time_val))
+                has_charts = True
 
             # If no charts were added (all time groups were filtered out), return None
-            if not timeline.charts:
+            if not has_charts:
                 return None
 
             return timeline
