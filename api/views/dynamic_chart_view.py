@@ -43,7 +43,9 @@ async def create_chart_details(request_details: dict, resource: Resource) -> Res
             
             # Convert value mapping from list of mappings
             value_mapping = {}
-            if raw_mappings := config.get('value_mapping', []):
+            value_mapping={}
+            raw_mappings = config.get('value_mapping', []):
+            if len(raw_mappings):
                 value_mapping = {
                     float(mapping['key']): str(mapping['value'])
                     for mapping in raw_mappings
