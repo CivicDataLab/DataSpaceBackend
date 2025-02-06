@@ -38,9 +38,10 @@ class BarChart(BaseChart):
             time_groups = filtered_data.groupby(time_column.field_name)
             selected_groups = self.options.get('time_groups', [])
             
-            # If no time groups specified, use all time periods
+            # If no time groups specified, use 5 most recent periods
             if not selected_groups:
-                selected_groups = [str(time) for time in time_groups.groups.keys()]
+                all_periods = sorted([str(time) for time in time_groups.groups.keys()])
+                selected_groups = all_periods[-5:] if len(all_periods) > 5 else all_periods
 
             # If x-axis is same as time column, use time periods directly
             x_field = self.options['x_axis_column'].field_name
