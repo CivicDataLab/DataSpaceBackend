@@ -62,13 +62,26 @@ class ChartOptionsType:
     show_legend: Optional[bool]
     aggregate_type: Optional[str]
 
-
 @strawberry_django.type(ResourceChartDetails, fields="__all__")
 class TypeResourceChart:
     resource: TypeResource
     chart_type: str
-    options: ChartOptionsType
-    filters: List[FilterType]
+    options: Optional[ChartOptionsType]
+    filters: Optional[List[FilterType]]
+
+    @strawberry.field
+    def options(self) -> Optional[ChartOptionsType]:
+        """Convert stored JSONField `options` into ChartOptionsType"""
+        if not self.options:  # Handle None case
+            return None
+        return ChartOptionsType(**self.options)
+
+    @strawberry.field
+    def filters(self) -> Optional[List[FilterType]]:
+        """Convert stored JSONField `filters` into List[FilterType]"""
+        if not self.filters:  # Handle None or empty cases
+            return []
+        return [FilterType(**f) for f in self.filters]
 
     @strawberry.field
     def chart(self: ResourceChartDetails, info) -> JSON:
