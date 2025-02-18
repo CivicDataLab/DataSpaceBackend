@@ -1,6 +1,6 @@
 import json
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, List
 
 import pandas as pd
 import strawberry
@@ -32,16 +32,46 @@ def chart_base(chart_details: ResourceChartDetails) -> None | Chart:
     chart_instance = chart_class(chart_details, data)
     return chart_instance.create_chart()
 
+@strawberry.type
+class FilterType:
+    column: str
+    operator: str
+    value: str
+
+@strawberry.type
+class ValueMappingType:
+    key: str
+    value: str
+
+@strawberry.type
+class YAxisColumnConfigType:
+    field_name: Optional[TypeResourceSchema]
+    label: Optional[str]
+    color: Optional[str]
+    value_mapping: Optional[List[ValueMappingType]]
+
+@strawberry.type
+class ChartOptionsType:
+    x_axis_label: Optional[str]
+    y_axis_label: Optional[str]
+    x_axis_column: Optional[TypeResourceSchema]
+    y_axis_column: Optional[YAxisColumnConfigType]
+    region_column: Optional[TypeResourceSchema]
+    value_column: Optional[TypeResourceSchema]
+    time_column: Optional[TypeResourceSchema]
+    show_legend: Optional[bool]
+    aggregate_type: Optional[str]
+
 
 @strawberry_django.type(ResourceChartDetails, fields="__all__")
 class TypeResourceChart:
     resource: TypeResource
     chart_type: str
-    options: JSON
-    filters: JSON
+    options: ChartOptionsType
+    filters: List[FilterType]
 
-    @strawberry.field
-    def chart(self: ResourceChartDetails, info) -> JSON:
+@strawberry.field
+def chart(self: ResourceChartDetails, info) -> JSON:
         base_chart = chart_base(self)
         if base_chart:
             options = base_chart.dump_options_with_quotes()
