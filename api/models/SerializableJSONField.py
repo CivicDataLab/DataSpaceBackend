@@ -29,15 +29,16 @@ class CustomJSONDecoder:
 
 class SerializableJSONField(models.JSONField):
     def from_db_value(self, value, expression, connection):
-        """Automatically deserialize from database"""
+        """Ensure that deserialized values match their expected types"""
         if value is None:
-            return value
+            return []
         if isinstance(value, str):
             try:
                 data = json.loads(value)  # Convert from string to JSON
-                return self._decode_values(data)
+                decoded_data = self._decode_values(data)
+                return decoded_data if isinstance(decoded_data, (list, dict)) else []  # Ensure empty lists remain lists
             except (json.JSONDecodeError, TypeError):
-                return value  # If already deserialized, return as-is
+                return []  # Return empty list if decoding fails
         return value  # If it's already a Python object, return as-is
 
     def get_prep_value(self, value):
