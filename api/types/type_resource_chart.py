@@ -70,11 +70,11 @@ class TypeResourceChart:
     options: ChartOptionsType
     filters: List[FilterType]
 
-@strawberry.field
-def chart(self: ResourceChartDetails, info) -> JSON:
-        base_chart = chart_base(self)
-        if base_chart:
-            options = base_chart.dump_options_with_quotes()
-            return json.loads(options)
-        else:
-            return {}
+    @strawberry.field
+    def chart(self: ResourceChartDetails, info) -> JSON:
+            base_chart = chart_base(self)
+            if base_chart:
+                options = base_chart.dump_options_with_quotes()
+                return json.loads(options)
+            else:
+                return {}
