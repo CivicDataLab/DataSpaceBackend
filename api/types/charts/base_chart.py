@@ -41,7 +41,7 @@ class BaseChart(ABC):
         Filter the data based on the chart_details filters.
         """
         filtered_data = self.data
-        if not self.chart_details.filters:
+        if not self.chart_details.filters or len(self.chart_details.filters) == 0:
             return filtered_data
 
         operator_map = {
