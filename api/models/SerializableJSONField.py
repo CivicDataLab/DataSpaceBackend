@@ -6,32 +6,38 @@ from django.core.serializers.json import DjangoJSONEncoder
 
 class CustomJSONEncoder(DjangoJSONEncoder):
     def default(self, obj):
-        try:
-            return super().default(obj)  # Try standard serialization
-        except TypeError:
-            # Fallback: Serialize non-standard objects using pickle and base64 encoding
-            return {
-                "_custom_serialized": True,
-                "data": base64.b64encode(pickle.dumps(obj)).decode('utf-8'),
-            }
+        """Only serialize non-standard objects using pickle"""
+        if isinstance(obj, (dict, list, str, int, float, bool, type(None))):
+            return obj  # Return standard JSON objects as-is
+        return {
+            "_custom_serialized": True,
+            "data": base64.b64encode(pickle.dumps(obj)).decode('utf-8'),
+        }
 
 class CustomJSONDecoder:
     @staticmethod
-    def decode(data):
-        if isinstance(data, dict) and data.get("_custom_serialized"):
-            return pickle.loads(base64.b64decode(data["data"].encode('utf-8')))
-        return data  # If standard JSON, return as-is
+    def decode(value):
+        """Decode objects that were custom-serialized, otherwise return normal JSON"""
+        if isinstance(value, dict) and value.get("_custom_serialized"):
+            return pickle.loads(base64.b64decode(value["data"].encode('utf-8')))
+        return value
 
 class SerializableJSONField(models.JSONField):
     def from_db_value(self, value, expression, connection):
-        """Automatically deserialize when retrieving from DB"""
+        """Automatically deserialize from database"""
         if value is None:
             return value
-        data = json.loads(value)
-        return CustomJSONDecoder.decode(data)
+        try:
+            data = json.loads(value)  # Convert from string to JSON
+            return CustomJSONDecoder.decode(data)
+        except (json.JSONDecodeError, TypeError):
+            return value  # If already deserialized, return as-is
 
     def get_prep_value(self, value):
-        """Automatically serialize when saving to DB"""
+        """Automatically serialize before saving to database"""
         if value is None:
             return value
-        return json.dumps(value, cls=CustomJSONEncoder)
+        try:
+            return json.dumps(value, cls=CustomJSONEncoder)  # Convert to JSON string
+        except TypeError:
+            return json.dumps({"_custom_serialized": True, "data": base64.b64encode(pickle.dumps(value)).decode('utf-8')})
