@@ -2,8 +2,8 @@ import uuid
 
 from django.db import models
 
-from api.models import Resource
-from api.types import SerializableJSONField
+from api.models import Resource, SerializableJSONField
+
 from api.utils.enums import ChartTypes
 
 

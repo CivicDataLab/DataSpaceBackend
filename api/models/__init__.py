@@ -1,3 +1,4 @@
+from api.models.SerializableJSONField import SerializableJSONField
 from api.models.Organization import Organization
 from api.models.DataSpace import DataSpace
 from api.models.Geography import Geography
