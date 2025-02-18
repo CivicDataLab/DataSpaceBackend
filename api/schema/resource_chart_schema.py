@@ -90,9 +90,9 @@ class ResourceChartInput:
     resource: uuid.UUID
     name: Optional[str]
     description: Optional[str]
-    type: ChartType
-    options: ChartOptions = field(default_factory=ChartOptions)
-    filters: List[FilterInput] = field(default_factory=list)
+    type: Optional[ChartType]
+    options: Optional[ChartOptions] = field(default_factory=ChartOptions)
+    filters: Optional[List[FilterInput]] = field(default_factory=list)
 
 
 def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChartInput, resource: Resource):
