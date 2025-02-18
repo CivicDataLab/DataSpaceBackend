@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 
+from api.types.SerializableJSONField import SerializableJSONField
 from api.utils.enums import ChartTypes, AggregateType
 from api.models import Resource, ResourceSchema
 
@@ -11,9 +12,9 @@ class ResourceChartDetails(models.Model):
     description = models.CharField(max_length=1000, unique=False, blank=True)
     chart_type = models.CharField(max_length=50, choices=ChartTypes.choices, default=ChartTypes.BAR_HORIZONTAL,
                                   blank=False, unique=False)
-    options = models.JSONField(blank=True, default=dict)
+    options = SerializableJSONField(blank=True, default=dict)
     modified = models.DateTimeField(auto_now=True)
-    filters = models.JSONField(blank=True, default=list)
+    filters = SerializableJSONField(blank=True, default=list)
 
     def __str__(self):
         return self.name
