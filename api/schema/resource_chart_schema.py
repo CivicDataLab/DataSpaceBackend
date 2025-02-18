@@ -92,7 +92,7 @@ class ResourceChartInput:
     description: Optional[str]
     type: Optional[ChartType]
     options: Optional[ChartOptions] = field(default_factory=ChartOptions)
-    filters: Optional[List[FilterInput]] = field(default_factory=list)
+    filters: Optional[List[FilterInput]] = None
 
 
 def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChartInput, resource: Resource):
