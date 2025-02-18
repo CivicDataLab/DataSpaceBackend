@@ -71,25 +71,28 @@ class TypeResourceChart:
 
     @strawberry.field
     def options(self) -> Optional[ChartOptionsType]:
-        """Convert stored JSONField `options` into ChartOptionsType with proper object mapping"""
+        """Convert stored JSONField `options` into ChartOptionsType, handling already deserialized objects"""
         if not self.options:  # Handle None case
             return None
 
-        # Ensure all keys exist and correctly map objects
+        def ensure_type(value, target_type):
+            """Ensure value is an instance of the expected target_type"""
+            if isinstance(value, target_type):
+                return value  # Already the correct type
+            if isinstance(value, dict):
+                return target_type(**value)  # Convert dictionary to target type
+            return None  # Handle unexpected cases gracefully
+
+        # Convert only if needed
         options_data = {
             "x_axis_label": self.options.get("x_axis_label"),
             "y_axis_label": self.options.get("y_axis_label"),
-            "x_axis_column": TypeResourceSchema(**self.options["x_axis_column"]) if self.options.get(
-                "x_axis_column") else None,
-            "y_axis_column": YAxisColumnConfigType(**self.options["y_axis_column"]) if self.options.get(
-                "y_axis_column") else None,
-            "region_column": TypeResourceSchema(**self.options["region_column"]) if self.options.get(
-                "region_column") else None,
-            "value_column": TypeResourceSchema(**self.options["value_column"]) if self.options.get(
-                "value_column") else None,
-            "time_column": TypeResourceSchema(**self.options["time_column"]) if self.options.get(
-                "time_column") else None,
-            "show_legend": self.options.get("show_legend", False),
+            "x_axis_column": ensure_type(self.options.get("x_axis_column"), TypeResourceSchema),
+            "y_axis_column": ensure_type(self.options.get("y_axis_column"), YAxisColumnConfigType),
+            "region_column": ensure_type(self.options.get("region_column"), TypeResourceSchema),
+            "value_column": ensure_type(self.options.get("value_column"), TypeResourceSchema),
+            "time_column": ensure_type(self.options.get("time_column"), TypeResourceSchema),
+            "show_legend": self.options.get("show_legend", False),  # Default to False
             "aggregate_type": self.options.get("aggregate_type"),
         }
 
