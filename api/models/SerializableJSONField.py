@@ -32,15 +32,19 @@ class SerializableJSONField(models.JSONField):
         """Automatically deserialize from database"""
         if value is None:
             return value
-        try:
-            data = json.loads(value)  # Convert from string to JSON
-            return self._decode_values(data)
-        except (json.JSONDecodeError, TypeError):
-            return value  # If already deserialized, return as-is
+        if isinstance(value, str):
+            try:
+                data = json.loads(value)  # Convert from string to JSON
+                return self._decode_values(data)
+            except (json.JSONDecodeError, TypeError):
+                return value  # If already deserialized, return as-is
+        return value  # If it's already a Python object, return as-is
 
     def get_prep_value(self, value):
         """Automatically serialize before saving to database"""
         if value is None:
+            return value
+        if isinstance(value, str):  # Prevent double encoding
             return value
         return json.dumps(self._encode_values(value), cls=CustomJSONEncoder)
 
