@@ -71,10 +71,29 @@ class TypeResourceChart:
 
     @strawberry.field
     def options(self) -> Optional[ChartOptionsType]:
-        """Convert stored JSONField `options` into ChartOptionsType"""
+        """Convert stored JSONField `options` into ChartOptionsType with proper object mapping"""
         if not self.options:  # Handle None case
             return None
-        return ChartOptionsType(**self.options)
+
+        # Ensure all keys exist and correctly map objects
+        options_data = {
+            "x_axis_label": self.options.get("x_axis_label"),
+            "y_axis_label": self.options.get("y_axis_label"),
+            "x_axis_column": TypeResourceSchema(**self.options["x_axis_column"]) if self.options.get(
+                "x_axis_column") else None,
+            "y_axis_column": YAxisColumnConfigType(**self.options["y_axis_column"]) if self.options.get(
+                "y_axis_column") else None,
+            "region_column": TypeResourceSchema(**self.options["region_column"]) if self.options.get(
+                "region_column") else None,
+            "value_column": TypeResourceSchema(**self.options["value_column"]) if self.options.get(
+                "value_column") else None,
+            "time_column": TypeResourceSchema(**self.options["time_column"]) if self.options.get(
+                "time_column") else None,
+            "show_legend": self.options.get("show_legend", False),
+            "aggregate_type": self.options.get("aggregate_type"),
+        }
+
+        return ChartOptionsType(**options_data)  # Convert dictionary to object
 
     @strawberry.field
     def filters(self) -> Optional[List[FilterType]]:
