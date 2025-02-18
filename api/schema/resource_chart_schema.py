@@ -110,10 +110,10 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
                 if value:  # Only process if list is not empty
                     options[field_name] = [
                         {
-                            'field': ResourceSchema.objects.get(id=column['field_name']),
-                            'label': column['label'],
-                            'color': column.get('color'),
-                            'value_mapping': [ValueMapping(key=k, value=v) for k, v in column.get('value_mapping', {}).items()]
+                            'field': ResourceSchema.objects.get(id=column.field_name),
+                            'label': column.label,
+                            'color': column.color,
+                            'value_mapping': [ValueMapping(key=k, value=v) for k, v in column.value_mapping.items()]
                         }
                         for column in value
                     ]
