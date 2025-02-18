@@ -1,9 +1,11 @@
 import uuid
+
 from django.db import models
 
-from api.types.SerializableJSONField import SerializableJSONField
-from api.utils.enums import ChartTypes, AggregateType
-from api.models import Resource, ResourceSchema
+from api.models import Resource
+from api.types import SerializableJSONField
+from api.utils.enums import ChartTypes
+
 
 class ResourceChartDetails(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
