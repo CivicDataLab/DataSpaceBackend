@@ -53,15 +53,15 @@ class YAxisColumnConfig:
 
 @strawberry.input
 class ChartOptions:
-    x_axis_label: str = "X-Axis"
-    y_axis_label: str = "Y-Axis"
+    x_axis_label: Optional[str] = "X-Axis"
+    y_axis_label: Optional[str] = "Y-Axis"
     x_axis_column: Optional[str] = None
-    y_axis_column: List[YAxisColumnConfig] = field(default_factory=list)
+    y_axis_column: Optional[List[YAxisColumnConfig]] = field(default_factory=list)
     region_column: Optional[str] = None
     value_column: Optional[str] = None
     time_column: Optional[str] = None
     show_legend: bool = False
-    aggregate_type: str = "none"
+    aggregate_type: Optional[str] = "none"
 
 
 @strawberry.input
