@@ -78,7 +78,7 @@ class TypeResourceChart:
         if not self.options:  # Handle None case
             return None
 
-        def ensure_type(value, target_type):
+        def ensure_type(value, target_type, element_type=None):
             """Ensure value is converted to the correct Strawberry type."""
             if value is None:
                 return None
@@ -89,26 +89,27 @@ class TypeResourceChart:
             if isinstance(value, dict):
                 return target_type(**value)  # Convert dictionary to target type
 
-            if isinstance(value, list) and hasattr(target_type, "__origin__") and target_type.__origin__ == list:
-                # Extract the actual type of the list elements
-                list_element_type = target_type.__args__[
-                    0]  # Example: list[YAxisColumnConfigType] → YAxisColumnConfigType
-                return [ensure_type(item, list_element_type) for item in value]  # Convert each item in the list
+            if isinstance(value, list):
+                # Convert list elements properly
+                if element_type:
+                    return [ensure_type(item, element_type) for item in value]
+                return value
 
             if isinstance(value, ResourceSchema) and target_type == TypeResourceSchema:
                 return convert_to_graphql_type(value, target_type)  # Convert Django model to Strawberry type
 
             return None  # Handle unexpected cases gracefully
 
+        # Ensure y_axis_column is always treated as a list
+        y_axis_column_data = self.options.get("y_axis_column")
+        if isinstance(y_axis_column_data, dict):  # If a single object, wrap it in a list
+            y_axis_column_data = [y_axis_column_data]
         # Convert only if needed
         options_data = {
             "x_axis_label": self.options.get("x_axis_label"),
             "y_axis_label": self.options.get("y_axis_label"),
             "x_axis_column": ensure_type(self.options.get("x_axis_column"), TypeResourceSchema),
-            "y_axis_column": ensure_type(
-                [self.options["y_axis_column"]] if isinstance(self.options.get("y_axis_column"), dict) else self.options.get("y_axis_column"),
-                list[YAxisColumnConfigType]
-            ),  # Wrap in list if it's a dictionary
+            "y_axis_column": ensure_type(y_axis_column_data, list, YAxisColumnConfigType),
             "region_column": ensure_type(self.options.get("region_column"), TypeResourceSchema),
             "value_column": ensure_type(self.options.get("value_column"), TypeResourceSchema),
             "time_column": ensure_type(self.options.get("time_column"), TypeResourceSchema),
