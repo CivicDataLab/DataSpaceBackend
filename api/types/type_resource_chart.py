@@ -21,7 +21,6 @@ def load_csv(filepath: str) -> pd.DataFrame:
 
 
 def chart_base(chart_details: ResourceChartDetails) -> None | Chart:
-    print("chart_details",chart_details)
     if chart_details.resource.resourcefiledetails.format.lower() != "csv":
         return None
 
@@ -83,12 +82,9 @@ class TypeResourceChart:
             if value is None:
                 return None
 
-            if isinstance(value, target_type):
-                return value  # Already correct type
-
             if isinstance(value, dict):
                 # Special case: If converting YAxisColumnConfigType, ensure `field` is also converted
-                if target_type == YAxisColumnConfigType:
+                if target_type is YAxisColumnConfigType:
                     return YAxisColumnConfigType(
                         field=ensure_type(value.get("field"), TypeResourceSchema),  # Convert field properly
                         label=value.get("label"),
@@ -100,7 +96,7 @@ class TypeResourceChart:
 
                 return target_type(**value)  # Convert dictionary to target type
 
-            if isinstance(value, list):
+            if element_type is not None:
                 # Convert list elements properly
                 if element_type:
                     return [ensure_type(item, element_type) for item in value]
