@@ -30,18 +30,14 @@ class CustomJSONDecoder:
 class SerializableJSONField(models.JSONField):
     def from_db_value(self, value, expression, connection):
         """Ensure that deserialized values match their expected types"""
-        print("before des: ", value)
         if value is None:
             return []
         if isinstance(value, str):
             try:
                 data = json.loads(value)  # Convert from string to JSON
-                print("data after loads: ",data)
                 decoded_data = self._decode_values(data)
-                print("decoded data:", decoded_data, "type: ", type(decoded_data))
                 return decoded_data if isinstance(decoded_data, (list, dict)) else []  # Ensure empty lists remain lists
             except (json.JSONDecodeError, TypeError) as e:
-                print("exception: ", e)
                 return []  # Return empty list if decoding fails
         return value  # If it's already a Python object, return as-is
 
@@ -58,6 +54,7 @@ class SerializableJSONField(models.JSONField):
         if isinstance(obj, (dict, list, str, int, float, bool, type(None))):
             return obj  # Return JSON-native types as-is
         return CustomJSONEncoder().default(obj)  # Encode non-serializable objects
+
     def _decode_values(self, obj):
         """Ensure proper decoding of serialized objects and remove _custom_serialized fields"""
         if isinstance(obj, dict):
