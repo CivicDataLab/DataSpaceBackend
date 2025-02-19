@@ -8,7 +8,7 @@ import strawberry_django
 from pyecharts.charts.chart import Chart
 from strawberry.scalars import JSON
 
-from api.models import ResourceChartDetails
+from api.models import ResourceChartDetails, ResourceSchema
 from api.types import TypeResource
 from api.types.charts.chart_registry import CHART_REGISTRY
 from api.types.type_resource import TypeResourceSchema
@@ -83,6 +83,8 @@ class TypeResourceChart:
                 return value  # Already the correct type
             if isinstance(value, dict):
                 return target_type(**value)  # Convert dictionary to target type
+            if isinstance(value, ResourceSchema) and target_type == TypeResourceSchema:
+                return TypeResourceSchema.from_django(value)
             return None  # Handle unexpected cases gracefully
 
         # Convert only if needed
