@@ -12,6 +12,7 @@ from api.models import ResourceChartDetails, ResourceSchema
 from api.types import TypeResource
 from api.types.charts.chart_registry import CHART_REGISTRY
 from api.types.type_resource import TypeResourceSchema
+from api.utils.django_utils import convert_to_graphql_type
 
 
 @lru_cache()
@@ -84,7 +85,7 @@ class TypeResourceChart:
             if isinstance(value, dict):
                 return target_type(**value)  # Convert dictionary to target type
             if isinstance(value, ResourceSchema) and target_type == TypeResourceSchema:
-                return TypeResourceSchema.from_django(value)
+                return convert_to_graphql_type(value, target_type)
             return None  # Handle unexpected cases gracefully
 
         # Convert only if needed
