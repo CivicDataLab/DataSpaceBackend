@@ -57,7 +57,7 @@ class ChartOptionsType:
     x_axis_label: Optional[str]
     y_axis_label: Optional[str]
     x_axis_column: Optional[TypeResourceSchema]
-    y_axis_column: Optional[YAxisColumnConfigType]
+    y_axis_column: Optional[list[YAxisColumnConfigType]]
     region_column: Optional[TypeResourceSchema]
     value_column: Optional[TypeResourceSchema]
     time_column: Optional[TypeResourceSchema]
@@ -79,13 +79,25 @@ class TypeResourceChart:
             return None
 
         def ensure_type(value, target_type):
-            """Ensure value is an instance of the expected target_type"""
+            """Ensure value is converted to the correct Strawberry type."""
+            if value is None:
+                return None
+
             if isinstance(value, target_type):
-                return value  # Already the correct type
+                return value  # Already correct type
+
             if isinstance(value, dict):
                 return target_type(**value)  # Convert dictionary to target type
+
+            if isinstance(value, list) and hasattr(target_type, "__origin__") and target_type.__origin__ == list:
+                # Extract the actual type of the list elements
+                list_element_type = target_type.__args__[
+                    0]  # Example: list[YAxisColumnConfigType] → YAxisColumnConfigType
+                return [ensure_type(item, list_element_type) for item in value]  # Convert each item in the list
+
             if isinstance(value, ResourceSchema) and target_type == TypeResourceSchema:
-                return convert_to_graphql_type(value, target_type)
+                return convert_to_graphql_type(value, target_type)  # Convert Django model to Strawberry type
+
             return None  # Handle unexpected cases gracefully
 
         # Convert only if needed
