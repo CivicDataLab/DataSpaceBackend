@@ -47,7 +47,7 @@ class ValueMappingType:
 
 @strawberry.type
 class YAxisColumnConfigType:
-    field_name: Optional[TypeResourceSchema]
+    field: Optional[TypeResourceSchema]
     label: Optional[str]
     color: Optional[str]
     value_mapping: Optional[List[ValueMappingType]]
