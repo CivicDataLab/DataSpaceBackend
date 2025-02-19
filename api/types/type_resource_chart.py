@@ -87,6 +87,17 @@ class TypeResourceChart:
                 return value  # Already correct type
 
             if isinstance(value, dict):
+                # Special case: If converting YAxisColumnConfigType, ensure `field` is also converted
+                if target_type == YAxisColumnConfigType:
+                    return YAxisColumnConfigType(
+                        field=ensure_type(value.get("field"), TypeResourceSchema),  # Convert field properly
+                        label=value.get("label"),
+                        color=value.get("color"),
+                        value_mapping=[
+                            ValueMappingType(key=vm["key"], value=vm["value"]) for vm in value.get("value_mapping", [])
+                        ] if value.get("value_mapping") else []
+                    )
+
                 return target_type(**value)  # Convert dictionary to target type
 
             if isinstance(value, list):
