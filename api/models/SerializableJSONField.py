@@ -30,14 +30,18 @@ class CustomJSONDecoder:
 class SerializableJSONField(models.JSONField):
     def from_db_value(self, value, expression, connection):
         """Ensure that deserialized values match their expected types"""
+        print("before des: ", value)
         if value is None:
             return []
         if isinstance(value, str):
             try:
                 data = json.loads(value)  # Convert from string to JSON
+                print("data after loads: ",data)
                 decoded_data = self._decode_values(data)
+                print("decoded data:", decoded_data, "type: ", type(decoded_data))
                 return decoded_data if isinstance(decoded_data, (list, dict)) else []  # Ensure empty lists remain lists
-            except (json.JSONDecodeError, TypeError):
+            except (json.JSONDecodeError, TypeError) as e:
+                print("exception: ", e)
                 return []  # Return empty list if decoding fails
         return value  # If it's already a Python object, return as-is
 
@@ -54,11 +58,23 @@ class SerializableJSONField(models.JSONField):
         if isinstance(obj, (dict, list, str, int, float, bool, type(None))):
             return obj  # Return JSON-native types as-is
         return CustomJSONEncoder().default(obj)  # Encode non-serializable objects
-
     def _decode_values(self, obj):
-        """Ensure proper decoding of serialized objects"""
+        """Ensure proper decoding of serialized objects and remove _custom_serialized fields"""
         if isinstance(obj, dict):
-            return {key: self._decode_values(value) for key, value in obj.items()}
+            if "_custom_serialized" in obj and "data" in obj:
+                # Deserialize the object and return the decoded value
+                return CustomJSONDecoder.decode(obj)
+
+            # Recursively decode and remove _custom_serialized fields from all dictionary items
+            return {key: self._decode_values(value) for key, value in obj.items() if key != "_custom_serialized"}
+
         if isinstance(obj, list):
             return [self._decode_values(value) for value in obj]
-        return CustomJSONDecoder.decode(obj)  # Decode non-serializable objects
+
+        if isinstance(obj, str):
+            try:
+                return self._decode_values(json.loads(obj))  # If it's a JSON string, load it as a Python object
+            except json.JSONDecodeError:
+                return obj  # Otherwise, return as-is
+
+        return obj  # Return original object if it doesn't match any criteria

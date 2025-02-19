@@ -20,6 +20,7 @@ def load_csv(filepath: str) -> pd.DataFrame:
 
 
 def chart_base(chart_details: ResourceChartDetails) -> None | Chart:
+    print("chart_details",chart_details)
     if chart_details.resource.resourcefiledetails.format.lower() != "csv":
         return None
 
@@ -72,6 +73,7 @@ class TypeResourceChart:
     @strawberry.field
     def options(self) -> Optional[ChartOptionsType]:
         """Convert stored JSONField `options` into ChartOptionsType, handling already deserialized objects"""
+        print("options:",self.options)
         if not self.options:  # Handle None case
             return None
 
