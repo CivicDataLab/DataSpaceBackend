@@ -105,7 +105,10 @@ class TypeResourceChart:
             "x_axis_label": self.options.get("x_axis_label"),
             "y_axis_label": self.options.get("y_axis_label"),
             "x_axis_column": ensure_type(self.options.get("x_axis_column"), TypeResourceSchema),
-            "y_axis_column": ensure_type(self.options.get("y_axis_column"), YAxisColumnConfigType),
+            "y_axis_column": ensure_type(
+                [self.options["y_axis_column"]] if isinstance(self.options.get("y_axis_column"), dict) else self.options.get("y_axis_column"),
+                list[YAxisColumnConfigType]
+            ),  # Wrap in list if it's a dictionary
             "region_column": ensure_type(self.options.get("region_column"), TypeResourceSchema),
             "value_column": ensure_type(self.options.get("value_column"), TypeResourceSchema),
             "time_column": ensure_type(self.options.get("time_column"), TypeResourceSchema),
