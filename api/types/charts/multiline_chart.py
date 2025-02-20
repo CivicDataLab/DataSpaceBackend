@@ -117,32 +117,36 @@ class MultiLineChart(GroupedBarChart):
         x_axis_column = self.options['x_axis_column']
         y_axis_columns = self.options['y_axis_column']
 
-        # Sort x-axis data if numeric
+        # Get x-axis data
         x_data = filtered_data[x_axis_column.field_name].tolist()
-        try:
-            x_data = sorted([float(x) for x in x_data])
-            x_data = [str(x) for x in x_data]
-        except (ValueError, TypeError):
-            pass
-
+        
         # Add x-axis data
         chart.add_xaxis(x_data)
 
         # Add each line series
         for y_axis_column in y_axis_columns:
             series_name = y_axis_column.get('label') or y_axis_column['field'].field_name
+            field_name = y_axis_column['field'].field_name
+            value_mapping = y_axis_column.get('value_mapping', {})
             
-            # Ensure y-values are in the same order as x-values
-            y_dict = dict(zip(filtered_data[x_axis_column.field_name], 
-                            filtered_data[y_axis_column['field'].field_name]))
-            y_values = [0.0 if pd.isna(y_dict.get(x)) else float(y_dict.get(x, 0.0)) 
-                       for x in x_data]
+            # Get y-values in the same order as x-values
+            y_values = []
+            for x in x_data:
+                row_data = filtered_data[filtered_data[x_axis_column.field_name] == x]
+                if not row_data.empty:
+                    val = row_data[field_name].iloc[0]
+                    y_values.append(0.0 if pd.isna(val) else float(val))
+                else:
+                    y_values.append(0.0)
             
             self.add_series_to_chart(
                 chart=chart,
                 series_name=series_name,
                 y_values=y_values,
-                color=y_axis_column.get('color')
+                color=y_axis_column.get('color'),
+                value_mapping=value_mapping
             )
 
+        # Configure the chart
+        self.configure_chart(chart)
         return chart
