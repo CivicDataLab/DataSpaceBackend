@@ -43,38 +43,52 @@ class MultiLineChart(GroupedBarChart):
                 )
             ),
             yaxis_opts=opts.AxisOpts(
-                type_="category" if value_mappings else "value",
+                type_="value",  # Always use value type for line charts
                 name=self.options.get('y_axis_label', 'Y-Axis'),
-                min_=None if value_mappings else 0,
-                max_=None if value_mappings else 5,
-                interval=None if value_mappings else 1
+                min_=0,  # Start from 0
+                max_=5,  # Set max to 5 for consistent scale
+                interval=1,
+                axislabel_opts=opts.LabelOpts(
+                    formatter="{value}"  # Use raw values
+                )
             ),
             tooltip_opts=opts.TooltipOpts(
                 trigger="axis",
-                axis_pointer_type="cross"
+                axis_pointer_type="cross",
+                formatter="{a}: {c}"  # Show series name and raw value
+            ),
+            grid_opts=opts.GridOpts(
+                containLabel=True  # Ensure grid contains all labels
             )
         )
 
-        # If we have value mappings, update the axis configuration
+        # If we have value mappings, configure the formatter to show mapped values
         if value_mappings:
-            # Sort values for consistent order
-            sorted_values = sorted([float(k) for k in value_mappings.keys()])
-            sorted_labels = [value_mappings[str(val)] for val in sorted_values]
+            # Create a mapping function for the labels
+            def format_label(value):
+                return value_mappings.get(str(float(value)), value)
             
-            # Update the y-axis configuration directly in the options
-            chart.options["yAxis"][0].update({
-                "type": "category",
-                "data": sorted_labels,
-                "axisLabel": {"show": True},
-                "boundaryGap": False
+            # Update y-axis label formatter
+            chart.options["yAxis"][0]["axisLabel"].update({
+                "formatter": opts.JsCode("""
+                    function(value) {
+                        var mappings = %s;
+                        return mappings[value] || value;
+                    }
+                """ % json.dumps(value_mappings))
             })
             
-            # Store the mapping in the options for reference
-            if "extra" not in chart.options:
-                chart.options["extra"] = {}
-            chart.options["extra"]["value_mapping"] = {
-                str(val): label for val, label in zip(sorted_values, sorted_labels)
-            }
+            # Update tooltip formatter
+            chart.options["tooltip"].update({
+                "formatter": opts.JsCode("""
+                    function(params) {
+                        var mappings = %s;
+                        var value = params[0].value;
+                        var label = mappings[value] || value;
+                        return params[0].seriesName + ': ' + label;
+                    }
+                """ % json.dumps(value_mappings))
+            })
 
     def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, **kwargs) -> None:
         """
@@ -98,14 +112,20 @@ class MultiLineChart(GroupedBarChart):
             tooltip_opts=opts.TooltipOpts(
                 formatter="{a}: {c}"  # Show series name and value in tooltip
             ),
-            itemstyle_opts=opts.ItemStyleOpts(color=kwargs.get('color')),
+            itemstyle_opts=opts.ItemStyleOpts(
+                color=kwargs.get('color'),
+                border_width=2,
+                border_color=kwargs.get('color')
+            ),
             linestyle_opts=opts.LineStyleOpts(
                 width=2,  # Line thickness
-                type_="solid"  # Line style (solid, dashed, dotted)
+                type_="solid",  # Line style (solid, dashed, dotted)
+                join_type="round"  # Smooth line joins
             ),
-            symbol="emptyCircle",  # Use empty circles for data points
+            symbol="circle",  # Use filled circles for data points
             symbol_size=8,  # Size of data points
-            is_smooth=True  # Enable smooth line
+            is_smooth=True,  # Enable smooth line
+            is_clip=False  # Don't clip lines at grid boundaries
         )
 
     def initialize_chart(self, filtered_data: pd.DataFrame) -> Chart:
