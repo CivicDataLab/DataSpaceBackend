@@ -13,7 +13,7 @@ def _get_map_chart(chart_details: ResourceChartDetails, data, values):
         maptype=f"{chart_details.chart_type.lower().replace('', '')}",
     )
     # map_chart.set_global_opts(title_opts=opts.TitleOpts(title=chart_details.name)) \
-    map_chart.set_series_opts(label_opts=opts.LabelOpts(is_show=chart_details.show_legend))
+    map_chart.set_series_opts(label_opts=opts.LabelOpts(is_show=chart_details.options.get("show_legend", True)))
     map_chart.set_global_opts(
         title_opts=opts.TitleOpts(title=chart_details.name),
         visualmap_opts=opts.VisualMapOpts(
