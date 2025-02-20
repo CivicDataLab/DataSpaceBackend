@@ -208,14 +208,6 @@ class GroupedBarChart(BaseChart):
             if y_axis_column.get('value_mapping'):
                 value_mappings.update(y_axis_column.get('value_mapping', {}))
 
-        # If we have value mappings, create custom axis data
-        if value_mappings:
-            y_values = sorted([float(k) for k in value_mappings.keys()])
-            y_labels = [value_mappings[str(val)] for val in y_values]
-        else:
-            y_values = None
-            y_labels = None
-
         # Common configuration
         chart.set_global_opts(
             legend_opts=opts.LegendOpts(
@@ -227,18 +219,24 @@ class GroupedBarChart(BaseChart):
                 name=self.options.get('y_axis_label', 'Y-Axis') if is_horizontal else self.options.get('x_axis_label', 'X-Axis')
             ),
             yaxis_opts=opts.AxisOpts(
-                type_="category" if value_mappings else "value",  # Use category type when we have mappings
+                type_="value",
                 name=self.options.get('x_axis_label', 'X-Axis') if is_horizontal else self.options.get('y_axis_label', 'Y-Axis'),
-                data=y_labels,  # This will show our custom labels
-                axistick_opts=opts.AxisTickOpts(
-                    is_show=True,
-                    is_align_with_label=True
+                min_=0 if not value_mappings else min(float(k) for k in value_mappings.keys()),
+                max_=5 if not value_mappings else max(float(k) for k in value_mappings.keys()),
+                interval=1,
+                axislabel_opts=opts.LabelOpts(
+                    formatter="{value}"
                 )
             )
         )
 
         if is_horizontal:
             chart.reversal_axis()  # Flip axis for horizontal bar chart
+
+        # If we have value mappings, update the y-axis data in chart options
+        if value_mappings:
+            y_values = sorted([float(k) for k in value_mappings.keys()])
+            chart.options["yAxis"][0]["data"] = [value_mappings[str(val)] for val in y_values]
 
     def map_value(self, value: float, value_mapping: dict) -> str:
         """
