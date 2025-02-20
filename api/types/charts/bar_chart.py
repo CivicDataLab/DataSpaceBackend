@@ -137,7 +137,8 @@ class BarChart(BaseChart):
                         # Get the value for this x value and time period
                         period_value_map = dict(zip(period_data[x_field], period_data[y_axis_column['field'].field_name]))
                         value = period_value_map.get(x_val, 0.0)
-                        y_values.append(float(value))
+                        # Convert null/None values to 0.0 and ensure float type
+                        y_values.append(0.0 if pd.isna(value) else float(value))
                 
                 chart.add_yaxis(
                     series_name=metric_name,
@@ -148,7 +149,8 @@ class BarChart(BaseChart):
                         font_size=12,
                         color='#000'
                     ),
-                    itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color'))
+                    itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
+                    is_selected=True
                 )
 
             # Configure global options
