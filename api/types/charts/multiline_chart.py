@@ -2,6 +2,7 @@ import pandas as pd
 from pyecharts import options as opts
 from pyecharts.charts.chart import Chart
 from pyecharts.charts import Line
+import json
 
 from api.types.charts.grouped_bar_chart import GroupedBarChart
 from api.types.charts.chart_registry import register_chart
@@ -46,9 +47,13 @@ class MultiLineChart(GroupedBarChart):
         """
         Override parent method to add a line series to the chart with specific line styling
         """
+        # Map values if value_mapping is provided
+        value_mapping = kwargs.get('value_mapping', {})
+        mapped_values = self.map_values(y_values, value_mapping)
+
         chart.add_yaxis(
             series_name=series_name,
-            y_axis=y_values,
+            y_axis=mapped_values,
             label_opts=opts.LabelOpts(is_show=False),  # Hide point labels for cleaner look
             tooltip_opts=opts.TooltipOpts(
                 formatter="{a}: {c}"

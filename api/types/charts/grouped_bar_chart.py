@@ -2,7 +2,6 @@ import pandas as pd
 from pyecharts import options as opts
 from pyecharts.charts.chart import Chart
 from pyecharts.charts import Timeline
-from pyecharts.commons.utils import JsCode
 import json
 
 from api.types.charts.base_chart import BaseChart
@@ -86,15 +85,9 @@ class GroupedBarChart(BaseChart):
                         chart=chart,
                         series_name=metric_name,
                         y_values=y_values,
-                        color=y_axis_column.get('color')
+                        color=y_axis_column.get('color'),
+                        value_mapping=value_mapping
                     )
-                    
-                    # Update the series data with mapped values
-                    if value_mapping:
-                        chart.options["series"][-1]["data"] = [
-                            {"value": val, "label": label}
-                            for val, label in zip(y_values, y_labels)
-                        ]
             else:
                 # Get unique x-axis values from original data
                 all_x_values = filtered_data[x_field].unique().tolist()
@@ -152,15 +145,9 @@ class GroupedBarChart(BaseChart):
                         chart=chart,
                         series_name=metric_name,
                         y_values=y_values,
-                        color=y_axis_column.get('color')
+                        color=y_axis_column.get('color'),
+                        value_mapping=value_mapping
                     )
-                    
-                    # Update the series data with mapped values
-                    if value_mapping:
-                        chart.options["series"][-1]["data"] = [
-                            {"value": val, "label": label}
-                            for val, label in zip(y_values, y_labels)
-                        ]
             # Configure global options
             chart.set_global_opts(
                 legend_opts=opts.LegendOpts(
@@ -234,6 +221,41 @@ class GroupedBarChart(BaseChart):
         if is_horizontal:
             chart.reversal_axis()  # Flip axis for horizontal bar chart
 
+    def map_values(self, values: list, value_mapping: dict) -> list:
+        """
+        Map numeric values to their string representations using value_mapping
+        """
+        if not value_mapping:
+            return values
+            
+        return [value_mapping.get(str(val), val) for val in values]
+
+    def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, **kwargs) -> None:
+        """
+        Add a series to the chart with specific styling
+        """
+        # Map values if value_mapping is provided
+        value_mapping = kwargs.get('value_mapping', {})
+        mapped_values = self.map_values(y_values, value_mapping)
+        
+        chart.add_yaxis(
+            series_name=series_name,
+            y_axis=mapped_values,
+            label_opts=opts.LabelOpts(
+                position="insideRight" if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else "inside",
+                rotate=0 if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else 90,
+                font_size=12,
+                color='#000',
+                formatter="{c}"
+            ),
+            tooltip_opts=opts.TooltipOpts(
+                formatter="{a}: {c}"
+            ),
+            itemstyle_opts=opts.ItemStyleOpts(color=kwargs.get('color')),
+            category_gap="20%",
+            gap="30%"
+        )
+
     def initialize_chart(self, filtered_data: pd.DataFrame) -> Chart:
         """
         Initialize the chart object, add x and y axis data.
@@ -268,25 +290,3 @@ class GroupedBarChart(BaseChart):
             )
 
         return chart
-
-    def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, **kwargs) -> None:
-        """
-        Add a series to the chart with specific styling
-        """
-        chart.add_yaxis(
-            series_name=series_name,
-            y_axis=y_values,
-            label_opts=opts.LabelOpts(
-                position="insideRight" if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else "inside",
-                rotate=0 if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else 90,
-                font_size=12,
-                color='#000',
-                formatter="{c}"
-            ),
-            tooltip_opts=opts.TooltipOpts(
-                formatter="{a}: {c}"
-            ),
-            itemstyle_opts=opts.ItemStyleOpts(color=kwargs.get('color')),
-            category_gap="20%",
-            gap="30%"
-        )
