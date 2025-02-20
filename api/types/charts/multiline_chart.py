@@ -47,16 +47,26 @@ class MultiLineChart(GroupedBarChart):
         """
         Override parent method to add a line series to the chart with specific line styling
         """
-        # Map values if value_mapping is provided
         value_mapping = kwargs.get('value_mapping', {})
-        mapped_values = self.map_values(y_values, value_mapping)
+        
+        # Create a list of value objects with original and formatted values
+        data = []
+        for val in y_values:
+            # Keep original numeric value for plotting
+            value = float(val) if val is not None else 0.0
+            # Get mapped string value for display
+            label = self.map_value(value, value_mapping)
+            data.append(opts.LineItem(
+                name=label,
+                value=value
+            ))
 
         chart.add_yaxis(
             series_name=series_name,
-            y_axis=mapped_values,
+            y_axis=data,
             label_opts=opts.LabelOpts(is_show=False),  # Hide point labels for cleaner look
             tooltip_opts=opts.TooltipOpts(
-                formatter="{a}: {c}"
+                formatter="{a}: {b}"  # Use name field for tooltip
             ),
             itemstyle_opts=opts.ItemStyleOpts(color=kwargs.get('color')),
             linestyle_opts=opts.LineStyleOpts(

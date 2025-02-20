@@ -221,35 +221,45 @@ class GroupedBarChart(BaseChart):
         if is_horizontal:
             chart.reversal_axis()  # Flip axis for horizontal bar chart
 
-    def map_values(self, values: list, value_mapping: dict) -> list:
+    def map_value(self, value: float, value_mapping: dict) -> str:
         """
-        Map numeric values to their string representations using value_mapping
+        Map a single numeric value to its string representation using value_mapping
         """
         if not value_mapping:
-            return values
+            return str(value)
             
-        return [value_mapping.get(str(val), val) for val in values]
+        return value_mapping.get(str(value), str(value))
 
     def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, **kwargs) -> None:
         """
         Add a series to the chart with specific styling
         """
-        # Map values if value_mapping is provided
         value_mapping = kwargs.get('value_mapping', {})
-        mapped_values = self.map_values(y_values, value_mapping)
+        
+        # Create a list of value objects with original and formatted values
+        data = []
+        for val in y_values:
+            # Keep original numeric value for plotting
+            value = float(val) if val is not None else 0.0
+            # Get mapped string value for display
+            label = self.map_value(value, value_mapping)
+            data.append(opts.BarItem(
+                name=label,
+                value=value
+            ))
         
         chart.add_yaxis(
             series_name=series_name,
-            y_axis=mapped_values,
+            y_axis=data,
             label_opts=opts.LabelOpts(
                 position="insideRight" if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else "inside",
                 rotate=0 if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else 90,
                 font_size=12,
                 color='#000',
-                formatter="{c}"
+                formatter="{b}"  # Use name field for label
             ),
             tooltip_opts=opts.TooltipOpts(
-                formatter="{a}: {c}"
+                formatter="{a}: {b}"  # Use name field for tooltip
             ),
             itemstyle_opts=opts.ItemStyleOpts(color=kwargs.get('color')),
             category_gap="20%",
