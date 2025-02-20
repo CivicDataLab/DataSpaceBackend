@@ -13,7 +13,8 @@ CHART_TYPE_MAP = {
     "GROUPED_BAR_HORIZONTAL": Bar,
     "LINE": Line,
     "ASSAM_DISTRICT": Map,
-    "ASSAM_RC": Map
+    "ASSAM_RC": Map,
+    "MULTILINE": Line
 }
 
 
