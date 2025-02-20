@@ -219,24 +219,36 @@ class GroupedBarChart(BaseChart):
                 name=self.options.get('y_axis_label', 'Y-Axis') if is_horizontal else self.options.get('x_axis_label', 'X-Axis')
             ),
             yaxis_opts=opts.AxisOpts(
-                type_="value",
+                type_="category" if value_mappings else "value",  # Use category type when we have mappings
                 name=self.options.get('x_axis_label', 'X-Axis') if is_horizontal else self.options.get('y_axis_label', 'Y-Axis'),
-                min_=0 if not value_mappings else min(float(k) for k in value_mappings.keys()),
-                max_=5 if not value_mappings else max(float(k) for k in value_mappings.keys()),
-                interval=1,
-                axislabel_opts=opts.LabelOpts(
-                    formatter="{value}"
-                )
+                min_=None if value_mappings else 0,  # Don't set min/max for category type
+                max_=None if value_mappings else 5,
+                interval=None if value_mappings else 1
             )
         )
 
         if is_horizontal:
             chart.reversal_axis()  # Flip axis for horizontal bar chart
 
-        # If we have value mappings, update the y-axis data in chart options
+        # If we have value mappings, update the axis configuration
         if value_mappings:
-            y_values = sorted([float(k) for k in value_mappings.keys()])
-            chart.options["yAxis"][0]["data"] = [value_mappings[str(val)] for val in y_values]
+            # Sort values for consistent order
+            sorted_values = sorted([float(k) for k in value_mappings.keys()])
+            sorted_labels = [value_mappings[str(val)] for val in sorted_values]
+            
+            # Update the y-axis configuration directly in the options
+            chart.options["yAxis"][0].update({
+                "type": "category",
+                "data": sorted_labels,  # Use the mapped labels directly
+                "axisLabel": {"show": True}
+            })
+            
+            # Store the mapping in the options for reference
+            if "extra" not in chart.options:
+                chart.options["extra"] = {}
+            chart.options["extra"]["value_mapping"] = {
+                str(val): label for val, label in zip(sorted_values, sorted_labels)
+            }
 
     def map_value(self, value: float, value_mapping: dict) -> str:
         """
