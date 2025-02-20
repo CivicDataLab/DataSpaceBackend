@@ -53,7 +53,7 @@ class BarChart(BaseChart):
 
                 # Add data for the y-axis column
                 y_axis_column = self.options['y_axis_column']
-                metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
+                metric_name = y_axis_column.get('label') or y_axis_column['field'].field_name
                 y_values = []
                 y_labels = []
                 field_name = y_axis_column['field'].field_name
@@ -125,7 +125,7 @@ class BarChart(BaseChart):
 
                 # Add data for each y-axis column
                 for y_axis_column in self.options['y_axis_column']:
-                    metric_name = y_axis_column.get('label', f"Series {y_axis_column['field'].id}")
+                    metric_name = y_axis_column.get('label') or y_axis_column['field'].field_name
                 y_values = []
                 
                 # Generate y values for each x value and time period
@@ -258,7 +258,7 @@ class BarChart(BaseChart):
         y_values = metrics[y_axis_column['field'].field_name].tolist()
 
         # Get series name from label or field name
-        series_name = y_axis_column.get('label', y_axis_column['field'].field_name)
+        series_name = y_axis_column.get('label') or y_axis_column['field'].field_name
         is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
 
         # Add x and y axis data

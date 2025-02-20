@@ -51,7 +51,7 @@ class GroupedBarChart(BaseChart):
 
                 # Add data for each metric
                 for y_axis_column in y_axis_columns:
-                    metric_name = y_axis_column.get('label') or f"Series {y_axis_column['field'].id}"
+                    metric_name = y_axis_column.get('label') or y_axis_column['field'].field_name
                     y_values = []
                     y_labels = []
                     field_name = y_axis_column['field'].field_name
@@ -123,7 +123,7 @@ class GroupedBarChart(BaseChart):
 
                 # Add data for each metric
                 for y_axis_column in y_axis_columns:
-                    metric_name = y_axis_column.get('label') or f"Series {y_axis_column['field'].id}"
+                    metric_name = y_axis_column.get('label') or y_axis_column['field'].field_name
                     y_values = []
                     y_labels = []
                     field_name = y_axis_column['field'].field_name
@@ -269,7 +269,7 @@ class GroupedBarChart(BaseChart):
         # Add x and y axis data
         chart.add_xaxis(filtered_data[x_axis_column.field_name].tolist())
         for y_axis_column in y_axis_columns:
-            series_name = y_axis_column.get('label') or f"Series {y_axis_column['field'].id}"
+            series_name = y_axis_column.get('label') or y_axis_column['field'].field_name
             is_horizontal = self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL"
             
             chart.add_yaxis(
