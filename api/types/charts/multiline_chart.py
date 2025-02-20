@@ -20,6 +20,12 @@ class MultiLineChart(GroupedBarChart):
         """
         Configure global options and axis settings for line chart.
         """
+        # Get value mappings from all y-axis columns to create y-axis labels
+        value_mappings = {}
+        for y_axis_column in self.options['y_axis_column']:
+            if y_axis_column.get('value_mapping'):
+                value_mappings.update(y_axis_column.get('value_mapping', {}))
+
         # Common configuration
         chart.set_global_opts(
             legend_opts=opts.LegendOpts(
@@ -35,13 +41,33 @@ class MultiLineChart(GroupedBarChart):
             ),
             yaxis_opts=opts.AxisOpts(
                 type_="value",
-                name=self.options.get('y_axis_label', 'Y-Axis')
+                name=self.options.get('y_axis_label', 'Y-Axis'),
+                axislabel_opts=opts.LabelOpts(
+                    formatter="{value}",  # Keep numeric for now, we'll update the axis values
+                    rotate=0  # Keep labels horizontal
+                ),
+                # Set up custom y-axis values and labels if we have mappings
+                min_=0 if not value_mappings else min(float(k) for k in value_mappings.keys()),
+                max_=5 if not value_mappings else max(float(k) for k in value_mappings.keys()),
+                interval=1,  # Show every integer value
+                # Define the axis values and their labels
+                axistick_opts=opts.AxisTickOpts(
+                    is_show=True,
+                    is_align_with_label=True
+                )
             ),
             tooltip_opts=opts.TooltipOpts(
                 trigger="axis",
                 axis_pointer_type="cross"
             )
         )
+
+        # If we have value mappings, update the y-axis to show mapped values
+        if value_mappings:
+            y_values = sorted([float(k) for k in value_mappings.keys()])
+            chart.options["yAxis"][0].update(
+                data=[value_mappings[str(val)] for val in y_values]
+            )
 
     def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, **kwargs) -> None:
         """

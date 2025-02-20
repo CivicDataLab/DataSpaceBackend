@@ -202,6 +202,12 @@ class GroupedBarChart(BaseChart):
         # Check if it's a horizontal bar chart
         is_horizontal = self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL"
 
+        # Get value mappings from all y-axis columns to create y-axis labels
+        value_mappings = {}
+        for y_axis_column in self.options['y_axis_column']:
+            if y_axis_column.get('value_mapping'):
+                value_mappings.update(y_axis_column.get('value_mapping', {}))
+
         # Common configuration
         chart.set_global_opts(
             legend_opts=opts.LegendOpts(
@@ -214,12 +220,32 @@ class GroupedBarChart(BaseChart):
             ),
             yaxis_opts=opts.AxisOpts(
                 type_="category" if is_horizontal else "value",
-                name=self.options.get('x_axis_label', 'X-Axis') if is_horizontal else self.options.get('y_axis_label', 'Y-Axis')
+                name=self.options.get('x_axis_label', 'X-Axis') if is_horizontal else self.options.get('y_axis_label', 'Y-Axis'),
+                axislabel_opts=opts.LabelOpts(
+                    formatter="{value}",  # Keep numeric for now, we'll update the axis values
+                    rotate=0  # Keep labels horizontal
+                ),
+                # Set up custom y-axis values and labels if we have mappings
+                min_=0 if not value_mappings else min(float(k) for k in value_mappings.keys()),
+                max_=5 if not value_mappings else max(float(k) for k in value_mappings.keys()),
+                interval=1,  # Show every integer value
+                # Define the axis values and their labels
+                axistick_opts=opts.AxisTickOpts(
+                    is_show=True,
+                    is_align_with_label=True
+                )
             )
         )
 
         if is_horizontal:
             chart.reversal_axis()  # Flip axis for horizontal bar chart
+
+        # If we have value mappings, update the y-axis to show mapped values
+        if value_mappings:
+            y_values = sorted([float(k) for k in value_mappings.keys()])
+            chart.options["yAxis"][0].update(
+                data=[value_mappings[str(val)] for val in y_values]
+            )
 
     def map_value(self, value: float, value_mapping: dict) -> str:
         """
