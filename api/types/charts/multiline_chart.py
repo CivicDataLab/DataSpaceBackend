@@ -55,6 +55,7 @@ class MultiLineChart(GroupedBarChart):
                 width=2,  # Line thickness
                 type_="solid"  # Line style (solid, dashed, dotted)
             ),
+            symbol="emptyCircle",  # Use empty circles for data points
             symbol_size=8,  # Size of data points
             is_smooth=True  # Enable smooth line
         )
@@ -68,14 +69,26 @@ class MultiLineChart(GroupedBarChart):
         x_axis_column = self.options['x_axis_column']
         y_axis_columns = self.options['y_axis_column']
 
+        # Sort x-axis data if numeric
+        x_data = filtered_data[x_axis_column.field_name].tolist()
+        try:
+            x_data = sorted([float(x) for x in x_data])
+            x_data = [str(x) for x in x_data]
+        except (ValueError, TypeError):
+            pass
+
         # Add x-axis data
-        chart.add_xaxis(filtered_data[x_axis_column.field_name].tolist())
+        chart.add_xaxis(x_data)
 
         # Add each line series
         for y_axis_column in y_axis_columns:
             series_name = y_axis_column.get('label') or y_axis_column['field'].field_name
-            y_values = [0.0 if pd.isna(value) else float(value) 
-                       for value in filtered_data[y_axis_column['field'].field_name].tolist()]
+            
+            # Ensure y-values are in the same order as x-values
+            y_dict = dict(zip(filtered_data[x_axis_column.field_name], 
+                            filtered_data[y_axis_column['field'].field_name]))
+            y_values = [0.0 if pd.isna(y_dict.get(x)) else float(y_dict.get(x, 0.0)) 
+                       for x in x_data]
             
             self.add_series_to_chart(
                 chart=chart,
