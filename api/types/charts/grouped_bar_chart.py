@@ -51,7 +51,7 @@ class GroupedBarChart(BaseChart):
 
                 # Add data for each metric
                 for y_axis_column in y_axis_columns:
-                    metric_name = y_axis_column.get('label', f"Series {y_axis_column['field'].id}")
+                    metric_name = y_axis_column.get('label') or f"Series {y_axis_column['field'].id}"
                     y_values = []
                     y_labels = []
                     field_name = y_axis_column['field'].field_name
@@ -97,10 +97,7 @@ class GroupedBarChart(BaseChart):
                         ),
                         itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
                         category_gap="20%",
-                        gap="30%",
-                        is_selected=True
-                    ).set_series_opts(
-                        label_opts=opts.LabelOpts(formatter="{c}")
+                        gap="30%"
                     )
                     
                     # Update the series data with mapped values
@@ -126,7 +123,7 @@ class GroupedBarChart(BaseChart):
 
                 # Add data for each metric
                 for y_axis_column in y_axis_columns:
-                    metric_name = y_axis_column.get('label', f"Series {y_axis_column['field'].id}")
+                    metric_name = y_axis_column.get('label') or f"Series {y_axis_column['field'].id}"
                     y_values = []
                     y_labels = []
                     field_name = y_axis_column['field'].field_name
@@ -177,8 +174,7 @@ class GroupedBarChart(BaseChart):
                         ),
                         itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
                         category_gap="20%",
-                        gap="30%",
-                        is_selected=True
+                        gap="30%"
                     )
                     
                     # Update the series data with mapped values
@@ -191,6 +187,7 @@ class GroupedBarChart(BaseChart):
             chart.set_global_opts(
                 legend_opts=opts.LegendOpts(
                     is_show=True,
+                    selected_mode=True,
                     pos_top="5%",
                     orient="horizontal"
                 ),
@@ -242,7 +239,10 @@ class GroupedBarChart(BaseChart):
 
         # Common configuration
         chart.set_global_opts(
-            legend_opts=opts.LegendOpts(is_show=self.options.get('show_legend', False)),
+            legend_opts=opts.LegendOpts(
+                is_show=self.options.get('show_legend', True),
+                selected_mode=True
+            ),
             xaxis_opts=opts.AxisOpts(
                 type_="value" if is_horizontal else "category",
                 name=self.options.get('y_axis_label', 'Y-Axis') if is_horizontal else self.options.get('x_axis_label', 'X-Axis')
@@ -269,7 +269,7 @@ class GroupedBarChart(BaseChart):
         # Add x and y axis data
         chart.add_xaxis(filtered_data[x_axis_column.field_name].tolist())
         for y_axis_column in y_axis_columns:
-            series_name = y_axis_column.get('label', y_axis_column['field'].field_name)
+            series_name = y_axis_column.get('label') or f"Series {y_axis_column['field'].id}"
             is_horizontal = self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL"
             
             chart.add_yaxis(
@@ -286,8 +286,7 @@ class GroupedBarChart(BaseChart):
                     horizontal_align="center",
                     distance=0
                 ),
-                color=y_axis_column.get('color'),
-                is_selected=True
+                color=y_axis_column.get('color')
             )
 
         return chart
