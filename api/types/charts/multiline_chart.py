@@ -47,48 +47,16 @@ class MultiLineChart(GroupedBarChart):
                 name=self.options.get('y_axis_label', 'Y-Axis'),
                 min_=0,  # Start from 0
                 max_=5,  # Set max to 5 for consistent scale
-                interval=1,
-                axislabel_opts=opts.LabelOpts(
-                    formatter="{value}"  # Use raw values
-                )
+                interval=1
             ),
             tooltip_opts=opts.TooltipOpts(
                 trigger="axis",
-                axis_pointer_type="cross",
-                formatter="{a}: {c}"  # Show series name and raw value
+                axis_pointer_type="cross"
             ),
             grid_opts=opts.GridOpts(
                 containLabel=True  # Ensure grid contains all labels
             )
         )
-
-        # If we have value mappings, configure the formatter to show mapped values
-        if value_mappings:
-            # Create a mapping function for the labels
-            def format_label(value):
-                return value_mappings.get(str(float(value)), value)
-            
-            # Update y-axis label formatter
-            chart.options["yAxis"][0]["axisLabel"].update({
-                "formatter": opts.JsCode("""
-                    function(value) {
-                        var mappings = %s;
-                        return mappings[value] || value;
-                    }
-                """ % json.dumps(value_mappings))
-            })
-            
-            # Update tooltip formatter
-            chart.options["tooltip"].update({
-                "formatter": opts.JsCode("""
-                    function(params) {
-                        var mappings = %s;
-                        var value = params[0].value;
-                        var label = mappings[value] || value;
-                        return params[0].seriesName + ': ' + label;
-                    }
-                """ % json.dumps(value_mappings))
-            })
 
     def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, **kwargs) -> None:
         """
@@ -105,12 +73,17 @@ class MultiLineChart(GroupedBarChart):
             except (ValueError, TypeError):
                 processed_values.append(0.0)
 
+        # Format tooltip to show mapped value if available
+        tooltip_formatter = "{a}: {c}"
+        if value_mapping:
+            tooltip_formatter = "{a}: " + value_mapping.get(str(processed_values[0]), str(processed_values[0]))
+
         chart.add_yaxis(
             series_name=series_name,
             y_axis=processed_values,
             label_opts=opts.LabelOpts(is_show=False),  # Hide point labels for cleaner look
             tooltip_opts=opts.TooltipOpts(
-                formatter="{a}: {c}"  # Show series name and value in tooltip
+                formatter=tooltip_formatter
             ),
             itemstyle_opts=opts.ItemStyleOpts(
                 color=kwargs.get('color'),
@@ -119,8 +92,7 @@ class MultiLineChart(GroupedBarChart):
             ),
             linestyle_opts=opts.LineStyleOpts(
                 width=2,  # Line thickness
-                type_="solid",  # Line style (solid, dashed, dotted)
-                join_type="round"  # Smooth line joins
+                type_="solid"  # Line style (solid, dashed, dotted)
             ),
             symbol="circle",  # Use filled circles for data points
             symbol_size=8,  # Size of data points
