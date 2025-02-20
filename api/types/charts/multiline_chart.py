@@ -52,9 +52,6 @@ class MultiLineChart(GroupedBarChart):
             tooltip_opts=opts.TooltipOpts(
                 trigger="axis",
                 axis_pointer_type="cross"
-            ),
-            grid_opts=opts.GridOpts(
-                is_contain_label=True  # Ensure grid contains all labels
             )
         )
 
