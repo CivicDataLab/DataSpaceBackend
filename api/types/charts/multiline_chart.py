@@ -44,12 +44,15 @@ class MultiLineChart(GroupedBarChart):
 
     def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, **kwargs) -> None:
         """
-        Add a line series to the chart with specific line styling
+        Override parent method to add a line series to the chart with specific line styling
         """
         chart.add_yaxis(
             series_name=series_name,
             y_axis=y_values,
             label_opts=opts.LabelOpts(is_show=False),  # Hide point labels for cleaner look
+            tooltip_opts=opts.TooltipOpts(
+                formatter="{a}: {c}"
+            ),
             itemstyle_opts=opts.ItemStyleOpts(color=kwargs.get('color')),
             linestyle_opts=opts.LineStyleOpts(
                 width=2,  # Line thickness

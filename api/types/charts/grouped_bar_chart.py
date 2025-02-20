@@ -82,22 +82,11 @@ class GroupedBarChart(BaseChart):
                         # Map the value to its label if available
                         y_labels.append(value_mapping.get(str(value), value))
                     
-                    chart.add_yaxis(
+                    self.add_series_to_chart(
+                        chart=chart,
                         series_name=metric_name,
-                        y_axis=y_values,
-                        label_opts=opts.LabelOpts(
-                            position="insideRight" if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else "inside",
-                            rotate=0 if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else 90,
-                            font_size=12,
-                            color='#000',
-                            formatter="{c}"
-                        ),
-                        tooltip_opts=opts.TooltipOpts(
-                            formatter="{a}: {c}"
-                        ),
-                        itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
-                        category_gap="20%",
-                        gap="30%"
+                        y_values=y_values,
+                        color=y_axis_column.get('color')
                     )
                     
                     # Update the series data with mapped values
@@ -159,22 +148,11 @@ class GroupedBarChart(BaseChart):
                             # Map the value to its label if available
                             y_labels.append(value_mapping.get(str(value), value))
                     
-                    chart.add_yaxis(
+                    self.add_series_to_chart(
+                        chart=chart,
                         series_name=metric_name,
-                        y_axis=y_values,
-                        label_opts=opts.LabelOpts(
-                            position="insideRight" if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else "inside",
-                            rotate=0 if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else 90,
-                            font_size=12,
-                            color='#000',
-                            formatter="{c}"
-                        ),
-                        tooltip_opts=opts.TooltipOpts(
-                            formatter="{a}: {c}"
-                        ),
-                        itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
-                        category_gap="20%",
-                        gap="30%"
+                        y_values=y_values,
+                        color=y_axis_column.get('color')
                     )
                     
                     # Update the series data with mapped values
@@ -290,3 +268,25 @@ class GroupedBarChart(BaseChart):
             )
 
         return chart
+
+    def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, **kwargs) -> None:
+        """
+        Add a series to the chart with specific styling
+        """
+        chart.add_yaxis(
+            series_name=series_name,
+            y_axis=y_values,
+            label_opts=opts.LabelOpts(
+                position="insideRight" if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else "inside",
+                rotate=0 if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else 90,
+                font_size=12,
+                color='#000',
+                formatter="{c}"
+            ),
+            tooltip_opts=opts.TooltipOpts(
+                formatter="{a}: {c}"
+            ),
+            itemstyle_opts=opts.ItemStyleOpts(color=kwargs.get('color')),
+            category_gap="20%",
+            gap="30%"
+        )
