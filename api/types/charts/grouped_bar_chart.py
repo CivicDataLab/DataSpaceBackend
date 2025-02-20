@@ -216,14 +216,26 @@ class GroupedBarChart(BaseChart):
             ),
             xaxis_opts=opts.AxisOpts(
                 type_="value" if is_horizontal else "category",
-                name=self.options.get('y_axis_label', 'Y-Axis') if is_horizontal else self.options.get('x_axis_label', 'X-Axis')
+                name=self.options.get('y_axis_label', 'Y-Axis') if is_horizontal else self.options.get('x_axis_label', 'X-Axis'),
+                axislabel_opts=opts.LabelOpts(
+                    rotate=0 if is_horizontal else 45
+                )
             ),
             yaxis_opts=opts.AxisOpts(
                 type_="category" if value_mappings else "value",  # Use category type when we have mappings
                 name=self.options.get('x_axis_label', 'X-Axis') if is_horizontal else self.options.get('y_axis_label', 'Y-Axis'),
                 min_=None if value_mappings else 0,  # Don't set min/max for category type
                 max_=None if value_mappings else 5,
-                interval=None if value_mappings else 1
+                interval=None if value_mappings else 1,
+                position="bottom" if is_horizontal else "left",  # Ensure axis position is correct
+                offset=0,  # Remove any offset
+                axistick_opts=opts.AxisTickOpts(
+                    is_align_with_label=True,  # Align ticks with labels
+                    inside=False  # Keep ticks outside
+                ),
+                axisline_opts=opts.AxisLineOpts(
+                    on_zero=True  # Force axis line to be at zero
+                )
             )
         )
 
@@ -240,7 +252,9 @@ class GroupedBarChart(BaseChart):
             chart.options["yAxis"][0].update({
                 "type": "category",
                 "data": sorted_labels,  # Use the mapped labels directly
-                "axisLabel": {"show": True}
+                "axisLabel": {"show": True},
+                "axisTick": {"alignWithLabel": True},  # Ensure ticks align with labels
+                "boundaryGap": True  # Add gap between axis and first category
             })
             
             # Store the mapping in the options for reference
