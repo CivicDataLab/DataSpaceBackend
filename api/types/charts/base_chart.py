@@ -58,7 +58,6 @@ class BaseChart(ABC):
 
         conditions = []
         for filter_condition in self.chart_details.filters:
-            print(self.chart_details.filters)
             column = filter_condition['column'].field_name
             operator = filter_condition['operator']
             value = self._process_value(filter_condition['value'], operator)

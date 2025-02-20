@@ -156,7 +156,6 @@ class Mutation:
             _update_dataset_tags(dataset, update_metadata_input.tags)
         _add_update_dataset_metadata(dataset, metadata_input)
         _add_update_dataset_categories(dataset, update_metadata_input.categories)
-        print(update_metadata_input)
         return dataset
 
     @strawberry_django.mutation(handle_django_errors=True)

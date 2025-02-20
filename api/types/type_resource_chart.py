@@ -73,7 +73,6 @@ class TypeResourceChart:
     @strawberry.field
     def options(self) -> Optional[ChartOptionsType]:
         """Convert stored JSONField `options` into ChartOptionsType, handling already deserialized objects"""
-        print("options:",self.options)
         if not self.options:  # Handle None case
             return None
 
