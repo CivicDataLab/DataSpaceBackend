@@ -51,7 +51,7 @@ class GroupedBarChart(BaseChart):
 
                 # Add data for each metric
                 for y_axis_column in y_axis_columns:
-                    metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
+                    metric_name = y_axis_column.get('label', f"Series {y_axis_column['field'].id}")
                     y_values = []
                     y_labels = []
                     field_name = y_axis_column['field'].field_name
@@ -72,6 +72,7 @@ class GroupedBarChart(BaseChart):
                         for variant in field_variants:
                             if variant in period_data.columns:
                                 value = float(period_data[variant].iloc[0])
+                                value = 0.0 if pd.isna(value) else float(value)
                                 break
                         
                         if value is None:
@@ -79,7 +80,7 @@ class GroupedBarChart(BaseChart):
                             
                         y_values.append(value)
                         # Map the value to its label if available
-                        y_labels.append(str(value_mapping.get(value, value)))
+                        y_labels.append(value_mapping.get(str(value), value))
                     
                     chart.add_yaxis(
                         series_name=metric_name,
@@ -96,7 +97,8 @@ class GroupedBarChart(BaseChart):
                         ),
                         itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
                         category_gap="20%",
-                        gap="30%"
+                        gap="30%",
+                        is_selected=True
                     ).set_series_opts(
                         label_opts=opts.LabelOpts(formatter="{c}")
                     )
@@ -124,7 +126,7 @@ class GroupedBarChart(BaseChart):
 
                 # Add data for each metric
                 for y_axis_column in y_axis_columns:
-                    metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
+                    metric_name = y_axis_column.get('label', f"Series {y_axis_column['field'].id}")
                     y_values = []
                     y_labels = []
                     field_name = y_axis_column['field'].field_name
@@ -149,7 +151,8 @@ class GroupedBarChart(BaseChart):
                             for variant in field_variants:
                                 if variant in period_data.columns:
                                     period_value_map = dict(zip(period_data[x_field], period_data[variant]))
-                                    value = float(period_value_map.get(x_val, 0.0))
+                                    value = period_value_map.get(x_val, 0.0)
+                                    value = 0.0 if pd.isna(value) else float(value)
                                     break
                             
                             if value is None:
@@ -175,9 +178,7 @@ class GroupedBarChart(BaseChart):
                         itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
                         category_gap="20%",
                         gap="30%",
-                        
-                    ).set_series_opts(
-                        label_opts=opts.LabelOpts(formatter="{c}")
+                        is_selected=True
                     )
                     
                     # Update the series data with mapped values
@@ -273,19 +274,20 @@ class GroupedBarChart(BaseChart):
             
             chart.add_yaxis(
                 series_name=series_name,
-                y_axis=[float(value) for value in filtered_data[y_axis_column['field'].field_name].tolist()],  
+                y_axis=[0.0 if pd.isna(value) else float(value) for value in filtered_data[y_axis_column['field'].field_name].tolist()],  
                 itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
                 label_opts=opts.LabelOpts(
                     position="insideRight" if is_horizontal else "inside",
                     rotate=0 if is_horizontal else 90,
                     font_size=12,
                     color='#000',
-                    formatter=series_name,
+                    formatter="{c}",
                     vertical_align="middle",
                     horizontal_align="center",
                     distance=0
                 ),
-                color=y_axis_column.get('color')
+                color=y_axis_column.get('color'),
+                is_selected=True
             )
 
         return chart

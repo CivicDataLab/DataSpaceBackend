@@ -123,9 +123,9 @@ class BarChart(BaseChart):
                 # Add x-axis
                 chart.add_xaxis(x_axis_data)
 
-                # Add data for the y-axis column
-                y_axis_column = self.options['y_axis_column']
-                metric_name = y_axis_column.get('label', y_axis_column['field'].field_name)
+                # Add data for each y-axis column
+                for y_axis_column in self.options['y_axis_column']:
+                    metric_name = y_axis_column.get('label', f"Series {y_axis_column['field'].id}")
                 y_values = []
                 
                 # Generate y values for each x value and time period
