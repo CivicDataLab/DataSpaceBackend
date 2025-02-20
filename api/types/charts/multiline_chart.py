@@ -54,7 +54,7 @@ class MultiLineChart(GroupedBarChart):
                 axis_pointer_type="cross"
             ),
             grid_opts=opts.GridOpts(
-                containLabel=True  # Ensure grid contains all labels
+                is_contain_label=True  # Ensure grid contains all labels
             )
         )
 
