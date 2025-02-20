@@ -5,7 +5,7 @@ from api.models import ResourceChartDetails
 
 
 def _get_map_chart(chart_details: ResourceChartDetails, data, values):
-    value_col = chart_details.value_column.field_name
+    value_col = chart_details.options.get("value_column").field_name
     map_chart = Map(init_opts=opts.InitOpts(width="1000px", height="100")) \
         .add(
         series_name=value_col,
