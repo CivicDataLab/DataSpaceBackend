@@ -187,7 +187,7 @@ class GroupedBarChart(BaseChart):
 
             if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
                 chart.reversal_axis()
-
+            self.configure_chart(chart)
             return chart
         else:
             # Initialize the chart without timeline
@@ -320,7 +320,7 @@ class GroupedBarChart(BaseChart):
                     rotate=0 if is_horizontal else 90,
                     font_size=12,
                     color='#000',
-                    formatter="{c}",
+                    formatter="{a}",
                     vertical_align="middle",
                     horizontal_align="center",
                     distance=0
