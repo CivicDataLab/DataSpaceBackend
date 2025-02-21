@@ -66,3 +66,29 @@ class BaseChart(ABC):
                 conditions.append(operator_map[operator](filtered_data[column], value))
 
         return filtered_data[pd.concat(conditions, axis=1).all(axis=1)] if conditions else filtered_data
+
+    def get_y_axis_bounds(self, filtered_data: pd.DataFrame) -> tuple:
+        """
+        Calculate min and max bounds for y-axis from the data
+        """
+        y_values = []
+        for y_axis_column in self.options['y_axis_column']:
+            column_name = y_axis_column['field_name']
+            if column_name in filtered_data.columns:
+                y_values.extend(filtered_data[column_name].dropna().astype(float).tolist())
+        
+        if not y_values:
+            return 0, 5  # Default bounds if no data
+            
+        min_val = min(y_values)
+        max_val = max(y_values)
+        
+        # Add a small buffer (10%) for better visualization
+        range_val = max_val - min_val
+        buffer = range_val * 0.1
+        
+        # For min, don't go below 0 unless data contains negative values
+        min_bound = max(0, min_val - buffer) if min_val >= 0 else min_val - buffer
+        max_bound = max_val + buffer
+        
+        return min_bound, max_bound

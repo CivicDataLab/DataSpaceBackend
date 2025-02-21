@@ -187,15 +187,15 @@ class GroupedBarChart(BaseChart):
 
             if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
                 chart.reversal_axis()
-            self.configure_chart(chart)
+            self.configure_chart(chart, filtered_data)
             return chart
         else:
             # Initialize the chart without timeline
             chart = self.initialize_chart(filtered_data)
-            self.configure_chart(chart)
+            self.configure_chart(chart, filtered_data)
             return chart
 
-    def configure_chart(self, chart: Chart) -> None:
+    def configure_chart(self, chart: Chart, filtered_data: pd.DataFrame = None) -> None:
         """
         Configure global options and axis settings based on chart type (horizontal or vertical).
         """
@@ -207,6 +207,9 @@ class GroupedBarChart(BaseChart):
         for y_axis_column in self.options['y_axis_column']:
             if y_axis_column.get('value_mapping'):
                 value_mappings.update(y_axis_column.get('value_mapping', {}))
+
+        # Get y-axis bounds from data
+        min_bound, max_bound = self.get_y_axis_bounds(filtered_data) if filtered_data is not None else (0, 5)
 
         # Common configuration
         chart.set_global_opts(
@@ -221,9 +224,9 @@ class GroupedBarChart(BaseChart):
             yaxis_opts=opts.AxisOpts(
                 type_="category" if value_mappings else "value",
                 name=self.options.get('x_axis_label', 'X-Axis') if is_horizontal else self.options.get('y_axis_label', 'Y-Axis'),
-                min_=None if value_mappings else 0,
-                max_=None if value_mappings else 5,
-                interval=None if value_mappings else 1,
+                min_=None if value_mappings else min_bound,
+                max_=None if value_mappings else max_bound,
+                interval=None if value_mappings else None,
                 position="bottom" if is_horizontal else "left"
             )
         )

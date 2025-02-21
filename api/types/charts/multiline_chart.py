@@ -16,7 +16,7 @@ class MultiLineChart(GroupedBarChart):
         """
         return Line
 
-    def configure_chart(self, chart: Chart) -> None:
+    def configure_chart(self, chart: Chart, filtered_data: pd.DataFrame = None) -> None:
         """
         Configure global options and axis settings for line chart.
         """
@@ -25,6 +25,9 @@ class MultiLineChart(GroupedBarChart):
         for y_axis_column in self.options['y_axis_column']:
             if y_axis_column.get('value_mapping'):
                 value_mappings.update(y_axis_column.get('value_mapping', {}))
+
+        # Get y-axis bounds from data
+        min_bound, max_bound = self.get_y_axis_bounds(filtered_data) if filtered_data is not None else (0, 5)
 
         # Common configuration
         chart.set_global_opts(
@@ -45,9 +48,9 @@ class MultiLineChart(GroupedBarChart):
             yaxis_opts=opts.AxisOpts(
                 type_="category" if value_mappings else "value",
                 name=self.options.get('y_axis_label', 'Y-Axis'),
-                min_=None if value_mappings else 0,
-                max_=None if value_mappings else 5,
-                interval=None if value_mappings else 1
+                min_=None if value_mappings else min_bound,
+                max_=None if value_mappings else max_bound,
+                interval=None if value_mappings else None
             ),
             tooltip_opts=opts.TooltipOpts(
                 trigger="axis",
@@ -158,5 +161,27 @@ class MultiLineChart(GroupedBarChart):
             )
 
         # Configure the chart
-        self.configure_chart(chart)
+        self.configure_chart(chart, filtered_data)
         return chart
+
+    def get_y_axis_bounds(self, filtered_data: pd.DataFrame) -> tuple:
+        """
+        Calculate y-axis bounds from data
+        """
+        y_axis_columns = self.options['y_axis_column']
+        min_bound = float('inf')
+        max_bound = float('-inf')
+        
+        for y_axis_column in y_axis_columns:
+            field_name = y_axis_column['field'].field_name
+            values = filtered_data[field_name].tolist()
+            values = [0.0 if pd.isna(val) else float(val) for val in values]
+            min_bound = min(min_bound, min(values))
+            max_bound = max(max_bound, max(values))
+        
+        # Add some padding to the bounds
+        padding = (max_bound - min_bound) * 0.1
+        min_bound -= padding
+        max_bound += padding
+        
+        return min_bound, max_bound
