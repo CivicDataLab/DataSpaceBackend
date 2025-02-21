@@ -73,7 +73,7 @@ class BaseChart(ABC):
         """
         y_values = []
         for y_axis_column in self.options['y_axis_column']:
-            column_name = y_axis_column['field']['field_name']
+            column_name = y_axis_column['field'].field_name
             if column_name in filtered_data.columns:
                 y_values.extend(filtered_data[column_name].dropna().astype(float).tolist())
         
