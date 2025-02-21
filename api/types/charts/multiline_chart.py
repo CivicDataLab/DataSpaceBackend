@@ -47,13 +47,29 @@ class MultiLineChart(GroupedBarChart):
                 name=self.options.get('y_axis_label', 'Y-Axis'),
                 min_=0,  # Start from 0
                 max_=5,  # Set max to 5 for consistent scale
-                interval=1
+                interval=1,
+                axislabel_opts=opts.LabelOpts(
+                    formatter="{value}"  # Will be updated if value_mappings exist
+                )
             ),
             tooltip_opts=opts.TooltipOpts(
                 trigger="axis",
                 axis_pointer_type="cross"
             )
         )
+
+        # If we have value mappings, update the y-axis configuration
+        if value_mappings:
+            # Create a list of axis values and their corresponding labels
+            axis_values = [str(i) for i in range(6)]  # 0 to 5
+            axis_labels = [value_mappings.get(val, val) for val in axis_values]
+            
+            # Update y-axis to show mapped labels
+            chart.options["yAxis"][0].update({
+                "axisLabel": {
+                    "formatter": lambda x: axis_labels[int(float(x))] if 0 <= float(x) <= 5 else x
+                }
+            })
 
     def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, **kwargs) -> None:
         """
@@ -71,9 +87,10 @@ class MultiLineChart(GroupedBarChart):
                 processed_values.append(0.0)
 
         # Format tooltip to show mapped value if available
-        tooltip_formatter = "{a}: {c}"
         if value_mapping:
-            tooltip_formatter = "{a}: " + value_mapping.get(str(processed_values[0]), str(processed_values[0]))
+            tooltip_formatter = "{a}: " + value_mapping.get(str(int(processed_values[0])), str(processed_values[0]))
+        else:
+            tooltip_formatter = "{a}: {c}"
 
         chart.add_yaxis(
             series_name=series_name,
