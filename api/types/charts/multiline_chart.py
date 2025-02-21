@@ -43,14 +43,11 @@ class MultiLineChart(GroupedBarChart):
                 )
             ),
             yaxis_opts=opts.AxisOpts(
-                type_="value",  # Always use value type for line charts
+                type_="category" if value_mappings else "value",
                 name=self.options.get('y_axis_label', 'Y-Axis'),
-                min_=0,  # Start from 0
-                max_=5,  # Set max to 5 for consistent scale
-                interval=1,
-                axislabel_opts=opts.LabelOpts(
-                    formatter="{value}"  # Will be updated if value_mappings exist
-                )
+                min_=None if value_mappings else 0,
+                max_=None if value_mappings else 5,
+                interval=None if value_mappings else 1
             ),
             tooltip_opts=opts.TooltipOpts(
                 trigger="axis",
@@ -58,18 +55,26 @@ class MultiLineChart(GroupedBarChart):
             )
         )
 
-        # If we have value mappings, update the y-axis configuration
+        # If we have value mappings, update the axis configuration
         if value_mappings:
-            # Create a list of axis values and their corresponding labels
-            axis_values = [str(i) for i in range(6)]  # 0 to 5
-            axis_labels = [value_mappings.get(val, val) for val in axis_values]
+            # Sort values for consistent order
+            sorted_values = sorted([float(k) for k in value_mappings.keys()])
+            sorted_labels = [value_mappings[str(val)] for val in sorted_values]
             
-            # Update y-axis to show mapped labels
+            # Update the y-axis configuration directly in the options
             chart.options["yAxis"][0].update({
-                "axisLabel": {
-                    "formatter": lambda x: axis_labels[int(float(x))] if 0 <= float(x) <= 5 else x
-                }
+                "type": "category",
+                "data": sorted_labels,
+                "axisLabel": {"show": True},
+                "boundaryGap": False
             })
+            
+            # Store the mapping in the options for reference
+            if "extra" not in chart.options:
+                chart.options["extra"] = {}
+            chart.options["extra"]["value_mapping"] = {
+                str(val): label for val, label in zip(sorted_values, sorted_labels)
+            }
 
     def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, **kwargs) -> None:
         """
@@ -82,23 +87,22 @@ class MultiLineChart(GroupedBarChart):
         for val in y_values:
             try:
                 value = 0.0 if pd.isna(val) else float(val)
+                if value_mapping:
+                    # For value mapping, convert to index in sorted labels
+                    value_str = str(value)
+                    if "extra" in chart.options and "value_mapping" in chart.options["extra"]:
+                        mapping = chart.options["extra"]["value_mapping"]
+                        if value_str in mapping:
+                            # Find index of the mapped value in sorted labels
+                            value = list(mapping.keys()).index(value_str)
                 processed_values.append(value)
             except (ValueError, TypeError):
                 processed_values.append(0.0)
-
-        # Format tooltip to show mapped value if available
-        if value_mapping:
-            tooltip_formatter = "{a}: " + value_mapping.get(str(int(processed_values[0])), str(processed_values[0]))
-        else:
-            tooltip_formatter = "{a}: {c}"
 
         chart.add_yaxis(
             series_name=series_name,
             y_axis=processed_values,
             label_opts=opts.LabelOpts(is_show=False),  # Hide point labels for cleaner look
-            tooltip_opts=opts.TooltipOpts(
-                formatter=tooltip_formatter
-            ),
             itemstyle_opts=opts.ItemStyleOpts(
                 color=kwargs.get('color'),
                 border_width=2,
