@@ -56,7 +56,8 @@ async def create_chart_details(request_details: dict, resource: Resource) -> Res
                 'field': field,
                 'label': config.get('label', field.field_name),
                 'color': config.get('color'),
-                'value_mapping': value_mapping
+                'value_mapping': value_mapping,
+                'aggregate_type': config.get('aggregate_type', 'none')
             })
 
     if y_axis_columns:
