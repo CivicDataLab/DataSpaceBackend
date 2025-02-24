@@ -65,7 +65,7 @@ def get_file_resource_response(resource: Resource):
         # Use magic to get MIME type
         mime_type = magic.from_buffer(resource.resourcefiledetails.file.read(), mime=True)
         response = HttpResponse(resource.resourcefiledetails.file, content_type=mime_type)
-        response['Content-Disposition'] = f'attachment; filename="{os.path.basename(file_path)}"'
+        response['Content-Disposition'] = f'attachment; filename="{resource.title}.{os.path.basename(file_path).split(".")[1]}"'
     else:
         response = HttpResponse("File doesn't exist", content_type='text/plain')
     return response
