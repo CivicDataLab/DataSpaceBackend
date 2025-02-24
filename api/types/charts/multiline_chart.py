@@ -6,7 +6,7 @@ import json
 
 from api.types.charts.grouped_bar_chart import GroupedBarChart
 from api.types.charts.chart_registry import register_chart
-
+from api.utils.enums import AggregateType
 
 @register_chart('MULTILINE')
 class MultiLineChart(GroupedBarChart):
@@ -26,7 +26,7 @@ class MultiLineChart(GroupedBarChart):
             if y_axis_column.get('value_mapping'):
                 value_mappings.update(y_axis_column.get('value_mapping', {}))
 
-        # Get y-axis bounds from data
+        # Get y-axis bounds from data, considering aggregation
         min_bound, max_bound = self.get_y_axis_bounds(filtered_data) if filtered_data is not None else (0, 5)
 
         # Common configuration
@@ -50,11 +50,15 @@ class MultiLineChart(GroupedBarChart):
                 name=self.options.get('y_axis_label', 'Y-Axis'),
                 min_=None if value_mappings else min_bound,
                 max_=None if value_mappings else max_bound,
-                interval=None if value_mappings else None
+                interval=None if value_mappings else None,
+                axislabel_opts=opts.LabelOpts(
+                    formatter="{value}"  # Show actual values for aggregated data
+                )
             ),
             tooltip_opts=opts.TooltipOpts(
                 trigger="axis",
-                axis_pointer_type="cross"
+                axis_pointer_type="cross",
+                formatter="{b}: {c}"  # Show actual values in tooltip
             )
         )
 

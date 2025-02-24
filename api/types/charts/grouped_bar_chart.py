@@ -6,7 +6,7 @@ import json
 
 from api.types.charts.base_chart import BaseChart
 from api.types.charts.chart_registry import register_chart
-
+from api.utils.enums import AggregateType
 
 @register_chart('GROUPED_BAR_HORIZONTAL')
 @register_chart('GROUPED_BAR_VERTICAL')
@@ -58,25 +58,41 @@ class GroupedBarChart(BaseChart):
                     
                     for time_val in x_axis_data:
                         period_data = time_groups.get_group(time_val)
-                        # Try different field name formats
-                        field_variants = [
-                            field_name,
-                            field_name.replace('-', '_'),
-                            field_name.replace('_', '-'),
-                            field_name.lower(),
-                            field_name.upper()
-                        ]
                         
-                        value = None
-                        for variant in field_variants:
-                            if variant in period_data.columns:
-                                value = float(period_data[variant].iloc[0])
-                                value = 0.0 if pd.isna(value) else float(value)
-                                break
-                        
-                        if value is None:
-                            value = 0.0
+                        # Apply aggregation if specified
+                        aggregate_type = y_axis_column.get('aggregate_type')
+                        if aggregate_type:
+                            if aggregate_type == AggregateType.SUM:
+                                value = period_data[field_name].sum()
+                            elif aggregate_type == AggregateType.AVG:
+                                value = period_data[field_name].mean()
+                            elif aggregate_type == AggregateType.COUNT:
+                                value = period_data[field_name].count()
+                            elif aggregate_type == AggregateType.MIN:
+                                value = period_data[field_name].min()
+                            elif aggregate_type == AggregateType.MAX:
+                                value = period_data[field_name].max()
+                            value = 0.0 if pd.isna(value) else float(value)
+                        else:
+                            # Try different field name formats if no aggregation
+                            field_variants = [
+                                field_name,
+                                field_name.replace('-', '_'),
+                                field_name.replace('_', '-'),
+                                field_name.lower(),
+                                field_name.upper()
+                            ]
                             
+                            value = None
+                            for variant in field_variants:
+                                if variant in period_data.columns:
+                                    value = float(period_data[variant].iloc[0])
+                                    value = 0.0 if pd.isna(value) else float(value)
+                                    break
+                            
+                            if value is None:
+                                value = 0.0
+                                
                         y_values.append(value)
                         # Map the value to its label if available
                         y_labels.append(value_mapping.get(str(value), value))
@@ -117,26 +133,41 @@ class GroupedBarChart(BaseChart):
                             if str(time_val) not in selected_groups:
                                 continue
                                 
-                            # Try different field name formats
-                            field_variants = [
-                                field_name,
-                                field_name.replace('-', '_'),
-                                field_name.replace('_', '-'),
-                                field_name.lower(),
-                                field_name.upper()
-                            ]
-                            
-                            value = None
-                            for variant in field_variants:
-                                if variant in period_data.columns:
-                                    period_value_map = dict(zip(period_data[x_field], period_data[variant]))
-                                    value = period_value_map.get(x_val, 0.0)
-                                    value = 0.0 if pd.isna(value) else float(value)
-                                    break
-                            
-                            if value is None:
-                                value = 0.0
+                            # Apply aggregation if specified
+                            aggregate_type = y_axis_column.get('aggregate_type')
+                            if aggregate_type:
+                                if aggregate_type == AggregateType.SUM:
+                                    value = period_data[field_name].sum()
+                                elif aggregate_type == AggregateType.AVG:
+                                    value = period_data[field_name].mean()
+                                elif aggregate_type == AggregateType.COUNT:
+                                    value = period_data[field_name].count()
+                                elif aggregate_type == AggregateType.MIN:
+                                    value = period_data[field_name].min()
+                                elif aggregate_type == AggregateType.MAX:
+                                    value = period_data[field_name].max()
+                                value = 0.0 if pd.isna(value) else float(value)
+                            else:
+                                # Try different field name formats if no aggregation
+                                field_variants = [
+                                    field_name,
+                                    field_name.replace('-', '_'),
+                                    field_name.replace('_', '-'),
+                                    field_name.lower(),
+                                    field_name.upper()
+                                ]
                                 
+                                value = None
+                                for variant in field_variants:
+                                    if variant in period_data.columns:
+                                        period_value_map = dict(zip(period_data[x_field], period_data[variant]))
+                                        value = period_value_map.get(x_val, 0.0)
+                                        value = 0.0 if pd.isna(value) else float(value)
+                                        break
+                                
+                                if value is None:
+                                    value = 0.0
+                                    
                             y_values.append(value)
                             # Map the value to its label if available
                             y_labels.append(value_mapping.get(str(value), value))
