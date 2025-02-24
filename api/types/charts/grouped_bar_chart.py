@@ -61,17 +61,13 @@ class GroupedBarChart(BaseChart):
                         
                         # Apply aggregation if specified
                         aggregate_type = y_axis_column.get('aggregate_type')
-                        if aggregate_type:
+                        if aggregate_type and aggregate_type != AggregateType.NONE:
                             if aggregate_type == AggregateType.SUM:
                                 value = period_data[field_name].sum()
-                            elif aggregate_type == AggregateType.AVG:
+                            elif aggregate_type == AggregateType.AVERAGE:
                                 value = period_data[field_name].mean()
                             elif aggregate_type == AggregateType.COUNT:
                                 value = period_data[field_name].count()
-                            elif aggregate_type == AggregateType.MIN:
-                                value = period_data[field_name].min()
-                            elif aggregate_type == AggregateType.MAX:
-                                value = period_data[field_name].max()
                             value = 0.0 if pd.isna(value) else float(value)
                         else:
                             # Try different field name formats if no aggregation
@@ -135,17 +131,13 @@ class GroupedBarChart(BaseChart):
                                 
                             # Apply aggregation if specified
                             aggregate_type = y_axis_column.get('aggregate_type')
-                            if aggregate_type:
+                            if aggregate_type and aggregate_type != AggregateType.NONE:
                                 if aggregate_type == AggregateType.SUM:
                                     value = period_data[field_name].sum()
-                                elif aggregate_type == AggregateType.AVG:
+                                elif aggregate_type == AggregateType.AVERAGE:
                                     value = period_data[field_name].mean()
                                 elif aggregate_type == AggregateType.COUNT:
                                     value = period_data[field_name].count()
-                                elif aggregate_type == AggregateType.MIN:
-                                    value = period_data[field_name].min()
-                                elif aggregate_type == AggregateType.MAX:
-                                    value = period_data[field_name].max()
                                 value = 0.0 if pd.isna(value) else float(value)
                             else:
                                 # Try different field name formats if no aggregation
