@@ -28,16 +28,13 @@ class BarChart(BaseChart):
             # Initialize the chart
             chart = self.initialize_chart(filtered_data)
 
-            if self.chart_details.chart_type == "BAR_TIME":
-                return self.create_time_chart(filtered_data, chart)
-            
             # Handle regular bar chart
             is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
             value_mappings = self.options.get('value_mappings', {})
             time_column = self.options.get('time_column')
 
-            x_axis_column = self.options['x_axis_column']
-            y_axis_column = self.options['y_axis_column']
+            x_axis_column = self.options['x_axis_column'].field_name
+            y_axis_column = self.options['y_axis_column'].field_name
 
             # Get axis data
             x_axis_data = filtered_data[x_axis_column].tolist()
@@ -115,20 +112,20 @@ class BarChart(BaseChart):
         """
         Aggregate data based on x and y axis columns and return the resulting DataFrame.
         """
-        x_axis_column = self.options['x_axis_column']
-        y_axis_column = self.options['y_axis_column']['field']
+        x_axis_column = self.options['x_axis_column'].field_name
+        y_axis_column = self.options['y_axis_column']['field'].field_name
         aggregate_type = self.options.get('aggregate_type', 'none')
 
         if aggregate_type != 'none':
-            metrics = data.groupby(x_axis_column.field_name).agg(
-                {y_axis_column.field_name: aggregate_type.lower()}
+            metrics = data.groupby(x_axis_column).agg(
+                {y_axis_column: aggregate_type.lower()}
             ).reset_index()
 
             # Rename columns for clarity
-            metrics.columns = [x_axis_column.field_name, y_axis_column.field_name]
+            metrics.columns = [x_axis_column, y_axis_column]
             return metrics
         else:
-            return data[[x_axis_column.field_name, y_axis_column.field_name]]
+            return data[[x_axis_column, y_axis_column]]
 
     def initialize_chart(self, metrics: pd.DataFrame) -> Chart:
         """
@@ -169,15 +166,15 @@ class BarChart(BaseChart):
             "containLabel": True  # Include axis labels in the grid size calculation
         }
 
-        x_axis_column = self.options['x_axis_column']
-        y_axis_column = self.options['y_axis_column']
+        x_axis_column = self.options['x_axis_column'].field_name
+        y_axis_column = self.options['y_axis_column'].field_name
         
         # Get x-axis values for label formatting
-        x_values = metrics[x_axis_column.field_name].tolist()
-        y_values = metrics[y_axis_column['field'].field_name].tolist()
+        x_values = metrics[x_axis_column].tolist()
+        y_values = metrics[y_axis_column].tolist()
 
         # Get series name from label or field name
-        series_name = y_axis_column.get('label') or y_axis_column['field'].field_name
+        series_name = self.options['y_axis_column'].get('label') or y_axis_column
         is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
 
         # Add x and y axis data
@@ -185,7 +182,7 @@ class BarChart(BaseChart):
         chart.add_yaxis(
             series_name=series_name,
             y_axis=[float(y) for y in y_values],
-            itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
+            itemstyle_opts=opts.ItemStyleOpts(color=self.options['y_axis_column'].get('color')),
             label_opts=opts.LabelOpts(
                 position="insideRight" if is_horizontal else "inside",
                 rotate=0 if is_horizontal else 90,
@@ -196,7 +193,7 @@ class BarChart(BaseChart):
                 horizontal_align="center",
                 distance=0
             ),
-            color=y_axis_column.get('color')
+            color=self.options['y_axis_column'].get('color')
         )
 
         return chart
