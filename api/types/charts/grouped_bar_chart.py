@@ -338,13 +338,13 @@ class GroupedBarChart(BaseChart):
         chart.add_yaxis(
             series_name=series_name,
             y_axis=data,
-            label_opts=opts.LabelOpts(
-                position="insideRight" if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else "inside",
-                rotate=0 if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else 90,
-                font_size=12,
-                color='#000',
-                # formatter="{b}"  # Use name field for label
-            ),
+            # label_opts=opts.LabelOpts(
+            #     position="insideRight" if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else "inside",
+            #     rotate=0 if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else 90,
+            #     font_size=12,
+            #     color='#000',
+            #     # formatter="{b}"  # Use name field for label
+            # ),
             tooltip_opts=opts.TooltipOpts(
                 formatter="{a}: {b}"  # Use name field for tooltip
             ),
