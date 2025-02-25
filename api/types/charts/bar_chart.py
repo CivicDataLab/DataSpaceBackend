@@ -194,12 +194,58 @@ class BarChart(BaseChart):
 
             return chart
         else:
-            # Perform aggregation
-            metrics = self.aggregate_data(filtered_data)
-            # Initialize the chart
-            chart = self.initialize_chart(metrics)
-            self.configure_chart(chart)
-            return chart
+            try:
+                filtered_data = self.aggregate_data()
+                chart = self.initialize_chart(filtered_data)
+
+                is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
+                value_mappings = self.options.get('value_mappings', {})
+                time_column = self.options.get('time_column')
+
+                x_axis_column = self.options['x_axis_column']
+                y_axis_column = self.options['y_axis_column']
+
+                # Get x-axis data
+                x_axis_data = filtered_data[x_axis_column].tolist()
+                y_axis_data = filtered_data[y_axis_column].tolist()
+
+                # Apply value mappings if they exist
+                if value_mappings:
+                    if time_column:
+                        # If time_column exists, we need to map both x and y values
+                        mapped_x_data = [value_mappings.get(str(x), x) for x in x_axis_data]
+                        mapped_y_data = [value_mappings.get(str(y), y) for y in y_axis_data]
+                    else:
+                        # If no time_column, only map the category values (x_axis for vertical, y_axis for horizontal)
+                        if is_horizontal:
+                            mapped_x_data = x_axis_data
+                            mapped_y_data = [value_mappings.get(str(y), y) for y in y_axis_data]
+                        else:
+                            mapped_x_data = [value_mappings.get(str(x), x) for x in x_axis_data]
+                            mapped_y_data = y_axis_data
+                else:
+                    mapped_x_data = x_axis_data
+                    mapped_y_data = y_axis_data
+
+                if is_horizontal:
+                    chart.add_yaxis(
+                        series_name=y_axis_column,
+                        y_axis=mapped_y_data,
+                        label_opts=opts.LabelOpts(is_show=False)
+                    )
+                    chart.add_xaxis(mapped_x_data)
+                else:
+                    chart.add_xaxis(mapped_x_data)
+                    chart.add_yaxis(
+                        series_name=y_axis_column,
+                        y_axis=mapped_y_data,
+                        label_opts=opts.LabelOpts(is_show=False)
+                    )
+
+                return chart
+            except Exception as e:
+                print("Error while creating chart", e)
+                return None
 
     def configure_chart(self, chart: Chart) -> None:
         """
