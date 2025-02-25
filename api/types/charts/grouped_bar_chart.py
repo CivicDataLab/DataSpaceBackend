@@ -382,13 +382,13 @@ class GroupedBarChart(BaseChart):
             legend_opts=opts.LegendOpts(pos_top="5%", pos_left="center")
         )
 
-        # Set grid options using grid()
-        chart.grid(
-            pos_top="15%",
-            pos_bottom="15%",
-            pos_left="10%",
-            pos_right="5%",
-            is_contain_label=True
-        )
+        # # Set grid options using grid()
+        # chart.grid(
+        #     pos_top="15%",
+        #     pos_bottom="15%",
+        #     pos_left="10%",
+        #     pos_right="5%",
+        #     is_contain_label=True
+        # )
 
         return chart
