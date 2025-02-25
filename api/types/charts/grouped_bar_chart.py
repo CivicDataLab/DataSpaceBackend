@@ -44,18 +44,44 @@ class GroupedBarChart(BaseChart):
 
     def _apply_aggregation(self, data: pd.DataFrame, field_name: str, aggregate_type: str) -> float:
         """Helper method to apply aggregation on data"""
-        value = None
-        if aggregate_type and aggregate_type != AggregateType.NONE:
-            if aggregate_type == AggregateType.SUM:
-                value = data[field_name].sum()
-            elif aggregate_type == AggregateType.AVERAGE:
-                value = data[field_name].mean()
-            elif aggregate_type == AggregateType.COUNT:
-                value = data[field_name].count()
-        else:
-            value = float(data[field_name].iloc[0])
-        
-        return 0.0 if pd.isna(value) else float(value)
+        try:
+            # Try different field name formats
+            field_variants = [
+                field_name,
+                field_name.replace('-', '_'),
+                field_name.replace('_', '-'),
+                field_name.lower(),
+                field_name.upper()
+            ]
+            
+            # Find the correct field name variant
+            actual_field = None
+            for variant in field_variants:
+                if variant in data.columns:
+                    actual_field = variant
+                    break
+            
+            if actual_field is None:
+                return 0.0
+
+            if aggregate_type and aggregate_type != 'none':
+                if aggregate_type == AggregateType.SUM:
+                    value = data[actual_field].astype(float).sum()
+                elif aggregate_type == AggregateType.AVERAGE:
+                    value = data[actual_field].astype(float).mean()
+                elif aggregate_type == AggregateType.COUNT:
+                    value = data[actual_field].count()
+                else:
+                    # Default to first value if unknown aggregation type
+                    value = float(data[actual_field].iloc[0])
+            else:
+                # If no aggregation specified, take the first value
+                value = float(data[actual_field].iloc[0])
+            
+            return 0.0 if pd.isna(value) else float(value)
+        except Exception as e:
+            print(f"Error in aggregation: {e}")
+            return 0.0
 
     def _handle_time_based_data(self, chart: Chart, filtered_data: pd.DataFrame, time_column) -> None:
         """Handle time-based data with aggregation"""
@@ -126,11 +152,7 @@ class GroupedBarChart(BaseChart):
                         period_data = time_groups.get_group(time_val)
                         # Filter data for current x value
                         x_filtered_data = period_data[period_data[x_field] == x_val]
-                        if not x_filtered_data.empty:
-                            value = self._apply_aggregation(x_filtered_data, field_name, aggregate_type)
-                        else:
-                            value = 0.0
-                        
+                        value = self._apply_aggregation(x_filtered_data, field_name, aggregate_type)
                         y_values.append(value)
                         y_labels.append(value_mapping.get(str(value), value))
                 
@@ -164,11 +186,7 @@ class GroupedBarChart(BaseChart):
             for x_val in x_axis_data:
                 # Filter data for current x value
                 x_filtered_data = filtered_data[filtered_data[x_field] == x_val]
-                if not x_filtered_data.empty:
-                    value = self._apply_aggregation(x_filtered_data, field_name, aggregate_type)
-                else:
-                    value = 0.0
-                
+                value = self._apply_aggregation(x_filtered_data, field_name, aggregate_type)
                 y_values.append(value)
                 y_labels.append(value_mapping.get(str(value), value))
             
