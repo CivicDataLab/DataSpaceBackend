@@ -282,15 +282,6 @@ class GroupedBarChart(BaseChart):
                     )
                 ]
 
-        # Add grid options for spacing
-        global_opts['grid_opts'] = opts.GridOpts(
-            pos_top="15%",
-            pos_bottom="15%",
-            pos_left="10%",
-            pos_right="5%",
-            contain_label=True
-        )
-
         chart.set_global_opts(**global_opts)
 
         if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
@@ -385,10 +376,15 @@ class GroupedBarChart(BaseChart):
                 )
             )
             
+        # Set global options
         chart.set_global_opts(
             title_opts=opts.TitleOpts(pos_top="5%"),
-            legend_opts=opts.LegendOpts(pos_top="5%", pos_left="center"),
-            grid_opts=opts.GridOpts(
+            legend_opts=opts.LegendOpts(pos_top="5%", pos_left="center")
+        )
+
+        # Set grid options separately
+        chart.set_grid_opts(
+            opts.GridOpts(
                 pos_top="15%",
                 pos_bottom="15%",
                 pos_left="10%",
