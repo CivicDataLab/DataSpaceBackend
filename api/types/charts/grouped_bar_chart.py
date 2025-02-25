@@ -236,7 +236,21 @@ class GroupedBarChart(BaseChart):
             ),
             'tooltip_opts': opts.TooltipOpts(
                 trigger="axis",
-                axis_pointer_type="shadow"
+                axis_pointer_type="cross",
+                background_color="rgba(255,255,255,0.9)",
+                border_color="#ccc",
+                border_width=1,
+                textstyle_opts=opts.TextStyleOpts(color="#333"),
+                formatter="""
+                    function(params) {
+                        var colorSpan = color => '<span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:' + color + '"></span>';
+                        var result = params[0].axisValue + '<br/>';
+                        params.forEach(param => {
+                            result += colorSpan(param.color) + param.seriesName + ': ' + param.value + '<br/>';
+                        });
+                        return result;
+                    }
+                """
             )
         }
 
