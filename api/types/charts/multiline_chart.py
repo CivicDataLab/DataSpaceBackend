@@ -189,7 +189,7 @@ class MultiLineChart(GroupedBarChart):
             "top": "20%",  # Chart area starts 20% from top
             "bottom": "15%",  # Chart area ends 15% from bottom
             "left": "10%",  # Chart area starts 10% from left
-            "right": "5%",  # Chart area ends 5% from right
+            "right": "10%",  # Chart area ends 10% from right
             "containLabel": True  # Include axis labels in the grid size calculation
         }
         
