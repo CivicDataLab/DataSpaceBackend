@@ -201,8 +201,11 @@ class GroupedBarChart(BaseChart):
             'xaxis_opts': opts.AxisOpts(
                 type_="category" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "value",
                 name=self.options.get('x_axis_label', 'X-Axis'),
-                name_gap=35,  # Add space for axis label
-                axislabel_opts=opts.LabelOpts(rotate=45)
+                name_gap=25,  # Add space for axis label
+                axislabel_opts=opts.LabelOpts(
+                    margin=8  # Add margin between axis and labels
+                ),
+                name_location="end",  # Place name at the end (bottom) of axis
             ),
             'yaxis_opts': opts.AxisOpts(
                 type_="value" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "category",
