@@ -212,19 +212,19 @@ class GroupedBarChart(BaseChart):
         min_bound, max_bound = self.get_y_axis_bounds(filtered_data) if filtered_data is not None else (0, 5)
 
         # Common configuration
-        chart.set_global_opts(
-            legend_opts=opts.LegendOpts(
+        global_opts = {
+            'legend_opts': opts.LegendOpts(
                 is_show=True,
                 selected_mode=True,
                 pos_top="5%",
                 orient="horizontal"
             ),
-            xaxis_opts=opts.AxisOpts(
+            'xaxis_opts': opts.AxisOpts(
                 type_="category" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "value",
                 name=self.options.get('x_axis_label', 'X-Axis'),
                 axislabel_opts=opts.LabelOpts(rotate=45)
             ),
-            yaxis_opts=opts.AxisOpts(
+            'yaxis_opts': opts.AxisOpts(
                 type_="value" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "category",
                 name=self.options.get('y_axis_label', 'Y-Axis'),
                 min_=None,  # Let pyecharts auto-calculate the bounds
@@ -234,25 +234,33 @@ class GroupedBarChart(BaseChart):
                 axisline_opts=opts.AxisLineOpts(is_show=True),
                 axislabel_opts=opts.LabelOpts(formatter="{value}")
             ),
-            tooltip_opts=opts.TooltipOpts(
+            'tooltip_opts': opts.TooltipOpts(
                 trigger="axis",
                 axis_pointer_type="shadow"
-            ),
-            datazoom_opts=[
-                opts.DataZoomOpts(
-                    is_show=True,
-                    type_="slider",
-                    range_start=0,
-                    range_end=100,
-                    pos_bottom="0%"
-                ),
-                opts.DataZoomOpts(
-                    type_="inside",
-                    range_start=0,
-                    range_end=100
-                )
-            ]
-        )
+            )
+        }
+
+        # Add data zoom options only if time_column is present and we have enough data points
+        time_column = self.options.get('time_column')
+        if time_column and filtered_data is not None:
+            unique_times = filtered_data[time_column.field_name].nunique()
+            if unique_times > 5:  # Only show data zoom if we have more than 5 time periods
+                global_opts['datazoom_opts'] = [
+                    opts.DataZoomOpts(
+                        is_show=True,
+                        type_="slider",
+                        range_start=max(0, (unique_times - 5) * 100 / unique_times),  # Show last 5 periods by default
+                        range_end=100,
+                        pos_bottom="0%"
+                    ),
+                    opts.DataZoomOpts(
+                        type_="inside",
+                        range_start=max(0, (unique_times - 5) * 100 / unique_times),
+                        range_end=100
+                    )
+                ]
+
+        chart.set_global_opts(**global_opts)
 
         if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
             chart.reversal_axis()
