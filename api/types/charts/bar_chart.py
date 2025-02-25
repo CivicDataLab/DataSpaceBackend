@@ -20,6 +20,14 @@ class BarChart(BaseChart):
         try:
             # First aggregate the data
             filtered_data = self.filter_data()
+            print("Options:", self.options)
+            print("X-axis column:", self.options['x_axis_column'])
+            print("Y-axis column:", self.options['y_axis_column'])
+
+            # Get the first y-axis column for single bar chart
+            if isinstance(self.options['y_axis_column'], list):
+                self.options['y_axis_column'] = self.options['y_axis_column'][0]
+
             filtered_data = self.aggregate_data(filtered_data)
             if filtered_data is None or filtered_data.empty:
                 print("No data to display after aggregation")
@@ -27,18 +35,23 @@ class BarChart(BaseChart):
 
             # Initialize the chart
             chart = self.initialize_chart(filtered_data)
-
+            
             # Handle regular bar chart
             is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
             value_mappings = self.options.get('value_mappings', {})
             time_column = self.options.get('time_column')
 
-            x_axis_column = self.options['x_axis_column'].field_name
-            y_axis_column = self.options['y_axis_column'].field_name
+            # Get field names from column objects
+            x_field = self.options['x_axis_column'].field_name
+            y_field = self.options['y_axis_column']['field'].field_name if isinstance(self.options['y_axis_column'], dict) else self.options['y_axis_column'].field_name
+
+            print("X field:", x_field)
+            print("Y field:", y_field)
+            print("DataFrame columns:", filtered_data.columns)
 
             # Get axis data
-            x_axis_data = filtered_data[x_axis_column].tolist()
-            y_axis_data = filtered_data[y_axis_column].tolist()
+            x_axis_data = filtered_data[x_field].tolist()
+            y_axis_data = filtered_data[y_field].tolist()
 
             # Apply value mappings if they exist
             if value_mappings:
@@ -61,7 +74,7 @@ class BarChart(BaseChart):
             # Add data to chart based on orientation
             if is_horizontal:
                 chart.add_yaxis(
-                    series_name=y_axis_column,
+                    series_name=y_field,
                     y_axis=mapped_y_data,
                     label_opts=opts.LabelOpts(is_show=False)
                 )
@@ -69,7 +82,7 @@ class BarChart(BaseChart):
             else:
                 chart.add_xaxis(mapped_x_data)
                 chart.add_yaxis(
-                    series_name=y_axis_column,
+                    series_name=y_field,
                     y_axis=mapped_y_data,
                     label_opts=opts.LabelOpts(is_show=False)
                 )
@@ -78,6 +91,8 @@ class BarChart(BaseChart):
 
         except Exception as e:
             print("Error while creating chart", e)
+            import traceback
+            traceback.print_exc()
             return None
 
     def configure_chart(self, chart: Chart) -> None:
@@ -112,24 +127,26 @@ class BarChart(BaseChart):
         """
         Aggregate data based on x and y axis columns and return the resulting DataFrame.
         """
-        x_axis_column = self.options['x_axis_column'].field_name
-        y_axis_column = self.options['y_axis_column']['field'].field_name
+        # Get field names from column objects
+        x_field = self.options['x_axis_column'].field_name
+        y_field = self.options['y_axis_column']['field'].field_name if isinstance(self.options['y_axis_column'], dict) else self.options['y_axis_column'].field_name
+
         aggregate_type = self.options.get('aggregate_type', 'none')
 
         if aggregate_type != 'none':
-            metrics = data.groupby(x_axis_column).agg(
-                {y_axis_column: aggregate_type.lower()}
+            metrics = data.groupby(x_field).agg(
+                {y_field: aggregate_type.lower()}
             ).reset_index()
 
-            # Rename columns for clarity
-            metrics.columns = [x_axis_column, y_axis_column]
+            # Keep column names the same
+            metrics.columns = [x_field, y_field]
             return metrics
         else:
-            return data[[x_axis_column, y_axis_column]]
+            return data[[x_field, y_field]]
 
     def initialize_chart(self, metrics: pd.DataFrame) -> Chart:
         """
-        Initialize the chart object, add x and y axis data.
+        Initialize a new bar chart instance with basic options.
         """
         chart_class = self.get_chart_class()  # Dynamically fetch the chart class
         chart = chart_class(
@@ -166,15 +183,16 @@ class BarChart(BaseChart):
             "containLabel": True  # Include axis labels in the grid size calculation
         }
 
-        x_axis_column = self.options['x_axis_column'].field_name
-        y_axis_column = self.options['y_axis_column'].field_name
-        
+        # Get field names from column objects
+        x_field = self.options['x_axis_column'].field_name
+        y_field = self.options['y_axis_column']['field'].field_name if isinstance(self.options['y_axis_column'], dict) else self.options['y_axis_column'].field_name
+
         # Get x-axis values for label formatting
-        x_values = metrics[x_axis_column].tolist()
-        y_values = metrics[y_axis_column].tolist()
+        x_values = metrics[x_field].tolist()
+        y_values = metrics[y_field].tolist()
 
         # Get series name from label or field name
-        series_name = self.options['y_axis_column'].get('label') or y_axis_column
+        series_name = self.options['y_axis_column'].get('label', y_field) if isinstance(self.options['y_axis_column'], dict) else y_field
         is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
 
         # Add x and y axis data
@@ -182,18 +200,19 @@ class BarChart(BaseChart):
         chart.add_yaxis(
             series_name=series_name,
             y_axis=[float(y) for y in y_values],
-            itemstyle_opts=opts.ItemStyleOpts(color=self.options['y_axis_column'].get('color')),
+            itemstyle_opts=opts.ItemStyleOpts(
+                color=self.options['y_axis_column'].get('color') if isinstance(self.options['y_axis_column'], dict) else None
+            ),
             label_opts=opts.LabelOpts(
                 position="insideRight" if is_horizontal else "inside",
                 rotate=0 if is_horizontal else 90,
                 font_size=12,
                 color='#000',
-                formatter=series_name,
                 vertical_align="middle",
                 horizontal_align="center",
                 distance=0
             ),
-            color=self.options['y_axis_column'].get('color')
+            color=self.options['y_axis_column'].get('color') if isinstance(self.options['y_axis_column'], dict) else None
         )
 
         return chart
