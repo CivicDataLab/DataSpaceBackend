@@ -213,7 +213,12 @@ class BarChart(BaseChart):
             legend_opts=opts.LegendOpts(is_show=self.options.get('show_legend', False)),
             xaxis_opts=opts.AxisOpts(
                 type_="value" if is_horizontal else "category",
-                name=self.options.get('y_axis_label', 'Y-Axis') if is_horizontal else self.options.get('x_axis_label', 'X-Axis')
+                name=self.options.get('y_axis_label', 'Y-Axis') if is_horizontal else self.options.get('x_axis_label', 'X-Axis'),
+                name_location="end",  # Place name at the end (bottom) of axis
+                name_gap=25,  # Gap between axis and name
+                axislabel_opts=opts.LabelOpts(
+                    margin=8  # Add margin between axis and labels
+                )
             ),
             yaxis_opts=opts.AxisOpts(
                 type_="category" if is_horizontal else "value",
@@ -263,6 +268,13 @@ class BarChart(BaseChart):
                 pos_top="5%",  # Legend 5% from top
                 pos_left="center",  # Center horizontally
                 padding=[0, 10, 20, 10]  # [top, right, bottom, left] padding
+            ),
+            xaxis_opts=opts.AxisOpts(
+                name_location="end",  # Place name at the end (bottom) of axis
+                name_gap=25,  # Gap between axis and name
+                axislabel_opts=opts.LabelOpts(
+                    margin=8  # Add margin between axis and labels
+                )
             )
         )
 
@@ -271,7 +283,7 @@ class BarChart(BaseChart):
             "top": "20%",  # Chart area starts 20% from top
             "bottom": "15%",  # Chart area ends 15% from bottom
             "left": "10%",  # Chart area starts 10% from left
-            "right": "5%",  # Chart area ends 5% from right
+            "right": "10%",  # Chart area ends 10% from right
             "containLabel": True  # Include axis labels in the grid size calculation
         }
 

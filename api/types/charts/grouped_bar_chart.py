@@ -379,6 +379,13 @@ class GroupedBarChart(BaseChart):
                 pos_top="5%",  # Legend 5% from top
                 pos_left="center",  # Center horizontally
                 padding=[0, 10, 20, 10]  # [top, right, bottom, left] padding
+            ),
+            xaxis_opts=opts.AxisOpts(
+                name_location="end",  # Place name at the end (bottom) of axis
+                name_gap=25,  # Gap between axis and name
+                axislabel_opts=opts.LabelOpts(
+                    margin=8  # Add margin between axis and labels
+                )
             )
         )
 
