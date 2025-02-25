@@ -260,6 +260,14 @@ class GroupedBarChart(BaseChart):
                 border_width=0,  # Remove border
                 background_color="transparent"  # Make background transparent
             ),
+            'grid_opts': [
+                opts.GridOpts(
+                    pos_top="15%",  # Add more space at top for legend
+                    pos_bottom="15%",  # Add more space at bottom for labels
+                    pos_left="10%",  # Add more space for y-axis labels
+                    pos_right="5%"
+                )
+            ],
             **self.get_chart_specific_opts()  # Add chart specific options
         }
 
@@ -285,14 +293,6 @@ class GroupedBarChart(BaseChart):
 
         chart.set_global_opts(**global_opts)
         
-        # Set grid options separately
-        chart.grid(
-            pos_top="15%",  # Add more space at top for legend
-            pos_bottom="15%",  # Add more space at bottom for labels
-            pos_left="10%",  # Add more space for y-axis labels
-            pos_right="5%"
-        )
-
         if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
             chart.reversal_axis()
 
