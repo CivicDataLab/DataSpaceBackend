@@ -136,8 +136,8 @@ class MultiLineChart(GroupedBarChart):
                 type_="value",
                 name=self.options.get('y_axis_label', 'Y-Axis'),
                 name_gap=50,  # Add space for axis label
-                min_=min_val - buffer if min_val != float('inf') else None,
-                max_=max_val + buffer if max_val != float('-inf') else None,
+                min_= None,
+                max_= None,
                 splitline_opts=opts.SplitLineOpts(is_show=True),
                 axistick_opts=opts.AxisTickOpts(is_show=True),
                 axisline_opts=opts.AxisLineOpts(is_show=True),
