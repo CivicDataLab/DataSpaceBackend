@@ -62,6 +62,7 @@ class GroupedBarChart(BaseChart):
                         # Apply aggregation if specified
                         aggregate_type = y_axis_column.get('aggregate_type')
                         if aggregate_type and aggregate_type != AggregateType.NONE:
+                            value = None
                             if aggregate_type == AggregateType.SUM:
                                 value = period_data[field_name].sum()
                             elif aggregate_type == AggregateType.AVERAGE:
@@ -313,7 +314,7 @@ class GroupedBarChart(BaseChart):
                 rotate=0 if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else 90,
                 font_size=12,
                 color='#000',
-                formatter="{b}"  # Use name field for label
+                # formatter="{b}"  # Use name field for label
             ),
             tooltip_opts=opts.TooltipOpts(
                 formatter="{a}: {b}"  # Use name field for tooltip
@@ -348,7 +349,7 @@ class GroupedBarChart(BaseChart):
                     rotate=0 if is_horizontal else 90,
                     font_size=12,
                     color='#000',
-                    formatter="{a}",
+                    # formatter="{a}",
                     vertical_align="middle",
                     horizontal_align="center",
                     distance=0
