@@ -87,6 +87,24 @@ class MultiLineChart(GroupedBarChart):
         """Override chart specific options for line chart."""
         base_opts = super().get_chart_specific_opts()
         
+        # Get actual min/max from data
+        min_val = float('inf')
+        max_val = float('-inf')
+        for y_axis_column in self.options['y_axis_column']:
+            field_name = y_axis_column.get('field_name')
+            if field_name in self.filtered_data:
+                series_data = pd.to_numeric(self.filtered_data[field_name], errors='coerce')
+                series_min = series_data.min()
+                series_max = series_data.max()
+                if not pd.isna(series_min) and series_min < min_val:
+                    min_val = series_min
+                if not pd.isna(series_max) and series_max > max_val:
+                    max_val = series_max
+
+        # Add a small buffer (5%) for better visualization
+        value_range = max_val - min_val
+        buffer = value_range * 0.05 if value_range > 0 else 0.5
+
         # Modify options specific to line chart
         base_opts.update({
             'tooltip_opts': opts.TooltipOpts(
@@ -116,8 +134,8 @@ class MultiLineChart(GroupedBarChart):
             'yaxis_opts': opts.AxisOpts(
                 type_="value",
                 name=self.options.get('y_axis_label', 'Y-Axis'),
-                min_=None,
-                max_=None,
+                min_=min_val - buffer if min_val != float('inf') else None,
+                max_=max_val + buffer if max_val != float('-inf') else None,
                 splitline_opts=opts.SplitLineOpts(is_show=True),
                 axistick_opts=opts.AxisTickOpts(is_show=True),
                 axisline_opts=opts.AxisLineOpts(is_show=True),

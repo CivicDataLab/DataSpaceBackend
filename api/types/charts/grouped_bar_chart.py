@@ -251,7 +251,7 @@ class GroupedBarChart(BaseChart):
             'legend_opts': opts.LegendOpts(
                 is_show=True,
                 selected_mode=True,
-                pos_top="2%",  # Move legend higher
+                pos_top="5%",  # Move legend higher
                 pos_left="center",  # Center horizontally
                 orient="horizontal",
                 item_gap=25,  # Add more space between legend items
@@ -259,6 +259,13 @@ class GroupedBarChart(BaseChart):
                 textstyle_opts=opts.TextStyleOpts(font_size=12),
                 border_width=0,  # Remove border
                 background_color="transparent"  # Make background transparent
+            ),
+            'grid_opts': opts.GridOpts(
+                pos_top="15%",  # Add more space at top for legend
+                pos_bottom="5%",
+                pos_left="5%",
+                pos_right="5%",
+                contain_label=True  # Ensure grid contains axis labels
             ),
             **self.get_chart_specific_opts()  # Add chart specific options
         }
