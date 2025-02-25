@@ -42,10 +42,6 @@ class BarChart(BaseChart):
             print("Y field:", y_field)
             print("DataFrame columns:", filtered_data.columns)
 
-            # Get axis data
-            x_axis_data = filtered_data[x_field].tolist()
-            y_axis_data = filtered_data[y_field].tolist()
-
             # Initialize the chart
             chart_class = self.get_chart_class()
             chart = chart_class(
@@ -57,6 +53,7 @@ class BarChart(BaseChart):
             )
 
             # Add x-axis data
+            x_axis_data = filtered_data[x_field].tolist()
             chart.add_xaxis(x_axis_data)
 
             # Get series name and color
@@ -64,27 +61,14 @@ class BarChart(BaseChart):
             series_color = self.options['y_axis_column'].get('color') if isinstance(self.options['y_axis_column'], dict) else None
             value_mapping = self.options['y_axis_column'].get('value_mapping', {}) if isinstance(self.options['y_axis_column'], dict) else {}
 
-            # Create data with value mapping
-            data = []
-            for val in y_axis_data:
-                value = float(val) if val is not None else 0.0
-                label = value_mapping.get(str(value), str(value)) if value_mapping else str(value)
-                data.append(opts.BarItem(
-                    name=label,
-                    value=value
-                ))
-
             # Add y-axis data
-            chart.add_yaxis(
+            y_axis_data = filtered_data[y_field].tolist()
+            self.add_series_to_chart(
+                chart=chart,
                 series_name=series_name,
-                y_axis=data,
-                label_opts=opts.LabelOpts(is_show=False),
-                tooltip_opts=opts.TooltipOpts(
-                    formatter="{a}: {b}"
-                ),
-                itemstyle_opts=opts.ItemStyleOpts(color=series_color) if series_color else None,
-                category_gap="20%",
-                gap="30%"
+                y_values=y_axis_data,
+                color=series_color,
+                value_mapping=value_mapping
             )
 
             # Configure chart
@@ -97,6 +81,34 @@ class BarChart(BaseChart):
             import traceback
             traceback.print_exc()
             return None
+
+    def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, color: str = None, value_mapping: dict = None) -> None:
+        """
+        Add a series to the chart with specific styling
+        """
+        # Create a list of value objects with original and formatted values
+        data = []
+        for val in y_values:
+            # Keep original numeric value for plotting
+            value = float(val) if val is not None else 0.0
+            # Get mapped string value for display
+            label = value_mapping.get(str(value), str(value)) if value_mapping else str(value)
+            data.append(opts.BarItem(
+                name=label,
+                value=value
+            ))
+        
+        chart.add_yaxis(
+            series_name=series_name,
+            y_axis=data,
+            label_opts=opts.LabelOpts(is_show=False),
+            tooltip_opts=opts.TooltipOpts(
+                formatter="{a}: {b}"
+            ),
+            itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None,
+            category_gap="20%",
+            gap="30%"
+        )
 
     def configure_chart(self, chart: Chart, filtered_data: pd.DataFrame = None) -> None:
         """
@@ -196,10 +208,10 @@ class BarChart(BaseChart):
                 })
             else:
                 chart.options["yAxis"][0].update({
-                    "type": "value",
-                    "axisLabel": {
-                        "formatter": lambda x: value_mapping.get(str(x), x)
-                    }
+                    "type": "category",
+                    "data": sorted_labels,
+                    "axisLabel": {"show": True},
+                    "boundaryGap": False
                 })
             
             # Store the mapping in the options for reference
