@@ -41,7 +41,7 @@ class MultiLineChart(GroupedBarChart):
                 type_="category",
                 name=self.options.get('x_axis_label', 'X-Axis'),
                 axislabel_opts=opts.LabelOpts(
-                    rotate=45,
+                    # rotate=45,
                     interval=0,  # Show all labels
                     margin=8,  # Add margin between axis and labels
                     position="middle"
