@@ -19,7 +19,8 @@ class BarChart(BaseChart):
         """
         try:
             # First aggregate the data
-            filtered_data = self.aggregate_data()
+            filtered_data = self.filter_data()
+            filtered_data = self.aggregate_data(filtered_data)
             if filtered_data is None or filtered_data.empty:
                 print("No data to display after aggregation")
                 return None
