@@ -283,15 +283,22 @@ class GroupedBarChart(BaseChart):
         chart.set_global_opts(**global_opts)
 
         # Set chart margins and spacing
-        chart._option.update(
-            grid={
+        if hasattr(chart, 'options'):
+            chart.options["grid"] = [{
                 "top": "15%",
                 "bottom": "15%",
                 "left": "10%",
                 "right": "5%",
                 "containLabel": True
-            }
-        )
+            }]
+        elif hasattr(chart, '_option'):
+            chart._option["grid"] = [{
+                "top": "15%",
+                "bottom": "15%",
+                "left": "10%",
+                "right": "5%",
+                "containLabel": True
+            }]
 
         if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
             chart.reversal_axis()
