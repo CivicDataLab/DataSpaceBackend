@@ -317,19 +317,17 @@ class GroupedBarChart(BaseChart):
             
         return value_mapping.get(str(value), str(value))
 
-    def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, **kwargs) -> None:
+    def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, color: str = None, value_mapping: dict = None) -> None:
         """
         Add a series to the chart with specific styling
         """
-        value_mapping = kwargs.get('value_mapping', {})
-        
         # Create a list of value objects with original and formatted values
         data = []
         for val in y_values:
             # Keep original numeric value for plotting
             value = float(val) if val is not None else 0.0
             # Get mapped string value for display
-            label = self.map_value(value, value_mapping)
+            label = self.map_value(value, value_mapping) if value_mapping else str(value)
             data.append(opts.BarItem(
                 name=label,
                 value=value
@@ -338,20 +336,18 @@ class GroupedBarChart(BaseChart):
         chart.add_yaxis(
             series_name=series_name,
             y_axis=data,
-            # label_opts=opts.LabelOpts(
-            #     position="insideRight" if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else "inside",
-            #     rotate=0 if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL" else 90,
-            #     font_size=12,
-            #     color='#000',
-            #     # formatter="{b}"  # Use name field for label
-            # ),
+            label_opts=opts.LabelOpts(is_show=False),  # Explicitly hide labels
             tooltip_opts=opts.TooltipOpts(
                 formatter="{a}: {b}"  # Use name field for tooltip
             ),
-            itemstyle_opts=opts.ItemStyleOpts(color=kwargs.get('color')),
+            itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None,
             category_gap="20%",
             gap="30%"
         )
+
+        # Set x-axis type
+        if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
+            chart.reversal_axis()
 
     def initialize_chart(self, filtered_data: pd.DataFrame) -> Chart:
         """
