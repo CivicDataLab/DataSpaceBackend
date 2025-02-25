@@ -385,17 +385,16 @@ class GroupedBarChart(BaseChart):
                 )
             )
             
-        # Set grid position
-        chart.set_series_opts(
-            label_opts=opts.LabelOpts(position="top")
-        )
-        
-        # Add more space around the chart
         chart.set_global_opts(
             title_opts=opts.TitleOpts(pos_top="5%"),
-            legend_opts=opts.LegendOpts(pos_top="5%"),
-            xaxis_opts=opts.AxisOpts(pos_top="15%"),
-            yaxis_opts=opts.AxisOpts(pos_left="10%", pos_right="5%")
+            legend_opts=opts.LegendOpts(pos_top="5%", pos_left="center"),
+            grid_opts=opts.GridOpts(
+                pos_top="15%",
+                pos_bottom="15%",
+                pos_left="10%",
+                pos_right="5%",
+                contain_label=True
+            )
         )
 
         return chart
