@@ -262,10 +262,9 @@ class GroupedBarChart(BaseChart):
             ),
             'grid_opts': opts.GridOpts(
                 pos_top="15%",  # Add more space at top for legend
-                pos_bottom="5%",
-                pos_left="5%",
-                pos_right="5%",
-                contain_label=True  # Ensure grid contains axis labels
+                pos_bottom="15%",  # Add more space at bottom for labels
+                pos_left="10%",  # Add more space for y-axis labels
+                pos_right="5%"
             ),
             **self.get_chart_specific_opts()  # Add chart specific options
         }
