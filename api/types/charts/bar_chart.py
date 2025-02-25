@@ -3,6 +3,7 @@ from pyecharts import options as opts
 from pyecharts.charts.chart import Chart
 from pyecharts.charts import Timeline
 import json
+from pyecharts.commons.utils import JsCode
 
 from api.types.charts.base_chart import BaseChart
 from api.types.charts.chart_registry import register_chart
@@ -55,70 +56,39 @@ class BarChart(BaseChart):
                 )
             )
 
-            # Configure chart options
-            chart.set_global_opts(
-                title_opts=opts.TitleOpts(pos_top="5%"),
-                legend_opts=opts.LegendOpts(
-                    pos_top="5%",
-                    pos_left="center",
-                    padding=[0, 10, 20, 10]
-                ),
-                xaxis_opts=opts.AxisOpts(
-                    name_location="end",
-                    name_gap=25,
-                    axislabel_opts=opts.LabelOpts(
-                        margin=8
-                    )
-                )
-            )
-
-            # Set grid options
-            chart.options["grid"] = {
-                "top": "20%",
-                "bottom": "15%",
-                "left": "10%",
-                "right": "10%",
-                "containLabel": True
-            }
+            # Add x-axis data
+            chart.add_xaxis(x_axis_data)
 
             # Get series name and color
             series_name = self.options['y_axis_column'].get('label', y_field) if isinstance(self.options['y_axis_column'], dict) else y_field
             series_color = self.options['y_axis_column'].get('color') if isinstance(self.options['y_axis_column'], dict) else None
+            value_mapping = self.options['y_axis_column'].get('value_mapping', {}) if isinstance(self.options['y_axis_column'], dict) else {}
 
-            # Add data based on orientation
-            is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
-            if is_horizontal:
-                chart.add_yaxis(
-                    series_name=series_name,
-                    y_axis=y_axis_data,
-                    itemstyle_opts=opts.ItemStyleOpts(color=series_color),
-                    label_opts=opts.LabelOpts(
-                        position="insideRight",
-                        rotate=0,
-                        font_size=12,
-                        color='#000',
-                        vertical_align="middle",
-                        horizontal_align="center",
-                        distance=0
-                    )
-                )
-                chart.add_xaxis(x_axis_data)
-            else:
-                chart.add_xaxis(x_axis_data)
-                chart.add_yaxis(
-                    series_name=series_name,
-                    y_axis=[float(y) for y in y_axis_data],
-                    itemstyle_opts=opts.ItemStyleOpts(color=series_color),
-                    label_opts=opts.LabelOpts(
-                        position="inside",
-                        rotate=90,
-                        font_size=12,
-                        color='#000',
-                        vertical_align="middle",
-                        horizontal_align="center",
-                        distance=0
-                    )
-                )
+            # Create data with value mapping
+            data = []
+            for val in y_axis_data:
+                value = float(val) if val is not None else 0.0
+                label = value_mapping.get(str(value), str(value)) if value_mapping else str(value)
+                data.append(opts.BarItem(
+                    name=label,
+                    value=value
+                ))
+
+            # Add y-axis data
+            chart.add_yaxis(
+                series_name=series_name,
+                y_axis=data,
+                label_opts=opts.LabelOpts(is_show=False),
+                tooltip_opts=opts.TooltipOpts(
+                    formatter="{a}: {b}"
+                ),
+                itemstyle_opts=opts.ItemStyleOpts(color=series_color) if series_color else None,
+                category_gap="20%",
+                gap="30%"
+            )
+
+            # Configure chart
+            self.configure_chart(chart, filtered_data)
 
             return chart
 
@@ -128,43 +98,83 @@ class BarChart(BaseChart):
             traceback.print_exc()
             return None
 
-    def configure_chart(self, chart: Chart) -> None:
+    def configure_chart(self, chart: Chart, filtered_data: pd.DataFrame = None) -> None:
         """
         Configure global chart options.
         """
-        # Add axis titles
-        chart.set_global_opts(
-            xaxis_opts=opts.AxisOpts(
+        # Common configuration
+        global_opts = {
+            'legend_opts': opts.LegendOpts(
+                is_show=True,
+                selected_mode=True,
+                pos_top="5%",
+                pos_left="center",
+                orient="horizontal",
+                item_gap=25,
+                padding=[5, 10, 20, 10],
+                textstyle_opts=opts.TextStyleOpts(font_size=12),
+                border_width=0,
+                background_color="transparent"
+            ),
+            'xaxis_opts': opts.AxisOpts(
+                type_="category" if self.chart_details.chart_type != "BAR_HORIZONTAL" else "value",
                 name=self.options.get('x_axis_label', ''),
-                name_location="end",
                 name_gap=25,
                 axislabel_opts=opts.LabelOpts(
+                    margin=8,
                     rotate=45 if self.chart_details.chart_type != "BAR_HORIZONTAL" else 0
-                )
+                ),
+                name_location="middle"
             ),
-            yaxis_opts=opts.AxisOpts(
+            'yaxis_opts': opts.AxisOpts(
+                type_="value" if self.chart_details.chart_type != "BAR_HORIZONTAL" else "category",
                 name=self.options.get('y_axis_label', ''),
-                name_location="end",
-                name_gap=25
+                name_gap=25,
+                min_=None,
+                max_=None,
+                splitline_opts=opts.SplitLineOpts(is_show=True),
+                axistick_opts=opts.AxisTickOpts(is_show=True),
+                axisline_opts=opts.AxisLineOpts(is_show=True),
+                axislabel_opts=opts.LabelOpts(formatter="{value}", margin=8)
             ),
-            tooltip_opts=opts.TooltipOpts(
+            'tooltip_opts': opts.TooltipOpts(
                 trigger="axis",
-                axis_pointer_type="shadow"
+                axis_pointer_type="shadow",
+                background_color="rgba(255,255,255,0.9)",
+                border_color="#ccc",
+                border_width=1,
+                textstyle_opts=opts.TextStyleOpts(color="#333")
+            ),
+            'grid_opts': opts.GridOpts(
+                top="20%",
+                bottom="15%",
+                left="10%",
+                right="10%",
+                contain_label=True
             )
-        )
+        }
 
-        # Add data zoom if there are more than 5 categories
-        if len(self.data) > 5:
-            chart.set_global_opts(
-                datazoom_opts=[
-                    opts.DataZoomOpts(
-                        range_start=0,
-                        range_end=100
-                    )
-                ]
-            )
+        # Add data zoom if we have more than 5 data points
+        if len(filtered_data) > 5:
+            global_opts['datazoom_opts'] = [
+                opts.DataZoomOpts(
+                    is_show=True,
+                    type_="slider",
+                    range_start=max(0, (len(filtered_data) - 5) * 100 / len(filtered_data)),
+                    range_end=100,
+                    pos_bottom="0%"
+                ),
+                opts.DataZoomOpts(
+                    type_="inside",
+                    range_start=max(0, (len(filtered_data) - 5) * 100 / len(filtered_data)),
+                    range_end=100
+                )
+            ]
 
-        return None
+        chart.set_global_opts(**global_opts)
+
+        if self.chart_details.chart_type == "BAR_HORIZONTAL":
+            chart.reversal_axis()
 
     def aggregate_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
