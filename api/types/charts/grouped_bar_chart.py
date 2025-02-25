@@ -393,7 +393,7 @@ class GroupedBarChart(BaseChart):
                 pos_bottom="15%",
                 pos_left="10%",
                 pos_right="5%",
-                contain_label=True
+                is_contain_label=True
             )
         )
 
