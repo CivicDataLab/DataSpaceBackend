@@ -111,6 +111,9 @@ class BarChart(BaseChart):
             "containLabel": True  # Include axis labels in the grid size calculation
         }
 
+        # Get value mappings
+        value_mapping = self.options['y_axis_column'].get('value_mapping', {}) if isinstance(self.options['y_axis_column'], dict) else {}
+
         # Common configuration
         global_opts = {
             'legend_opts': opts.LegendOpts(
@@ -176,6 +179,35 @@ class BarChart(BaseChart):
 
         if self.chart_details.chart_type == "BAR_HORIZONTAL":
             chart.reversal_axis()
+
+        # If we have value mappings, update the axis configuration
+        if value_mapping:
+            # Sort values for consistent order
+            sorted_values = sorted([float(k) for k in value_mapping.keys()])
+            sorted_labels = [value_mapping[str(val)] for val in sorted_values]
+            
+            # Update the y-axis configuration directly in the options
+            if self.chart_details.chart_type == "BAR_HORIZONTAL":
+                chart.options["yAxis"][0].update({
+                    "type": "category",
+                    "data": sorted_labels,
+                    "axisLabel": {"show": True},
+                    "boundaryGap": False
+                })
+            else:
+                chart.options["yAxis"][0].update({
+                    "type": "value",
+                    "axisLabel": {
+                        "formatter": lambda x: value_mapping.get(str(x), x)
+                    }
+                })
+            
+            # Store the mapping in the options for reference
+            if "extra" not in chart.options:
+                chart.options["extra"] = {}
+            chart.options["extra"]["value_mapping"] = {
+                str(val): label for val, label in zip(sorted_values, sorted_labels)
+            }
 
     def aggregate_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
