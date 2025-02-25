@@ -130,8 +130,7 @@ class BarChart(BaseChart):
                 name=self.options.get('x_axis_label', ''),
                 name_gap=25,
                 axislabel_opts=opts.LabelOpts(
-                    margin=8,
-                    rotate=45 if self.chart_details.chart_type != "BAR_HORIZONTAL" else 0
+                    margin=8
                 ),
                 name_location="middle"
             ),
