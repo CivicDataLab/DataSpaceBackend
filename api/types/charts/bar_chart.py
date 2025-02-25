@@ -13,239 +13,74 @@ from api.utils.enums import AggregateType
 @register_chart('BAR_VERTICAL')
 @register_chart('LINE')
 class BarChart(BaseChart):
-    def create_chart(self) -> Chart | None:
-        if 'x_axis_column' not in self.options or 'y_axis_column' not in self.options:
-            return None
+    def create_chart(self) -> Chart:
+        """
+        Create a bar chart with the given data and options.
+        """
+        try:
+            # First aggregate the data
+            filtered_data = self.aggregate_data()
+            if filtered_data is None or filtered_data.empty:
+                print("No data to display after aggregation")
+                return None
 
-        # Get the first y-axis column for single bar chart
-        y_axis_columns = self.options['y_axis_column']
-        if not y_axis_columns:
-            return None
-        self.options['y_axis_column'] = y_axis_columns[0]
-
-        # Filter data
-        filtered_data = self.filter_data()
-
-        # Check if time_column is specified for timeline
-        time_column = self.options.get('time_column')
-        if time_column:
             # Initialize the chart
-            chart_class = self.get_chart_class()
-            chart = chart_class(
-                init_opts=opts.InitOpts(width="100%", height="600px")
-            )
+            chart = self.initialize_chart(filtered_data)
 
-            # Group data by time periods
-            time_groups = filtered_data.groupby(time_column.field_name)
-            selected_groups = self.options.get('time_groups', [])
+            if self.chart_details.chart_type == "BAR_TIME":
+                return self.create_time_chart(filtered_data, chart)
             
-            # If no time groups specified, use all periods
-            if not selected_groups:
-                all_periods = sorted([str(time) for time in time_groups.groups.keys()])
-                selected_groups = all_periods
+            # Handle regular bar chart
+            is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
+            value_mappings = self.options.get('value_mappings', {})
+            time_column = self.options.get('time_column')
 
-            # If x-axis is same as time column, use time periods directly
-            x_field = self.options['x_axis_column'].field_name
-            if x_field == time_column.field_name:
-                # Sort time periods
-                x_axis_data = sorted([str(time) for time in time_groups.groups.keys() if str(time) in selected_groups])
-                chart.add_xaxis(x_axis_data)
+            x_axis_column = self.options['x_axis_column']
+            y_axis_column = self.options['y_axis_column']
 
-                # Add data for the y-axis column
-                y_axis_column = self.options['y_axis_column']
-                metric_name = y_axis_column.get('label') or y_axis_column['field'].field_name
-                y_values = []
-                y_labels = []
-                field_name = y_axis_column['field'].field_name
-                value_mapping = y_axis_column.get('value_mapping', {})
-                
-                for time_val in x_axis_data:
-                    period_data = time_groups.get_group(time_val)
-                    # Try different field name formats
-                    field_variants = [
-                        field_name,
-                        field_name.replace('-', '_'),
-                        field_name.replace('_', '-'),
-                        field_name.lower(),
-                        field_name.upper()
-                    ]
-                    
-                    value = None
-                    for variant in field_variants:
-                        if variant in period_data.columns:
-                            value = float(period_data[variant].iloc[0])
-                            break
-                    
-                    if value is None:
-                        value = 0.0
-                        
-                    y_values.append(value)
-                    # Map the value to its label if available
-                    y_labels.append(str(value_mapping.get(value, value)))
-                
-                chart.add_yaxis(
-                    series_name=metric_name,
-                    y_axis=y_values,
-                    label_opts=opts.LabelOpts(
-                        position="insideRight" if self.chart_details.chart_type == "BAR_HORIZONTAL" else "inside",
-                        rotate=0 if self.chart_details.chart_type == "BAR_HORIZONTAL" else 90,
-                        font_size=12,
-                        color='#000',
-                        formatter="{c}"
-                    ),
-                    tooltip_opts=opts.TooltipOpts(
-                        formatter="{a}: {c}"
-                    ),
-                    itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color'))
-                ).set_series_opts(
-                    label_opts=opts.LabelOpts(formatter="{c}")
-                )
-                
-                # Update the series data with mapped values
-                if value_mapping:
-                    chart.options["series"][-1]["data"] = [
-                        {"value": val, "label": label}
-                        for val, label in zip(y_values, y_labels)
-                    ]
+            # Get axis data
+            x_axis_data = filtered_data[x_axis_column].tolist()
+            y_axis_data = filtered_data[y_axis_column].tolist()
 
-            else:
-                # Get unique x-axis values from original data
-                all_x_values = filtered_data[x_field].unique().tolist()
-                all_x_values.sort()  # Sort for consistent ordering
-
-                # Create x-axis labels with time periods
-                x_axis_data = []
-                for x_val in all_x_values:
-                    for time_val in time_groups.groups.keys():
-                        if str(time_val) in selected_groups:
-                            x_axis_data.append(f"{x_val} ({time_val})")
-
-                # Add x-axis
-                chart.add_xaxis(x_axis_data)
-
-                # Add data for each y-axis column
-                for y_axis_column in self.options['y_axis_column']:
-                    metric_name = y_axis_column.get('label') or y_axis_column['field'].field_name
-                y_values = []
-                
-                # Generate y values for each x value and time period
-                for x_val in all_x_values:
-                    for time_val, period_data in time_groups:
-                        if str(time_val) not in selected_groups:
-                            continue
-                            
-                        # Get the value for this x value and time period
-                        period_value_map = dict(zip(period_data[x_field], period_data[y_axis_column['field'].field_name]))
-                        value = period_value_map.get(x_val, 0.0)
-                        # Convert null/None values to 0.0 and ensure float type
-                        y_values.append(0.0 if pd.isna(value) else float(value))
-                
-                chart.add_yaxis(
-                    series_name=metric_name,
-                    y_axis=y_values,
-                    label_opts=opts.LabelOpts(
-                        position="insideRight" if self.chart_details.chart_type == "BAR_HORIZONTAL" else "inside",
-                        rotate=0 if self.chart_details.chart_type == "BAR_HORIZONTAL" else 90,
-                        font_size=12,
-                        color='#000'
-                    ),
-                    itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
-                    is_selected=True
-                )
-
-            # Configure global options
-            chart.set_global_opts(
-                legend_opts=opts.LegendOpts(
-                    is_show=True,
-                    pos_top="5%",
-                    orient="horizontal"
-                ),
-                xaxis_opts=opts.AxisOpts(
-                    type_="category" if self.chart_details.chart_type != "BAR_HORIZONTAL" else "value",
-                    name=self.options.get('x_axis_label', 'X-Axis'),
-                    axislabel_opts=opts.LabelOpts(rotate=45)
-                ),
-                yaxis_opts=opts.AxisOpts(
-                    type_="value" if self.chart_details.chart_type != "BAR_HORIZONTAL" else "category",
-                    name=self.options.get('y_axis_label', 'Y-Axis')
-                ),
-                tooltip_opts=opts.TooltipOpts(
-                    trigger="axis",
-                    axis_pointer_type="shadow"
-                ),
-                datazoom_opts=[
-                    opts.DataZoomOpts(
-                        is_show=True,
-                        type_="slider",
-                        range_start=max(0, (len(x_axis_data) - 5) * 100 / len(x_axis_data)) if len(x_axis_data) > 5 else 0,
-                        range_end=100,
-                        pos_bottom="0%"
-                    ),
-                    opts.DataZoomOpts(
-                        type_="inside",
-                        range_start=max(0, (len(x_axis_data) - 5) * 100 / len(x_axis_data)) if len(x_axis_data) > 5 else 0,
-                        range_end=100
-                    )
-                ]
-            )
-
-            if self.chart_details.chart_type == "BAR_HORIZONTAL":
-                chart.reversal_axis()
-
-            return chart
-        else:
-            try:
-                filtered_data = self.aggregate_data()
-                chart = self.initialize_chart(filtered_data)
-
-                is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
-                value_mappings = self.options.get('value_mappings', {})
-                time_column = self.options.get('time_column')
-
-                x_axis_column = self.options['x_axis_column']
-                y_axis_column = self.options['y_axis_column']
-
-                # Get x-axis data
-                x_axis_data = filtered_data[x_axis_column].tolist()
-                y_axis_data = filtered_data[y_axis_column].tolist()
-
-                # Apply value mappings if they exist
-                if value_mappings:
-                    if time_column:
-                        # If time_column exists, we need to map both x and y values
-                        mapped_x_data = [value_mappings.get(str(x), x) for x in x_axis_data]
+            # Apply value mappings if they exist
+            if value_mappings:
+                if time_column:
+                    # If time_column exists, we need to map both x and y values
+                    mapped_x_data = [value_mappings.get(str(x), x) for x in x_axis_data]
+                    mapped_y_data = [value_mappings.get(str(y), y) for y in y_axis_data]
+                else:
+                    # If no time_column, only map the category values (x_axis for vertical, y_axis for horizontal)
+                    if is_horizontal:
+                        mapped_x_data = x_axis_data
                         mapped_y_data = [value_mappings.get(str(y), y) for y in y_axis_data]
                     else:
-                        # If no time_column, only map the category values (x_axis for vertical, y_axis for horizontal)
-                        if is_horizontal:
-                            mapped_x_data = x_axis_data
-                            mapped_y_data = [value_mappings.get(str(y), y) for y in y_axis_data]
-                        else:
-                            mapped_x_data = [value_mappings.get(str(x), x) for x in x_axis_data]
-                            mapped_y_data = y_axis_data
-                else:
-                    mapped_x_data = x_axis_data
-                    mapped_y_data = y_axis_data
+                        mapped_x_data = [value_mappings.get(str(x), x) for x in x_axis_data]
+                        mapped_y_data = y_axis_data
+            else:
+                mapped_x_data = x_axis_data
+                mapped_y_data = y_axis_data
 
-                if is_horizontal:
-                    chart.add_yaxis(
-                        series_name=y_axis_column,
-                        y_axis=mapped_y_data,
-                        label_opts=opts.LabelOpts(is_show=False)
-                    )
-                    chart.add_xaxis(mapped_x_data)
-                else:
-                    chart.add_xaxis(mapped_x_data)
-                    chart.add_yaxis(
-                        series_name=y_axis_column,
-                        y_axis=mapped_y_data,
-                        label_opts=opts.LabelOpts(is_show=False)
-                    )
+            # Add data to chart based on orientation
+            if is_horizontal:
+                chart.add_yaxis(
+                    series_name=y_axis_column,
+                    y_axis=mapped_y_data,
+                    label_opts=opts.LabelOpts(is_show=False)
+                )
+                chart.add_xaxis(mapped_x_data)
+            else:
+                chart.add_xaxis(mapped_x_data)
+                chart.add_yaxis(
+                    series_name=y_axis_column,
+                    y_axis=mapped_y_data,
+                    label_opts=opts.LabelOpts(is_show=False)
+                )
 
-                return chart
-            except Exception as e:
-                print("Error while creating chart", e)
-                return None
+            return chart
+
+        except Exception as e:
+            print("Error while creating chart", e)
+            return None
 
     def configure_chart(self, chart: Chart) -> None:
         """
