@@ -48,8 +48,8 @@ class MultiLineChart(GroupedBarChart):
             yaxis_opts=opts.AxisOpts(
                 type_="category" if value_mappings else "value",
                 name=self.options.get('y_axis_label', 'Y-Axis'),
-                min_=None if value_mappings else min_bound,
-                max_=None if value_mappings else max_bound,
+                min_=None,
+                max_=None,
                 interval=None if value_mappings else None,
                 axislabel_opts=opts.LabelOpts(
                     formatter="{value}"  # Show actual values for aggregated data
