@@ -102,6 +102,15 @@ class BarChart(BaseChart):
         """
         Configure global chart options.
         """
+        # Set grid options directly
+        chart.options["grid"] = {
+            "top": "20%",  # Chart area starts 20% from top
+            "bottom": "15%",  # Chart area ends 15% from bottom
+            "left": "10%",  # Chart area starts 10% from left
+            "right": "10%",  # Chart area ends 10% from right
+            "containLabel": True  # Include axis labels in the grid size calculation
+        }
+
         # Common configuration
         global_opts = {
             'legend_opts': opts.LegendOpts(
@@ -144,13 +153,6 @@ class BarChart(BaseChart):
                 border_color="#ccc",
                 border_width=1,
                 textstyle_opts=opts.TextStyleOpts(color="#333")
-            ),
-            'grid_opts': opts.GridOpts(
-                top="20%",
-                bottom="15%",
-                left="10%",
-                right="10%",
-                contain_label=True
             )
         }
 
