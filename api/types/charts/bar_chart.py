@@ -195,24 +195,42 @@ class BarChart(BaseChart):
         series_name = self.options['y_axis_column'].get('label', y_field) if isinstance(self.options['y_axis_column'], dict) else y_field
         is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
 
-        # Add x and y axis data
-        chart.add_xaxis(x_values)
-        chart.add_yaxis(
-            series_name=series_name,
-            y_axis=[float(y) for y in y_values],
-            itemstyle_opts=opts.ItemStyleOpts(
-                color=self.options['y_axis_column'].get('color') if isinstance(self.options['y_axis_column'], dict) else None
-            ),
-            label_opts=opts.LabelOpts(
-                position="insideRight" if is_horizontal else "inside",
-                rotate=0 if is_horizontal else 90,
-                font_size=12,
-                color='#000',
-                vertical_align="middle",
-                horizontal_align="center",
-                distance=0
-            ),
-            color=self.options['y_axis_column'].get('color') if isinstance(self.options['y_axis_column'], dict) else None
-        )
+        # Add data to chart based on orientation
+        if is_horizontal:
+            chart.add_yaxis(
+                series_name=series_name,
+                y_axis=y_values,
+                itemstyle_opts=opts.ItemStyleOpts(
+                    color=self.options['y_axis_column'].get('color') if isinstance(self.options['y_axis_column'], dict) else None
+                ),
+                label_opts=opts.LabelOpts(
+                    position="insideRight",
+                    rotate=0,
+                    font_size=12,
+                    color='#000',
+                    vertical_align="middle",
+                    horizontal_align="center",
+                    distance=0
+                )
+            )
+            chart.add_xaxis(x_values)
+        else:
+            chart.add_xaxis(x_values)
+            chart.add_yaxis(
+                series_name=series_name,
+                y_axis=[float(y) for y in y_values],
+                itemstyle_opts=opts.ItemStyleOpts(
+                    color=self.options['y_axis_column'].get('color') if isinstance(self.options['y_axis_column'], dict) else None
+                ),
+                label_opts=opts.LabelOpts(
+                    position="inside",
+                    rotate=90,
+                    font_size=12,
+                    color='#000',
+                    vertical_align="middle",
+                    horizontal_align="center",
+                    distance=0
+                )
+            )
 
         return chart
