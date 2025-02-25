@@ -15,7 +15,7 @@ def _get_map_chart(chart_details: ResourceChartDetails, data, values):
     # map_chart.set_global_opts(title_opts=opts.TitleOpts(title=chart_details.name)) \
     map_chart.set_series_opts(label_opts=opts.LabelOpts(is_show=chart_details.options.get("show_legend", True)))
     map_chart.set_global_opts(
-        title_opts=opts.TitleOpts(title=chart_details.name),
+        # title_opts=opts.TitleOpts(title=chart_details.name),
         visualmap_opts=opts.VisualMapOpts(
             max_=int(data[value_col].max()),
             min_=int(data[value_col].min()),
