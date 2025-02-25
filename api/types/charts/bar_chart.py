@@ -33,14 +33,6 @@ class BarChart(BaseChart):
                 print("No data to display after aggregation")
                 return None
 
-            # Initialize the chart
-            chart = self.initialize_chart(filtered_data)
-            
-            # Handle regular bar chart
-            is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
-            value_mappings = self.options.get('value_mappings', {})
-            time_column = self.options.get('time_column')
-
             # Get field names from column objects
             x_field = self.options['x_axis_column'].field_name
             y_field = self.options['y_axis_column']['field'].field_name if isinstance(self.options['y_axis_column'], dict) else self.options['y_axis_column'].field_name
@@ -53,38 +45,79 @@ class BarChart(BaseChart):
             x_axis_data = filtered_data[x_field].tolist()
             y_axis_data = filtered_data[y_field].tolist()
 
-            # Apply value mappings if they exist
-            if value_mappings:
-                if time_column:
-                    # If time_column exists, we need to map both x and y values
-                    mapped_x_data = [value_mappings.get(str(x), x) for x in x_axis_data]
-                    mapped_y_data = [value_mappings.get(str(y), y) for y in y_axis_data]
-                else:
-                    # If no time_column, only map the category values (x_axis for vertical, y_axis for horizontal)
-                    if is_horizontal:
-                        mapped_x_data = x_axis_data
-                        mapped_y_data = [value_mappings.get(str(y), y) for y in y_axis_data]
-                    else:
-                        mapped_x_data = [value_mappings.get(str(x), x) for x in x_axis_data]
-                        mapped_y_data = y_axis_data
-            else:
-                mapped_x_data = x_axis_data
-                mapped_y_data = y_axis_data
+            # Initialize the chart
+            chart_class = self.get_chart_class()
+            chart = chart_class(
+                init_opts=opts.InitOpts(
+                    width=self.options.get('width', '100%'),
+                    height=self.options.get('height', '400px'),
+                    animation_opts=opts.AnimationOpts(animation=False)
+                )
+            )
 
-            # Add data to chart based on orientation
+            # Configure chart options
+            chart.set_global_opts(
+                title_opts=opts.TitleOpts(pos_top="5%"),
+                legend_opts=opts.LegendOpts(
+                    pos_top="5%",
+                    pos_left="center",
+                    padding=[0, 10, 20, 10]
+                ),
+                xaxis_opts=opts.AxisOpts(
+                    name_location="end",
+                    name_gap=25,
+                    axislabel_opts=opts.LabelOpts(
+                        margin=8
+                    )
+                )
+            )
+
+            # Set grid options
+            chart.options["grid"] = {
+                "top": "20%",
+                "bottom": "15%",
+                "left": "10%",
+                "right": "10%",
+                "containLabel": True
+            }
+
+            # Get series name and color
+            series_name = self.options['y_axis_column'].get('label', y_field) if isinstance(self.options['y_axis_column'], dict) else y_field
+            series_color = self.options['y_axis_column'].get('color') if isinstance(self.options['y_axis_column'], dict) else None
+
+            # Add data based on orientation
+            is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
             if is_horizontal:
                 chart.add_yaxis(
-                    series_name=y_field,
-                    y_axis=mapped_y_data,
-                    label_opts=opts.LabelOpts(is_show=False)
+                    series_name=series_name,
+                    y_axis=y_axis_data,
+                    itemstyle_opts=opts.ItemStyleOpts(color=series_color),
+                    label_opts=opts.LabelOpts(
+                        position="insideRight",
+                        rotate=0,
+                        font_size=12,
+                        color='#000',
+                        vertical_align="middle",
+                        horizontal_align="center",
+                        distance=0
+                    )
                 )
-                chart.add_xaxis(mapped_x_data)
+                chart.add_xaxis(x_axis_data)
             else:
-                chart.add_xaxis(mapped_x_data)
+                chart.add_xaxis(x_axis_data)
                 chart.add_yaxis(
-                    series_name=y_field,
-                    y_axis=mapped_y_data,
-                    label_opts=opts.LabelOpts(is_show=False)
+                    series_name=series_name,
+                    y_axis=[float(y) for y in y_axis_data],
+                    itemstyle_opts=opts.ItemStyleOpts(color=series_color),
+                    label_opts=opts.LabelOpts(
+                        position="inside",
+                        rotate=90,
+                        font_size=12,
+                        color='#000',
+                        vertical_align="middle",
+                        horizontal_align="center",
+                        distance=0
+                    )
                 )
 
             return chart
@@ -97,31 +130,41 @@ class BarChart(BaseChart):
 
     def configure_chart(self, chart: Chart) -> None:
         """
-        Configure global options and axis settings based on chart type (horizontal or vertical).
+        Configure global chart options.
         """
-        # Check if it's a horizontal bar chart
-        is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
-
-        # Common configuration
+        # Add axis titles
         chart.set_global_opts(
-            legend_opts=opts.LegendOpts(is_show=self.options.get('show_legend', False)),
             xaxis_opts=opts.AxisOpts(
-                type_="value" if is_horizontal else "category",
-                name=self.options.get('y_axis_label', 'Y-Axis') if is_horizontal else self.options.get('x_axis_label', 'X-Axis'),
-                name_location="end",  # Place name at the end (bottom) of axis
-                name_gap=25,  # Gap between axis and name
+                name=self.options.get('x_axis_label', ''),
+                name_location="end",
+                name_gap=25,
                 axislabel_opts=opts.LabelOpts(
-                    margin=8  # Add margin between axis and labels
+                    rotate=45 if self.chart_details.chart_type != "BAR_HORIZONTAL" else 0
                 )
             ),
             yaxis_opts=opts.AxisOpts(
-                type_="category" if is_horizontal else "value",
-                name=self.options.get('x_axis_label', 'X-Axis') if is_horizontal else self.options.get('y_axis_label', 'Y-Axis')
+                name=self.options.get('y_axis_label', ''),
+                name_location="end",
+                name_gap=25
+            ),
+            tooltip_opts=opts.TooltipOpts(
+                trigger="axis",
+                axis_pointer_type="shadow"
             )
         )
 
-        if is_horizontal:
-            chart.reversal_axis()  # Flip axis for horizontal bar chart
+        # Add data zoom if there are more than 5 categories
+        if len(self.data) > 5:
+            chart.set_global_opts(
+                datazoom_opts=[
+                    opts.DataZoomOpts(
+                        range_start=0,
+                        range_end=100
+                    )
+                ]
+            )
+
+        return None
 
     def aggregate_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -143,94 +186,3 @@ class BarChart(BaseChart):
             return metrics
         else:
             return data[[x_field, y_field]]
-
-    def initialize_chart(self, metrics: pd.DataFrame) -> Chart:
-        """
-        Initialize a new bar chart instance with basic options.
-        """
-        chart_class = self.get_chart_class()  # Dynamically fetch the chart class
-        chart = chart_class(
-            init_opts=opts.InitOpts(
-                width=self.options.get('width', '100%'),
-                height=self.options.get('height', '400px'),
-                animation_opts=opts.AnimationOpts(animation=False)
-            )
-        )
-
-        # Set global options
-        chart.set_global_opts(
-            title_opts=opts.TitleOpts(pos_top="5%"),  # Title 5% from top
-            legend_opts=opts.LegendOpts(
-                pos_top="5%",  # Legend 5% from top
-                pos_left="center",  # Center horizontally
-                padding=[0, 10, 20, 10]  # [top, right, bottom, left] padding
-            ),
-            xaxis_opts=opts.AxisOpts(
-                name_location="end",  # Place name at the end (bottom) of axis
-                name_gap=25,  # Gap between axis and name
-                axislabel_opts=opts.LabelOpts(
-                    margin=8  # Add margin between axis and labels
-                )
-            )
-        )
-
-        # Set grid options through chart options
-        chart.options["grid"] = {
-            "top": "20%",  # Chart area starts 20% from top
-            "bottom": "15%",  # Chart area ends 15% from bottom
-            "left": "10%",  # Chart area starts 10% from left
-            "right": "10%",  # Chart area ends 10% from right
-            "containLabel": True  # Include axis labels in the grid size calculation
-        }
-
-        # Get field names from column objects
-        x_field = self.options['x_axis_column'].field_name
-        y_field = self.options['y_axis_column']['field'].field_name if isinstance(self.options['y_axis_column'], dict) else self.options['y_axis_column'].field_name
-
-        # Get x-axis values for label formatting
-        x_values = metrics[x_field].tolist()
-        y_values = metrics[y_field].tolist()
-
-        # Get series name from label or field name
-        series_name = self.options['y_axis_column'].get('label', y_field) if isinstance(self.options['y_axis_column'], dict) else y_field
-        is_horizontal = self.chart_details.chart_type == "BAR_HORIZONTAL"
-
-        # Add data to chart based on orientation
-        if is_horizontal:
-            chart.add_yaxis(
-                series_name=series_name,
-                y_axis=y_values,
-                itemstyle_opts=opts.ItemStyleOpts(
-                    color=self.options['y_axis_column'].get('color') if isinstance(self.options['y_axis_column'], dict) else None
-                ),
-                label_opts=opts.LabelOpts(
-                    position="insideRight",
-                    rotate=0,
-                    font_size=12,
-                    color='#000',
-                    vertical_align="middle",
-                    horizontal_align="center",
-                    distance=0
-                )
-            )
-            chart.add_xaxis(x_values)
-        else:
-            chart.add_xaxis(x_values)
-            chart.add_yaxis(
-                series_name=series_name,
-                y_axis=[float(y) for y in y_values],
-                itemstyle_opts=opts.ItemStyleOpts(
-                    color=self.options['y_axis_column'].get('color') if isinstance(self.options['y_axis_column'], dict) else None
-                ),
-                label_opts=opts.LabelOpts(
-                    position="inside",
-                    rotate=90,
-                    font_size=12,
-                    color='#000',
-                    vertical_align="middle",
-                    horizontal_align="center",
-                    distance=0
-                )
-            )
-
-        return chart
