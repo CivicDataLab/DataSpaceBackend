@@ -40,6 +40,10 @@ class MultiLineChart(GroupedBarChart):
             xaxis_opts=opts.AxisOpts(
                 type_="category",
                 name=self.options.get('x_axis_label', 'X-Axis'),
+                name_location="middle",  # Place name at the end (bottom) of axis
+                name_gap=25,  # Gap between axis and name
+                boundary_gap=False,  # Remove gap between axis and line for line charts
+                
                 axislabel_opts=opts.LabelOpts(
                     # rotate=45,
                     interval=0,  # Show all labels
