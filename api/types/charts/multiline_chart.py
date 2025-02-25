@@ -128,12 +128,14 @@ class MultiLineChart(GroupedBarChart):
             'xaxis_opts': opts.AxisOpts(
                 type_="category",
                 name=self.options.get('x_axis_label', 'X-Axis'),
+                name_gap=35,  # Add space for axis label
                 axislabel_opts=opts.LabelOpts(rotate=45),
                 boundary_gap=False  # Remove gap between axis and line for line charts
             ),
             'yaxis_opts': opts.AxisOpts(
                 type_="value",
                 name=self.options.get('y_axis_label', 'Y-Axis'),
+                name_gap=50,  # Add space for axis label
                 min_=min_val - buffer if min_val != float('inf') else None,
                 max_=max_val + buffer if max_val != float('-inf') else None,
                 splitline_opts=opts.SplitLineOpts(is_show=True),
@@ -164,23 +166,12 @@ class MultiLineChart(GroupedBarChart):
         """Initialize a new line chart instance with basic options."""
         self.filtered_data = filtered_data
         
-        chart = Line(
+        chart = self.get_chart_class()(
             init_opts=opts.InitOpts(
                 width=self.options.get('width', '100%'),
                 height=self.options.get('height', '400px'),
                 animation_opts=opts.AnimationOpts(animation=False)
             )
-        )
-        
-        # Set chart margins and spacing
-        chart._option.update(
-            grid={
-                "top": "15%",
-                "bottom": "15%",
-                "left": "10%",
-                "right": "5%",
-                "containLabel": True
-            }
         )
         
         x_axis_column = self.options['x_axis_column']
@@ -218,6 +209,7 @@ class MultiLineChart(GroupedBarChart):
 
         # Configure the chart
         self.configure_chart(chart, filtered_data)
+        
         return chart
 
     def get_y_axis_bounds(self, filtered_data: pd.DataFrame) -> tuple:

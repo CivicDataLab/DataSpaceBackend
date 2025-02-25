@@ -201,11 +201,13 @@ class GroupedBarChart(BaseChart):
             'xaxis_opts': opts.AxisOpts(
                 type_="category" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "value",
                 name=self.options.get('x_axis_label', 'X-Axis'),
+                name_gap=35,  # Add space for axis label
                 axislabel_opts=opts.LabelOpts(rotate=45)
             ),
             'yaxis_opts': opts.AxisOpts(
                 type_="value" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "category",
                 name=self.options.get('y_axis_label', 'Y-Axis'),
+                name_gap=50,  # Add space for axis label
                 min_=None,  # Let pyecharts auto-calculate the bounds
                 max_=None,
                 splitline_opts=opts.SplitLineOpts(is_show=True),
