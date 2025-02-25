@@ -213,13 +213,10 @@ class GroupedBarChart(BaseChart):
                 name_gap=25,  # Add space for axis label
                 min_=None,  # Let pyecharts auto-calculate the bounds
                 max_=None,
-                axislabel_opts=opts.LabelOpts(
-                    margin=8  # Add margin between axis and labels
-                ),
                 splitline_opts=opts.SplitLineOpts(is_show=True),
                 axistick_opts=opts.AxisTickOpts(is_show=True),
                 axisline_opts=opts.AxisLineOpts(is_show=True),
-                axislabel_opts=opts.LabelOpts(formatter="{value}")
+                axislabel_opts=opts.LabelOpts(formatter="{value}", margin=8)
             ),
             'tooltip_opts': opts.TooltipOpts(
                 trigger="axis",
