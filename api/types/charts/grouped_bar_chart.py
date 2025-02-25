@@ -23,201 +23,162 @@ class GroupedBarChart(BaseChart):
         # Filter data
         filtered_data = self.filter_data()
 
+        # Initialize the chart
+        chart_class = self.get_chart_class()
+        chart = chart_class(
+            init_opts=opts.InitOpts(width="100%", height="600px")
+        )
+
         # Check if time_column is specified for timeline
         time_column = self.options.get('time_column')
         if time_column:
-            # Initialize the chart
-            chart_class = self.get_chart_class()
-            chart = chart_class(
-                init_opts=opts.InitOpts(width="100%", height="600px")
-            )
-            
-            # Group data by time periods
-            time_groups = filtered_data.groupby(time_column.field_name)
-            selected_groups = self.options.get('time_groups', [])
-            
-            # If no time groups specified, use all periods
-            if not selected_groups:
-                all_periods = sorted([str(time) for time in time_groups.groups.keys()])
-                selected_groups = all_periods
+            # Handle time-based data
+            self._handle_time_based_data(chart, filtered_data, time_column)
+        else:
+            # Handle non-time-based data
+            self._handle_regular_data(chart, filtered_data)
 
-            # If x-axis is same as time column, use time periods directly
-            x_field = self.options['x_axis_column'].field_name
-            if x_field == time_column.field_name:
-                # Sort time periods
-                x_axis_data = sorted([str(time) for time in time_groups.groups.keys() if str(time) in selected_groups])
-                chart.add_xaxis(x_axis_data)
+        # Configure the chart
+        self.configure_chart(chart, filtered_data)
+        return chart
 
-                # Add data for each metric
-                for y_axis_column in y_axis_columns:
-                    metric_name = y_axis_column.get('label') or y_axis_column['field'].field_name
-                    y_values = []
-                    y_labels = []
-                    field_name = y_axis_column['field'].field_name
-                    value_mapping = y_axis_column.get('value_mapping', {})
-                    
-                    for time_val in x_axis_data:
-                        period_data = time_groups.get_group(time_val)
-                        
-                        # Apply aggregation if specified
-                        aggregate_type = y_axis_column.get('aggregate_type')
-                        if aggregate_type and aggregate_type != AggregateType.NONE:
-                            value = None
-                            if aggregate_type == AggregateType.SUM:
-                                value = period_data[field_name].sum()
-                            elif aggregate_type == AggregateType.AVERAGE:
-                                value = period_data[field_name].mean()
-                            elif aggregate_type == AggregateType.COUNT:
-                                value = period_data[field_name].count()
-                            value = 0.0 if pd.isna(value) else float(value)
-                        else:
-                            # Try different field name formats if no aggregation
-                            field_variants = [
-                                field_name,
-                                field_name.replace('-', '_'),
-                                field_name.replace('_', '-'),
-                                field_name.lower(),
-                                field_name.upper()
-                            ]
-                            
-                            value = None
-                            for variant in field_variants:
-                                if variant in period_data.columns:
-                                    value = float(period_data[variant].iloc[0])
-                                    value = 0.0 if pd.isna(value) else float(value)
-                                    break
-                            
-                            if value is None:
-                                value = 0.0
-                                
-                        y_values.append(value)
-                        # Map the value to its label if available
-                        y_labels.append(value_mapping.get(str(value), value))
-                    
-                    self.add_series_to_chart(
-                        chart=chart,
-                        series_name=metric_name,
-                        y_values=y_values,
-                        color=y_axis_column.get('color'),
-                        value_mapping=value_mapping
-                    )
-            else:
-                # Get unique x-axis values from original data
-                all_x_values = filtered_data[x_field].unique().tolist()
-                all_x_values.sort()
+    def _apply_aggregation(self, data: pd.DataFrame, field_name: str, aggregate_type: str) -> float:
+        """Helper method to apply aggregation on data"""
+        value = None
+        if aggregate_type and aggregate_type != AggregateType.NONE:
+            if aggregate_type == AggregateType.SUM:
+                value = data[field_name].sum()
+            elif aggregate_type == AggregateType.AVERAGE:
+                value = data[field_name].mean()
+            elif aggregate_type == AggregateType.COUNT:
+                value = data[field_name].count()
+        else:
+            value = float(data[field_name].iloc[0])
+        
+        return 0.0 if pd.isna(value) else float(value)
 
-                # Create x-axis labels with time periods
-                x_axis_data = []
+    def _handle_time_based_data(self, chart: Chart, filtered_data: pd.DataFrame, time_column) -> None:
+        """Handle time-based data with aggregation"""
+        # Group data by time periods
+        time_groups = filtered_data.groupby(time_column.field_name)
+        selected_groups = self.options.get('time_groups', [])
+        
+        # If no time groups specified, use all periods
+        if not selected_groups:
+            all_periods = sorted([str(time) for time in time_groups.groups.keys()])
+            selected_groups = all_periods
+
+        # If x-axis is same as time column, use time periods directly
+        x_field = self.options['x_axis_column'].field_name
+        if x_field == time_column.field_name:
+            x_axis_data = sorted([str(time) for time in time_groups.groups.keys() if str(time) in selected_groups])
+            chart.add_xaxis(x_axis_data)
+
+            # Add data for each metric
+            for y_axis_column in self.options['y_axis_column']:
+                metric_name = y_axis_column.get('label') or y_axis_column['field'].field_name
+                y_values = []
+                y_labels = []
+                field_name = y_axis_column['field'].field_name
+                value_mapping = y_axis_column.get('value_mapping', {})
+                aggregate_type = y_axis_column.get('aggregate_type')
+                
+                for time_val in x_axis_data:
+                    period_data = time_groups.get_group(time_val)
+                    value = self._apply_aggregation(period_data, field_name, aggregate_type)
+                    y_values.append(value)
+                    y_labels.append(value_mapping.get(str(value), value))
+                
+                self.add_series_to_chart(
+                    chart=chart,
+                    series_name=metric_name,
+                    y_values=y_values,
+                    color=y_axis_column.get('color'),
+                    value_mapping=value_mapping
+                )
+        else:
+            # Get unique x-axis values from original data
+            all_x_values = filtered_data[x_field].unique().tolist()
+            all_x_values.sort()
+
+            # Create x-axis labels with time periods
+            x_axis_data = []
+            for x_val in all_x_values:
+                for time_val in time_groups.groups.keys():
+                    if str(time_val) in selected_groups:
+                        x_axis_data.append(f"{x_val} ({time_val})")
+            chart.add_xaxis(x_axis_data)
+
+            # Add data for each metric
+            for y_axis_column in self.options['y_axis_column']:
+                metric_name = y_axis_column.get('label') or y_axis_column['field'].field_name
+                y_values = []
+                y_labels = []
+                field_name = y_axis_column['field'].field_name
+                value_mapping = y_axis_column.get('value_mapping', {})
+                aggregate_type = y_axis_column.get('aggregate_type')
+                
                 for x_val in all_x_values:
                     for time_val in time_groups.groups.keys():
-                        if str(time_val) in selected_groups:
-                            x_axis_data.append(f"{x_val} ({time_val})")
+                        if str(time_val) not in selected_groups:
+                            continue
+                        
+                        period_data = time_groups.get_group(time_val)
+                        # Filter data for current x value
+                        x_filtered_data = period_data[period_data[x_field] == x_val]
+                        if not x_filtered_data.empty:
+                            value = self._apply_aggregation(x_filtered_data, field_name, aggregate_type)
+                        else:
+                            value = 0.0
+                        
+                        y_values.append(value)
+                        y_labels.append(value_mapping.get(str(value), value))
+                
+                self.add_series_to_chart(
+                    chart=chart,
+                    series_name=metric_name,
+                    y_values=y_values,
+                    color=y_axis_column.get('color'),
+                    value_mapping=value_mapping
+                )
 
-                # Add x-axis
-                chart.add_xaxis(x_axis_data)
+    def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
+        """Handle non-time-based data with aggregation"""
+        x_field = self.options['x_axis_column'].field_name
+        
+        # Get unique x-axis values
+        x_axis_data = filtered_data[x_field].unique().tolist()
+        x_axis_data.sort()
+        chart.add_xaxis(x_axis_data)
 
-                # Add data for each metric
-                for y_axis_column in y_axis_columns:
-                    metric_name = y_axis_column.get('label') or y_axis_column['field'].field_name
-                    y_values = []
-                    y_labels = []
-                    field_name = y_axis_column['field'].field_name
-                    value_mapping = y_axis_column.get('value_mapping', {})
-                    
-                    # Generate y values for each x value and time period
-                    for x_val in all_x_values:
-                        for time_val, period_data in time_groups:
-                            if str(time_val) not in selected_groups:
-                                continue
-                                
-                            # Apply aggregation if specified
-                            aggregate_type = y_axis_column.get('aggregate_type')
-                            if aggregate_type and aggregate_type != AggregateType.NONE:
-                                if aggregate_type == AggregateType.SUM:
-                                    value = period_data[field_name].sum()
-                                elif aggregate_type == AggregateType.AVERAGE:
-                                    value = period_data[field_name].mean()
-                                elif aggregate_type == AggregateType.COUNT:
-                                    value = period_data[field_name].count()
-                                value = 0.0 if pd.isna(value) else float(value)
-                            else:
-                                # Try different field name formats if no aggregation
-                                field_variants = [
-                                    field_name,
-                                    field_name.replace('-', '_'),
-                                    field_name.replace('_', '-'),
-                                    field_name.lower(),
-                                    field_name.upper()
-                                ]
-                                
-                                value = None
-                                for variant in field_variants:
-                                    if variant in period_data.columns:
-                                        period_value_map = dict(zip(period_data[x_field], period_data[variant]))
-                                        value = period_value_map.get(x_val, 0.0)
-                                        value = 0.0 if pd.isna(value) else float(value)
-                                        break
-                                
-                                if value is None:
-                                    value = 0.0
-                                    
-                            y_values.append(value)
-                            # Map the value to its label if available
-                            y_labels.append(value_mapping.get(str(value), value))
-                    
-                    self.add_series_to_chart(
-                        chart=chart,
-                        series_name=metric_name,
-                        y_values=y_values,
-                        color=y_axis_column.get('color'),
-                        value_mapping=value_mapping
-                    )
-            # Configure global options
-            chart.set_global_opts(
-                legend_opts=opts.LegendOpts(
-                    is_show=True,
-                    selected_mode=True,
-                    pos_top="5%",
-                    orient="horizontal"
-                ),
-                xaxis_opts=opts.AxisOpts(
-                    type_="category" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "value",
-                    name=self.options.get('x_axis_label', 'X-Axis'),
-                    axislabel_opts=opts.LabelOpts(rotate=45)
-                ),
-                yaxis_opts=opts.AxisOpts(
-                    type_="value" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "category",
-                    name=self.options.get('y_axis_label', 'Y-Axis')
-                ),
-                tooltip_opts=opts.TooltipOpts(
-                    trigger="axis",
-                    axis_pointer_type="shadow"
-                ),
-                datazoom_opts=[
-                    opts.DataZoomOpts(
-                        is_show=True,
-                        type_="slider",
-                        range_start=max(0, (len(x_axis_data) - 5) * 100 / len(x_axis_data)) if len(x_axis_data) > 5 else 0,
-                        range_end=100,
-                        pos_bottom="0%"
-                    ),
-                    opts.DataZoomOpts(
-                        type_="inside",
-                        range_start=max(0, (len(x_axis_data) - 5) * 100 / len(x_axis_data)) if len(x_axis_data) > 5 else 0,
-                        range_end=100
-                    )
-                ]
+        # Add data for each metric
+        for y_axis_column in self.options['y_axis_column']:
+            metric_name = y_axis_column.get('label') or y_axis_column['field'].field_name
+            field_name = y_axis_column['field'].field_name
+            value_mapping = y_axis_column.get('value_mapping', {})
+            aggregate_type = y_axis_column.get('aggregate_type')
+            
+            y_values = []
+            y_labels = []
+            
+            for x_val in x_axis_data:
+                # Filter data for current x value
+                x_filtered_data = filtered_data[filtered_data[x_field] == x_val]
+                if not x_filtered_data.empty:
+                    value = self._apply_aggregation(x_filtered_data, field_name, aggregate_type)
+                else:
+                    value = 0.0
+                
+                y_values.append(value)
+                y_labels.append(value_mapping.get(str(value), value))
+            
+            self.add_series_to_chart(
+                chart=chart,
+                series_name=metric_name,
+                y_values=y_values,
+                color=y_axis_column.get('color'),
+                value_mapping=value_mapping
             )
-
-            if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
-                chart.reversal_axis()
-            self.configure_chart(chart, filtered_data)
-            return chart
-        else:
-            # Initialize the chart without timeline
-            chart = self.initialize_chart(filtered_data)
-            self.configure_chart(chart, filtered_data)
-            return chart
 
     def configure_chart(self, chart: Chart, filtered_data: pd.DataFrame = None) -> None:
         """
