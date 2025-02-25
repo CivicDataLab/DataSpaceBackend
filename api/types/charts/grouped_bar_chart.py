@@ -220,7 +220,10 @@ class GroupedBarChart(BaseChart):
                 pos_left="center",  # Center horizontally
                 orient="horizontal",
                 item_gap=25,  # Add more space between legend items
-                padding=[0, 0, 20, 0]  # Add padding at the bottom of legend
+                padding=[5, 10, 20, 10],  # Add padding [top, right, bottom, left]
+                textstyle_opts=opts.TextStyleOpts(font_size=12),
+                border_width=0,  # Remove border
+                background_color="transparent"  # Make background transparent
             ),
             'xaxis_opts': opts.AxisOpts(
                 type_="category" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "value",
