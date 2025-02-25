@@ -205,7 +205,7 @@ class GroupedBarChart(BaseChart):
                 axislabel_opts=opts.LabelOpts(
                     margin=8  # Add margin between axis and labels
                 ),
-                name_location="end",  # Place name at the end (bottom) of axis
+                name_location="middle",  # Place name at the end (bottom) of axis
             ),
             'yaxis_opts': opts.AxisOpts(
                 type_="value" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "category",
@@ -384,7 +384,7 @@ class GroupedBarChart(BaseChart):
                 padding=[0, 10, 20, 10]  # [top, right, bottom, left] padding
             ),
             xaxis_opts=opts.AxisOpts(
-                name_location="end",  # Place name at the end (bottom) of axis
+                name_location="middle",  # Place name at the end (bottom) of axis
                 name_gap=25,  # Gap between axis and name
                 axislabel_opts=opts.LabelOpts(
                     margin=8  # Add margin between axis and labels

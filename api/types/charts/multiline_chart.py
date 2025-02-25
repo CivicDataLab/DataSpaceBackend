@@ -42,7 +42,9 @@ class MultiLineChart(GroupedBarChart):
                 name=self.options.get('x_axis_label', 'X-Axis'),
                 axislabel_opts=opts.LabelOpts(
                     rotate=45,
-                    interval=0  # Show all labels
+                    interval=0,  # Show all labels
+                    margin=8,  # Add margin between axis and labels
+                    position="middle"
                 )
             ),
             yaxis_opts=opts.AxisOpts(
@@ -128,8 +130,12 @@ class MultiLineChart(GroupedBarChart):
             'xaxis_opts': opts.AxisOpts(
                 type_="category",
                 name=self.options.get('x_axis_label', 'X-Axis'),
-                name_gap=35,  # Add space for axis label
-                axislabel_opts=opts.LabelOpts(rotate=45),
+                name_gap=25,  # Add space for axis label
+                axislabel_opts=opts.LabelOpts(
+                    margin=8,  # Add margin between axis and labels
+                    interval=0,  # Show all labels
+                    position="middle"  # Place name at the end (bottom) of axis
+                ),
                 boundary_gap=False  # Remove gap between axis and line for line charts
             ),
             'yaxis_opts': opts.AxisOpts(
@@ -183,7 +189,7 @@ class MultiLineChart(GroupedBarChart):
                 padding=[0, 10, 20, 10]  # [top, right, bottom, left] padding
             ),
             xaxis_opts=opts.AxisOpts(
-                name_location="end",  # Place name at the end (bottom) of axis
+                name_location="middle",  # Place name at the end (bottom) of axis
                 name_gap=25,  # Gap between axis and name
                 axislabel_opts=opts.LabelOpts(
                     margin=8  # Add margin between axis and labels
