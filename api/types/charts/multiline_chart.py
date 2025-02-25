@@ -83,46 +83,63 @@ class MultiLineChart(GroupedBarChart):
                 str(val): label for val, label in zip(sorted_values, sorted_labels)
             }
 
-    def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, **kwargs) -> None:
-        """
-        Override parent method to add a line series to the chart with specific line styling
-        """
-        value_mapping = kwargs.get('value_mapping', {})
+    def get_chart_specific_opts(self) -> dict:
+        """Override chart specific options for line chart."""
+        base_opts = super().get_chart_specific_opts()
         
-        # Process y values to handle NaN and convert to float
-        processed_values = []
-        for val in y_values:
-            try:
-                value = 0.0 if pd.isna(val) else float(val)
-                if value_mapping:
-                    # For value mapping, convert to index in sorted labels
-                    value_str = str(value)
-                    if "extra" in chart.options and "value_mapping" in chart.options["extra"]:
-                        mapping = chart.options["extra"]["value_mapping"]
-                        if value_str in mapping:
-                            # Find index of the mapped value in sorted labels
-                            value = list(mapping.keys()).index(value_str)
-                processed_values.append(value)
-            except (ValueError, TypeError):
-                processed_values.append(0.0)
+        # Modify options specific to line chart
+        base_opts.update({
+            'tooltip_opts': opts.TooltipOpts(
+                trigger="axis",
+                axis_pointer_type="cross",  # Use cross pointer for line charts
+                background_color="rgba(255,255,255,0.9)",
+                border_color="#ccc",
+                border_width=1,
+                textstyle_opts=opts.TextStyleOpts(color="#333"),
+                formatter="""
+                    function(params) {
+                        var colorSpan = color => '<span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:' + color + '"></span>';
+                        var result = params[0].axisValue + '<br/>';
+                        params.forEach(param => {
+                            result += colorSpan(param.color) + param.seriesName + ': ' + param.value + '<br/>';
+                        });
+                        return result;
+                    }
+                """
+            ),
+            'xaxis_opts': opts.AxisOpts(
+                type_="category",
+                name=self.options.get('x_axis_label', 'X-Axis'),
+                axislabel_opts=opts.LabelOpts(rotate=45),
+                boundary_gap=False  # Remove gap between axis and line for line charts
+            ),
+            'yaxis_opts': opts.AxisOpts(
+                type_="value",
+                name=self.options.get('y_axis_label', 'Y-Axis'),
+                min_=None,
+                max_=None,
+                splitline_opts=opts.SplitLineOpts(is_show=True),
+                axistick_opts=opts.AxisTickOpts(is_show=True),
+                axisline_opts=opts.AxisLineOpts(is_show=True),
+                axislabel_opts=opts.LabelOpts(formatter="{value}")
+            )
+        })
+        
+        return base_opts
 
+    def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, **kwargs) -> None:
+        """Override to add line-specific styling."""
         chart.add_yaxis(
             series_name=series_name,
-            y_axis=processed_values,
+            y_axis=y_values,
             label_opts=opts.LabelOpts(is_show=False),  # Hide point labels for cleaner look
+            linestyle_opts=opts.LineStyleOpts(width=2),  # Slightly thicker lines
+            symbol_size=8,  # Slightly larger points
             itemstyle_opts=opts.ItemStyleOpts(
                 color=kwargs.get('color'),
-                border_width=2,
-                border_color=kwargs.get('color')
-            ),
-            linestyle_opts=opts.LineStyleOpts(
-                width=2,  # Line thickness
-                type_="solid"  # Line style (solid, dashed, dotted)
-            ),
-            symbol="circle",  # Use filled circles for data points
-            symbol_size=8,  # Size of data points
-            is_smooth=True,  # Enable smooth line
-            is_clip=False  # Don't clip lines at grid boundaries
+                border_color="#fff",  # White border around points
+                border_width=1
+            )
         )
 
     def initialize_chart(self, filtered_data: pd.DataFrame) -> Chart:

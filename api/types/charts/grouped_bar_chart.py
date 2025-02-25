@@ -198,33 +198,9 @@ class GroupedBarChart(BaseChart):
                 value_mapping=value_mapping
             )
 
-    def configure_chart(self, chart: Chart, filtered_data: pd.DataFrame = None) -> None:
-        """
-        Configure global options and axis settings for grouped bar chart.
-        """
-        # Get value mappings from all y-axis columns to create y-axis labels
-        value_mappings = {}
-        for y_axis_column in self.options['y_axis_column']:
-            if y_axis_column.get('value_mapping'):
-                value_mappings.update(y_axis_column.get('value_mapping', {}))
-
-        # Get y-axis bounds from data
-        min_bound, max_bound = self.get_y_axis_bounds(filtered_data) if filtered_data is not None else (0, 5)
-
-        # Common configuration
-        global_opts = {
-            'legend_opts': opts.LegendOpts(
-                is_show=True,
-                selected_mode=True,
-                pos_top="2%",  # Move legend higher
-                pos_left="center",  # Center horizontally
-                orient="horizontal",
-                item_gap=25,  # Add more space between legend items
-                padding=[5, 10, 20, 10],  # Add padding [top, right, bottom, left]
-                textstyle_opts=opts.TextStyleOpts(font_size=12),
-                border_width=0,  # Remove border
-                background_color="transparent"  # Make background transparent
-            ),
+    def get_chart_specific_opts(self) -> dict:
+        """Get chart type specific options. Override in subclasses for specific chart types."""
+        return {
             'xaxis_opts': opts.AxisOpts(
                 type_="category" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "value",
                 name=self.options.get('x_axis_label', 'X-Axis'),
@@ -242,7 +218,7 @@ class GroupedBarChart(BaseChart):
             ),
             'tooltip_opts': opts.TooltipOpts(
                 trigger="axis",
-                axis_pointer_type="cross",
+                axis_pointer_type="shadow",
                 background_color="rgba(255,255,255,0.9)",
                 border_color="#ccc",
                 border_width=1,
@@ -258,6 +234,33 @@ class GroupedBarChart(BaseChart):
                     }
                 """
             )
+        }
+
+    def configure_chart(self, chart: Chart, filtered_data: pd.DataFrame = None) -> None:
+        """
+        Configure global options and axis settings for grouped bar chart.
+        """
+        # Get value mappings from all y-axis columns to create y-axis labels
+        value_mappings = {}
+        for y_axis_column in self.options['y_axis_column']:
+            if y_axis_column.get('value_mapping'):
+                value_mappings.update(y_axis_column.get('value_mapping', {}))
+
+        # Common configuration
+        global_opts = {
+            'legend_opts': opts.LegendOpts(
+                is_show=True,
+                selected_mode=True,
+                pos_top="2%",  # Move legend higher
+                pos_left="center",  # Center horizontally
+                orient="horizontal",
+                item_gap=25,  # Add more space between legend items
+                padding=[5, 10, 20, 10],  # Add padding [top, right, bottom, left]
+                textstyle_opts=opts.TextStyleOpts(font_size=12),
+                border_width=0,  # Remove border
+                background_color="transparent"  # Make background transparent
+            ),
+            **self.get_chart_specific_opts()  # Add chart specific options
         }
 
         # Add data zoom options only if time_column is present and we have enough data points
