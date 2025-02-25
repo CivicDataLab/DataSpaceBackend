@@ -161,11 +161,28 @@ class MultiLineChart(GroupedBarChart):
         )
 
     def initialize_chart(self, filtered_data: pd.DataFrame) -> Chart:
-        """
-        Initialize the line chart with custom styling
-        """
-        chart = self.get_chart_class()()
-
+        """Initialize a new line chart instance with basic options."""
+        self.filtered_data = filtered_data
+        
+        chart = Line(
+            init_opts=opts.InitOpts(
+                width=self.options.get('width', '100%'),
+                height=self.options.get('height', '400px'),
+                animation_opts=opts.AnimationOpts(animation=False)
+            )
+        )
+        
+        # Set chart margins and spacing
+        chart._option.update(
+            grid={
+                "top": "15%",
+                "bottom": "15%",
+                "left": "10%",
+                "right": "5%",
+                "containLabel": True
+            }
+        )
+        
         x_axis_column = self.options['x_axis_column']
         y_axis_columns = self.options['y_axis_column']
 

@@ -24,10 +24,7 @@ class GroupedBarChart(BaseChart):
         filtered_data = self.filter_data()
 
         # Initialize the chart
-        chart_class = self.get_chart_class()
-        chart = chart_class(
-            init_opts=opts.InitOpts(width="100%", height="600px")
-        )
+        chart = self.initialize_chart(filtered_data)
 
         # Check if time_column is specified for timeline
         time_column = self.options.get('time_column')
@@ -260,14 +257,6 @@ class GroupedBarChart(BaseChart):
                 border_width=0,  # Remove border
                 background_color="transparent"  # Make background transparent
             ),
-            'grid_opts': [
-                opts.GridOpts(
-                    pos_top="15%",  # Add more space at top for legend
-                    pos_bottom="15%",  # Add more space at bottom for labels
-                    pos_left="10%",  # Add more space for y-axis labels
-                    pos_right="5%"
-                )
-            ],
             **self.get_chart_specific_opts()  # Add chart specific options
         }
 
@@ -292,7 +281,18 @@ class GroupedBarChart(BaseChart):
                 ]
 
         chart.set_global_opts(**global_opts)
-        
+
+        # Set chart margins and spacing
+        chart._option.update(
+            grid={
+                "top": "15%",
+                "bottom": "15%",
+                "left": "10%",
+                "right": "5%",
+                "containLabel": True
+            }
+        )
+
         if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
             chart.reversal_axis()
 
@@ -364,35 +364,38 @@ class GroupedBarChart(BaseChart):
 
     def initialize_chart(self, filtered_data: pd.DataFrame) -> Chart:
         """
-        Initialize the chart object, add x and y axis data.
+        Initialize a new chart instance with basic options.
         """
-        chart_class = self.get_chart_class()  # Dynamically fetch the chart class
-        chart = chart_class()
+        self.filtered_data = filtered_data
 
-        x_axis_column = self.options['x_axis_column']
-        y_axis_columns = self.options['y_axis_column']
-
-        # Add x and y axis data
-        chart.add_xaxis(filtered_data[x_axis_column.field_name].tolist())
-        for y_axis_column in y_axis_columns:
-            series_name = y_axis_column.get('label') or y_axis_column['field'].field_name
-            is_horizontal = self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL"
-            
-            chart.add_yaxis(
-                series_name=series_name,
-                y_axis=[0.0 if pd.isna(value) else float(value) for value in filtered_data[y_axis_column['field'].field_name].tolist()],  
-                itemstyle_opts=opts.ItemStyleOpts(color=y_axis_column.get('color')),
-                label_opts=opts.LabelOpts(
-                    position="insideRight" if is_horizontal else "inside",
-                    rotate=0 if is_horizontal else 90,
-                    font_size=12,
-                    color='#000',
-                    # formatter="{a}",
-                    vertical_align="middle",
-                    horizontal_align="center",
-                    distance=0
-                ),
-                color=y_axis_column.get('color')
+        if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
+            chart = self.get_chart_class()(
+                init_opts=opts.InitOpts(
+                    width=self.options.get('width', '100%'),
+                    height=self.options.get('height', '400px'),
+                    animation_opts=opts.AnimationOpts(animation=False)
+                )
             )
+        else:
+            chart = self.get_chart_class()(
+                init_opts=opts.InitOpts(
+                    width=self.options.get('width', '100%'),
+                    height=self.options.get('height', '400px'),
+                    animation_opts=opts.AnimationOpts(animation=False)
+                )
+            )
+            
+        # Set grid position
+        chart.set_series_opts(
+            label_opts=opts.LabelOpts(position="top")
+        )
+        
+        # Add more space around the chart
+        chart.set_global_opts(
+            title_opts=opts.TitleOpts(pos_top="5%"),
+            legend_opts=opts.LegendOpts(pos_top="5%"),
+            xaxis_opts=opts.AxisOpts(pos_top="15%"),
+            yaxis_opts=opts.AxisOpts(pos_left="10%", pos_right="5%")
+        )
 
         return chart
