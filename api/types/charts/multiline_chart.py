@@ -173,6 +173,25 @@ class MultiLineChart(GroupedBarChart):
                 animation_opts=opts.AnimationOpts(animation=False)
             )
         )
+
+        # Set global options
+        chart.set_global_opts(
+            title_opts=opts.TitleOpts(pos_top="5%"),  # Title 5% from top
+            legend_opts=opts.LegendOpts(
+                pos_top="5%",  # Legend 5% from top
+                pos_left="center",  # Center horizontally
+                padding=[0, 10, 20, 10]  # [top, right, bottom, left] padding
+            )
+        )
+
+        # Set grid options through chart options
+        chart.options["grid"] = {
+            "top": "20%",  # Chart area starts 20% from top
+            "bottom": "15%",  # Chart area ends 15% from bottom
+            "left": "10%",  # Chart area starts 10% from left
+            "right": "5%",  # Chart area ends 5% from right
+            "containLabel": True  # Include axis labels in the grid size calculation
+        }
         
         x_axis_column = self.options['x_axis_column']
         y_axis_columns = self.options['y_axis_column']
