@@ -216,8 +216,11 @@ class GroupedBarChart(BaseChart):
             'legend_opts': opts.LegendOpts(
                 is_show=True,
                 selected_mode=True,
-                pos_top="5%",
-                orient="horizontal"
+                pos_top="2%",  # Move legend higher
+                pos_left="center",  # Center horizontally
+                orient="horizontal",
+                item_gap=25,  # Add more space between legend items
+                padding=[0, 0, 20, 0]  # Add padding at the bottom of legend
             ),
             'xaxis_opts': opts.AxisOpts(
                 type_="category" if self.chart_details.chart_type != "GROUPED_BAR_HORIZONTAL" else "value",
