@@ -127,20 +127,27 @@ class BarChart(BaseChart):
         value_mapping = self.options['y_axis_column'].get('value_mapping', {}) if isinstance(self.options['y_axis_column'], dict) else {}
 
         # Common configuration
-        global_opts = {
-            'legend_opts': opts.LegendOpts(
-                is_show=True,
-                selected_mode=True,
-                pos_top="5%",
-                pos_left="center",
-                orient="horizontal",
-                item_gap=25,
-                padding=[5, 10, 20, 10],
-                textstyle_opts=opts.TextStyleOpts(font_size=12),
-                border_width=0,
-                background_color="transparent"
+        global_opts = dict(
+            title_opts=opts.TitleOpts(
+                title=self.chart_details.title if hasattr(self.chart_details, 'title') else None,
+                subtitle=self.chart_details.subtitle if hasattr(self.chart_details, 'subtitle') else None,
             ),
-            'xaxis_opts': opts.AxisOpts(
+            tooltip_opts=opts.TooltipOpts(trigger="axis", axis_pointer_type="shadow"),
+            toolbox_opts=opts.ToolboxOpts(
+                feature=opts.ToolBoxFeatureOpts(
+                    data_zoom=opts.ToolBoxFeatureDataZoomOpts(is_show=True),
+                    restore=opts.ToolBoxFeatureRestoreOpts(is_show=True),
+                    data_view=opts.ToolBoxFeatureDataViewOpts(is_show=True),
+                    save_as_image=opts.ToolBoxFeatureRestoreOpts(is_show=True),
+                )
+            ),
+            legend_opts=opts.LegendOpts(
+                type_="scroll",
+                pos_top="5%",
+                orient="horizontal",
+                page_button_position="end"
+            ),
+            xaxis_opts=opts.AxisOpts(
                 type_="category" if self.chart_details.chart_type != "BAR_HORIZONTAL" else "value",
                 name=self.options.get('x_axis_label', ''),
                 name_gap=25,
@@ -149,7 +156,7 @@ class BarChart(BaseChart):
                 ),
                 name_location="middle"
             ),
-            'yaxis_opts': opts.AxisOpts(
+            yaxis_opts=opts.AxisOpts(
                 type_="value" if self.chart_details.chart_type != "BAR_HORIZONTAL" else "category",
                 name=self.options.get('y_axis_label', ''),
                 name_gap=25,
@@ -160,15 +167,7 @@ class BarChart(BaseChart):
                 axisline_opts=opts.AxisLineOpts(is_show=True),
                 axislabel_opts=opts.LabelOpts(formatter="{value}", margin=8)
             ),
-            'tooltip_opts': opts.TooltipOpts(
-                trigger="axis",
-                axis_pointer_type="shadow",
-                background_color="rgba(255,255,255,0.9)",
-                border_color="#ccc",
-                border_width=1,
-                textstyle_opts=opts.TextStyleOpts(color="#333")
-            )
-        }
+        )
 
         # Add data zoom if we have more than 5 data points
         if len(filtered_data) > 5:
@@ -188,6 +187,15 @@ class BarChart(BaseChart):
             ]
 
         chart.set_global_opts(**global_opts)
+
+        # Set responsive grid options
+        chart.options["grid"] = {
+            "left": "5%",
+            "right": "5%",
+            "top": "15%",
+            "bottom": "15%",
+            "containLabel": True
+        }
 
         if self.chart_details.chart_type == "BAR_HORIZONTAL":
             chart.reversal_axis()
