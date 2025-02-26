@@ -130,7 +130,21 @@ class TypeResourceChart:
         """Convert stored JSONField `filters` into List[FilterType]"""
         if not self.filters:  # Handle None or empty cases
             return []
-        return [FilterType(**f) for f in self.filters]
+            
+        # Ensure each filter is properly formatted
+        formatted_filters = []
+        for filter_data in self.filters:
+            if isinstance(filter_data, dict):
+                filter_dict = {
+                    "column": filter_data.get("column", ""),
+                    "operator": filter_data.get("operator", ""),
+                    "value": filter_data.get("value", "")
+                }
+                formatted_filters.append(FilterType(**filter_dict))
+            elif isinstance(filter_data, FilterType):
+                formatted_filters.append(filter_data)
+                
+        return formatted_filters
 
     @strawberry.field
     def chart(self: ResourceChartDetails, info) -> JSON:
