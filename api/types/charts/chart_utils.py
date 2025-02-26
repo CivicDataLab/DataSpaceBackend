@@ -40,7 +40,8 @@ def _get_map_chart(chart_details: ResourceChartDetails, data, values):
         legend_opts=opts.LegendOpts(
             pos_top="5%",
             pos_left="center",
-            padding=[0, 10, 20, 10]
+            padding=[0, 10, 20, 10],
+            textstyle_opts=opts.TextStyleOpts(font_size=12)
         )
     )
     return map_chart
