@@ -107,8 +107,7 @@ class BarChart(BaseChart):
             ),
             itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None,
             category_gap="20%",
-            gap="30%",
-            is_selected=True
+            gap="30%"
         )
 
     def configure_chart(self, chart: Chart, filtered_data: pd.DataFrame = None) -> None:
