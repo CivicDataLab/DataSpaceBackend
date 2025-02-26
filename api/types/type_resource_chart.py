@@ -63,12 +63,43 @@ class ChartOptionsType:
     show_legend: Optional[bool]
     aggregate_type: Optional[str]
 
+def ensure_type(value, target_type, element_type=None):
+    """Ensure value is converted to the correct Strawberry type."""
+    if value is None:
+        return None
+
+    if isinstance(value, dict):
+        # Special case: If converting YAxisColumnConfigType, ensure `field` is also converted
+        if target_type is YAxisColumnConfigType:
+            return YAxisColumnConfigType(
+                field=ensure_type(value.get("field"), TypeResourceSchema),  # Convert field properly
+                label=value.get("label"),
+                color=value.get("color"),
+                value_mapping=[
+                    ValueMappingType(key=vm["key"], value=vm["value"]) for vm in value.get("value_mapping", [])
+                ] if value.get("value_mapping") else []
+            )
+
+        return target_type(**value)  # Convert dictionary to target type
+
+    if element_type is not None:
+        # Convert list elements properly
+        if element_type:
+            return [ensure_type(item, element_type) for item in value]
+        return value
+
+    if isinstance(value, ResourceSchema) and target_type == TypeResourceSchema:
+        return convert_to_graphql_type(value, target_type)  # Convert Django model to Strawberry type
+
+    return None  # Handle unexpected cases gracefully
 @strawberry_django.type(ResourceChartDetails, fields="__all__")
 class TypeResourceChart:
     resource: TypeResource
     chart_type: str
     options: Optional[ChartOptionsType]
     filters: Optional[List[FilterType]]
+    
+    
 
     @strawberry.field
     def options(self) -> Optional[ChartOptionsType]:
@@ -76,35 +107,7 @@ class TypeResourceChart:
         if not self.options:  # Handle None case
             return None
 
-        def ensure_type(value, target_type, element_type=None):
-            """Ensure value is converted to the correct Strawberry type."""
-            if value is None:
-                return None
-
-            if isinstance(value, dict):
-                # Special case: If converting YAxisColumnConfigType, ensure `field` is also converted
-                if target_type is YAxisColumnConfigType:
-                    return YAxisColumnConfigType(
-                        field=ensure_type(value.get("field"), TypeResourceSchema),  # Convert field properly
-                        label=value.get("label"),
-                        color=value.get("color"),
-                        value_mapping=[
-                            ValueMappingType(key=vm["key"], value=vm["value"]) for vm in value.get("value_mapping", [])
-                        ] if value.get("value_mapping") else []
-                    )
-
-                return target_type(**value)  # Convert dictionary to target type
-
-            if element_type is not None:
-                # Convert list elements properly
-                if element_type:
-                    return [ensure_type(item, element_type) for item in value]
-                return value
-
-            if isinstance(value, ResourceSchema) and target_type == TypeResourceSchema:
-                return convert_to_graphql_type(value, target_type)  # Convert Django model to Strawberry type
-
-            return None  # Handle unexpected cases gracefully
+        
 
         # Ensure y_axis_column is always treated as a list
         y_axis_column_data = self.options.get("y_axis_column")
