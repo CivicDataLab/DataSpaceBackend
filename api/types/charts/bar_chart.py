@@ -21,9 +21,6 @@ class BarChart(BaseChart):
         try:
             # First aggregate the data
             filtered_data = self.filter_data()
-            print("Options:", self.options)
-            print("X-axis column:", self.options['x_axis_column'])
-            print("Y-axis column:", self.options['y_axis_column'])
 
             # Get the first y-axis column for single bar chart
             if isinstance(self.options['y_axis_column'], list):
@@ -38,9 +35,6 @@ class BarChart(BaseChart):
             x_field = self.options['x_axis_column'].field_name
             y_field = self.options['y_axis_column']['field'].field_name if isinstance(self.options['y_axis_column'], dict) else self.options['y_axis_column'].field_name
 
-            print("X field:", x_field)
-            print("Y field:", y_field)
-            print("DataFrame columns:", filtered_data.columns)
 
             # Initialize the chart
             chart_class = self.get_chart_class()
