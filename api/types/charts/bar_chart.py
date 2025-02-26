@@ -52,12 +52,30 @@ class BarChart(BaseChart):
                 )
             )
 
+            # Set initial global options
+            chart.set_global_opts(
+                title_opts=opts.TitleOpts(pos_top="5%"),
+                legend_opts=opts.LegendOpts(
+                    pos_top="5%",
+                    pos_left="center",
+                    padding=[0, 10, 20, 10]
+                ),
+                xaxis_opts=opts.AxisOpts(
+                    name_location="middle",
+                    name_gap=25,
+                    axislabel_opts=opts.LabelOpts(
+                        margin=8
+                    )
+                )
+            )
+
             # Add x-axis data
             x_axis_data = filtered_data[x_field].tolist()
             chart.add_xaxis(x_axis_data)
 
             # Get series name and color
-            series_name = self.options['y_axis_column'].get('label', y_field) if isinstance(self.options['y_axis_column'], dict) else y_field
+            series_name = (self.options['y_axis_column'].get('label') or 
+                         self.options['y_axis_column']['field'].field_name) if isinstance(self.options['y_axis_column'], dict) else y_field
             series_color = self.options['y_axis_column'].get('color') if isinstance(self.options['y_axis_column'], dict) else None
             value_mapping = self.options['y_axis_column'].get('value_mapping', {}) if isinstance(self.options['y_axis_column'], dict) else {}
 
@@ -148,14 +166,6 @@ class BarChart(BaseChart):
                         tiled_title="Switch to Tiled"
                     )
                 )
-            ),
-            legend_opts=opts.LegendOpts(
-                type_="scroll",
-                pos_top="5%",
-                orient="horizontal",
-                page_button_position="end",
-                is_show=True,
-                textstyle_opts=opts.TextStyleOpts(font_size=12)
             ),
             xaxis_opts=opts.AxisOpts(
                 type_="category" if self.chart_details.chart_type != "BAR_HORIZONTAL" else "value",
