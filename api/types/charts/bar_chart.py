@@ -103,11 +103,12 @@ class BarChart(BaseChart):
             y_axis=data,
             label_opts=opts.LabelOpts(is_show=False),
             tooltip_opts=opts.TooltipOpts(
-                formatter="{a}: {b}"
+                formatter="{a}: {c}"
             ),
             itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None,
             category_gap="20%",
-            gap="30%"
+            gap="30%",
+            is_selected=True
         )
 
     def configure_chart(self, chart: Chart, filtered_data: pd.DataFrame = None) -> None:
@@ -139,13 +140,23 @@ class BarChart(BaseChart):
                     restore=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Reset"),
                     data_view=opts.ToolBoxFeatureDataViewOpts(is_show=True, title="View Data", lang=["View Data", "Close", "Refresh"]),
                     save_as_image=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Save Image"),
+                    magic_type=opts.ToolBoxFeatureMagicTypeOpts(
+                        is_show=True,
+                        type_=["line", "bar", "stack", "tiled"],
+                        line_title="Switch to Line",
+                        bar_title="Switch to Bar",
+                        stack_title="Switch to Stack",
+                        tiled_title="Switch to Tiled"
+                    )
                 )
             ),
             legend_opts=opts.LegendOpts(
                 type_="scroll",
                 pos_top="5%",
                 orient="horizontal",
-                page_button_position="end"
+                page_button_position="end",
+                is_show=True,
+                textstyle_opts=opts.TextStyleOpts(font_size=12)
             ),
             xaxis_opts=opts.AxisOpts(
                 type_="category" if self.chart_details.chart_type != "BAR_HORIZONTAL" else "value",
