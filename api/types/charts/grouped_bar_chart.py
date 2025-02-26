@@ -235,7 +235,23 @@ class GroupedBarChart(BaseChart):
                         return result;
                     }
                 """
-            )
+            ),
+            'toolbox_opts': opts.ToolboxOpts(
+                feature=opts.ToolBoxFeatureOpts(
+                    data_zoom=opts.ToolBoxFeatureDataZoomOpts(is_show=True, zoom_title="Zoom", back_title="Back"),
+                    restore=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Reset"),
+                    data_view=opts.ToolBoxFeatureDataViewOpts(is_show=True, title="View Data", lang=["View Data", "Close", "Refresh"]),
+                    save_as_image=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Save Image"),
+                    magic_type=opts.ToolBoxFeatureMagicTypeOpts(
+                        is_show=True,
+                        type_=["line", "bar", "stack", "tiled"],
+                        line_title="Switch to Line",
+                        bar_title="Switch to Bar",
+                        stack_title="Switch to Stack",
+                        tiled_title="Switch to Tiled"
+                    )
+                )
+            ),
         }
 
     def configure_chart(self, chart: Chart, filtered_data: pd.DataFrame = None) -> None:
