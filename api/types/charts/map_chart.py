@@ -35,9 +35,16 @@ class MapChart(BaseChart):
         chart.set_global_opts(
             title_opts=opts.TitleOpts(pos_top="5%"),  # Title 5% from top
             legend_opts=opts.LegendOpts(
-                pos_top="5%",  # Legend 5% from top
+                is_show=True,
+                selected_mode=True,
+                pos_top="5%",  # Move legend higher
                 pos_left="center",  # Center horizontally
-                padding=[0, 10, 20, 10]  # [top, right, bottom, left] padding
+                orient="horizontal",
+                item_gap=25,  # Add more space between legend items
+                padding=[5, 10, 20, 10],  # Add padding [top, right, bottom, left]
+                textstyle_opts=opts.TextStyleOpts(font_size=12),
+                border_width=0,  # Remove border
+                background_color="transparent"  # Make background transparent
             ),
             toolbox_opts=opts.ToolboxOpts(
                 feature=opts.ToolBoxFeatureOpts(

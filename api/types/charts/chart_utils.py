@@ -15,13 +15,9 @@ def _get_map_chart(chart_details: ResourceChartDetails, data, values):
     # map_chart.set_global_opts(title_opts=opts.TitleOpts(title=chart_details.name)) \
     map_chart.set_series_opts(label_opts=opts.LabelOpts(is_show=chart_details.options.get("show_legend", True)))
     map_chart.set_global_opts(
-        # title_opts=opts.TitleOpts(title=chart_details.name),
         visualmap_opts=opts.VisualMapOpts(
             max_=int(data[value_col].max()),
             min_=int(data[value_col].min()),
-            # range_color=["#313695", "#4575b4", "#74add1", "#abd9e9", "#e0f3f8",
-            #              "#ffffbf", "#fee090", "#fdae61", "#f46d43", "#d73027",
-            #              "#a50026", ],
             range_text=["High", "Low"],
             range_size=[10],
             is_calculable=True,
@@ -38,10 +34,16 @@ def _get_map_chart(chart_details: ResourceChartDetails, data, values):
             )
         ),
         legend_opts=opts.LegendOpts(
-            pos_top="5%",
-            pos_left="center",
-            padding=[0, 10, 20, 10],
-            textstyle_opts=opts.TextStyleOpts(font_size=12)
+            is_show=True,
+            selected_mode=True,
+            pos_top="5%",  # Move legend higher
+            pos_left="center",  # Center horizontally
+            orient="horizontal",
+            item_gap=25,  # Add more space between legend items
+            padding=[5, 10, 20, 10],  # Add padding [top, right, bottom, left]
+            textstyle_opts=opts.TextStyleOpts(font_size=12),
+            border_width=0,  # Remove border
+            background_color="transparent"  # Make background transparent
         )
     )
     return map_chart
