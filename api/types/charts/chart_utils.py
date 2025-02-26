@@ -28,6 +28,19 @@ def _get_map_chart(chart_details: ResourceChartDetails, data, values):
             orient="vertical",
             pos_left="right",
             pos_top="bottom",
+        ),
+        toolbox_opts=opts.ToolboxOpts(
+            feature=opts.ToolBoxFeatureOpts(
+                data_zoom=opts.ToolBoxFeatureDataZoomOpts(is_show=True, zoom_title="Zoom", back_title="Back"),
+                restore=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Reset"),
+                data_view=opts.ToolBoxFeatureDataViewOpts(is_show=True, title="View Data", lang=["View Data", "Close", "Refresh"]),
+                save_as_image=opts.ToolBoxFeatureSaveAsImageOpts(is_show=True, title="Save Image")
+            )
+        ),
+        legend_opts=opts.LegendOpts(
+            pos_top="5%",
+            pos_left="center",
+            padding=[0, 10, 20, 10]
         )
     )
     return map_chart
