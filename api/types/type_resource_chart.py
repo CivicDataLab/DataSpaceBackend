@@ -76,7 +76,8 @@ def ensure_type(value, target_type, element_type=None):
                 label=value.get("label"),
                 color=value.get("color"),
                 value_mapping=[
-                    ValueMappingType(key=vm["key"], value=vm["value"]) for vm in value.get("value_mapping", [])
+                    ValueMappingType(key=k, value=v) 
+                    for k, v in value.get("value_mapping", {}).items()
                 ] if value.get("value_mapping") else []
             )
 
@@ -118,7 +119,9 @@ class TypeResourceChart:
             "x_axis_label": self.options.get("x_axis_label"),
             "y_axis_label": self.options.get("y_axis_label"),
             "x_axis_column": ensure_type(self.options.get("x_axis_column"), TypeResourceSchema),
-            "y_axis_column": ensure_type(y_axis_column_data, list, YAxisColumnConfigType),
+            "y_axis_column": [
+                ensure_type(col, YAxisColumnConfigType) for col in y_axis_column_data
+            ] if y_axis_column_data else None,
             "region_column": ensure_type(self.options.get("region_column"), TypeResourceSchema),
             "value_column": ensure_type(self.options.get("value_column"), TypeResourceSchema),
             "time_column": ensure_type(self.options.get("time_column"), TypeResourceSchema),

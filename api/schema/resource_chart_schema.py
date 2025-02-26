@@ -94,7 +94,15 @@ class ResourceChartInput:
     options: Optional[ChartOptions] = field(default_factory=ChartOptions)
     filters: Optional[List[FilterInput]] = None
 
-
+def _update_value_mapping(value_mapping):
+    if not value_mapping:
+        return {}
+    return {
+            str(mapping.key): str(mapping.value)
+            for mapping in value_mapping
+            if mapping.key is not None and mapping.value is not None
+        }
+    
 def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChartInput, resource: Resource):
     chart.chart_type = chart_input.type
     
@@ -113,7 +121,7 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
                             'field': ResourceSchema.objects.get(id=column.field_name),
                             'label': column.label,
                             'color': column.color,
-                            'value_mapping': [ValueMapping(key=k, value=v) for k, v in column.value_mapping] if column.value_mapping else []
+                            'value_mapping':_update_value_mapping(column.value_mapping)
                         }
                         for column in value
                     ]
