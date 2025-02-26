@@ -136,7 +136,7 @@ class TypeResourceChart:
         for filter_data in self.filters:
             if isinstance(filter_data, dict):
                 filter_dict = {
-                    "column": filter_data.get("column", ""),
+                    "column": ensure_type(filter_data.get("column"), TypeResourceSchema),
                     "operator": filter_data.get("operator", ""),
                     "value": filter_data.get("value", "")
                 }
