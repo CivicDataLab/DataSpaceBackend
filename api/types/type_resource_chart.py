@@ -35,7 +35,7 @@ def chart_base(chart_details: ResourceChartDetails) -> None | Chart:
 
 @strawberry.type
 class FilterType:
-    column: str
+    column: Optional[TypeResourceSchema]
     operator: str
     value: str
 
