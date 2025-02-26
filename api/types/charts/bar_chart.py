@@ -135,7 +135,7 @@ class BarChart(BaseChart):
             tooltip_opts=opts.TooltipOpts(trigger="axis", axis_pointer_type="shadow"),
             toolbox_opts=opts.ToolboxOpts(
                 feature=opts.ToolBoxFeatureOpts(
-                    data_zoom=opts.ToolBoxFeatureDataZoomOpts(is_show=True, title={"zoom": "Zoom", "back": "Back"}),
+                    data_zoom=opts.ToolBoxFeatureDataZoomOpts(is_show=True, zoom_title="Zoom", back_title="Back"),
                     restore=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Reset"),
                     data_view=opts.ToolBoxFeatureDataViewOpts(is_show=True, title="View Data", lang=["View Data", "Close", "Refresh"]),
                     save_as_image=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Save Image"),
