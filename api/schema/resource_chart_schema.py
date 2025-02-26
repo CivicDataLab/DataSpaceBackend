@@ -128,7 +128,16 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
     # Update options and filters
     chart.options = options
     if chart_input.filters:
-        chart.filters = [vars(f) for f in chart_input.filters]
+        filters = []
+        for filter_input in chart_input.filters:
+            if filter_input.column != "":
+                filter_dict = {
+                    "column": ResourceSchema.objects.get(id=filter_input.column),
+                    "operator": filter_input.operator,
+                    "value": filter_input.value
+                }
+                filters.append(filter_dict)
+        chart.filters = filters
     chart.save()
 
 
