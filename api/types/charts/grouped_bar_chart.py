@@ -27,13 +27,13 @@ class GroupedBarChart(BaseChart):
         chart = self.initialize_chart(filtered_data)
 
         # Check if time_column is specified for timeline
-        time_column = self.options.get('time_column')
-        if time_column:
-            # Handle time-based data
-            self._handle_time_based_data(chart, filtered_data, time_column)
-        else:
-            # Handle non-time-based data
-            self._handle_regular_data(chart, filtered_data)
+        # time_column = self.options.get('time_column')
+        # if time_column:
+        #     # Handle time-based data
+        #     self._handle_time_based_data(chart, filtered_data, time_column)
+        # else:
+        #     # Handle non-time-based data
+        #     self._handle_regular_data(chart, filtered_data)
 
         # Configure the chart
         self.configure_chart(chart, filtered_data)
@@ -165,27 +165,24 @@ class GroupedBarChart(BaseChart):
         """Handle non-time-based data with aggregation"""
         x_field = self.options['x_axis_column'].field_name
         
-        # Get unique x-axis values
+        # Get unique x-axis values and sort them
         x_axis_data = filtered_data[x_field].unique().tolist()
         x_axis_data.sort()
         chart.add_xaxis(x_axis_data)
 
         # Add data for each metric
-        for y_axis_column in self.options['y_axis_column']:
-            metric_name = y_axis_column.get('label') or y_axis_column['field'].field_name
+        for y_axis_column in self._get_y_axis_columns():
+            metric_name = self._get_series_name(y_axis_column)
             field_name = y_axis_column['field'].field_name
-            value_mapping = y_axis_column.get('value_mapping', {})
+            value_mapping = self._get_value_mapping(y_axis_column)
             aggregate_type = y_axis_column.get('aggregate_type')
             
             y_values = []
-            y_labels = []
-            
             for x_val in x_axis_data:
                 # Filter data for current x value
                 x_filtered_data = filtered_data[filtered_data[x_field] == x_val]
                 value = self._apply_aggregation(x_filtered_data, field_name, aggregate_type)
                 y_values.append(value)
-                y_labels.append(value_mapping.get(str(value), value))
             
             self.add_series_to_chart(
                 chart=chart,

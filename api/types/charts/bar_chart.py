@@ -29,7 +29,7 @@ class BarChart(BaseChart):
             # Initialize the chart
             chart = self.initialize_chart(filtered_data)
 
-            self._handle_regular_data(chart, filtered_data)
+            # self._handle_regular_data(chart, filtered_data)
 
             # Configure chart
             self.configure_chart(chart, filtered_data)
@@ -44,36 +44,13 @@ class BarChart(BaseChart):
 
     def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
         """Override to handle single y-axis column."""
-        # Get x-axis field name
-        x_field = self.options['x_axis_column'].field_name
-        x_axis_data = filtered_data[x_field].tolist()
-
-        # Add x-axis data
-        chart.add_xaxis(x_axis_data)
-
         # For bar chart, only use the first y-axis column
         y_axis_column = self.options['y_axis_column']
         if isinstance(y_axis_column, list):
-            y_axis_column = y_axis_column[0]
-
-        # Get y-axis field name
-        y_field = y_axis_column['field'].field_name
-        y_values = filtered_data[y_field].tolist()
-
-        # Get series name from configuration
-        series_name = self._get_series_name(y_axis_column)
-
-        # Get value mapping from configuration
-        value_mapping = self._get_value_mapping(y_axis_column)
-
-        # Add series to chart
-        self.add_series_to_chart(
-            chart=chart,
-            series_name=series_name,
-            y_values=y_values,
-            color=y_axis_column.get('color'),
-            value_mapping=value_mapping
-        )
+            self.options['y_axis_column'] = y_axis_column[0]
+            
+        # Use base chart's implementation
+        super()._handle_regular_data(chart, filtered_data)
 
     def get_chart_specific_opts(self) -> dict:
         """Override chart specific options for bar chart."""
