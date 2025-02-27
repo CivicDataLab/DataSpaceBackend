@@ -38,7 +38,13 @@ class MultiLineChart(BaseChart):
             'tooltip_opts': opts.TooltipOpts(
                 trigger="axis",
                 axis_pointer_type="cross"
-            )
+            ),
+            'visualmap_opts': opts.VisualMapOpts(
+                is_show=False,
+                type_="continuous",
+                min_=0,
+                max_=len(self._get_y_axis_columns()) - 1
+            ) if len(self._get_y_axis_columns()) > 1 else None
         })
         return base_opts
 
@@ -77,19 +83,6 @@ class MultiLineChart(BaseChart):
     def configure_chart(self, chart: Chart, filtered_data: pd.DataFrame = None) -> None:
         """Configure line chart specific options."""
         super().configure_chart(chart, filtered_data)
-        
-        # Add line chart specific visual map if needed
-        if filtered_data is not None:
-            y_columns = self._get_y_axis_columns()
-            if len(y_columns) > 1:
-                chart.set_global_opts(
-                    visualmap_opts=opts.VisualMapOpts(
-                        is_show=False,
-                        type_="continuous",
-                        min_=0,
-                        max_=len(y_columns) - 1
-                    )
-                )
 
     def get_init_opts(self) -> opts.InitOpts:
         """Override to provide line chart specific initialization options."""
