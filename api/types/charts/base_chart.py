@@ -211,9 +211,9 @@ class BaseChart(ABC):
             series_name=series_name,
             y_axis=data,
             label_opts=opts.LabelOpts(is_show=False),
-            tooltip_opts=opts.TooltipOpts(
-                formatter="{a}: {c}"
-            ),
+            # tooltip_opts=opts.TooltipOpts(
+            #     formatter="{a}: {c}"
+            # ),
             itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None
         )
 
