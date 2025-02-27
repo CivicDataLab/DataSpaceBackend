@@ -202,19 +202,32 @@ class BaseChart(ABC):
             value = float(val) if val is not None else 0.0
             # Get mapped string value for display
             label = value_mapping.get(str(value), str(value)) if value_mapping else str(value)
-            data.append(opts.BarItem(
-                name=label,
-                value=value
-            ))
+            
+            # Use appropriate item type based on chart class
+            if isinstance(chart, Line):
+                data.append(opts.LineItem(
+                    name=label,
+                    value=value,
+                    symbol_size=8,
+                    symbol="emptyCircle"
+                ))
+            else:
+                data.append(opts.BarItem(
+                    name=label,
+                    value=value
+                ))
         
         chart.add_yaxis(
             series_name=series_name,
             y_axis=data,
             label_opts=opts.LabelOpts(is_show=False),
-            # tooltip_opts=opts.TooltipOpts(
-            #     formatter="{a}: {c}"
-            # ),
-            itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None
+            itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None,
+            linestyle_opts=opts.LineStyleOpts(
+                width=2,
+                type_="solid"
+            ) if isinstance(chart, Line) else None,
+            is_smooth=True if isinstance(chart, Line) else None,
+            is_symbol_show=True if isinstance(chart, Line) else None
         )
 
     def _handle_time_based_data(self, chart: Chart, filtered_data: pd.DataFrame, time_column) -> None:
