@@ -79,6 +79,8 @@ class DatasetDocument(Document):
         },
         multi=True
     )
+    
+    has_charts = fields.BooleanField(attr='has_charts')
 
     # tags = Keyword(multi=True)
 

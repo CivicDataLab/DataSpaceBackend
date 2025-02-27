@@ -55,6 +55,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
     tags = serializers.ListField()
     categories = serializers.ListField()
     formats = serializers.ListField()
+    has_charts = serializers.BooleanField()
 
     class Meta:
         model = Dataset

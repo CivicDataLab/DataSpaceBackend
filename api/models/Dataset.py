@@ -52,3 +52,11 @@ class Dataset(models.Model):
         Used in Elasticsearch indexing.
         """
         return list(set([resource.resourcefiledetails.format for resource in self.resources.all()]).difference({""}))
+    
+    @property
+    def has_charts(self):
+        """Has charts.
+
+        Used in Elasticsearch indexing.
+        """
+        return bool(self.resources.filter(resourcechartdetails__isnull=False).exists())
