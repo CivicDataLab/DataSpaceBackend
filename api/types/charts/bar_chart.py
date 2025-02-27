@@ -27,7 +27,7 @@ class BarChart(BaseChart):
                 return None
 
             # Initialize the chart
-            chart = self.initialize_chart(filtered_data)
+            chart = self.initialize_chart()
 
             self._handle_regular_data(chart, filtered_data)
 

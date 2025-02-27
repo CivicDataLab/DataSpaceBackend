@@ -234,7 +234,7 @@ class GroupedBarChart(BaseChart):
             
         return value_mapping.get(str(value), str(value))
 
-    def initialize_chart(self, filtered_data: pd.DataFrame) -> Chart:
+    def initialize_chart(self, filtered_data: pd.DataFrame = None) -> Chart:
         """Initialize a new chart instance with basic options."""
         chart = super().initialize_chart(filtered_data)
         

@@ -168,7 +168,7 @@ class BaseChart(ABC):
             }
         }
 
-    def initialize_chart(self):
+    def initialize_chart(self, filtered_data: pd.DataFrame = None) -> Chart:
         """Initialize the chart with common options."""
         chart = self.get_chart_class()(
             init_opts=self.get_init_opts()
@@ -184,7 +184,8 @@ class BaseChart(ABC):
             toolbox_opts=opts_dict['toolbox_opts'],
             xaxis_opts=opts_dict['xaxis_opts'],
             yaxis_opts=opts_dict['yaxis_opts'],
-            tooltip_opts=opts_dict['tooltip_opts']
+            tooltip_opts=opts_dict['tooltip_opts'],
+            visualmap_opts=opts_dict.get('visualmap_opts')  # Optional for some charts
         )
 
         # Set grid options directly
@@ -383,7 +384,7 @@ class BaseChart(ABC):
                 return None
 
             # Initialize chart
-            chart = self.initialize_chart()
+            chart = self.initialize_chart(filtered_data)
 
             # Handle time-based data if time column is specified
             time_column = self.options.get('time_column')
