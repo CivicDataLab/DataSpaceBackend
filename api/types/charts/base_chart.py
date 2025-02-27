@@ -134,7 +134,7 @@ class BaseChart(ABC):
             ),
             'tooltip_opts': opts.TooltipOpts(
                 trigger="axis",
-                axis_pointer_type="shadow"
+                axis_pointer_type="cross"
             ),
             'legend_opts': opts.LegendOpts(
                 is_show=True,
