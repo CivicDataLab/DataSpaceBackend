@@ -11,20 +11,22 @@ from api.utils.enums import AggregateType
 @register_chart('MULTILINE')
 class MultiLineChart(BaseChart):
     def get_chart_class(self):
-        """
-        Override to return Line chart class instead of Bar
-        """
+        """Override to return Line chart class instead of Bar"""
         return Line
 
     def get_chart_specific_opts(self) -> dict:
         """Override chart specific options for line chart."""
         base_opts = super().get_chart_specific_opts()
+        
+        # Configure x-axis labels
         base_opts['xaxis_opts'].axislabel_opts = opts.LabelOpts(
             rotate=45,
             interval=0,
             margin=8
         )
+        
         # Add line chart specific options
+        y_axis_columns = self._get_y_axis_columns()
         base_opts.update({
             'datazoom_opts': [
                 opts.DataZoomOpts(
@@ -43,8 +45,8 @@ class MultiLineChart(BaseChart):
                 is_show=False,
                 type_="continuous",
                 min_=0,
-                max_=len(self._get_y_axis_columns()) - 1
-            ) if len(self._get_y_axis_columns()) > 1 else None
+                max_=len(y_axis_columns) - 1
+            ) if len(y_axis_columns) > 1 else None
         })
         return base_opts
 
@@ -79,10 +81,6 @@ class MultiLineChart(BaseChart):
             is_smooth=True,
             is_symbol_show=True
         )
-
-    def configure_chart(self, chart: Chart, filtered_data: pd.DataFrame = None) -> None:
-        """Configure line chart specific options."""
-        super().configure_chart(chart, filtered_data)
 
     def get_init_opts(self) -> opts.InitOpts:
         """Override to provide line chart specific initialization options."""

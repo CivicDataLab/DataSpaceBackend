@@ -235,165 +235,71 @@ class BaseChart(ABC):
             all_periods = sorted([str(time) for time in time_groups.groups.keys()])
             selected_groups = all_periods
 
-        # Get x-axis field
-        x_field = self.options['x_axis_column'].field_name
-        
         # If x-axis is same as time column, use time periods directly
+        x_field = self.options['x_axis_column'].field_name
         if x_field == time_column.field_name:
             x_axis_data = sorted([str(time) for time in time_groups.groups.keys() if str(time) in selected_groups])
             chart.add_xaxis(x_axis_data)
-            self._add_time_series(chart, time_groups, x_axis_data)
+
+            # Add data for each metric
+            for y_axis_column in self._get_y_axis_columns():
+                metric_name = self._get_series_name(y_axis_column)
+                field_name = y_axis_column['field'].field_name
+                value_mapping = self._get_value_mapping(y_axis_column)
+                aggregate_type = y_axis_column.get('aggregate_type')
+                
+                y_values = []
+                for time_val in x_axis_data:
+                    period_data = time_groups.get_group(time_val)
+                    value = self._apply_aggregation(period_data, field_name, aggregate_type)
+                    y_values.append(value)
+                
+                self.add_series_to_chart(
+                    chart=chart,
+                    series_name=metric_name,
+                    y_values=y_values,
+                    color=y_axis_column.get('color'),
+                    value_mapping=value_mapping
+                )
         else:
-            self._handle_time_with_categories(chart, filtered_data, time_groups, selected_groups, x_field)
+            # Get unique x-axis values from original data
+            all_x_values = filtered_data[x_field].unique().tolist()
+            all_x_values.sort()
 
-    def _handle_time_with_categories(self, chart: Chart, filtered_data: pd.DataFrame, time_groups: DataFrameGroupBy, 
-                                   selected_groups: list, x_field: str) -> None:
-        """Handle time-based data with categories."""
-        # Get unique x-axis values from original data
-        all_x_values = filtered_data[x_field].unique().tolist()
-        all_x_values.sort()
-
-        # Create x-axis labels with time periods
-        x_axis_data = []
-        for x_val in all_x_values:
-            for time_val in time_groups.groups.keys():
-                if str(time_val) in selected_groups:
-                    x_axis_data.append(f"{x_val} ({time_val})")
-        chart.add_xaxis(x_axis_data)
-
-        # Add data for each metric
-        for y_axis_column in self._get_y_axis_columns():
-            metric_name = self._get_series_name(y_axis_column)
-            y_values = []
-            field_name = y_axis_column['field'].field_name
-            value_mapping = y_axis_column.get('value_mapping', {})
-            aggregate_type = y_axis_column.get('aggregate_type')
-            
+            # Create x-axis labels with time periods
+            x_axis_data = []
             for x_val in all_x_values:
                 for time_val in time_groups.groups.keys():
-                    if str(time_val) not in selected_groups:
-                        continue
-                    
-                    period_data = time_groups.get_group(time_val)
-                    x_filtered_data = period_data[period_data[x_field] == x_val]
-                    value = self._apply_aggregation(x_filtered_data, field_name, aggregate_type)
-                    y_values.append(value)
-            
-            self.add_series_to_chart(
-                chart=chart,
-                series_name=metric_name,
-                y_values=y_values,
-                color=y_axis_column.get('color'),
-                value_mapping=value_mapping
-            )
+                    if str(time_val) in selected_groups:
+                        x_axis_data.append(f"{x_val} ({time_val})")
+            chart.add_xaxis(x_axis_data)
 
-    def _add_time_series(self, chart: Chart, time_groups: DataFrameGroupBy, x_axis_data: list) -> None:
-        """Add time series data to chart."""
-        for y_axis_column in self._get_y_axis_columns():
-            metric_name = self._get_series_name(y_axis_column)
-            y_values = []
-            field_name = y_axis_column['field'].field_name
-            value_mapping = y_axis_column.get('value_mapping', {})
-            aggregate_type = y_axis_column.get('aggregate_type')
-            
-            for time_val in x_axis_data:
-                period_data = time_groups.get_group(time_val)
-                value = self._apply_aggregation(period_data, field_name, aggregate_type)
-                y_values.append(value)
-            
-            self.add_series_to_chart(
-                chart=chart,
-                series_name=metric_name,
-                y_values=y_values,
-                color=y_axis_column.get('color'),
-                value_mapping=value_mapping
-            )
-
-    def _apply_aggregation(self, data: pd.DataFrame, field_name: str, aggregate_type: str) -> float:
-        """
-        Apply aggregation on data.
-        
-        Args:
-            data (pd.DataFrame): Data to aggregate
-            field_name (str): Field to aggregate
-            aggregate_type (str): Type of aggregation
-            
-        Returns:
-            float: Aggregated value
-        """
-        try:
-            # Try different field name formats
-            field_variants = [
-                field_name,
-                field_name.replace('-', '_'),
-                field_name.replace('_', '-'),
-                field_name.lower(),
-                field_name.upper()
-            ]
-            
-            # Find the correct field name variant
-            actual_field = next((variant for variant in field_variants if variant in data.columns), None)
-            
-            if actual_field is None:
-                return 0.0
-
-            if aggregate_type and aggregate_type != 'none':
-                if aggregate_type == 'SUM':
-                    value = data[actual_field].astype(float).sum()
-                elif aggregate_type == 'AVERAGE':
-                    value = data[actual_field].astype(float).mean()
-                elif aggregate_type == 'COUNT':
-                    value = data[actual_field].count()
-                else:
-                    value = float(data[actual_field].iloc[0])
-            else:
-                value = float(data[actual_field].iloc[0])
-            
-            return 0.0 if pd.isna(value) else float(value)
-        except Exception as e:
-            print(f"Error in aggregation: {e}")
-            return 0.0
-
-    def _get_y_axis_columns(self) -> list:
-        """Get y-axis columns configuration."""
-        y_axis_columns = self.options['y_axis_column']
-        return y_axis_columns if isinstance(y_axis_columns, list) else [y_axis_columns]
-
-    def _get_series_name(self, y_axis_column: dict) -> str:
-        """Get series name from y-axis column configuration."""
-        if isinstance(y_axis_column, dict):
-            return (y_axis_column.get('label') or 
-                   y_axis_column['field'].field_name)
-        return y_axis_column.field_name
-
-    def _get_value_mapping(self, y_axis_column: dict) -> dict:
-        """Get value mapping from y-axis column configuration."""
-        return y_axis_column.get('value_mapping', {}) if isinstance(y_axis_column, dict) else {}
-
-    def create_chart(self) -> Chart:
-        """
-        Create a chart with the given data and options.
-        """
-        try:
-            # Filter and validate data
-            filtered_data = self.filter_data()
-            if filtered_data is None or filtered_data.empty:
-                print("No data to display after filtering")
-                return None
-
-            # Initialize chart
-            chart = self.initialize_chart()
-
-            # Configure chart with data
-            self.configure_chart(chart, filtered_data)
-
-            return chart
-
-        except Exception as e:
-            print("Error while creating chart", e)
-            import traceback
-            traceback.print_exc()
-            return None
+            # Add data for each metric
+            for y_axis_column in self._get_y_axis_columns():
+                metric_name = self._get_series_name(y_axis_column)
+                field_name = y_axis_column['field'].field_name
+                value_mapping = self._get_value_mapping(y_axis_column)
+                aggregate_type = y_axis_column.get('aggregate_type')
+                
+                y_values = []
+                for x_val in all_x_values:
+                    for time_val in time_groups.groups.keys():
+                        if str(time_val) not in selected_groups:
+                            continue
+                        
+                        period_data = time_groups.get_group(time_val)
+                        # Filter data for current x value
+                        x_filtered_data = period_data[period_data[x_field] == x_val]
+                        value = self._apply_aggregation(x_filtered_data, field_name, aggregate_type)
+                        y_values.append(value)
+                
+                self.add_series_to_chart(
+                    chart=chart,
+                    series_name=metric_name,
+                    y_values=y_values,
+                    color=y_axis_column.get('color'),
+                    value_mapping=value_mapping
+                )
 
     def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
         """Handle non-time-based data."""
@@ -442,3 +348,85 @@ class BaseChart(ABC):
             self._handle_time_based_data(chart, filtered_data, time_column)
         else:
             self._handle_regular_data(chart, filtered_data)
+
+    def _apply_aggregation(self, data: pd.DataFrame, field_name: str, aggregate_type: str) -> float:
+        """Helper method to apply aggregation on data"""
+        try:
+            # Try different field name formats
+            field_variants = [
+                field_name,
+                field_name.replace('-', '_'),
+                field_name.replace('_', '-'),
+                field_name.lower(),
+                field_name.upper()
+            ]
+            
+            # Find the correct field name variant
+            actual_field = None
+            for variant in field_variants:
+                if variant in data.columns:
+                    actual_field = variant
+                    break
+            
+            if actual_field is None:
+                return 0.0
+
+            if aggregate_type and aggregate_type != 'none':
+                if aggregate_type == 'SUM':
+                    value = data[actual_field].astype(float).sum()
+                elif aggregate_type == 'AVERAGE':
+                    value = data[actual_field].astype(float).mean()
+                elif aggregate_type == 'COUNT':
+                    value = data[actual_field].count()
+                else:
+                    # Default to first value if unknown aggregation type
+                    value = float(data[actual_field].iloc[0])
+            else:
+                # If no aggregation specified, take the first value
+                value = float(data[actual_field].iloc[0])
+            
+            return 0.0 if pd.isna(value) else float(value)
+        except Exception as e:
+            print(f"Error in aggregation: {e}")
+            return 0.0
+
+    def _get_y_axis_columns(self) -> list:
+        """Get y-axis columns configuration."""
+        y_axis_columns = self.options['y_axis_column']
+        return y_axis_columns if isinstance(y_axis_columns, list) else [y_axis_columns]
+
+    def _get_series_name(self, y_axis_column: dict) -> str:
+        """Get series name from y-axis column configuration."""
+        if isinstance(y_axis_column, dict):
+            return (y_axis_column.get('label') or 
+                   y_axis_column['field'].field_name)
+        return y_axis_column.field_name
+
+    def _get_value_mapping(self, y_axis_column: dict) -> dict:
+        """Get value mapping from y-axis column configuration."""
+        return y_axis_column.get('value_mapping', {}) if isinstance(y_axis_column, dict) else {}
+
+    def create_chart(self) -> Chart:
+        """
+        Create a chart with the given data and options.
+        """
+        try:
+            # Filter and validate data
+            filtered_data = self.filter_data()
+            if filtered_data is None or filtered_data.empty:
+                print("No data to display after filtering")
+                return None
+
+            # Initialize the chart
+            chart = self.initialize_chart(filtered_data)
+
+            # Configure chart with data
+            self.configure_chart(chart, filtered_data)
+
+            return chart
+
+        except Exception as e:
+            print("Error while creating chart", e)
+            import traceback
+            traceback.print_exc()
+            return None

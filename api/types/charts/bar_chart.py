@@ -14,34 +14,6 @@ from api.utils.enums import AggregateType
 @register_chart('BAR_VERTICAL')
 @register_chart('LINE')
 class BarChart(BaseChart):
-    def create_chart(self) -> Chart:
-        """
-        Create a bar chart with the given data and options.
-        """
-        try:
-            # First aggregate the data
-            filtered_data = self.filter_data()
-
-            if filtered_data is None or filtered_data.empty:
-                print("No data to display after aggregation")
-                return None
-
-            # Initialize the chart
-            chart = self.initialize_chart(filtered_data)
-
-            # self._handle_regular_data(chart, filtered_data)
-
-            # Configure chart
-            self.configure_chart(chart, filtered_data)
-
-            return chart
-
-        except Exception as e:
-            print("Error while creating chart", e)
-            import traceback
-            traceback.print_exc()
-            return None
-
     def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
         """Override to handle single y-axis column."""
         # For bar chart, only use the first y-axis column
