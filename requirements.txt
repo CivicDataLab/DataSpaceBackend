@@ -58,3 +58,24 @@ wrapt==1.16.0
 zipp==3.18.1
 snapshot-selenium==0.0.2
 selenium==4.25.0
+
+# Security and Environment Management
+python-decouple==3.8
+django-debug-toolbar==4.3.0
+django-ratelimit==4.1.0
+
+# Caching and Performance
+django-redis==5.4.0
+django-cacheops==7.0.2
+
+# Code Quality and Type Checking
+mypy==1.9.0
+black==24.2.0
+isort==5.13.2
+pre-commit==3.6.2
+
+# Logging
+structlog==24.1.0
+
+# Development and Debugging
+ipython==8.22.1
