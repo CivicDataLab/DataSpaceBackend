@@ -26,25 +26,33 @@ class GroupedBarChart(BaseChart):
         return super().create_chart()
 
     def get_chart_class(self):
-        """
-        Get the chart class to use
-        """
+        """Get the chart class to use"""
         return Bar
 
     def get_chart_specific_opts(self) -> dict:
         """Override chart specific options for grouped bar chart."""
         base_opts = super().get_chart_specific_opts()
+        
+        # Configure x-axis labels
         base_opts['xaxis_opts'].axislabel_opts = opts.LabelOpts(
             rotate=45,
             interval=0,
             margin=8
         )
+
+        # Set axis options based on chart type
+        if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
+            base_opts.update({
+                'xaxis_opts': opts.AxisOpts(type_="value"),
+                'yaxis_opts': opts.AxisOpts(type_="category")
+            })
+            
         return base_opts
 
     def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, color: str = None, value_mapping: dict = None) -> None:
         """Override to add grouped bar specific styling."""
         super().add_series_to_chart(chart, series_name, y_values, color, value_mapping)
-        # Add grouped bar specific options
+        # Add bar-specific options
         chart.options["series"][-1].update({
             "barGap": "30%",
             "barCategoryGap": "20%"
@@ -63,25 +71,6 @@ class GroupedBarChart(BaseChart):
             return "0"
             
         return value_mapping.get(str(value), str(value))
-
-    def initialize_chart(self, filtered_data: pd.DataFrame = None) -> Chart:
-        """Initialize a new chart instance with basic options."""
-        chart = super().initialize_chart(filtered_data)
-        
-        # Set axis options based on chart type
-        opts_dict = self.get_chart_specific_opts()
-        if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
-            chart.set_global_opts(
-                xaxis_opts=opts.AxisOpts(type_="value"),
-                yaxis_opts=opts.AxisOpts(type_="category")
-            )
-        else:
-            chart.set_global_opts(
-                xaxis_opts=opts_dict['xaxis_opts'],
-                yaxis_opts=opts_dict['yaxis_opts']
-            )
-        
-        return chart
 
     def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
         """Handle non-time-based data with aggregation"""

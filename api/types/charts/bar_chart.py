@@ -27,11 +27,21 @@ class BarChart(BaseChart):
     def get_chart_specific_opts(self) -> dict:
         """Override chart specific options for bar chart."""
         base_opts = super().get_chart_specific_opts()
+        
+        # Configure x-axis labels
         base_opts['xaxis_opts'].axislabel_opts = opts.LabelOpts(
             rotate=45,
             interval=0,
             margin=8
         )
+
+        # Set axis options based on chart type
+        if self.chart_details.chart_type == "BAR_HORIZONTAL":
+            base_opts.update({
+                'xaxis_opts': opts.AxisOpts(type_="value"),
+                'yaxis_opts': opts.AxisOpts(type_="category")
+            })
+            
         return base_opts
 
     def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, color: str = None, value_mapping: dict = None) -> None:
@@ -70,22 +80,3 @@ class BarChart(BaseChart):
             return metrics
         else:
             return data[[x_field, y_field]]
-
-    def initialize_chart(self, filtered_data: pd.DataFrame = None) -> Chart:
-        """Initialize a new chart instance with basic options."""
-        chart = super().initialize_chart(filtered_data)
-        
-        # Set axis options
-        opts_dict = self.get_chart_specific_opts()
-        if self.chart_details.chart_type == "BAR_HORIZONTAL":
-            chart.set_global_opts(
-                xaxis_opts=opts.AxisOpts(type_="value"),
-                yaxis_opts=opts.AxisOpts(type_="category")
-            )
-        else:
-            chart.set_global_opts(
-                xaxis_opts=opts_dict['xaxis_opts'],
-                yaxis_opts=opts_dict['yaxis_opts']
-            )
-        
-        return chart
