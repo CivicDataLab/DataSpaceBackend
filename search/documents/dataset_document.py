@@ -2,7 +2,7 @@ from django_elasticsearch_dsl import Document, fields, Index, KeywordField
 
 from api.utils.enums import DatasetStatus
 from api.models import Dataset, Resource, Metadata, DatasetMetadata
-from dataexbackend import settings
+from DataSpace import settings
 from search.documents.analysers import html_strip, ngram_analyser
 
 # from elasticsearch_dsl.search_base import AggsProxy

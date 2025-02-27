@@ -10,7 +10,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-from dataexbackend import settings
+from DataSpace import settings
 
 resource = Resource(attributes={"service.name": "DataKeepAPI"})
 trace.set_tracer_provider(TracerProvider(resource=resource))
@@ -22,7 +22,7 @@ trace.get_tracer_provider().add_span_processor(span_processor)
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dataexbackend.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'DataSpace.settings')
     try:
         from django.core.management import execute_from_command_line
         DjangoInstrumentor().instrument()

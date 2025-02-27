@@ -3,8 +3,8 @@ services:
   backend:
     build: .
     env_file: .env
-    container_name: "DataExBackend"
-    command: uvicorn dataexbackend.asgi:application --host 0.0.0.0 --port 8000 --reload
+    container_name: "DataSpace"
+    command: uvicorn DataSpace.asgi:application --host 0.0.0.0 --port 8000 --reload
     volumes:
       - .:/code
     ports:

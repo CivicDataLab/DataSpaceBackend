@@ -37,10 +37,10 @@ class MultiLineChart(BaseChart):
                 ),
                 opts.DataZoomOpts(type_="inside")
             ],
-            'tooltip_opts': opts.TooltipOpts(
-                trigger="axis",
-                axis_pointer_type="cross"
-            ),
+            # 'tooltip_opts': opts.TooltipOpts(
+            #     trigger="axis",
+            #     axis_pointer_type="cross"
+            # ),
             'visualmap_opts': opts.VisualMapOpts(
                 is_show=False,
                 type_="continuous",

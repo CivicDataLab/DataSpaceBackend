@@ -1,4 +1,4 @@
-"""dataexbackend URL Configuration
+"""DataSpace URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/4.0/topics/http/urls/
@@ -17,7 +17,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include, re_path
 
-from dataexbackend import settings
+from DataSpace import settings
 from search import urls as search_index_urls
 
 urlpatterns = [
