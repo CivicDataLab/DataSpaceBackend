@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 
 import pandas as pd
+from pandas.core.groupby import DataFrameGroupBy
 from pyecharts.charts import Line, Bar, Map
 from pyecharts.charts.chart import Chart
+from pyecharts import options as opts
 
 from api.models import ResourceChartDetails
 
@@ -92,3 +94,345 @@ class BaseChart(ABC):
         max_bound = max_val + buffer
         
         return min_bound, max_bound
+
+    def get_common_options(self) -> dict:
+        """
+        Get common chart options used across different chart types.
+        Override in subclasses if needed.
+        """
+        return {
+            'legend_opts': opts.LegendOpts(
+                is_show=True,
+                selected_mode=True,
+                pos_top="5%",
+                pos_left="center",
+                orient="horizontal",
+                item_gap=25,
+                padding=[5, 10, 20, 10],
+                textstyle_opts=opts.TextStyleOpts(font_size=12),
+                border_width=0,
+                background_color="transparent"
+            ),
+            'grid': {
+                "top": "20%",
+                "bottom": "15%",
+                "left": "10%",
+                "right": "5%",
+                "containLabel": True
+            },
+            'toolbox_opts': opts.ToolboxOpts(
+                feature=opts.ToolBoxFeatureOpts(
+                    data_zoom=opts.ToolBoxFeatureDataZoomOpts(is_show=True, zoom_title="Zoom", back_title="Back"),
+                    restore=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Reset"),
+                    data_view=opts.ToolBoxFeatureDataViewOpts(is_show=True, title="View Data", lang=["View Data", "Close", "Refresh"]),
+                    save_as_image=opts.ToolBoxFeatureSaveAsImageOpts(is_show=True, title="Save Image")
+                )
+            ),
+            'axis_opts': {
+                'name_location': "middle",
+                'name_gap': 25,
+                'axislabel_opts': opts.LabelOpts(
+                    margin=8
+                )
+            }
+        }
+
+    def get_init_opts(self) -> opts.InitOpts:
+        """
+        Get common initialization options.
+        Override in subclasses if needed.
+        """
+        return opts.InitOpts(
+            width=self.options.get('width', '100%'),
+            height=self.options.get('height', '400px'),
+            animation_opts=opts.AnimationOpts(animation=False)
+        )
+
+    def initialize_chart(self, filtered_data: pd.DataFrame = None) -> Chart:
+        """Initialize a new chart instance with basic options."""
+        chart = self.get_chart_class()(
+            init_opts=self.get_init_opts()
+        )
+        common_options = self.get_common_options()
+        # Set initial global options
+        chart.set_global_opts(
+            title_opts=opts.TitleOpts(pos_top="5%"),
+            legend_opts=common_options['legend_opts']
+        )
+
+        # Set grid options directly
+        chart.options["grid"] = common_options['grid']
+        
+        return chart
+
+    def get_chart_specific_opts(self) -> dict:
+        """
+        Get chart type specific options. Override in subclasses for specific chart types.
+        """
+        return {
+            'xaxis_opts': opts.AxisOpts(
+                type_="category",
+                name=self.options.get('x_axis_label', 'X-Axis'),
+                **self.get_common_options()['axis_opts']
+            ),
+            'yaxis_opts': opts.AxisOpts(
+                type_="value",
+                name=self.options.get('y_axis_label', 'Y-Axis'),
+                **self.get_common_options()['axis_opts']
+            ),
+            'tooltip_opts': opts.TooltipOpts(
+                trigger="axis",
+                axis_pointer_type="shadow"
+            )
+        }
+
+    def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, color: str = None, value_mapping: dict = None) -> None:
+        """
+        Add a series to the chart with specific styling. Override in subclasses for specific styling.
+        """
+        # Create a list of value objects with original and formatted values
+        data = []
+        for val in y_values:
+            # Keep original numeric value for plotting
+            value = float(val) if val is not None else 0.0
+            # Get mapped string value for display
+            label = value_mapping.get(str(value), str(value)) if value_mapping else str(value)
+            data.append(opts.BarItem(
+                name=label,
+                value=value
+            ))
+        
+        chart.add_yaxis(
+            series_name=series_name,
+            y_axis=data,
+            label_opts=opts.LabelOpts(is_show=False),
+            tooltip_opts=opts.TooltipOpts(
+                formatter="{a}: {c}"
+            ),
+            itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None
+        )
+
+    def _handle_time_based_data(self, chart: Chart, filtered_data: pd.DataFrame, time_column) -> None:
+        """
+        Handle time-based data with aggregation.
+        
+        Args:
+            chart (Chart): The chart instance to update
+            filtered_data (pd.DataFrame): Filtered dataframe
+            time_column: Time column configuration
+        """
+        # Group data by time periods
+        time_groups = filtered_data.groupby(time_column.field_name)
+        selected_groups = self.options.get('time_groups', [])
+        
+        # If no time groups specified, use all periods
+        if not selected_groups:
+            all_periods = sorted([str(time) for time in time_groups.groups.keys()])
+            selected_groups = all_periods
+
+        # Get x-axis field
+        x_field = self.options['x_axis_column'].field_name
+        
+        # If x-axis is same as time column, use time periods directly
+        if x_field == time_column.field_name:
+            x_axis_data = sorted([str(time) for time in time_groups.groups.keys() if str(time) in selected_groups])
+            chart.add_xaxis(x_axis_data)
+            self._add_time_series(chart, time_groups, x_axis_data)
+        else:
+            self._handle_time_with_categories(chart, filtered_data, time_groups, selected_groups, x_field)
+
+    def _handle_time_with_categories(self, chart: Chart, filtered_data: pd.DataFrame, time_groups: DataFrameGroupBy, 
+                                   selected_groups: list, x_field: str) -> None:
+        """Handle time-based data with categories."""
+        # Get unique x-axis values from original data
+        all_x_values = filtered_data[x_field].unique().tolist()
+        all_x_values.sort()
+
+        # Create x-axis labels with time periods
+        x_axis_data = []
+        for x_val in all_x_values:
+            for time_val in time_groups.groups.keys():
+                if str(time_val) in selected_groups:
+                    x_axis_data.append(f"{x_val} ({time_val})")
+        chart.add_xaxis(x_axis_data)
+
+        # Add data for each metric
+        for y_axis_column in self._get_y_axis_columns():
+            metric_name = self._get_series_name(y_axis_column)
+            y_values = []
+            field_name = y_axis_column['field'].field_name
+            value_mapping = y_axis_column.get('value_mapping', {})
+            aggregate_type = y_axis_column.get('aggregate_type')
+            
+            for x_val in all_x_values:
+                for time_val in time_groups.groups.keys():
+                    if str(time_val) not in selected_groups:
+                        continue
+                    
+                    period_data = time_groups.get_group(time_val)
+                    x_filtered_data = period_data[period_data[x_field] == x_val]
+                    value = self._apply_aggregation(x_filtered_data, field_name, aggregate_type)
+                    y_values.append(value)
+            
+            self.add_series_to_chart(
+                chart=chart,
+                series_name=metric_name,
+                y_values=y_values,
+                color=y_axis_column.get('color'),
+                value_mapping=value_mapping
+            )
+
+    def _add_time_series(self, chart: Chart, time_groups: DataFrameGroupBy, x_axis_data: list) -> None:
+        """Add time series data to chart."""
+        for y_axis_column in self._get_y_axis_columns():
+            metric_name = self._get_series_name(y_axis_column)
+            y_values = []
+            field_name = y_axis_column['field'].field_name
+            value_mapping = y_axis_column.get('value_mapping', {})
+            aggregate_type = y_axis_column.get('aggregate_type')
+            
+            for time_val in x_axis_data:
+                period_data = time_groups.get_group(time_val)
+                value = self._apply_aggregation(period_data, field_name, aggregate_type)
+                y_values.append(value)
+            
+            self.add_series_to_chart(
+                chart=chart,
+                series_name=metric_name,
+                y_values=y_values,
+                color=y_axis_column.get('color'),
+                value_mapping=value_mapping
+            )
+
+    def _apply_aggregation(self, data: pd.DataFrame, field_name: str, aggregate_type: str) -> float:
+        """
+        Apply aggregation on data.
+        
+        Args:
+            data (pd.DataFrame): Data to aggregate
+            field_name (str): Field to aggregate
+            aggregate_type (str): Type of aggregation
+            
+        Returns:
+            float: Aggregated value
+        """
+        try:
+            # Try different field name formats
+            field_variants = [
+                field_name,
+                field_name.replace('-', '_'),
+                field_name.replace('_', '-'),
+                field_name.lower(),
+                field_name.upper()
+            ]
+            
+            # Find the correct field name variant
+            actual_field = next((variant for variant in field_variants if variant in data.columns), None)
+            
+            if actual_field is None:
+                return 0.0
+
+            if aggregate_type and aggregate_type != 'none':
+                if aggregate_type == 'SUM':
+                    value = data[actual_field].astype(float).sum()
+                elif aggregate_type == 'AVERAGE':
+                    value = data[actual_field].astype(float).mean()
+                elif aggregate_type == 'COUNT':
+                    value = data[actual_field].count()
+                else:
+                    value = float(data[actual_field].iloc[0])
+            else:
+                value = float(data[actual_field].iloc[0])
+            
+            return 0.0 if pd.isna(value) else float(value)
+        except Exception as e:
+            print(f"Error in aggregation: {e}")
+            return 0.0
+
+    def _get_y_axis_columns(self) -> list:
+        """Get y-axis columns configuration."""
+        y_axis_columns = self.options['y_axis_column']
+        return y_axis_columns if isinstance(y_axis_columns, list) else [y_axis_columns]
+
+    def _get_series_name(self, y_axis_column: dict) -> str:
+        """Get series name from y-axis column configuration."""
+        if isinstance(y_axis_column, dict):
+            return (y_axis_column.get('label') or 
+                   y_axis_column['field'].field_name)
+        return y_axis_column.field_name
+
+    def _get_value_mapping(self, y_axis_column: dict) -> dict:
+        """Get value mapping from y-axis column configuration."""
+        return y_axis_column.get('value_mapping', {}) if isinstance(y_axis_column, dict) else {}
+
+    def create_chart(self) -> Chart:
+        """
+        Create a chart with the given data and options.
+        """
+        try:
+            # Filter and validate data
+            filtered_data = self.filter_data()
+            if filtered_data is None or filtered_data.empty:
+                print("No data to display after filtering")
+                return None
+
+            # Initialize chart
+            chart = self.initialize_chart(filtered_data)
+
+            # Handle time-based data if time column is specified
+            time_column = self.options.get('time_column')
+            if time_column:
+                self._handle_time_based_data(chart, filtered_data, time_column)
+            else:
+                self._handle_regular_data(chart, filtered_data)
+
+            # Configure chart
+            self.configure_chart(chart, filtered_data)
+            return chart
+
+        except Exception as e:
+            print(f"Error while creating chart: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+    def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
+        """Handle non-time-based data."""
+        x_field = self.options['x_axis_column'].field_name
+        
+        # Get unique x-axis values
+        x_axis_data = filtered_data[x_field].unique().tolist()
+        x_axis_data.sort()
+        chart.add_xaxis(x_axis_data)
+
+        # Add data for each metric
+        for y_axis_column in self._get_y_axis_columns():
+            metric_name = self._get_series_name(y_axis_column)
+            field_name = y_axis_column['field'].field_name
+            value_mapping = y_axis_column.get('value_mapping', {})
+            aggregate_type = y_axis_column.get('aggregate_type')
+            
+            y_values = []
+            for x_val in x_axis_data:
+                x_filtered_data = filtered_data[filtered_data[x_field] == x_val]
+                value = self._apply_aggregation(x_filtered_data, field_name, aggregate_type)
+                y_values.append(value)
+            
+            self.add_series_to_chart(
+                chart=chart,
+                series_name=metric_name,
+                y_values=y_values,
+                color=y_axis_column.get('color'),
+                value_mapping=value_mapping
+            )
+
+    def configure_chart(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
+        """
+        Configure chart with specific options.
+        Override in subclasses for specific chart types.
+        """
+        chart.set_global_opts(
+            xaxis_opts=self.get_chart_specific_opts()['xaxis_opts'],
+            yaxis_opts=self.get_chart_specific_opts()['yaxis_opts'],
+            tooltip_opts=self.get_chart_specific_opts()['tooltip_opts']
+        )
