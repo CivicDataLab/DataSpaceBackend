@@ -157,7 +157,8 @@ class BaseChart(ABC):
         # Set initial global options
         chart.set_global_opts(
             title_opts=opts.TitleOpts(pos_top="5%"),
-            legend_opts=common_options['legend_opts']
+            legend_opts=common_options['legend_opts'],
+            toolbox_opts=common_options['toolbox_opts']
         )
 
         # Set grid options directly
