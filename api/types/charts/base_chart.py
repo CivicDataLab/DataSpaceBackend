@@ -121,11 +121,14 @@ class BaseChart(ABC):
                 "containLabel": True
             },
             'toolbox_opts': opts.ToolboxOpts(
+                is_show=True,
+                pos_left="right",
+                pos_top="5%",
                 feature=opts.ToolBoxFeatureOpts(
-                    data_zoom=opts.ToolBoxFeatureDataZoomOpts(is_show=True, zoom_title="Zoom", back_title="Back"),
-                    restore=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Reset"),
-                    data_view=opts.ToolBoxFeatureDataViewOpts(is_show=True, title="View Data", lang=["View Data", "Close", "Refresh"]),
-                    save_as_image=opts.ToolBoxFeatureSaveAsImageOpts(is_show=True, title="Save Image")
+                data_zoom=opts.ToolBoxFeatureDataZoomOpts(is_show=True, zoom_title="Zoom", back_title="Back"),
+                restore=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Reset"),
+                data_view=opts.ToolBoxFeatureDataViewOpts(is_show=True, title="View Data", lang=["View Data", "Close", "Refresh"]),
+                save_as_image=opts.ToolBoxFeatureSaveAsImageOpts(is_show=True, title="Save Image")
                 )
             ),
             'axis_opts': {
