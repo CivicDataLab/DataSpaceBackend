@@ -382,21 +382,15 @@ class BaseChart(ABC):
                 return None
 
             # Initialize chart
-            chart = self.initialize_chart(filtered_data)
+            chart = self.initialize_chart()
 
-            # Handle time-based data if time column is specified
-            time_column = self.options.get('time_column')
-            if time_column:
-                self._handle_time_based_data(chart, filtered_data, time_column)
-            else:
-                self._handle_regular_data(chart, filtered_data)
-
-            # Configure chart
+            # Configure chart with data
             self.configure_chart(chart, filtered_data)
+
             return chart
 
         except Exception as e:
-            print(f"Error while creating chart: {e}")
+            print("Error while creating chart", e)
             import traceback
             traceback.print_exc()
             return None
@@ -442,7 +436,7 @@ class BaseChart(ABC):
         if filtered_data is None:
             return
             
-        # Check if time-based data handling is needed
+        # Handle time-based data if time column is specified
         time_column = self.options.get('time_column')
         if time_column:
             self._handle_time_based_data(chart, filtered_data, time_column)
