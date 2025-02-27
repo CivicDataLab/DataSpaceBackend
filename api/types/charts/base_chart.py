@@ -139,11 +139,11 @@ class BaseChart(ABC):
             'legend_opts': opts.LegendOpts(
                 is_show=True,
                 selected_mode=True,
-                pos_top="5%",
+                pos_top="2%",
                 pos_left="center",
                 orient="horizontal",
                 item_gap=25,
-                padding=[5, 10, 20, 10],
+                padding=[5, 10, 5, 10],
                 textstyle_opts=opts.TextStyleOpts(font_size=12),
                 border_width=0,
                 background_color="transparent"
@@ -151,16 +151,44 @@ class BaseChart(ABC):
             'toolbox_opts': opts.ToolboxOpts(
                 is_show=True,
                 pos_left="right",
-                pos_top="5%",
-                feature=opts.ToolBoxFeatureOpts(
-                    data_zoom=opts.ToolBoxFeatureDataZoomOpts(is_show=True, zoom_title="Zoom", back_title="Back"),
-                    restore=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Reset"),
-                    data_view=opts.ToolBoxFeatureDataViewOpts(is_show=True, title="View Data", lang=["View Data", "Close", "Refresh"]),
-                    save_as_image=opts.ToolBoxFeatureSaveAsImageOpts(is_show=True, title="Save Image")
-                )
+                pos_top="8%",
+                orient="horizontal",
+                item_size=15,
+                item_gap=10,
+                feature={
+                    'dataZoom': {
+                        'show': True,
+                        'title': {
+                            'zoom': 'Area Zoom',
+                            'back': 'Zoom Reset'
+                        }
+                    },
+                    'restore': {
+                        'show': True,
+                        'title': 'Reset'
+                    },
+                    'dataView': {
+                        'show': True,
+                        'title': 'View Data',
+                        'lang': ['Data View', 'Close', 'Refresh']
+                    },
+                    'saveAsImage': {
+                        'show': True,
+                        'title': 'Save as Image',
+                        'type': 'png'
+                    },
+                    'magicType': {
+                        'show': True,
+                        'type': ['line', 'bar'],
+                        'title': {
+                            'line': 'Switch to Line',
+                            'bar': 'Switch to Bar'
+                        }
+                    }
+                }
             ),
             'grid': {
-                "top": "20%",
+                "top": "15%",
                 "bottom": "15%",
                 "left": "10%",
                 "right": "5%",
