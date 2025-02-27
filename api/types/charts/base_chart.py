@@ -95,12 +95,47 @@ class BaseChart(ABC):
         
         return min_bound, max_bound
 
-    def get_common_options(self) -> dict:
+    def get_init_opts(self) -> opts.InitOpts:
         """
-        Get common chart options used across different chart types.
+        Get common initialization options.
         Override in subclasses if needed.
         """
+        return opts.InitOpts(
+            width=self.options.get('width', '100%'),
+            height=self.options.get('height', '400px'),
+            animation_opts=opts.AnimationOpts(animation=False)
+        )
+
+    def get_chart_specific_opts(self) -> dict:
+        """
+        Get chart type specific options. Override in subclasses for specific chart types.
+        """
+        y_min, y_max = self.get_y_axis_bounds(self.data)
+        
         return {
+            'xaxis_opts': opts.AxisOpts(
+                type_="category",
+                name_location="middle",
+                name_gap=25,
+                axislabel_opts=opts.LabelOpts(
+                    margin=8
+                )
+            ),
+            'yaxis_opts': opts.AxisOpts(
+                type_="value",
+                name_location="middle",
+                name_gap=25,
+                min_=y_min,
+                max_=y_max,
+                axislabel_opts=opts.LabelOpts(
+                    margin=8,
+                    formatter="{value}"
+                )
+            ),
+            'tooltip_opts': opts.TooltipOpts(
+                trigger="axis",
+                axis_pointer_type="shadow"
+            ),
             'legend_opts': opts.LegendOpts(
                 is_show=True,
                 selected_mode=True,
@@ -113,82 +148,49 @@ class BaseChart(ABC):
                 border_width=0,
                 background_color="transparent"
             ),
+            'toolbox_opts': opts.ToolboxOpts(
+                is_show=True,
+                pos_left="right",
+                pos_top="5%",
+                feature=opts.ToolBoxFeatureOpts(
+                    data_zoom=opts.ToolBoxFeatureDataZoomOpts(is_show=True, zoom_title="Zoom", back_title="Back"),
+                    restore=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Reset"),
+                    data_view=opts.ToolBoxFeatureDataViewOpts(is_show=True, title="View Data", lang=["View Data", "Close", "Refresh"]),
+                    save_as_image=opts.ToolBoxFeatureSaveAsImageOpts(is_show=True, title="Save Image")
+                )
+            ),
             'grid': {
                 "top": "20%",
                 "bottom": "15%",
                 "left": "10%",
                 "right": "5%",
                 "containLabel": True
-            },
-            'toolbox_opts': opts.ToolboxOpts(
-                is_show=True,
-                pos_left="right",
-                pos_top="5%",
-                feature=opts.ToolBoxFeatureOpts(
-                data_zoom=opts.ToolBoxFeatureDataZoomOpts(is_show=True, zoom_title="Zoom", back_title="Back"),
-                restore=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Reset"),
-                data_view=opts.ToolBoxFeatureDataViewOpts(is_show=True, title="View Data", lang=["View Data", "Close", "Refresh"]),
-                save_as_image=opts.ToolBoxFeatureSaveAsImageOpts(is_show=True, title="Save Image")
-                )
-            ),
-            'axis_opts': {
-                'name_location': "middle",
-                'name_gap': 25,
-                'axislabel_opts': opts.LabelOpts(
-                    margin=8
-                )
             }
         }
 
-    def get_init_opts(self) -> opts.InitOpts:
-        """
-        Get common initialization options.
-        Override in subclasses if needed.
-        """
-        return opts.InitOpts(
-            width=self.options.get('width', '100%'),
-            height=self.options.get('height', '400px'),
-            animation_opts=opts.AnimationOpts(animation=False)
-        )
-
-    def initialize_chart(self, filtered_data: pd.DataFrame = None) -> Chart:
-        """Initialize a new chart instance with basic options."""
+    def initialize_chart(self):
+        """Initialize the chart with common options."""
         chart = self.get_chart_class()(
             init_opts=self.get_init_opts()
         )
-        common_options = self.get_common_options()
-        # Set initial global options
+        
+        # Get all options
+        opts_dict = self.get_chart_specific_opts()
+        
+        # Set global options
         chart.set_global_opts(
             title_opts=opts.TitleOpts(pos_top="5%"),
-            legend_opts=common_options['legend_opts'],
-            toolbox_opts=common_options['toolbox_opts']
+            legend_opts=opts_dict['legend_opts'],
+            toolbox_opts=opts_dict['toolbox_opts'],
+            xaxis_opts=opts_dict['xaxis_opts'],
+            yaxis_opts=opts_dict['yaxis_opts'],
+            tooltip_opts=opts_dict['tooltip_opts']
         )
 
         # Set grid options directly
-        chart.options["grid"] = common_options['grid']
+        chart.options["grid"] = opts_dict['grid']
         
         return chart
-
-    def get_chart_specific_opts(self) -> dict:
-        """
-        Get chart type specific options. Override in subclasses for specific chart types.
-        """
-        return {
-            'xaxis_opts': opts.AxisOpts(
-                type_="category",
-                name=self.options.get('x_axis_label', 'X-Axis'),
-                **self.get_common_options()['axis_opts']
-            ),
-            'yaxis_opts': opts.AxisOpts(
-                type_="value",
-                name=self.options.get('y_axis_label', 'Y-Axis'),
-                **self.get_common_options()['axis_opts']
-            ),
-            'tooltip_opts': opts.TooltipOpts(
-                trigger="axis",
-                axis_pointer_type="shadow"
-            )
-        }
 
     def add_series_to_chart(self, chart: Chart, series_name: str, y_values: list, color: str = None, value_mapping: dict = None) -> None:
         """
@@ -381,7 +383,7 @@ class BaseChart(ABC):
                 return None
 
             # Initialize chart
-            chart = self.initialize_chart(filtered_data)
+            chart = self.initialize_chart()
 
             # Handle time-based data if time column is specified
             time_column = self.options.get('time_column')
@@ -435,8 +437,12 @@ class BaseChart(ABC):
         Configure chart with specific options.
         Override in subclasses for specific chart types.
         """
-        chart.set_global_opts(
-            xaxis_opts=self.get_chart_specific_opts()['xaxis_opts'],
-            yaxis_opts=self.get_chart_specific_opts()['yaxis_opts'],
-            tooltip_opts=self.get_chart_specific_opts()['tooltip_opts']
-        )
+        if filtered_data is None:
+            return
+            
+        # Check if time-based data handling is needed
+        time_column = self.options.get('time_column')
+        if time_column:
+            self._handle_time_based_data(chart, filtered_data, time_column)
+        else:
+            self._handle_regular_data(chart, filtered_data)
