@@ -177,19 +177,17 @@ class BaseChart(ABC):
         # Get all options
         opts_dict = self.get_chart_specific_opts()
         
+        # Set grid options directly
+        chart.options["grid"] = opts_dict['grid']
+        
         # Set global options
         chart.set_global_opts(
             title_opts=opts.TitleOpts(pos_top="5%"),
             legend_opts=opts_dict['legend_opts'],
             toolbox_opts=opts_dict['toolbox_opts'],
-            xaxis_opts=opts_dict['xaxis_opts'],
-            yaxis_opts=opts_dict['yaxis_opts'],
             tooltip_opts=opts_dict['tooltip_opts'],
             visualmap_opts=opts_dict.get('visualmap_opts')  # Optional for some charts
         )
-
-        # Set grid options directly
-        chart.options["grid"] = opts_dict['grid']
         
         return chart
 

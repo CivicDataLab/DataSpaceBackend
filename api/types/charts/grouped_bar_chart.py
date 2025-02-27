@@ -238,10 +238,17 @@ class GroupedBarChart(BaseChart):
         """Initialize a new chart instance with basic options."""
         chart = super().initialize_chart(filtered_data)
         
+        # Set axis options based on chart type
+        opts_dict = self.get_chart_specific_opts()
         if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
-            chart.options.update({
-                "xAxis": [{"type": "value"}],
-                "yAxis": [{"type": "category"}]
-            })
+            chart.set_global_opts(
+                xaxis_opts=opts.AxisOpts(type_="value"),
+                yaxis_opts=opts.AxisOpts(type_="category")
+            )
+        else:
+            chart.set_global_opts(
+                xaxis_opts=opts_dict['xaxis_opts'],
+                yaxis_opts=opts_dict['yaxis_opts']
+            )
         
         return chart

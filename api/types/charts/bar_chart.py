@@ -27,7 +27,7 @@ class BarChart(BaseChart):
                 return None
 
             # Initialize the chart
-            chart = self.initialize_chart()
+            chart = self.initialize_chart(filtered_data)
 
             self._handle_regular_data(chart, filtered_data)
 
@@ -44,11 +44,36 @@ class BarChart(BaseChart):
 
     def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
         """Override to handle single y-axis column."""
-        # Get the first y-axis column for single bar chart
-        if isinstance(self.options['y_axis_column'], list):
-            self.options['y_axis_column'] = self.options['y_axis_column'][0]
-            
-        super()._handle_regular_data(chart, filtered_data)
+        # Get x-axis field name
+        x_field = self.options['x_axis_column'].field_name
+        x_axis_data = filtered_data[x_field].tolist()
+
+        # Add x-axis data
+        chart.add_xaxis(x_axis_data)
+
+        # For bar chart, only use the first y-axis column
+        y_axis_column = self.options['y_axis_column']
+        if isinstance(y_axis_column, list):
+            y_axis_column = y_axis_column[0]
+
+        # Get y-axis field name
+        y_field = y_axis_column['field'].field_name
+        y_values = filtered_data[y_field].tolist()
+
+        # Get series name from configuration
+        series_name = self._get_series_name(y_axis_column)
+
+        # Get value mapping from configuration
+        value_mapping = self._get_value_mapping(y_axis_column)
+
+        # Add series to chart
+        self.add_series_to_chart(
+            chart=chart,
+            series_name=series_name,
+            y_values=y_values,
+            color=y_axis_column.get('color'),
+            value_mapping=value_mapping
+        )
 
     def get_chart_specific_opts(self) -> dict:
         """Override chart specific options for bar chart."""
@@ -96,3 +121,22 @@ class BarChart(BaseChart):
             return metrics
         else:
             return data[[x_field, y_field]]
+
+    def initialize_chart(self, filtered_data: pd.DataFrame = None) -> Chart:
+        """Initialize a new chart instance with basic options."""
+        chart = super().initialize_chart(filtered_data)
+        
+        # Set axis options
+        opts_dict = self.get_chart_specific_opts()
+        if self.chart_details.chart_type == "BAR_HORIZONTAL":
+            chart.set_global_opts(
+                xaxis_opts=opts.AxisOpts(type_="value"),
+                yaxis_opts=opts.AxisOpts(type_="category")
+            )
+        else:
+            chart.set_global_opts(
+                xaxis_opts=opts_dict['xaxis_opts'],
+                yaxis_opts=opts_dict['yaxis_opts']
+            )
+        
+        return chart
