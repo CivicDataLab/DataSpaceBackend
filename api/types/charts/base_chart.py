@@ -405,29 +405,32 @@ class BaseChart(ABC):
 
     def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
         """Handle non-time-based data."""
+        # Get x-axis field name
         x_field = self.options['x_axis_column'].field_name
-        
-        # Get unique x-axis values
-        x_axis_data = filtered_data[x_field].unique().tolist()
-        x_axis_data.sort()
+        x_axis_data = filtered_data[x_field].tolist()
+
+        # Add x-axis data
         chart.add_xaxis(x_axis_data)
 
-        # Add data for each metric
-        for y_axis_column in self._get_y_axis_columns():
-            metric_name = self._get_series_name(y_axis_column)
-            field_name = y_axis_column['field'].field_name
-            value_mapping = y_axis_column.get('value_mapping', {})
-            aggregate_type = y_axis_column.get('aggregate_type')
-            
-            y_values = []
-            for x_val in x_axis_data:
-                x_filtered_data = filtered_data[filtered_data[x_field] == x_val]
-                value = self._apply_aggregation(x_filtered_data, field_name, aggregate_type)
-                y_values.append(value)
-            
+        # Get y-axis columns configuration
+        y_axis_columns = self._get_y_axis_columns()
+
+        # Add series for each y-axis column
+        for y_axis_column in y_axis_columns:
+            # Get y-axis field name
+            y_field = y_axis_column['field'].field_name
+            y_values = filtered_data[y_field].tolist()
+
+            # Get series name from configuration
+            series_name = self._get_series_name(y_axis_column)
+
+            # Get value mapping from configuration
+            value_mapping = self._get_value_mapping(y_axis_column)
+
+            # Add series to chart
             self.add_series_to_chart(
                 chart=chart,
-                series_name=metric_name,
+                series_name=series_name,
                 y_values=y_values,
                 color=y_axis_column.get('color'),
                 value_mapping=value_mapping
