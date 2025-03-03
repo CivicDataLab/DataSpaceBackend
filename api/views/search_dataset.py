@@ -1,62 +1,62 @@
 import ast
+from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union, cast
 
-from elasticsearch_dsl import Q, Search, A
-from rest_framework import serializers
-from django.core.cache import cache
-from django.conf import settings
-from typing import Dict, List, Any, Optional
-from django_ratelimit.decorators import ratelimit
 import structlog
+from elasticsearch_dsl import A
+from elasticsearch_dsl import Q as ESQ
+from elasticsearch_dsl import Search
+from elasticsearch_dsl.query import Query as ESQuery
+from rest_framework import serializers
 
-from search.documents import DatasetDocument
-from api.models import DatasetMetadata, Metadata, Dataset
+from api.models import Dataset, DatasetMetadata, Metadata
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
+from search.documents import DatasetDocument
 
 logger = structlog.get_logger(__name__)
 
+
 class MetadataSerializer(serializers.Serializer):
-    label = serializers.CharField()
+    """Serializer for Metadata model."""
+
+    label = serializers.CharField(allow_blank=True)  # type: ignore
 
 
 class DatasetMetadataSerializer(serializers.ModelSerializer):
+    """Serializer for DatasetMetadata model."""
+
     metadata_item = MetadataSerializer()
 
     class Meta:
         model = DatasetMetadata
         fields = ["metadata_item", "value"]
 
-    # Override to convert list or stringified array to comma-separated string when representing
-    def to_representation(self, instance):
+    def to_representation(self, instance: DatasetMetadata) -> Dict[str, Any]:
         representation = super().to_representation(instance)
 
-        # Check if the value is a stringified array and convert it into a list
-        if isinstance(representation['value'], str):
+        if isinstance(representation["value"], str):
             try:
-                # Convert stringified array (e.g., "['Monthly']") to a list
-                value_list = ast.literal_eval(representation['value'])
-                # If it is a list, convert to comma-separated string
+                value_list = ast.literal_eval(representation["value"])
                 if isinstance(value_list, list):
-                    representation['value'] = ', '.join(value_list)
+                    representation["value"] = ", ".join(str(x) for x in value_list)
             except (ValueError, SyntaxError):
-                # If it's not a stringified array, leave it as is
                 pass
 
-        return representation
+        return cast(Dict[str, Any], representation)
 
-    # Override to handle input and convert comma-separated string to list when validating
-    def to_internal_value(self, data):
-        if isinstance(data.get('value'), str):
+    def to_internal_value(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        if isinstance(data.get("value"), str):
             try:
-                # If the value is a comma-separated string, convert it to a list
-                data['value'] = data['value'].split(', ')
+                value = data["value"]
+                data["value"] = value.split(", ") if value else []
             except (ValueError, SyntaxError):
-                # If there's an error, just keep the original string value
                 pass
 
-        return super().to_internal_value(data)
+        return cast(Dict[str, Any], super().to_internal_value(data))
 
 
 class DatasetDocumentSerializer(serializers.ModelSerializer):
+    """Serializer for Dataset document."""
+
     metadata = DatasetMetadataSerializer(many=True)
     tags = serializers.ListField()
     categories = serializers.ListField()
@@ -69,120 +69,157 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
 
 
 class SearchDataset(PaginatedElasticSearchAPIView):
+    """View for searching datasets."""
+
     serializer_class = DatasetDocumentSerializer
     document_class = DatasetDocument
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.searchable_fields, self.aggregations = self.get_searchable_and_aggregations()
+        self.searchable_fields: List[str]
+        self.aggregations: Dict[str, str]
+        self.searchable_fields, self.aggregations = (
+            self.get_searchable_and_aggregations()
+        )
         self.logger = structlog.get_logger(__name__)
 
     @staticmethod
-    def get_searchable_and_aggregations():
+    def get_searchable_and_aggregations() -> Tuple[List[str], Dict[str, str]]:
+        """Get searchable fields and aggregations for the search."""
         enabled_metadata = Metadata.objects.filter(enabled=True).all()
-        searchable_fields = []
-        # searchable_fields = [
-        #     f"metadata.{e.label}" if e.model == MetadataModels.DATASET else f"resource.{e.label}"
-        #     for e in enabled_metadata
-        # ]
+        searchable_fields: List[str] = []
         searchable_fields.extend(
-            ["tags", "description", "resources.description", "resources.name", "title", "metadata.value"])
-        aggregations = {"tags.raw": "terms", "categories.raw": "terms", "formats.raw": "terms"}
-        for metadata in enabled_metadata:
+            [
+                "tags",
+                "description",
+                "resources.description",
+                "resources.name",
+                "title",
+                "metadata.value",
+            ]
+        )
+        aggregations: Dict[str, str] = {
+            "tags.raw": "terms",
+            "categories.raw": "terms",
+            "formats.raw": "terms",
+        }
+        for metadata in enabled_metadata:  # type: Metadata
             if metadata.filterable:
                 aggregations[f"metadata.{metadata.label}"] = "terms"
         return searchable_fields, aggregations
 
-    def add_aggregations(self, search: Search):
-        """
-        Add aggregations to the search query for metadata value and label using composite aggregation.
-        """
-        aggregate_fields = []
+    def add_aggregations(self, search: Search) -> Search:
+        """Add aggregations to the search query for metadata value and label using composite aggregation."""
+        aggregate_fields: List[str] = []
         for aggregation_field in self.aggregations:
-            if aggregation_field.startswith('metadata.'):
-                field_name = aggregation_field.split('.')[1]
+            if aggregation_field.startswith("metadata."):
+                field_name = aggregation_field.split(".")[1]
                 aggregate_fields.append(field_name)
             else:
-                search.aggs.bucket(aggregation_field.replace(".raw", ""), self.aggregations[aggregation_field],
-                                   field=aggregation_field)
+                search.aggs.bucket(
+                    aggregation_field.replace(".raw", ""),
+                    self.aggregations[aggregation_field],
+                    field=aggregation_field,
+                )
 
         if aggregate_fields:
-            filterable_metadata = Metadata.objects.filter(filterable=True).values('label')
-            filterable_metadata = [meta['label'] for meta in filterable_metadata]
+            metadata_qs = Metadata.objects.filter(filterable=True)
+            filterable_metadata = [str(meta.label) for meta in metadata_qs]  # type: ignore
 
-            metadata_bucket = search.aggs.bucket('metadata', 'nested', path='metadata')
-            composite_agg = A('composite', sources=[
-                {'metadata_label': {'terms': {'field': 'metadata.metadata_item.label'}}},
-                {'metadata_value': {'terms': {'field': 'metadata.value'}}}
-            ], size=10000)
-            metadata_filter = A('filter', {
-                'bool': {
-                    'must': [
-                        {'terms': {'metadata.metadata_item.label': filterable_metadata}}  # Exclude labels here
-                    ]
-                }
-            })
-            metadata_bucket.bucket('filtered_metadata', metadata_filter).bucket('composite_agg', composite_agg)
+            metadata_bucket = search.aggs.bucket("metadata", "nested", path="metadata")
+            composite_sources = [
+                {"metadata": {"terms": {"field": "metadata.label.keyword"}}}
+            ]
+            composite_agg = A(
+                "composite",
+                sources=composite_sources,  # type: ignore[arg-type]
+                size=10000,
+            )
+            metadata_filter = A(
+                "filter",
+                {  # type: ignore[arg-type]
+                    "bool": {
+                        "must": [
+                            {
+                                "terms": {
+                                    "metadata.metadata_item.label": filterable_metadata
+                                }
+                            }
+                        ]
+                    }
+                },
+            )
+            metadata_bucket.bucket("filtered_metadata", metadata_filter).bucket(
+                "composite_agg", composite_agg
+            )
+
         return search
 
-    def generate_q_expression(self, query):
+    def generate_q_expression(
+        self, query: str
+    ) -> Optional[Union[ESQuery, List[ESQuery]]]:
+        """Generate Elasticsearch Query expression."""
         if query:
-            queries = []
+            queries: List[ESQuery] = []
             for field in self.searchable_fields:
-                if field.startswith('resources.name') or field.startswith('resources.description'):
-                    # Combine both fuzzy and wildcard for resource fields
+                if field.startswith("resources.name") or field.startswith(
+                    "resources.description"
+                ):
                     queries.append(
-                        Q('nested', path='resources', query=Q("bool", should=[
-                            Q("wildcard", **{
-                                field: {
-                                    "value": f"*{query}*"
-                                }
-                            }),
-                            Q("fuzzy", **{
-                                field: {
-                                    "value": query,
-                                    "fuzziness": "AUTO"
-                                }
-                            })
-                        ]))
+                        ESQ(
+                            "nested",
+                            path="resources",
+                            query=ESQ(
+                                "bool",
+                                should=[
+                                    ESQ("wildcard", **{field: {"value": f"*{query}*"}}),
+                                    ESQ(
+                                        "fuzzy",
+                                        **{
+                                            field: {"value": query, "fuzziness": "AUTO"}
+                                        },
+                                    ),
+                                ],
+                            ),
+                        )
                     )
                 else:
-                    # For other fields, we can just use a regular match or fuzzy match
-                    queries.append(Q("fuzzy", **{field: {"value": query, "fuzziness": "AUTO"}}))
+                    queries.append(
+                        ESQ("fuzzy", **{field: {"value": query, "fuzziness": "AUTO"}})
+                    )
         else:
-            queries = [Q("match_all")]
+            queries = [ESQ("match_all")]
 
-        return Q("bool", should=queries, minimum_should_match=1)
+        return ESQ("bool", should=queries, minimum_should_match=1)
 
-    def add_filters(self, filters, search: Search):
+    def add_filters(self, filters: Dict[str, str], search: Search) -> Search:
+        """Add filters to the search query."""
         non_filter_metadata = Metadata.objects.filter(filterable=False).all()
-        excluded_labels = [e.label for e in non_filter_metadata]
+        excluded_labels: List[str] = [e.label for e in non_filter_metadata]  # type: ignore
 
         for filter in filters:
             if filter in excluded_labels:
                 continue
             elif filter in ["tags", "categories", "formats"]:
-                raw_filter = filter + '.raw'
+                raw_filter = filter + ".raw"
                 if raw_filter in self.aggregations:
-                    search = search.filter("terms", **{raw_filter: filters[filter].split(',')})
+                    search = search.filter(
+                        "terms", **{raw_filter: filters[filter].split(",")}
+                    )
                 else:
                     search = search.filter("term", **{filter: filters[filter]})
-            # TODO: Handle resource metadata
             else:
                 search = search.filter(
-                    'nested',
-                    path='metadata',
+                    "nested",
+                    path="metadata",
                     query={
-                        'bool': {
-                            'must': {
-                                'term': {f'metadata.value': filters[filter]}
-                            }
-                        }
-                    }
+                        "bool": {"must": {"term": {f"metadata.value": filters[filter]}}}
+                    },
                 )
         return search
 
-    def add_sort(self, sort, search):
+    def add_sort(self, sort: str, search: Search) -> Search:
+        """Add sorting to the search query."""
         if sort == "alphabetical":
             search = search.sort({"title.raw": {"order": "asc"}})
         if sort == "recent":

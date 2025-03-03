@@ -4,10 +4,17 @@ from typing import List, Optional, Union
 
 import strawberry
 import strawberry_django
+from strawberry.types import Info
 from strawberry_django.pagination import OffsetPaginationInput
 
-from api import types, models
-from api.models import Dataset, Metadata, Category, ResourceChartImage, Resource, ResourceChartDetails
+from api.models import (
+    Category,
+    Dataset,
+    Metadata,
+    Resource,
+    ResourceChartDetails,
+    ResourceChartImage,
+)
 from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata
 from api.types import TypeDataset, TypeResourceChart
@@ -39,7 +46,9 @@ class UpdateDatasetInput:
     tags: List[str]
 
 
-def _add_update_dataset_metadata(dataset: Dataset, metadata_input: List[DSMetadataItemType]):
+def _add_update_dataset_metadata(
+    dataset: Dataset, metadata_input: List[DSMetadataItemType]
+) -> None:
     if not metadata_input or len(metadata_input) == 0:
         return
     _delete_existing_metadata(dataset)
@@ -48,46 +57,60 @@ def _add_update_dataset_metadata(dataset: Dataset, metadata_input: List[DSMetada
             metadata_field = Metadata.objects.get(id=metadata_input_item.id)
             if not metadata_field.enabled:
                 _delete_existing_metadata(dataset)
-                raise ValueError(f"Metadata with ID {metadata_input_item.id} is not enabled.")
-            ds_metadata = DatasetMetadata(dataset=dataset, metadata_item=metadata_field,
-                                          value=metadata_input_item.value)
+                raise ValueError(
+                    f"Metadata with ID {metadata_input_item.id} is not enabled."
+                )
+            ds_metadata = DatasetMetadata(
+                dataset=dataset,
+                metadata_item=metadata_field,
+                value=metadata_input_item.value,
+            )
             ds_metadata.save()
         except Metadata.DoesNotExist as e:
             _delete_existing_metadata(dataset)
-            raise ValueError(f"Metadata with ID {metadata_input_item.id} does not exist.")
+            raise ValueError(
+                f"Metadata with ID {metadata_input_item.id} does not exist."
+            )
 
 
-def _update_dataset_tags(dataset: Dataset, tags: List[str]):
+def _update_dataset_tags(dataset: Dataset, tags: List[str]) -> None:
     dataset.tags.clear()
     for tag in tags:
-        dataset.tags.add(Tag.objects.get_or_create(defaults={'value': tag}, value__iexact=tag)[0])
+        dataset.tags.add(
+            Tag.objects.get_or_create(defaults={"value": tag}, value__iexact=tag)[0]
+        )
     dataset.save()
 
 
-def _delete_existing_metadata(dataset):
+def _delete_existing_metadata(dataset: Dataset) -> None:
     try:
         existing_metadata = DatasetMetadata.objects.filter(dataset=dataset)
         existing_metadata.delete()
-    except DatasetMetadata.DoesNotExist as e:
+    except DatasetMetadata.DoesNotExist:
         pass
 
 
-def _add_update_dataset_categories(dataset: Dataset, categories: list[uuid.UUID]):
-    categories = Category.objects.filter(id__in=categories)
+def _add_update_dataset_categories(
+    dataset: Dataset, categories: List[uuid.UUID]
+) -> None:
+    categories_objs = Category.objects.filter(id__in=categories)
     dataset.categories.clear()
-    dataset.categories.add(*categories)
+    dataset.categories.add(*categories_objs)
     dataset.save()
 
 
 @strawberry.type
 class Query:
     @strawberry_django.field(filters=DatasetFilter, pagination=True, order=DatasetOrder)
-    def datasets(self, info,
-                 filters: DatasetFilter | None = strawberry.UNSET,
-                 pagination: OffsetPaginationInput | None = strawberry.UNSET,
-                 order: DatasetOrder | None = strawberry.UNSET) -> List[TypeDataset]:
-        organization = info.context.request.context.get('organization')
-        dataspace = info.context.request.context.get('dataspace')
+    def datasets(
+        self,
+        info: Info,
+        filters: Optional[DatasetFilter] = strawberry.UNSET,
+        pagination: Optional[OffsetPaginationInput] = strawberry.UNSET,
+        order: Optional[DatasetOrder] = strawberry.UNSET,
+    ) -> List[TypeDataset]:
+        organization = info.context.request.context.get("organization")
+        dataspace = info.context.request.context.get("dataspace")
 
         # Base queryset filtering by organization or dataspace
         if dataspace:
@@ -104,21 +127,35 @@ class Query:
             queryset = strawberry_django.ordering.apply(order, queryset, info)
 
         if pagination is not strawberry.UNSET:
-            queryset = strawberry_django.pagination.apply(pagination, queryset, info)
+            queryset = strawberry_django.pagination.apply(pagination, queryset)
 
-        return queryset
+        return TypeDataset.from_django_list(queryset)
 
-    @strawberry.mutation
-    def get_chart_data(self, dataset_id: uuid.UUID) -> List[Union[TypeResourceChartImage, TypeResourceChart]]:
+    @strawberry.field
+    def get_chart_data(
+        self, dataset_id: uuid.UUID
+    ) -> List[Union[TypeResourceChartImage, TypeResourceChart]]:
         # Fetch ResourceChartImage for the dataset
-        chart_images = list(ResourceChartImage.objects.filter(dataset_id=dataset_id).order_by("modified"))
+        chart_images = TypeResourceChartImage.from_django_list(
+            ResourceChartImage.objects.filter(dataset_id=dataset_id).order_by(
+                "modified"
+            )
+        )
 
         # Fetch ResourceChartDetails based on the related Resource in the same dataset
-        resource_ids = Resource.objects.filter(dataset_id=dataset_id).values_list('id', flat=True)
-        chart_details = list(ResourceChartDetails.objects.filter(resource_id__in=resource_ids).order_by("modified"))
+        resource_ids = Resource.objects.filter(dataset_id=dataset_id).values_list(
+            "id", flat=True
+        )
+        chart_details = TypeResourceChart.from_django_list(
+            ResourceChartDetails.objects.filter(resource_id__in=resource_ids).order_by(
+                "modified"
+            )
+        )
 
         # Combine both chart_images and chart_details into a single list
-        combined_list = chart_images + chart_details
+        combined_list: List[Union[TypeResourceChart, TypeResourceChartImage]] = (
+            chart_images + chart_details
+        )
 
         # Sort the combined list by the 'modified' field in descending order
         sorted_list = sorted(combined_list, key=lambda x: x.modified, reverse=True)
@@ -128,20 +165,19 @@ class Query:
 
 @strawberry.type
 class Mutation:
-    # @strawberry_django.input_mutation()
     @strawberry_django.mutation(handle_django_errors=True)
-    def add_dataset(self, info) -> types.TypeDataset:
-        dataset: Dataset = models.Dataset()
-        dataset.organization = info.context.request.context.get('organization')
-        dataset.dataspace = info.context.request.context.get('dataspace')
-        now = datetime.datetime.now()
-        dataset.title = f"New dataset {now.strftime('%d %b %Y - %H:%M')}"
-        # sync_to_async(dataset.save)()
-        dataset.save()
-        return dataset
+    def add_dataset(self, info: Info) -> TypeDataset:
+        dataset = Dataset.objects.create(
+            organization=info.context.request.context.get("organization"),
+            dataspace=info.context.request.context.get("dataspace"),
+            title=f"New dataset {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}",
+        )
+        return TypeDataset.from_django(dataset)
 
     @strawberry_django.mutation(handle_django_errors=True)
-    def add_update_dataset_metadata(self, update_metadata_input: UpdateMetadataInput) -> types.TypeDataset:
+    def add_update_dataset_metadata(
+        self, update_metadata_input: UpdateMetadataInput
+    ) -> TypeDataset:
         dataset_id = update_metadata_input.dataset
         metadata_input = update_metadata_input.metadata
         try:
@@ -156,10 +192,10 @@ class Mutation:
             _update_dataset_tags(dataset, update_metadata_input.tags)
         _add_update_dataset_metadata(dataset, metadata_input)
         _add_update_dataset_categories(dataset, update_metadata_input.categories)
-        return dataset
+        return TypeDataset.from_django(dataset)
 
     @strawberry_django.mutation(handle_django_errors=True)
-    def update_dataset(self, update_dataset_input: UpdateDatasetInput) -> types.TypeDataset:
+    def update_dataset(self, update_dataset_input: UpdateDatasetInput) -> TypeDataset:
         dataset_id = update_dataset_input.dataset
         try:
             dataset = Dataset.objects.get(id=dataset_id)
@@ -170,10 +206,10 @@ class Mutation:
         if update_dataset_input.description:
             dataset.description = update_dataset_input.description
         _update_dataset_tags(dataset, update_dataset_input.tags)
-        return dataset
+        return TypeDataset.from_django(dataset)
 
     @strawberry_django.mutation(handle_django_errors=True)
-    def publish_dataset(self, dataset_id: uuid.UUID) -> types.TypeDataset:
+    def publish_dataset(self, dataset_id: uuid.UUID) -> TypeDataset:
         try:
             dataset = Dataset.objects.get(id=dataset_id)
         except Dataset.DoesNotExist as e:
@@ -181,10 +217,10 @@ class Mutation:
         # TODO: validate dataset
         dataset.status = DatasetStatus.PUBLISHED.value
         dataset.save()
-        return dataset
+        return TypeDataset.from_django(dataset)
 
     @strawberry_django.mutation(handle_django_errors=True)
-    def un_publish_dataset(self, dataset_id: uuid.UUID) -> types.TypeDataset:
+    def un_publish_dataset(self, dataset_id: uuid.UUID) -> TypeDataset:
         try:
             dataset = Dataset.objects.get(id=dataset_id)
         except Dataset.DoesNotExist as e:
@@ -192,13 +228,13 @@ class Mutation:
         # TODO: validate dataset
         dataset.status = DatasetStatus.DRAFT
         dataset.save()
-        return dataset
+        return TypeDataset.from_django(dataset)
 
     @strawberry_django.mutation(handle_django_errors=False)
     def delete_dataset(self, dataset_id: uuid.UUID) -> bool:
         try:
             dataset = Dataset.objects.get(id=dataset_id)
+            dataset.delete()
+            return True
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
-        dataset.delete()
-        return True

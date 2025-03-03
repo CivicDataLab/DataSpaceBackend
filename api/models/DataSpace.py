@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.db import models
 from django.utils.text import slugify
 
@@ -14,6 +16,9 @@ class DataSpace(models.Model):
     contact_email = models.EmailField(blank=True, null=True)
     slug = models.SlugField(max_length=75, null=True, blank=False, unique=True)
 
-    def save(self, *args, **kwargs):
+    def save(self, *args: Any, **kwargs: Any) -> None:
         self.slug = slugify(self.name)
         super().save(*args, **kwargs)
+
+    class Meta:
+        db_table = "dataspace"

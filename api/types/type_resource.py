@@ -1,67 +1,120 @@
-from typing import List, Optional
+from typing import List, Optional, TypeVar
 
 import strawberry
-import strawberry_django
+from django.db.models import QuerySet
+from strawberry import auto
+from strawberry_django import type
 
-from api.models import DatasetMetadata, ResourceMetadata, Resource, AccessModel, AccessModelResource, \
-    ResourceFileDetails, ResourceSchema
+from api.models import (
+    AccessModel,
+    AccessModelResource,
+    Resource,
+    ResourceFileDetails,
+    ResourceMetadata,
+    ResourceSchema,
+)
 from api.types import TypeResourceMetadata
+from api.types.base_type import BaseType
+from api.types.type_access_model import TypeAccessModel, TypeAccessModelResourceFields
+from api.types.type_file_details import TypeFileDetails
+
+T = TypeVar("T", bound="TypeResource")
 
 
-@strawberry_django.type(ResourceSchema, fields="__all__")
-class TypeResourceSchema:
-    pass
+@type(ResourceSchema, fields="__all__")
+class TypeResourceSchema(BaseType):
+    """Type for resource schema."""
+
+    id: auto
+    resource: auto
+    column_name: auto
+    column_type: auto
+    description: auto
+    created: auto
+    modified: auto
 
 
-@strawberry_django.type(AccessModelResource)
-class TypeAccessModelResourceFields:
-    fields: list[TypeResourceSchema]
+@type(Resource)
+class TypeResource(BaseType):
+    """Type for resource."""
 
-
-@strawberry_django.type(ResourceFileDetails, fields="__all__")
-class TypeFileDetails:
-    pass
-
-
-@strawberry_django.type(AccessModel, fields="__all__")
-class TypeResourceAccessModel:
-    model_resources: list[TypeAccessModelResourceFields]
+    id: auto
+    dataset: auto
+    created: auto
+    modified: auto
+    type: auto
+    name: auto
+    description: auto
+    preview_enabled: auto
+    preview_details: auto
 
     @strawberry.field
-    def model_resources(self, info) -> list[TypeAccessModelResourceFields]:
+    def model_resources(self) -> List[TypeAccessModelResourceFields]:
+        """Get access model resources for this resource.
+
+        Returns:
+            List[TypeAccessModelResourceFields]: List of access model resources
+        """
         try:
-            return AccessModelResource.objects.filter(access_model=self.id)
-        except AccessModelResource.DoesNotExist as e:
+            queryset = AccessModelResource.objects.filter(resource_id=self.id)
+            return TypeAccessModelResourceFields.from_django_list(queryset)
+        except (AttributeError, AccessModelResource.DoesNotExist):
             return []
 
-
-@strawberry_django.type(Resource, fields="__all__")
-class TypeResource:
-    metadata: List[TypeResourceMetadata]
-    access_models: List[TypeResourceAccessModel]
-    file_details: Optional[TypeFileDetails]
-    schema: Optional[List[TypeResourceSchema]]
-
     @strawberry.field
-    def metadata(self, info) -> List[TypeResourceMetadata]:
+    def metadata(self) -> List[TypeResourceMetadata]:
+        """Get metadata for this resource
+        Returns:
+            List[TypeResourceMetadata]: List of resource metadata
+        """
         try:
-            return ResourceMetadata.objects.filter(resource=self.id)
-        except DatasetMetadata.DoesNotExist as e:
+            queryset: QuerySet = ResourceMetadata.objects.filter(resource_id=self.id)
+            return TypeResourceMetadata.from_django_list(queryset)
+        except (AttributeError, ResourceMetadata.DoesNotExist):
             return []
 
     @strawberry.field
-    def access_models(self, info) -> List[TypeResourceAccessModel]:
-        access_model_resources = AccessModelResource.objects.filter(resource=self.id).all()
-        access_models = AccessModel.objects.filter(id__in=[x.access_model.id for x in access_model_resources]).all()
-        return access_models
+    def access_models(self) -> List[TypeAccessModel]:
+        """Get access models for this resource.
+
+        Returns:
+            List[TypeAccessModel]: List of access models
+        """
+        try:
+            model_resources = AccessModelResource.objects.filter(resource_id=self.id)
+            queryset: QuerySet[AccessModel] = AccessModel.objects.filter(
+                id__in=[mr.access_model.id for mr in model_resources]  # type: ignore
+            )
+            return TypeAccessModel.from_django_list(queryset)
+        except (AttributeError, AccessModel.DoesNotExist):
+            return []
 
     @strawberry.field
-    def file_details(self, info) -> Optional[TypeFileDetails]:
-        # try:
-        return self.resourcefiledetails
-        # except ResourceFileDetails.DoesNotExist as e:
-        #     return None
+    def file_details(self) -> Optional[TypeFileDetails]:
+        """Get file details for this resource.
+
+        Returns:
+            Optional[TypeFileDetails]: File details if they exist, None otherwise
+        """
+        try:
+            details = getattr(self, "resourcefiledetails", None)
+            if details is None:
+                return None
+            return TypeFileDetails.from_django(details)
+        except (AttributeError, ResourceFileDetails.DoesNotExist):
+            return None
 
     @strawberry.field
-    def schema(self: Resource, info) -> Optional[List[TypeResourceSchema]]:
-        return [a for a in self.resourceschema_set.all()]
+    def schema(self) -> List[TypeResourceSchema]:
+        """Get schema for this resource.
+
+        Returns:
+            List[TypeResourceSchema]: List of resource schema
+        """
+        try:
+            queryset = getattr(self, "resourceschema_set", None)
+            if queryset is None:
+                return []
+            return TypeResourceSchema.from_django_list(queryset.all())
+        except (AttributeError, ResourceSchema.DoesNotExist):
+            return []

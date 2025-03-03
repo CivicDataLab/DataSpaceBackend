@@ -1,132 +1,148 @@
-from django_elasticsearch_dsl import Document, fields, Index, KeywordField
+from typing import Any, Dict, List, Optional, Union
 
+from django.db.models import Model
+from django_elasticsearch_dsl import Document, Index, KeywordField, fields
+
+from api.models import Dataset, DatasetMetadata, Metadata, Resource
 from api.utils.enums import DatasetStatus
-from api.models import Dataset, Resource, Metadata, DatasetMetadata
 from DataSpace import settings
 from search.documents.analysers import html_strip, ngram_analyser
 
-# from elasticsearch_dsl.search_base import AggsProxy
-
 INDEX = Index(settings.ELASTICSEARCH_INDEX_NAMES[__name__])
-INDEX.settings(
-    number_of_shards=1,
-    number_of_replicas=0
-)
+INDEX.settings(number_of_shards=1, number_of_replicas=0)
 
 
 @INDEX.doc_type
 class DatasetDocument(Document):
-    metadata = fields.NestedField(properties={
-        'value': KeywordField(multi=True),
-        'raw': KeywordField(multi=True),
-        'metadata_item': fields.ObjectField(properties={
-            'label': KeywordField(multi=False)
-        })
-    })
+    """Elasticsearch document for Dataset model."""
+
+    metadata = fields.NestedField(
+        properties={
+            "value": KeywordField(multi=True),
+            "raw": KeywordField(multi=True),
+            "metadata_item": fields.ObjectField(
+                properties={"label": KeywordField(multi=False)}
+            ),
+        }
+    )
 
     resources = fields.NestedField(
         properties={
-            'name': fields.TextField(
-                analyzer=ngram_analyser
-            ),
-            'description': fields.TextField(
-                analyzer=html_strip
-            )
+            "name": fields.TextField(analyzer=ngram_analyser),
+            "description": fields.TextField(analyzer=html_strip),
         }
     )
 
     title = fields.TextField(
         analyzer=ngram_analyser,
         fields={
-            'raw': KeywordField(multi=False),
-        }
+            "raw": KeywordField(multi=False),
+        },
     )
 
     description = fields.TextField(
         analyzer=html_strip,
         fields={
-            'raw': fields.TextField(analyzer='keyword'),
-        }
+            "raw": fields.TextField(analyzer="keyword"),
+        },
     )
 
     status = fields.KeywordField()
 
     tags = fields.TextField(
-        attr='tags_indexing',
+        attr="tags_indexing",
         analyzer=ngram_analyser,
         fields={
-            'raw': fields.KeywordField(multi=True),
-            'suggest': fields.CompletionField(multi=True),
+            "raw": fields.KeywordField(multi=True),
+            "suggest": fields.CompletionField(multi=True),
         },
-        multi=True
+        multi=True,
     )
 
     categories = fields.TextField(
-        attr='categories_indexing',
+        attr="categories_indexing",
         analyzer=ngram_analyser,
         fields={
-            'raw': fields.KeywordField(multi=True),
-            'suggest': fields.CompletionField(multi=True),
+            "raw": fields.KeywordField(multi=True),
+            "suggest": fields.CompletionField(multi=True),
         },
-        multi=True
+        multi=True,
     )
+
     formats = fields.TextField(
-        attr='formats_indexing',
+        attr="formats_indexing",
         analyzer=ngram_analyser,
         fields={
-            'raw': fields.KeywordField(multi=True),
-            'suggest': fields.CompletionField(multi=True),
+            "raw": fields.KeywordField(multi=True),
+            "suggest": fields.CompletionField(multi=True),
         },
-        multi=True
+        multi=True,
     )
-    
-    has_charts = fields.BooleanField(attr='has_charts')
 
-    # tags = Keyword(multi=True)
+    has_charts = fields.BooleanField(attr="has_charts")
 
-    def prepare_metadata(self, instance):
+    def prepare_metadata(self, instance: Dataset) -> List[Dict[str, Any]]:
         """Preprocess comma-separated metadata values into arrays."""
-        processed_metadata = []
-        for meta in instance.metadata.all():
-            value_list = [val.strip() for val in meta.value.split(",")] if "," in meta.value else [meta.value]
-            processed_metadata.append({
-                'value': value_list,
-                'metadata_item': {'label': meta.metadata_item.label}
-            })
+        processed_metadata: List[Dict[str, Any]] = []
+        for meta in instance.metadata.all():  # type: DatasetMetadata
+            value_list = (
+                [val.strip() for val in meta.value.split(",")]
+                if "," in meta.value
+                else [meta.value]
+            )
+            processed_metadata.append(
+                {
+                    "value": value_list,
+                    "metadata_item": {"label": meta.metadata_item.label},
+                }
+            )
         return processed_metadata
 
-    class Django:
-        model = Dataset
-
-        fields = [
-            'id',
-            'created',
-            'modified',
-        ]
-
-        related_models = [Resource, Metadata, DatasetMetadata]
-
-    def should_index_object(self, obj):
+    def should_index_object(self, obj: Dataset) -> bool:
+        """Check if the object should be indexed."""
         return obj.status == DatasetStatus.PUBLISHED
 
-    def save(self,*args,**kwargs,):
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Save the document to Elasticsearch index."""
         if self.status == "PUBLISHED":
             super().save(*args, **kwargs)
         else:
             self.delete(ignore=404)
 
-    def delete(self, *args, **kwargs):
-        # Remove the document from Elasticsearch index
+    def delete(self, *args: Any, **kwargs: Any) -> None:
+        """Remove the document from Elasticsearch index."""
         super().delete(*args, **kwargs)
 
-    def get_queryset(self):
-        return super(DatasetDocument, self).get_queryset().filter(status=DatasetStatus.PUBLISHED)
+    def get_queryset(self) -> Any:
+        """Get the queryset for indexing."""
+        return (
+            super(DatasetDocument, self)
+            .get_queryset()
+            .filter(status=DatasetStatus.PUBLISHED)
+        )
 
-    def get_instances_from_related(self, related_instance):
+    def get_instances_from_related(
+        self, related_instance: Union[Resource, Metadata, DatasetMetadata]
+    ) -> Optional[Union[Dataset, List[Dataset]]]:
+        """Get Dataset instances from related models."""
         if isinstance(related_instance, Resource):
             return related_instance.dataset
         elif isinstance(related_instance, Metadata):
             ds_metadata_objects = related_instance.datasetmetadata_set.all()
-            return [obj.dataset for obj in ds_metadata_objects]
+            return [obj.dataset for obj in ds_metadata_objects]  # type: ignore
         elif isinstance(related_instance, DatasetMetadata):
             return related_instance.dataset
+        return None
+
+    class Django:
+        """Django model configuration."""
+
+        model = Dataset
+
+        fields = [
+            "id",
+            "created",
+            "modified",
+        ]
+
+        related_models = [Resource, Metadata, DatasetMetadata]

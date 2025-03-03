@@ -1,23 +1,38 @@
+from typing import Any, Dict, List, Optional, Union, cast
+
+import pandas as pd
+from pandas import DataFrame
 from pyecharts import options as opts
 from pyecharts.charts import Map
 
 from api.models import ResourceChartDetails
 
 
-def _get_map_chart(chart_details: ResourceChartDetails, data, values):
-    value_col = chart_details.options.get("value_column").field_name
-    map_chart = Map(init_opts=opts.InitOpts(width="1000px", height="100")) \
-        .add(
+def _get_map_chart(
+    chart_details: ResourceChartDetails, data: DataFrame, values: List[Any]
+) -> Map:
+    """Create a map chart with the given data and options."""
+    options = cast(Dict[str, Any], chart_details.options)
+    value_col = cast(Dict[str, str], options.get("value_column", {})).get(
+        "field_name", ""
+    )
+
+    map_chart = Map(init_opts=opts.InitOpts(width="1000px", height="100")).add(
         series_name=value_col,
         data_pair=values,
         maptype=f"{chart_details.chart_type.lower().replace('', '')}",
     )
-    # map_chart.set_global_opts(title_opts=opts.TitleOpts(title=chart_details.name)) \
-    map_chart.set_series_opts(label_opts=opts.LabelOpts(is_show=chart_details.options.get("show_legend", True)))
+
+    # Set series options
+    show_legend = cast(bool, options.get("show_legend", True))
+    map_chart.set_series_opts(label_opts=opts.LabelOpts(is_show=show_legend))
+
+    # Set global options
+    value_col_data = data[value_col] if value_col in data.columns else pd.Series([0])
     map_chart.set_global_opts(
         visualmap_opts=opts.VisualMapOpts(
-            max_=int(data[value_col].max()),
-            min_=int(data[value_col].min()),
+            max_=int(value_col_data.max()),
+            min_=int(value_col_data.min()),
             range_text=["High", "Low"],
             range_size=[10],
             is_calculable=True,
@@ -27,10 +42,18 @@ def _get_map_chart(chart_details: ResourceChartDetails, data, values):
         ),
         toolbox_opts=opts.ToolboxOpts(
             feature=opts.ToolBoxFeatureOpts(
-                data_zoom=opts.ToolBoxFeatureDataZoomOpts(is_show=True, zoom_title="Zoom", back_title="Back"),
+                data_zoom=opts.ToolBoxFeatureDataZoomOpts(
+                    is_show=True, zoom_title="Zoom", back_title="Back"
+                ),
                 restore=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Reset"),
-                data_view=opts.ToolBoxFeatureDataViewOpts(is_show=True, title="View Data", lang=["View Data", "Close", "Refresh"]),
-                save_as_image=opts.ToolBoxFeatureSaveAsImageOpts(is_show=True, title="Save Image")
+                data_view=opts.ToolBoxFeatureDataViewOpts(
+                    is_show=True,
+                    title="View Data",
+                    lang=["View Data", "Close", "Refresh"],
+                ),
+                save_as_image=opts.ToolBoxFeatureSaveAsImageOpts(
+                    is_show=True, title="Save Image"
+                ),
             )
         ),
         legend_opts=opts.LegendOpts(
@@ -43,7 +66,7 @@ def _get_map_chart(chart_details: ResourceChartDetails, data, values):
             padding=[5, 10, 20, 10],  # Add padding [top, right, bottom, left]
             textstyle_opts=opts.TextStyleOpts(font_size=12),
             border_width=0,  # Remove border
-            background_color="transparent"  # Make background transparent
-        )
+            background_color="transparent",  # Make background transparent
+        ),
     )
     return map_chart

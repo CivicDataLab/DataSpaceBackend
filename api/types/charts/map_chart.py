@@ -1,16 +1,21 @@
-import pandas as pd
-from pyecharts.charts.chart import Chart
-from pyecharts import options as opts
+from typing import Any, Dict, List, Optional, TypeVar, Union, cast
 
-from api.types.charts.base_chart import BaseChart
+import pandas as pd
+from pandas import DataFrame, Series
+from pyecharts import options as opts
+from pyecharts.charts.chart import Chart
+
+from api.types.charts.base_chart import BaseChart, DjangoFieldLike
 from api.types.charts.chart_registry import register_chart
 from api.types.charts.chart_utils import _get_map_chart
 from api.utils.enums import AggregateType
 
 
+@register_chart("ASSAM_DISTRICT")
+@register_chart("ASSAM_RC")
 class MapChart(BaseChart):
-    def create_chart(self) -> Chart | None:
-        if 'region_column' not in self.options or 'value_column' not in self.options:
+    def create_chart(self) -> Optional[Chart]:
+        if "region_column" not in self.options or "value_column" not in self.options:
             return None
         try:
             region_values = self.process_data()
@@ -19,15 +24,13 @@ class MapChart(BaseChart):
             print("Error while creating chart", e)
             return None
 
-    def initialize_chart(self, filtered_data: pd.DataFrame) -> Chart:
+    def initialize_chart(self, filtered_data: Optional[pd.DataFrame] = None) -> Chart:
         """Initialize a new map chart instance with basic options."""
-        self.filtered_data = filtered_data
-
         chart = self.get_chart_class()(
             init_opts=opts.InitOpts(
-                width=self.options.get('width', '100%'),
-                height=self.options.get('height', '400px'),
-                animation_opts=opts.AnimationOpts(animation=False)
+                width=str(self.options.get("width", "100%")),
+                height=str(self.options.get("height", "400px")),
+                animation_opts=opts.AnimationOpts(animation=False),
             )
         )
 
@@ -44,14 +47,22 @@ class MapChart(BaseChart):
                 padding=[5, 10, 20, 10],  # Add padding [top, right, bottom, left]
                 textstyle_opts=opts.TextStyleOpts(font_size=12),
                 border_width=0,  # Remove border
-                background_color="transparent"  # Make background transparent
+                background_color="transparent",  # Make background transparent
             ),
             toolbox_opts=opts.ToolboxOpts(
                 feature=opts.ToolBoxFeatureOpts(
-                    data_zoom=opts.ToolBoxFeatureDataZoomOpts(is_show=True, zoom_title="Zoom", back_title="Back"),
+                    data_zoom=opts.ToolBoxFeatureDataZoomOpts(
+                        is_show=True, zoom_title="Zoom", back_title="Back"
+                    ),
                     restore=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Reset"),
-                    data_view=opts.ToolBoxFeatureDataViewOpts(is_show=True, title="View Data", lang=["View Data", "Close", "Refresh"]),
-                    save_as_image=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Save Image")
+                    data_view=opts.ToolBoxFeatureDataViewOpts(
+                        is_show=True,
+                        title="Data View",
+                        lang=["Data View", "Close", "Refresh"],
+                    ),
+                    save_as_image=opts.ToolBoxFeatureSaveAsImageOpts(
+                        is_show=True, title="Save as Image"
+                    ),
                 )
             ),
         )
@@ -62,44 +73,57 @@ class MapChart(BaseChart):
             "bottom": "15%",  # Chart area ends 15% from bottom
             "left": "10%",  # Chart area starts 10% from left
             "right": "5%",  # Chart area ends 5% from right
-            "containLabel": True  # Include axis labels in the grid size calculation
+            "containLabel": True,  # Include axis labels in the grid size calculation
         }
 
         return chart
 
-    def aggregate_data(self) -> pd.DataFrame:
-        """
-        Aggregate data based on region and value columns and return the resulting DataFrame.
-        """
-        region_column = self.options['region_column']
-        value_column = self.options['value_column']
-        aggregate_type = self.options.get('aggregate_type', 'none')
+    def aggregate_data(self) -> DataFrame:
+        """Aggregate data based on region and value columns."""
+        if not isinstance(self.data, DataFrame):
+            return DataFrame()
 
-        if aggregate_type != 'none':
-            metrics = self.data.groupby(region_column.field_name).agg(
-                {value_column.field_name: aggregate_type.lower()}
-            ).reset_index()
+        region_column = cast(DjangoFieldLike, self.options.get("region_column"))
+        value_column = cast(DjangoFieldLike, self.options.get("value_column"))
 
-            metrics.columns = [region_column.field_name, value_column.field_name]
+        if not region_column or not value_column:
+            return DataFrame()
+
+        agg_type = str(self.options.get("aggregate_type", "none"))
+
+        if agg_type != "none":
+            metrics = (
+                self.data.groupby(region_column.field_name)
+                .agg({value_column.field_name: agg_type.lower()})
+                .reset_index()
+            )
+
+            # Ensure column names are preserved as strings
+            metrics.columns = pd.Index(
+                [region_column.field_name, value_column.field_name]
+            )
             return metrics
         else:
             return self.data[[region_column.field_name, value_column.field_name]]
 
-    def process_data(self) -> list:
+    def process_data(self) -> List[List[Any]]:
+        """Process data for the map chart."""
         data = self.aggregate_data()
-        region_column = self.options['region_column']
-        value_column = self.options['value_column']
+        if data.empty:
+            return []
+
+        region_column = cast(DjangoFieldLike, self.options.get("region_column"))
+        value_column = cast(DjangoFieldLike, self.options.get("value_column"))
+
+        if not region_column or not value_column:
+            return []
+
         region_col = region_column.field_name
         value_col = value_column.field_name
-        data[region_col] = data[region_col].str.upper()
-        return data[[region_col, value_col]].values.tolist()
 
+        # Convert region names to uppercase
+        data = data.assign(
+            **{region_col: lambda x: x[region_col].astype(str).str.upper()}
+        )
 
-@register_chart('ASSAM_DISTRICT')
-class AssamDistrictChart(MapChart):
-    pass
-
-
-@register_chart('ASSAM_RC')
-class AssamRCChart(MapChart):
-    pass
+        return cast(List[List[Any]], data[[region_col, value_col]].values.tolist())

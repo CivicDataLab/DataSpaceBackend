@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import Any, Optional
 
 import strawberry
 import strawberry_django
-from strawberry import auto
+from strawberry import Info, auto
 
 from api.models import Organization
+from api.types.base_type import BaseType
 
 
 @strawberry_django.filter(Organization)
@@ -13,11 +14,12 @@ class OrganizationFilter:
     slug: auto
 
 
-@strawberry_django.type(Organization, pagination=True, fields="__all__", filters=OrganizationFilter)
-class TypeOrganization:
+@strawberry_django.type(
+    Organization, pagination=True, fields="__all__", filters=OrganizationFilter
+)
+class TypeOrganization(BaseType):
     parent_id: Optional["TypeOrganization"]
-    dataset_count: int
 
     @strawberry.field
-    def dataset_count(self: Organization, info) -> int:
-        return self.dataset_set.count()
+    def dataset_count(self: Any) -> int:
+        return int(self.datasets.count())

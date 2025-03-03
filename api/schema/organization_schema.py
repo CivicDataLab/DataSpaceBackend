@@ -1,13 +1,14 @@
+import uuid
+from typing import List, Optional
+
 import strawberry
 import strawberry_django
 from strawberry import auto
-from strawberry_django import NodeInput
+from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
 from api.models import Organization
 from api.types.type_organization import TypeOrganization
-
-from typing import Optional
 
 
 @strawberry_django.input(Organization, fields="__all__")
@@ -17,16 +18,57 @@ class OrganizationInput:
 
 @strawberry_django.partial(Organization, fields="__all__")
 class OrganizationInputPartial:
+    id: uuid.UUID
     slug: auto
 
 
 @strawberry.type(name="Query")
 class Query:
-    organizations: list[TypeOrganization] = strawberry_django.field()
+    @strawberry_django.field(pagination=True)
+    def organizations(self, info: Info) -> List[TypeOrganization]:
+        """Get all organizations."""
+        organizations = Organization.objects.all()
+        return [TypeOrganization.from_django(org) for org in organizations]
+
+    @strawberry_django.field
+    def organization(self, info: Info, id: str) -> Optional[TypeOrganization]:
+        """Get organization by ID."""
+        try:
+            organization = Organization.objects.get(id=id)
+            return TypeOrganization.from_django(organization)
+        except Organization.DoesNotExist:
+            raise ValueError(f"Organization with ID {id} does not exist.")
 
 
 @strawberry.type
 class Mutation:
-    create_organization: TypeOrganization = mutations.create(OrganizationInput)
-    update_organization: TypeOrganization = mutations.update(OrganizationInputPartial, key_attr="id")
-    delete_organization: TypeOrganization = mutations.delete(NodeInput)
+    @strawberry_django.mutation(handle_django_errors=True)
+    def create_organization(
+        self, info: Info, input: OrganizationInput
+    ) -> TypeOrganization:
+        """Create a new organization."""
+        organization = mutations.create(OrganizationInput)(info=info, input=input)
+        return TypeOrganization.from_django(organization)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def update_organization(
+        self, info: Info, input: OrganizationInputPartial
+    ) -> Optional[TypeOrganization]:
+        """Update an existing organization."""
+        try:
+            organization = mutations.update(OrganizationInputPartial, key_attr="id")(
+                info=info, input=input
+            )
+            return TypeOrganization.from_django(organization)
+        except Organization.DoesNotExist:
+            raise ValueError(f"Organization with ID {input.id} does not exist.")
+
+    @strawberry_django.mutation(handle_django_errors=False)
+    def delete_organization(self, info: Info, organization_id: str) -> bool:
+        """Delete an organization."""
+        try:
+            organization = Organization.objects.get(id=organization_id)
+            organization.delete()
+            return True
+        except Organization.DoesNotExist:
+            raise ValueError(f"Organization with ID {organization_id} does not exist.")

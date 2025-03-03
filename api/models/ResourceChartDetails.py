@@ -1,22 +1,43 @@
 import uuid
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
 from django.db import models
+from django.utils.text import slugify
 
-from api.models import Resource, SerializableJSONField
-
+from api.models.SerializableJSONField import SerializableJSONField
 from api.utils.enums import ChartTypes
+
+if TYPE_CHECKING:
+    from api.models.Resource import Resource
 
 
 class ResourceChartDetails(models.Model):
+    """Model for storing chart details associated with a resource."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, null=False, blank=False)
+    resource = models.OneToOneField(
+        "api.Resource", on_delete=models.CASCADE, null=False, blank=False
+    )
     name = models.CharField(max_length=50, unique=False, blank=True)
     description = models.CharField(max_length=1000, unique=False, blank=True)
-    chart_type = models.CharField(max_length=50, choices=ChartTypes.choices, default=ChartTypes.BAR_HORIZONTAL,
-                                  blank=False, unique=False)
+    chart_type = models.CharField(
+        max_length=50,
+        choices=ChartTypes.choices,
+        default=ChartTypes.BAR_HORIZONTAL,
+        blank=False,
+        unique=False,
+    )
     options = SerializableJSONField(blank=True, default=dict)
+    created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
-    filters = SerializableJSONField(blank=True,null=True, default=list)
+    filters = SerializableJSONField(blank=True, null=True, default=list)
 
-    def __str__(self):
-        return self.name
+    def __str__(self) -> str:
+        """Return a string representation of the model."""
+        return f"{self.resource.name} - {self.chart_type}"
+
+    class Meta:
+        """Meta options for ResourceChartDetails."""
+
+        db_table = "resource_chart_details"
+        ordering = ["-created"]

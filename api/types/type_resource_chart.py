@@ -1,30 +1,55 @@
 import json
 from functools import lru_cache
-from typing import Optional, List
+from typing import Any, Dict, List, Optional, Type, TypedDict, TypeVar, Union, cast
 
 import pandas as pd
 import strawberry
 import strawberry_django
+from django.core.serializers.json import DjangoJSONEncoder
 from pyecharts.charts.chart import Chart
-from strawberry.scalars import JSON
+from strawberry import auto
+from strawberry.types import Info
 
-from api.models import ResourceChartDetails, ResourceSchema
+from api.models import ResourceChartDetails
 from api.types import TypeResource
+from api.types.base_type import BaseType
 from api.types.charts.chart_registry import CHART_REGISTRY
+from api.types.type_file_details import TypeFileDetails
 from api.types.type_resource import TypeResourceSchema
-from api.utils.django_utils import convert_to_graphql_type
+
+T = TypeVar("T", bound="TypeResourceChart")
 
 
 @lru_cache()
 def load_csv(filepath: str) -> pd.DataFrame:
+    """Load CSV file into a pandas DataFrame.
+
+    Args:
+        filepath: Path to the CSV file
+
+    Returns:
+        pd.DataFrame: Loaded DataFrame
+    """
     return pd.read_csv(filepath)
 
 
-def chart_base(chart_details: ResourceChartDetails) -> None | Chart:
-    if chart_details.resource.resourcefiledetails.format.lower() != "csv":
-        return None
+def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
+    """Create a chart instance based on the chart details.
 
-    data = load_csv(chart_details.resource.resourcefiledetails.file.path)
+    Args:
+        chart_details: Chart details for creating the chart
+
+    Returns:
+        Optional[Chart]: Chart instance if successful, None otherwise
+    """
+    try:
+        file_details = getattr(chart_details.resource, "resourcefiledetails", None)
+        if not file_details or file_details.format.lower() != "csv":
+            return None
+
+        data = load_csv(file_details.file.path)
+    except (AttributeError, FileNotFoundError):
+        return None
 
     chart_class = CHART_REGISTRY.get(chart_details.chart_type)
     if not chart_class:
@@ -33,130 +58,192 @@ def chart_base(chart_details: ResourceChartDetails) -> None | Chart:
     chart_instance = chart_class(chart_details, data)
     return chart_instance.create_chart()
 
+
 @strawberry.type
-class FilterType:
+class FilterType(BaseType):
+    """Type for filter."""
+
     column: Optional[TypeResourceSchema]
     operator: str
     value: str
 
+
 @strawberry.type
-class ValueMappingType:
+class ValueMappingType(BaseType):
+    """Type for value mapping."""
+
     key: str
     value: str
 
+
 @strawberry.type
-class YAxisColumnConfigType:
+class YAxisColumnConfigType(BaseType):
+    """Type for Y-axis column configuration."""
+
     field: Optional[TypeResourceSchema]
     label: Optional[str]
     color: Optional[str]
     value_mapping: Optional[List[ValueMappingType]]
 
+
 @strawberry.type
-class ChartOptionsType:
+class ChartOptionsType(BaseType):
+    """Type for chart options."""
+
     x_axis_label: Optional[str]
     y_axis_label: Optional[str]
     x_axis_column: Optional[TypeResourceSchema]
-    y_axis_column: Optional[list[YAxisColumnConfigType]]
+    y_axis_column: Optional[List[YAxisColumnConfigType]]
     region_column: Optional[TypeResourceSchema]
     value_column: Optional[TypeResourceSchema]
     time_column: Optional[TypeResourceSchema]
     show_legend: Optional[bool]
     aggregate_type: Optional[str]
 
-def ensure_type(value, target_type, element_type=None):
-    """Ensure value is converted to the correct Strawberry type."""
+
+class ChartOptionsTypeDict(TypedDict):
+    """Type for chart options dictionary."""
+
+    x_axis_column: str
+    y_axis_column: Union[Dict[str, Any], List[Dict[str, Any]]]
+    time_column: Optional[Dict[str, Any]]
+    filters: Optional[List[Dict[str, Any]]]
+    aggregation: Optional[Dict[str, Any]]
+
+
+def ensure_type(
+    value: Any,
+    target_type: Type[BaseType],
+    element_type: Optional[Type[BaseType]] = None,
+) -> Any:
+    """Ensure value is converted to the correct Strawberry type.
+
+    Args:
+        value: Value to convert
+        target_type: Target type to convert to
+        element_type: Element type for lists
+
+    Returns:
+        Converted value
+    """
     if value is None:
         return None
 
     if isinstance(value, dict):
-        # Special case: If converting YAxisColumnConfigType, ensure `field` is also converted
-        if target_type is YAxisColumnConfigType:
-            return YAxisColumnConfigType(
-                field=ensure_type(value.get("field"), TypeResourceSchema),  # Convert field properly
-                label=value.get("label"),
-                color=value.get("color"),
-                value_mapping=[
-                    ValueMappingType(key=k, value=v) 
-                    for k, v in value.get("value_mapping", {}).items()
-                ] if value.get("value_mapping") else []
-            )
+        return target_type.from_dict(value)
 
-        return target_type(**value)  # Convert dictionary to target type
+    if isinstance(value, list) and element_type:
+        return [ensure_type(item, element_type) for item in value]
 
-    if element_type is not None:
-        # Convert list elements properly
-        if element_type:
-            return [ensure_type(item, element_type) for item in value]
-        return value
+    return value
 
-    if isinstance(value, ResourceSchema) and target_type == TypeResourceSchema:
-        return convert_to_graphql_type(value, target_type)  # Convert Django model to Strawberry type
 
-    return None  # Handle unexpected cases gracefully
-@strawberry_django.type(ResourceChartDetails, fields="__all__")
-class TypeResourceChart:
+@strawberry_django.type(ResourceChartDetails)
+class TypeResourceChart(BaseType):
+    """Type for resource chart."""
+
+    id: auto
+    name: auto
+    description: auto
+    chart_type: auto
     resource: TypeResource
-    chart_type: str
-    options: Optional[ChartOptionsType]
-    filters: Optional[List[FilterType]]
-    
-    
+    created: auto
+    modified: auto
 
     @strawberry.field
     def options(self) -> Optional[ChartOptionsType]:
-        """Convert stored JSONField `options` into ChartOptionsType, handling already deserialized objects"""
-        if not self.options:  # Handle None case
+        """Convert stored JSONField `options` into ChartOptionsType.
+
+        Returns:
+            Optional[ChartOptionsType]: Chart options if present, None otherwise
+        """
+        if not self.options:
             return None
-
-        
-
-        # Ensure y_axis_column is always treated as a list
-        y_axis_column_data = self.options.get("y_axis_column")
-        if isinstance(y_axis_column_data, dict):  # If a single object, wrap it in a list
-            y_axis_column_data = [y_axis_column_data]
-        # Convert only if needed
-        options_data = {
-            "x_axis_label": self.options.get("x_axis_label"),
-            "y_axis_label": self.options.get("y_axis_label"),
-            "x_axis_column": ensure_type(self.options.get("x_axis_column"), TypeResourceSchema),
-            "y_axis_column": [
-                ensure_type(col, YAxisColumnConfigType) for col in y_axis_column_data
-            ] if y_axis_column_data else None,
-            "region_column": ensure_type(self.options.get("region_column"), TypeResourceSchema),
-            "value_column": ensure_type(self.options.get("value_column"), TypeResourceSchema),
-            "time_column": ensure_type(self.options.get("time_column"), TypeResourceSchema),
-            "show_legend": self.options.get("show_legend", False),  # Default to False
-            "aggregate_type": self.options.get("aggregate_type"),
-        }
-
-        return ChartOptionsType(**options_data)  # Convert dictionary to object
+        options_str = (
+            self.options if isinstance(self.options, str) else json.dumps(self.options)
+        )
+        options_dict = json.loads(options_str)
+        return ChartOptionsType.from_dict(options_dict)
 
     @strawberry.field
     def filters(self) -> Optional[List[FilterType]]:
-        """Convert stored JSONField `filters` into List[FilterType]"""
-        if not self.filters:  # Handle None or empty cases
-            return []
-            
-        # Ensure each filter is properly formatted
-        formatted_filters = []
-        for filter_data in self.filters:
-            if isinstance(filter_data, dict):
-                filter_dict = {
-                    "column": ensure_type(filter_data.get("column"), TypeResourceSchema),
-                    "operator": filter_data.get("operator", ""),
-                    "value": filter_data.get("value", "")
-                }
-                formatted_filters.append(FilterType(**filter_dict))
-            elif isinstance(filter_data, FilterType):
-                formatted_filters.append(filter_data)
-                
-        return formatted_filters
+        """Convert stored JSONField `filters` into List[FilterType]."""
+        if not self.filters:
+            return None
+        filters_str = (
+            self.filters if isinstance(self.filters, str) else json.dumps(self.filters)
+        )
+        filters_list = json.loads(filters_str)
+        if not isinstance(filters_list, list):
+            return None
+
+        result: List[FilterType] = []
+        for filter_dict in filters_list:
+            if filter_dict is not None:
+                filter_obj = FilterType.from_dict(filter_dict)
+                if filter_obj is not None:
+                    result.append(filter_obj)
+        return result if result else None
 
     @strawberry.field
-    def chart(self: ResourceChartDetails, info) -> JSON:
-            base_chart = chart_base(self)
-            if base_chart:
-                options = base_chart.dump_options_with_quotes()
-                return json.loads(options)
-            else:
-                return {}
+    def chart(self, info: Info) -> Optional[Dict[str, Any]]:
+        """Get chart configuration.
+
+        Args:
+            info: Request info
+
+        Returns:
+            Optional[Dict[str, Any]]: Chart configuration if successful, None otherwise
+        """
+        chart_obj = chart_base(cast(ResourceChartDetails, self))
+        if not chart_obj:
+            return None
+        return cast(Dict[str, Any], chart_obj.dump_options())
+
+    @strawberry.field
+    def chart_data(self, info: Info) -> Optional[List[Dict[str, Any]]]:
+        """Get chart data for the resource.
+
+        Args:
+            info: Request info
+
+        Returns:
+            Optional[List[Dict[str, Any]]]: Chart data if successful, None otherwise
+        """
+        if not hasattr(self.resource, "resource_file_details"):
+            return None
+
+        file_details = self.resource.resource_file_details
+        if not file_details or file_details.format.lower() != "csv":
+            return None
+
+        try:
+            df = load_csv(file_details.file.path)
+            return cast(List[Dict[str, Any]], df.to_dict("records"))
+        except (AttributeError, FileNotFoundError):
+            return None
+
+    @strawberry.field
+    def preview_data(self, info: Info) -> Optional[List[Dict[str, Any]]]:
+        """Get preview data for the chart.
+
+        Args:
+            info: Request info
+
+        Returns:
+            Optional[List[Dict[str, Any]]]: Preview data if successful, None otherwise
+        """
+        try:
+            file_details = getattr(self.resource, "resourcefiledetails", None)
+            if not file_details or not getattr(self.resource, "preview_details", None):
+                return None
+
+            df = load_csv(file_details.file.path)
+            if getattr(self.resource.preview_details, "is_all_entries", False):
+                return cast(List[Dict[str, Any]], df.to_dict("records"))
+
+            start = getattr(self.resource.preview_details, "start_entry", None)
+            end = getattr(self.resource.preview_details, "end_entry", None)
+            return cast(List[Dict[str, Any]], df.iloc[start:end].to_dict("records"))
+        except (AttributeError, FileNotFoundError):
+            return None

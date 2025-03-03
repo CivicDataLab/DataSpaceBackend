@@ -1,8 +1,9 @@
 import os
 import uuid
+from typing import Any
 
 
-def _organization_directory_path(org, filename):
+def _organization_directory_path(org: Any, filename: str) -> str:
     """
     Create a directory path to upload the organization logo
 
@@ -13,7 +14,7 @@ def _organization_directory_path(org, filename):
     return f"files/public/organizations/{org_name}/{extension[1:]}/{filename}"
 
 
-def _chart_image_directory_path(chart, filename):
+def _chart_image_directory_path(chart: Any, filename: str) -> str:
     """
     Create a directory path to upload the organization logo
 
@@ -24,7 +25,7 @@ def _chart_image_directory_path(chart, filename):
     return f"files/chart_images/{chart_name}/{extension[1:]}/{filename}"
 
 
-def _dataspace_directory_path(ds, filename):
+def _dataspace_directory_path(ds: Any, filename: str) -> str:
     """
     Create a directory path to upload the dataspace logo
 
@@ -35,7 +36,7 @@ def _dataspace_directory_path(ds, filename):
     return f"files/public/dataspace/{ds_name}/{extension[1:]}/{filename}"
 
 
-def _use_case_directory_path(uc, filename):
+def _use_case_directory_path(uc: Any, filename: str) -> str:
     """
     Create a directory path to upload the use case logo
 
@@ -46,7 +47,7 @@ def _use_case_directory_path(uc, filename):
     return f"files/use_case/{uc_name}/logo/{filename}"
 
 
-def _organization_file_directory_path(org, filename):
+def _organization_file_directory_path(org: Any, filename: str) -> str:
     """
     Create a directory path to upload the sample data file.
 
