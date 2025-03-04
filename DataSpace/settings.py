@@ -49,8 +49,17 @@ ALLOWED_HOSTS = whitelisted_urls + env("URL_WHITELIST").replace("https://", "").
 
 CSRF_TRUSTED_ORIGINS = whitelisted_urls
 
-CORS_ORIGIN_WHITELIST = whitelisted_urls
+# CORS settings
+if DEBUG:
+    # In development, allow all origins
+    CORS_ORIGIN_ALLOW_ALL = True
+else:
+    # In production, only allow whitelisted origins
+    CORS_ORIGIN_ALLOW_ALL = False
+    CORS_ALLOWED_ORIGINS = whitelisted_urls
 
+# Common CORS settings
+CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
     "DELETE",
     "GET",
@@ -76,11 +85,12 @@ CORS_ALLOW_HEADERS = [
     "token",
 ]
 
-CORS_ORIGIN_ALLOW_ALL = False
+CSRF_TRUSTED_ORIGINS = whitelisted_urls
 
 # Application definition
 
 INSTALLED_APPS = [
+    "corsheaders",  # type: ignore # django-cors-headers package
     "api.apps.ApiConfig",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -236,13 +246,6 @@ SWAGGER_SETTINGS = {
         "Bearer": {"type": "apiKey", "name": "Authorization", "in": "header"}
     }
 }
-
-# CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:8000",
-]
-CORS_ALLOW_CREDENTIALS = True
 
 # Structured Logging Configuration
 LOGGING = {
