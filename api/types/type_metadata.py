@@ -31,7 +31,6 @@ class TypeMetadata(BaseType):
     """Type for metadata."""
 
     id: auto
-    name: auto
     label: auto
     description: auto
     model: auto
