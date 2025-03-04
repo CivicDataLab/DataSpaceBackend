@@ -74,7 +74,7 @@ black==24.2.0
 isort==5.13.2
 pre-commit==3.6.2
 flake8==7.0.0
-pandas-stubs==2.2.0  # Matched with pandas version
+pandas-stubs==2.2.0.240218  # Matched with pandas version
 
 # Logging
 structlog==24.1.0  # Downgraded for better compatibility
