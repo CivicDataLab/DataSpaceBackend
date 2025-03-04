@@ -61,6 +61,7 @@ def rate_limit_middleware(
                 else cast(HttpResponse, HttpResponseTooManyRequests())
             )
         except Ratelimited:
+            logger.error("Rate limited")
             return cast(HttpResponse, HttpResponseTooManyRequests())
         except RedisError as e:
             # Log Redis errors but allow the request
