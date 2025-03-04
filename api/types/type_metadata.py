@@ -32,11 +32,9 @@ class TypeMetadata(BaseType):
 
     id: auto
     label: auto
-    description: auto
     model: auto
     type: auto
     enabled: auto
-    required: auto
     validator: List[ValidatorType]
     created: auto
     modified: auto
