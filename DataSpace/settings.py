@@ -15,7 +15,7 @@ from pathlib import Path
 import environ
 from decouple import config
 from .cache_settings import *
-
+import structlog
 env = environ.Env(DEBUG=(bool, False))
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -38,7 +38,7 @@ DB_PORT = env('DB_PORT', default='DB_PORT')
 WELCOME_TEXT = env('WELCOME_TEXT', default='Hello World')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG', True),
+DEBUG = True
 whitelisted_urls = env("URL_WHITELIST").split(',')
 ALLOWED_HOSTS = whitelisted_urls + env("URL_WHITELIST").replace("https://", "").replace("http://", "").split(",")
 
@@ -71,7 +71,7 @@ CORS_ALLOW_HEADERS = [
     'token',
 ]
 
-CORS_ORIGIN_ALLOW_ALL = False
+CORS_ORIGIN_ALLOW_ALL = True
 
 # Application definition
 
@@ -149,12 +149,12 @@ STRAWBERRY_DJANGO = {
 
 DATABASES = {
     "default": {
-        "ENGINE": DB_ENGINE,
-        "NAME": DB_NAME,
-        "USER": DB_USER,
-        "PASSWORD": DB_PASSWORD,
-        "HOST": DB_HOST,
-        "PORT": DB_PORT,
+        "ENGINE": env("DB_ENGINE"),
+        "NAME": env("DB_NAME"),
+        "USER": env("DB_USER"),
+        "PASSWORD": env("DB_PASSWORD"),
+        "HOST": env("DB_HOST"),
+        "PORT": env("DB_PORT"),
     }
 }
 
@@ -204,7 +204,15 @@ ELASTICSEARCH_DSL = {
         'hosts': os.getenv("ELASTICSEARCH_INDEX", 'http://elasticsearch:9200'),
         'http_auth': (os.getenv("ELASTICSEARCH_USERNAME", 'elastic'), os.getenv("ELASTICSEARCH_PASSWORD", 'changeme'))
     }
+
 }
+
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': f"http://{os.getenv('ELASTICSEARCH_USERNAME', 'elastic')}:{os.getenv('ELASTICSEARCH_PASSWORD', 'changeme')}@elasticsearch:9200"
+    }
+}
+
 TELEMETRY_URL = os.getenv("TELEMETRY_URL", 'http://otel-collector:4317')
 ELASTICSEARCH_INDEX_NAMES = {
     'search.documents.dataset_document': 'dataset',

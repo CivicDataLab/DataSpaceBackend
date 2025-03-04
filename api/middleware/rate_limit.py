@@ -1,6 +1,9 @@
-from django.http import HttpResponseTooManyRequests
 from django_ratelimit.decorators import ratelimit
 from functools import wraps
+from django.http import HttpResponse
+
+class HttpResponseTooManyRequests(HttpResponse):
+    status_code = 429
 
 def rate_limit_middleware(get_response):
     def middleware(request):
@@ -9,6 +12,7 @@ def rate_limit_middleware(get_response):
         def check_rate_limit(request):
             return get_response(request)
         
+        return get_response(request)
         try:
             response = check_rate_limit(request)
             return response if response else HttpResponseTooManyRequests()
