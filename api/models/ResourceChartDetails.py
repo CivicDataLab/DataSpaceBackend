@@ -15,7 +15,7 @@ class ResourceChartDetails(models.Model):
     """Model for storing chart details associated with a resource."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    resource = models.OneToOneField(
+    resource = models.ForeignKey(
         "api.Resource", on_delete=models.CASCADE, null=False, blank=False
     )
     name = models.CharField(max_length=50, unique=False, blank=True)
