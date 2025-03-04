@@ -34,11 +34,9 @@ class BaseType:
         }
 
         try:
-            return cls(**data)  # Explicitly cast to the correct type
+            return cast(T, instance)  # Explicitly cast to the correct type
         except TypeError as e:
-            raise ValueError(
-                f"Failed to create {cls.__name__} from data: {data}"
-            ) from e
+            raise ValueError(f"Failed to create {cls.__name__} from data: {data}")
 
     @classmethod
     def from_dict(cls: Type[T], data: Dict[str, Any]) -> Optional[T]:
@@ -56,4 +54,5 @@ class BaseType:
         cls: Type[T], instances: Union[Sequence[M], QuerySet[M]]
     ) -> List[T]:
         """Convert a list or QuerySet of Django model instances to Strawberry types."""
-        return [cls.from_django(instance) for instance in instances]
+        # return [cls.from_django(instance) for instance in instances]
+        return cast(List[T], instances)
