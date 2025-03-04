@@ -16,6 +16,8 @@ class ResourceMetadata(models.Model):
         "api.Metadata", on_delete=models.CASCADE, related_name="resource_metadata"
     )
     value = models.JSONField()
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
         return f"{self.resource.name} - {self.metadata_item.label}"

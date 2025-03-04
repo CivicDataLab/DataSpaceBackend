@@ -43,6 +43,8 @@ class AccessModelResource(models.Model):
         "api.Resource", on_delete=models.CASCADE, null=False, blank=False
     )
     fields = models.ManyToManyField("api.ResourceSchema")
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "access_model_resource"

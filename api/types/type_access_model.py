@@ -1,48 +1,45 @@
-from typing import TYPE_CHECKING, List, Optional, cast
+import uuid
+from datetime import datetime
+from typing import TYPE_CHECKING, List, Optional
 
 import strawberry
 from strawberry import auto
+from strawberry.types import Info
 from strawberry_django import type
 
 from api.models import AccessModel, AccessModelResource
 from api.types.base_type import BaseType
-
-if TYPE_CHECKING:
-    from api.types.type_dataset import TypeDataset
-    from api.types.type_organization import TypeOrganization
+from api.types.type_organization import TypeOrganization
+from api.types.type_resource import TypeResource
 
 
 @type(AccessModelResource)
 class TypeAccessModelResourceFields(BaseType):
     """Type for access model resource fields."""
 
-    id: auto
-    resource: auto
+    id: strawberry.ID
+    resource: "TypeResource"
     access_model: "TypeAccessModel"
-    created: auto
-    modified: auto
+    fields: List[str]
+    created: datetime
+    modified: datetime
 
 
 @type(AccessModel)
 class TypeAccessModel(BaseType):
     """Type for access model."""
 
-    id: auto
-    name: auto
-    description: auto
-    dataset: "TypeDataset"
-    type: auto
+    id: uuid.UUID
+    name: str
+    description: Optional[str]
+    type: str
     organization: "TypeOrganization"
-    created: auto
-    modified: auto
+    created: datetime
+    modified: datetime
 
     @strawberry.field
-    def model_resources(self) -> List[TypeAccessModelResourceFields]:
-        """Get access model resources for this access model.
-
-        Returns:
-            List[TypeAccessModelResourceFields]: List of access model resources
-        """
+    def resource_fields(self, info: Info) -> List[TypeAccessModelResourceFields]:
+        """Get resources for this access model."""
         try:
             queryset = AccessModelResource.objects.filter(access_model_id=self.id)
             return TypeAccessModelResourceFields.from_django_list(queryset)

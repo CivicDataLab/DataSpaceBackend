@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional, cast
 
 import strawberry
@@ -6,11 +7,12 @@ import strawberry_django
 from strawberry.enum import EnumType
 from strawberry.types import Info
 
-from api.models import AccessModel, Dataset, DatasetMetadata, Resource, Tag
-from api.types import TypeDatasetMetadata, TypeResource
+from api.models import Dataset, DatasetMetadata, Resource, Tag
 from api.types.base_type import BaseType
-from api.types.type_access_model import TypeAccessModel
 from api.types.type_category import TypeCategory
+from api.types.type_dataset_metadata import TypeDatasetMetadata
+from api.types.type_organization import TypeOrganization
+from api.types.type_resource import TypeResource
 from api.utils.enums import DatasetStatus
 
 dataset_status: EnumType = strawberry.enum(DatasetStatus)  # type: ignore
@@ -22,17 +24,6 @@ class DatasetFilter:
 
     id: Optional[uuid.UUID]
     status: Optional[dataset_status]
-
-
-@strawberry_django.type(Tag, fields="__all__")
-class TypeTag(BaseType):
-    """Type for tag."""
-
-    id: strawberry.auto
-    name: strawberry.auto
-    description: strawberry.auto
-    created: strawberry.auto
-    modified: strawberry.auto
 
 
 @strawberry_django.order(Dataset)
@@ -55,19 +46,35 @@ class TypeDataset(BaseType):
     """Type for dataset."""
 
     id: uuid.UUID
-    tags: List[TypeTag]
-    categories: List[TypeCategory]
+    title: str
+    description: Optional[str]
+    slug: str
+    status: dataset_status
+    organization: "TypeOrganization"
+    created: datetime
+    modified: datetime
+    tags: List["TypeTag"]
 
     @strawberry.field
-    def metadata(self, info: Info) -> List[TypeDatasetMetadata]:
-        """Get metadata for this dataset.
+    def categories(self, info: Info) -> List["TypeCategory"]:
+        """Get categories for this dataset.
 
         Args:
             info: Request info
 
         Returns:
-            List[TypeDatasetMetadata]: List of dataset metadata
+            List[TypeCategory]: List of categories
         """
+        try:
+            django_instance = cast(Dataset, self)
+            queryset = django_instance.categories.all()
+            return TypeCategory.from_django_list(queryset)
+        except (AttributeError, Dataset.DoesNotExist):
+            return []
+
+    @strawberry.field
+    def metadata(self) -> List["TypeDatasetMetadata"]:
+        """Get metadata for this dataset."""
         try:
             queryset = DatasetMetadata.objects.filter(dataset_id=self.id)
             return TypeDatasetMetadata.from_django_list(queryset)
@@ -75,15 +82,8 @@ class TypeDataset(BaseType):
             return []
 
     @strawberry.field
-    def resources(self, info: Info) -> List[TypeResource]:
-        """Get resources for this dataset.
-
-        Args:
-            info: Request info
-
-        Returns:
-            List[TypeResource]: List of resources
-        """
+    def resources(self) -> List["TypeResource"]:
+        """Get resources for this dataset."""
         try:
             queryset = Resource.objects.filter(dataset_id=self.id)
             return TypeResource.from_django_list(queryset)
@@ -91,38 +91,21 @@ class TypeDataset(BaseType):
             return []
 
     @strawberry.field
-    def access_models(self, info: Info) -> List[TypeAccessModel]:
-        """Get access models for this dataset.
-
-        Args:
-            info: Request info
-
-        Returns:
-            List[TypeAccessModel]: List of access models
-        """
-        try:
-            queryset = AccessModel.objects.filter(dataset_id=self.id)
-            return TypeAccessModel.from_django_list(queryset)
-        except (AttributeError, AccessModel.DoesNotExist):
-            return []
-
-    @strawberry.field
     def formats(self: Any) -> List[str]:
-        """Get formats for this dataset.
-
-        Returns:
-            List[str]: List of formats
-        """
+        """Get formats for this dataset."""
         try:
-            formats = set()
-            for resource in self.resources.all():
-                if (
-                    hasattr(resource, "resource_file_details")
-                    and resource.resource_file_details
-                ):
-                    format_str = str(resource.resource_file_details.format or "")
-                    if format_str:
-                        formats.add(format_str.lower())
-            return sorted(list(formats))
-        except Exception:
+            return list(
+                Resource.objects.filter(dataset_id=self.id).values_list(
+                    "resourcefiledetails__format", flat=True
+                )
+            )
+        except (AttributeError, Resource.DoesNotExist):
             return []
+
+
+@strawberry_django.type(Tag, fields="__all__")
+class TypeTag(BaseType):
+    """Type for tag."""
+
+    id: strawberry.auto
+    value: strawberry.auto

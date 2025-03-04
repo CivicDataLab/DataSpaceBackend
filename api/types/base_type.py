@@ -1,4 +1,16 @@
-from typing import Any, Dict, Generic, List, Optional, Sequence, Type, TypeVar, cast
+from datetime import datetime
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Sequence,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 import strawberry
 from django.db.models import Model, QuerySet
@@ -8,9 +20,8 @@ T = TypeVar("T", bound="BaseType")
 M = TypeVar("M", bound=Model)
 
 
-@strawberry.interface
 class BaseType:
-    """Base interface for all GraphQL types."""
+    """Base class for all GraphQL types with helper methods for Django model conversion."""
 
     @classmethod
     def from_django(cls: Type[T], instance: M) -> T:
@@ -49,20 +60,23 @@ class BaseType:
         """
         if not data:
             return None
+
         try:
             return cast(T, cls(**data))
         except (KeyError, TypeError, ValueError):
             return None
 
     @classmethod
-    def from_django_list(cls: Type[T], queryset: QuerySet[M]) -> List[T]:
-        """Convert a Django QuerySet to a list of Strawberry types.
+    def from_django_list(
+        cls: Type[T], instances: Union[Sequence[M], QuerySet[M, Any]]
+    ) -> List[T]:
+        """Convert a list of Django model instances to Strawberry types.
 
         Args:
             cls: The class to instantiate
-            queryset: Django QuerySet to convert
+            instances: List or QuerySet of Django model instances
 
         Returns:
-            List of Strawberry types
+            List of Strawberry type instances
         """
-        return [cls.from_django(instance) for instance in queryset]
+        return [cls.from_django(instance) for instance in instances]

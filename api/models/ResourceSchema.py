@@ -17,6 +17,8 @@ class ResourceSchema(models.Model):
         max_length=255, null=False, blank=False, choices=FieldTypes.choices
     )
     description = models.CharField(max_length=1000, null=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "resource_schema"

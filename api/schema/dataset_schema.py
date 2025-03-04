@@ -17,8 +17,8 @@ from api.models import (
 )
 from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata
-from api.types import TypeDataset, TypeResourceChart
-from api.types.type_dataset import DatasetFilter, DatasetOrder
+from api.types.type_dataset import DatasetFilter, DatasetOrder, TypeDataset
+from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
 from api.utils.enums import DatasetStatus
 
@@ -109,6 +109,7 @@ class Query:
         pagination: Optional[OffsetPaginationInput] = strawberry.UNSET,
         order: Optional[DatasetOrder] = strawberry.UNSET,
     ) -> List[TypeDataset]:
+        """Get all datasets."""
         organization = info.context.request.context.get("organization")
         dataspace = info.context.request.context.get("dataspace")
 
