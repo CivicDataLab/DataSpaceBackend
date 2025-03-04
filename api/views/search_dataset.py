@@ -7,6 +7,7 @@ from elasticsearch_dsl import Q as ESQ
 from elasticsearch_dsl import Search
 from elasticsearch_dsl.query import Query as ESQuery
 from rest_framework import serializers
+from rest_framework.permissions import AllowAny
 
 from api.models import Dataset, DatasetMetadata, Metadata
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
@@ -73,6 +74,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
 
     serializer_class = DatasetDocumentSerializer
     document_class = DatasetDocument
+    permission_classes = [AllowAny]  # Allow unauthenticated access
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)

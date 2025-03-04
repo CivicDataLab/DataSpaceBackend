@@ -4,6 +4,7 @@ from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse
 from elasticsearch_dsl import Search
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 from rest_framework.views import APIView
@@ -20,6 +21,7 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
 
     serializer_class: Type[SerializerType]
     document_class: Type[SearchType]
+    permission_classes = [AllowAny]  # Allow unauthenticated access by default
 
     @abc.abstractmethod
     def generate_q_expression(self, query: str) -> Any:
