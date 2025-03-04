@@ -1,75 +1,89 @@
 import logging
-from typing import Any, Callable, TypeVar, cast
+import time
+from typing import Any, Callable, Optional, cast
 
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse
-from django_ratelimit.decorators import ratelimit  # type: ignore[import]
-from django_ratelimit.exceptions import Ratelimited  # type: ignore[import]
 from redis.exceptions import RedisError
 
 logger = logging.getLogger(__name__)
-
-# Type variables for view functions
-ViewFunc = TypeVar("ViewFunc", bound=Callable[..., HttpResponse])
 
 
 class HttpResponseTooManyRequests(HttpResponse):
     status_code = 429
 
 
-def safe_ratelimit(
-    key: str, rate: str, method: list[str]
-) -> Callable[[ViewFunc], ViewFunc]:
-    """Custom rate limiter that falls back to allowing requests if Redis fails."""
-
-    def decorator(view_func: ViewFunc) -> ViewFunc:
-        def wrapped_view(
-            request: HttpRequest, *args: Any, **kwargs: Any
-        ) -> HttpResponse:
-            try:
-                # Try to use the regular rate limiter
-                @ratelimit(key=key, rate=rate, method=method)
-                def rate_limited_view(request: HttpRequest) -> HttpResponse:
-                    return view_func(request, *args, **kwargs)
-
-                return cast(HttpResponse, rate_limited_view(request))
-            except RedisError as e:
-                # Log the Redis error but allow the request
-                logger.error(f"Rate limit cache error: {str(e)}")
-                return cast(HttpResponse, view_func(request, *args, **kwargs))
-
-        return cast(ViewFunc, wrapped_view)
-
-    return decorator
-
-
 def rate_limit_middleware(
     get_response: Callable[[HttpRequest], HttpResponse]
 ) -> Callable[[HttpRequest], HttpResponse]:
-    def middleware(request: HttpRequest) -> HttpResponse:
-        # Apply rate limiting based on IP with fallback
-        @safe_ratelimit(key="ip", rate="1000/h", method=["POST", "PUT", "DELETE"])
-        @safe_ratelimit(key="ip", rate="5000/h", method=["GET"])
-        def check_rate_limit(request: HttpRequest) -> HttpResponse:
-            return get_response(request)
+    """Rate limiting middleware that uses a simple cache-based counter."""
 
+    def get_client_ip(request: HttpRequest) -> str:
+        """Get the client IP from the request."""
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+        if x_forwarded_for:
+            ip = cast(str, x_forwarded_for.split(",")[0].strip())
+            return ip
+        ip = cast(str, request.META.get("REMOTE_ADDR", ""))
+        return ip
+
+    def check_rate_limit(request: HttpRequest) -> bool:
+        """Check if the request should be rate limited."""
         try:
-            response = cast(HttpResponse, check_rate_limit(request))
-            return (
-                response
-                if response
-                else cast(HttpResponse, HttpResponseTooManyRequests())
+            client_ip = get_client_ip(request)
+            method = request.method
+
+            # Different limits for different methods
+            if method == "GET":
+                limit = 5000
+                window = 3600  # 1 hour in seconds
+            else:
+                limit = 1000
+                window = 3600
+
+            # Create cache keys
+            count_key = f"ratelimit:{client_ip}:{method}:count"
+            reset_key = f"ratelimit:{client_ip}:{method}:reset"
+
+            # Try to get current count and reset time
+            count = cast(int, cache.get(count_key, 0))
+            reset_time = cast(Optional[int], cache.get(reset_key))
+
+            current_time = int(time.time())
+
+            # If reset time is in the past or doesn't exist, reset the counter
+            if not reset_time or current_time > reset_time:
+                count = 0
+                reset_time = current_time + window
+                cache.set(reset_key, reset_time, window)
+
+            # Increment counter
+            count += 1
+            cache.set(count_key, count, window)
+
+            logger.info(
+                f"Rate limit check - Method: {method}, Path: {request.path}, "
+                f"IP: {client_ip}, Count: {count}/{limit}, "
+                f"Reset in: {reset_time - current_time}s"
             )
-        except Ratelimited:
-            logger.error("Rate limited")
-            return cast(HttpResponse, HttpResponseTooManyRequests())
+
+            return cast(bool, count <= limit)
+
         except RedisError as e:
-            # Log Redis errors but allow the request
-            logger.error(f"Rate limit middleware Redis error: {str(e)}")
-            return get_response(request)
+            logger.error(f"Redis error in rate limiter: {str(e)}")
+            return True  # Allow request on Redis error
         except Exception as e:
-            # Log unexpected errors but still return 429 to avoid leaking error info
-            logger.error(f"Rate limit middleware unexpected error: {str(e)}")
-            return cast(HttpResponse, HttpResponseTooManyRequests())
+            logger.error(f"Unexpected error in rate limiter: {str(e)}")
+            return True  # Allow request on unexpected error
+
+    def middleware(request: HttpRequest) -> HttpResponse:
+        if not check_rate_limit(request):
+            logger.warning(
+                f"Rate limited - Method: {request.method}, "
+                f"Path: {request.path}, IP: {get_client_ip(request)}"
+            )
+            return HttpResponseTooManyRequests()
+
+        return get_response(request)
 
     return middleware
