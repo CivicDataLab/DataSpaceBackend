@@ -25,58 +25,35 @@ class BaseType:
 
     @classmethod
     def from_django(cls: Type[T], instance: M) -> T:
-        """Convert Django model instance to Strawberry type.
+        """Convert a Django model instance to a Strawberry type."""
+        if not instance:
+            raise ValueError(f"Cannot convert None to {cls.__name__}")
 
-        Args:
-            cls: The class to instantiate
-            instance: Django model instance
+        data: Dict[str, Any] = {
+            field.name: getattr(instance, field.name) for field in instance._meta.fields
+        }
 
-        Returns:
-            An instance of the Strawberry type
-        """
-        # Convert Django model instance to a dictionary of fields
-        data = {}
-        for field in instance._meta.fields:
-            data[field.name] = getattr(instance, field.name)
-
-        # from_dict can return None, but we know we have valid data from Django model
-        result = cls.from_dict(data)
-        if result is None:
+        try:
+            return cls(**data)  # Explicitly cast to the correct type
+        except TypeError as e:
             raise ValueError(
-                f"Failed to convert Django model {instance} to Strawberry type {cls}"
-            )
-        return result
+                f"Failed to create {cls.__name__} from data: {data}"
+            ) from e
 
     @classmethod
     def from_dict(cls: Type[T], data: Dict[str, Any]) -> Optional[T]:
-        """Create an instance from a dictionary.
-
-        Args:
-            cls: The class to instantiate
-            data: Dictionary containing the data
-
-        Returns:
-            An instance of the Strawberry type or None if data is invalid
-        """
+        """Create an instance from a dictionary."""
         if not data:
             return None
 
         try:
-            return cast(T, cls(**data))
+            return cls(**data)  # Explicitly instantiate the class
         except (KeyError, TypeError, ValueError):
             return None
 
     @classmethod
     def from_django_list(
-        cls: Type[T], instances: Union[Sequence[M], QuerySet[M, Any]]
+        cls: Type[T], instances: Union[Sequence[M], QuerySet[M]]
     ) -> List[T]:
-        """Convert a list of Django model instances to Strawberry types.
-
-        Args:
-            cls: The class to instantiate
-            instances: List or QuerySet of Django model instances
-
-        Returns:
-            List of Strawberry type instances
-        """
+        """Convert a list or QuerySet of Django model instances to Strawberry types."""
         return [cls.from_django(instance) for instance in instances]
