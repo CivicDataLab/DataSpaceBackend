@@ -49,6 +49,8 @@ class DatasetDocument(Document):
 
     status = fields.KeywordField()
 
+    slug = fields.KeywordField()  # Add slug field
+
     tags = fields.TextField(
         attr="tags_indexing",
         analyzer=ngram_analyser,

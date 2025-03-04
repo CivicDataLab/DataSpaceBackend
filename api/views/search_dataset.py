@@ -63,10 +63,24 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
     categories = serializers.ListField()
     formats = serializers.ListField()
     has_charts = serializers.BooleanField()
+    slug = serializers.CharField()
 
     class Meta:
         model = Dataset
-        fields = "__all__"
+        fields = [
+            "id",
+            "title",
+            "description",
+            "slug",
+            "created",
+            "modified",
+            "status",
+            "metadata",
+            "tags",
+            "categories",
+            "formats",
+            "has_charts",
+        ]
 
 
 class SearchDataset(PaginatedElasticSearchAPIView):
