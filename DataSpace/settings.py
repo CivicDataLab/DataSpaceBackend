@@ -43,9 +43,15 @@ DB_PORT = env("DB_PORT", default="DB_PORT")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 whitelisted_urls = env("URL_WHITELIST").split(",")
-ALLOWED_HOSTS = whitelisted_urls + env("URL_WHITELIST").replace("https://", "").replace(
-    "http://", ""
-).split(",")
+ALLOWED_HOSTS = [
+    "localhost",  # Allow localhost without port
+    "127.0.0.1",  # Allow IPv4 loopback
+    "::1",  # Allow IPv6 loopback
+] + [
+    # Extract domains from whitelisted URLs
+    url.replace("https://", "").replace("http://", "").split(":")[0]
+    for url in whitelisted_urls
+]
 
 CSRF_TRUSTED_ORIGINS = whitelisted_urls
 
