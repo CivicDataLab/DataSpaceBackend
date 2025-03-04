@@ -6,17 +6,11 @@ from strawberry import auto
 from strawberry.scalars import JSON
 from strawberry_django import type
 
-from api.models import (
-    Resource,
-    ResourceFileDetails,
-    ResourceMetadata,
-    ResourcePreviewDetails,
-    ResourceSchema,
-)
+from api.models import Resource, ResourceFileDetails, ResourceMetadata, ResourceSchema
 from api.types.base_type import BaseType
 from api.types.type_file_details import TypeFileDetails
-from api.types.type_resource_chart import load_csv
 from api.types.type_resource_metadata import TypeResourceMetadata
+from api.utils.file_utils import load_csv
 
 T = TypeVar("T", bound="TypeResource")
 

@@ -1,39 +1,20 @@
 import uuid
 from datetime import datetime
-from functools import lru_cache
 from typing import Any, Dict, List, Optional, Type, TypedDict, TypeVar, Union, cast
 
-import pandas as pd
 import strawberry
 import strawberry_django
-from django.core.serializers.json import DjangoJSONEncoder
 from pyecharts.charts.chart import Chart
-from strawberry import auto
-from strawberry.enum import EnumType
 from strawberry.scalars import JSON
 from strawberry.types import Info
 
 from api.models import ResourceChartDetails
-from api.types import TypeResource
 from api.types.base_type import BaseType
 from api.types.charts.chart_registry import CHART_REGISTRY
-from api.types.type_file_details import TypeFileDetails
 from api.types.type_resource import TypeResourceSchema
+from api.utils.file_utils import load_csv
 
 T = TypeVar("T", bound="TypeResourceChart")
-
-
-@lru_cache()
-def load_csv(filepath: str) -> pd.DataFrame:
-    """Load CSV file into a pandas DataFrame.
-
-    Args:
-        filepath: Path to the CSV file
-
-    Returns:
-        pd.DataFrame: Loaded DataFrame
-    """
-    return pd.read_csv(filepath)
 
 
 def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:

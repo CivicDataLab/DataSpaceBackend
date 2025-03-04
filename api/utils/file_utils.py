@@ -1,9 +1,11 @@
 import mimetypes
 import os
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import magic
+import pandas as pd
 
 
 def check_ext(file_object: Any) -> Optional[str]:
@@ -69,3 +71,16 @@ def join_paths(*paths: Union[str, Path]) -> str:
 def normalize_path(path: Union[str, Path]) -> str:
     """Normalize path separators."""
     return os.path.normpath(str(path))
+
+
+@lru_cache()
+def load_csv(filepath: str) -> pd.DataFrame:
+    """Load CSV file into a pandas DataFrame.
+
+    Args:
+        filepath: Path to the CSV file
+
+    Returns:
+        pd.DataFrame: Loaded DataFrame
+    """
+    return pd.read_csv(filepath)
