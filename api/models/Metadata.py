@@ -37,6 +37,8 @@ class Metadata(models.Model):
     )
     enabled = models.BooleanField(default=False)
     filterable = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
         return f"{self.label} ({self.data_type})"
