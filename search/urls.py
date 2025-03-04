@@ -1,4 +1,4 @@
-"""dataexbackend URL Configuration
+"""DataSpace URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/4.0/topics/http/urls/
@@ -19,7 +19,7 @@ from django.urls import path
 # from django.template.defaulttags import url
 from rest_framework.routers import DefaultRouter
 
-from dataexbackend import settings
+from DataSpace import settings
 from search.views import DatasetDocumentView, DatasetCompoundSearchBackendDocumentViewSet
 
 router = DefaultRouter()

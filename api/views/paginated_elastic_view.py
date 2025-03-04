@@ -1,5 +1,5 @@
 import abc
-
+from django.core.cache import cache
 from django.http import HttpResponse
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -33,6 +33,14 @@ class PaginatedElasticSearchAPIView(APIView):
 
     def get(self, request):
         try:
+            # Generate cache key based on request parameters
+            cache_key = self._generate_cache_key(request)
+            cached_result = cache.get(cache_key)
+            
+            if cached_result:
+                return Response(cached_result)
+
+            # Original search logic
             query = request.GET.get('query', '')
             page = int(request.GET.get('page', 1))
             size = int(request.GET.get('size', 10))
@@ -42,6 +50,7 @@ class PaginatedElasticSearchAPIView(APIView):
             filters.pop("page", None)
             filters.pop("size", None)
             filters.pop("sort", None)
+            
             q = self.generate_q_expression(query)
             search = self.document_class.search().query(q)
             search = self.add_aggregations(search)
@@ -80,8 +89,26 @@ class PaginatedElasticSearchAPIView(APIView):
             for agg in formats_agg:
                 aggregations["formats"][agg["key"]] = agg["doc_count"]
 
-            return Response({'results': serializer.data,
-                             'aggregations': aggregations,
-                             'total': response.hits.total.value})
+            result = {
+                'results': serializer.data,
+                'total': response.hits.total.value,
+                'aggregations': aggregations
+            }
+
+            # Cache the result
+            cache.set(cache_key, result, timeout=3600)  # Cache for 1 hour
+
+            return Response(result)
         except Exception as e:
             return HttpResponse(e, status=500)
+
+    def _generate_cache_key(self, request):
+        """Generate a unique cache key based on request parameters"""
+        params = {
+            'query': request.GET.get('query', ''),
+            'page': request.GET.get('page', '1'),
+            'size': request.GET.get('size', '10'),
+            'sort': request.GET.get('sort', 'alphabetical'),
+            'filters': str(sorted(request.GET.dict().items()))
+        }
+        return f"search_results:{hash(frozenset(params.items()))}"

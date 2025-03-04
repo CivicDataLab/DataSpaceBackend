@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Set up Django application
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dataexbackend.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'DataSpace.settings')
 application = get_asgi_application()
 
 # Uvicorn configuration
@@ -19,4 +19,4 @@ uvicorn_config = {
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run("dataexbackend.asgi:application", **uvicorn_config)
+    uvicorn.run("DataSpace.asgi:application", **uvicorn_config)

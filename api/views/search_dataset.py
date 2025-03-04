@@ -2,11 +2,17 @@ import ast
 
 from elasticsearch_dsl import Q, Search, A
 from rest_framework import serializers
+from django.core.cache import cache
+from django.conf import settings
+from typing import Dict, List, Any, Optional
+from django_ratelimit.decorators import ratelimit
+import structlog
 
 from search.documents import DatasetDocument
 from api.models import DatasetMetadata, Metadata, Dataset
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
 
+logger = structlog.get_logger(__name__)
 
 class MetadataSerializer(serializers.Serializer):
     label = serializers.CharField()
@@ -55,6 +61,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
     tags = serializers.ListField()
     categories = serializers.ListField()
     formats = serializers.ListField()
+    has_charts = serializers.BooleanField()
 
     class Meta:
         model = Dataset
@@ -68,6 +75,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.searchable_fields, self.aggregations = self.get_searchable_and_aggregations()
+        self.logger = structlog.get_logger(__name__)
 
     @staticmethod
     def get_searchable_and_aggregations():
@@ -84,28 +92,6 @@ class SearchDataset(PaginatedElasticSearchAPIView):
             if metadata.filterable:
                 aggregations[f"metadata.{metadata.label}"] = "terms"
         return searchable_fields, aggregations
-
-    # def add_aggregations(self, search: Search):
-    #     aggregate_fields = []
-    #     for aggregation_field in self.aggregations:
-    #         if aggregation_field.startswith('metadata.'):
-    #             field_name = aggregation_field.split('.')[1]
-    #             aggregate_fields.append(field_name)
-    #         else:
-    #             search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
-    #     if aggregate_fields:
-    #         metadata_bucket = search.aggs.bucket('metadata', 'nested', path='metadata')
-    #         for field in aggregate_fields:
-    #             metadata_bucket.bucket(field, 'multi_terms', terms={
-    #                 'field': 'metadata.value',
-    #                 'include': {
-    #                     'filter': {
-    #                         'term': {'metadata.metadata_item.label': field}
-    #                     }
-    #                 }
-    #             })
-    #             # metadata_bucket.bucket(field, 'terms', field=f'metadata.value')
-    #     return search
 
     def add_aggregations(self, search: Search):
         """
@@ -167,11 +153,6 @@ class SearchDataset(PaginatedElasticSearchAPIView):
             queries = [Q("match_all")]
 
         return Q("bool", should=queries, minimum_should_match=1)
-
-    # def add_aggregations(self, search: Search):
-    #     for aggregation_field in self.aggregations:
-    #         search.aggs.bucket(aggregation_field, self.aggregations[aggregation_field], field=aggregation_field)
-    #     return search
 
     def add_filters(self, filters, search: Search):
         non_filter_metadata = Metadata.objects.filter(filterable=False).all()
