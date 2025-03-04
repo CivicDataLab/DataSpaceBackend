@@ -137,7 +137,7 @@ class Query:
         self, dataset_id: uuid.UUID
     ) -> List[Union[TypeResourceChartImage, TypeResourceChart]]:
         # Fetch ResourceChartImage for the dataset
-        chart_images = TypeResourceChartImage.from_django_list(
+        chart_images = list(
             ResourceChartImage.objects.filter(dataset_id=dataset_id).order_by(
                 "modified"
             )
@@ -147,15 +147,19 @@ class Query:
         resource_ids = Resource.objects.filter(dataset_id=dataset_id).values_list(
             "id", flat=True
         )
-        chart_details = TypeResourceChart.from_django_list(
+        chart_details = list(
             ResourceChartDetails.objects.filter(resource_id__in=resource_ids).order_by(
                 "modified"
             )
         )
 
+        # Convert to Strawberry types after getting lists
+        chart_images_typed = TypeResourceChartImage.from_django_list(chart_images)
+        chart_details_typed = TypeResourceChart.from_django_list(chart_details)
+
         # Combine both chart_images and chart_details into a single list
         combined_list: List[Union[TypeResourceChart, TypeResourceChartImage]] = (
-            chart_images + chart_details
+            chart_images_typed + chart_details_typed
         )
 
         # Sort the combined list by the 'modified' field in descending order
