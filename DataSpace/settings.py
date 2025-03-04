@@ -94,12 +94,6 @@ INSTALLED_APPS = [
     "django_elasticsearch_dsl_drf",
 ]
 
-# Add debug toolbar settings
-if DEBUG:
-    INSTALLED_APPS += [
-        "debug_toolbar",
-    ]
-
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -112,16 +106,16 @@ MIDDLEWARE = [
     "api.utils.middleware.ContextMiddleware",
 ]
 
+# Add debug toolbar middleware first if in debug mode
+if DEBUG:
+    MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
+
 # Add our custom middleware
 MIDDLEWARE += [
     "api.middleware.rate_limit.rate_limit_middleware",
     "api.middleware.request_validator.RequestValidationMiddleware",
     "api.middleware.logging.StructuredLoggingMiddleware",
 ]
-
-if DEBUG:
-    MIDDLEWARE = ["debug_toolbar.middleware.DebugToolbarMiddleware"] + MIDDLEWARE
-    INTERNAL_IPS = ["127.0.0.1"]
 
 ROOT_URLCONF = "DataSpace.urls"
 

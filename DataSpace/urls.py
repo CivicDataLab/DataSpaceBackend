@@ -14,14 +14,25 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from typing import List, Union, cast
+
+from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path, re_path
+from django.urls import URLPattern, URLResolver, include, path, re_path
 
-from DataSpace import settings
-from search import urls as search_index_urls
+# Type alias for URL patterns
+URLPatternsList = List[Union[URLPattern, URLResolver]]
 
-urlpatterns = [
+urlpatterns: URLPatternsList = [
     path("api/", include("api.urls")),
     path("admin/", admin.site.urls),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+if settings.DEBUG:
+    import debug_toolbar  # type: ignore[import]
+
+    debug_patterns: URLPatternsList = [
+        path("__debug__/", include(debug_toolbar.urls)),
+    ]
+    urlpatterns = debug_patterns + cast(URLPatternsList, urlpatterns)
