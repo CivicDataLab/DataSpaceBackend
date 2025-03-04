@@ -84,6 +84,12 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q 'PONG'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   telemetry_elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.16.2
