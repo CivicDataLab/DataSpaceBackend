@@ -152,7 +152,7 @@ class TypeResourceChart(BaseType):
     def chart_options(self) -> Optional[ChartOptionsType]:
         """Convert stored JSONField `options` into ChartOptionsType."""
         try:
-            options_dict = getattr(self, "_django_options", {}) or {}
+            options_dict = getattr(self, "options", {}) or {}
             if not options_dict:
                 return None
 
@@ -209,7 +209,7 @@ class TypeResourceChart(BaseType):
     def chart_filters(self) -> List[FilterType]:
         """Convert stored JSONField `filters` into List[FilterType]."""
         try:
-            filters_list = getattr(self, "_django_filters", []) or []
+            filters_list = getattr(self, "filters", []) or []
             return [
                 FilterType(
                     column=(
