@@ -11,7 +11,7 @@ from strawberry.types import Info
 from api.models import ResourceChartDetails
 from api.types.base_type import BaseType
 from api.types.charts.chart_registry import CHART_REGISTRY
-from api.types.type_resource import TypeResourceSchema
+from api.types.type_resource import TypeResource, TypeResourceSchema
 from api.utils.file_utils import load_csv
 
 T = TypeVar("T", bound="TypeResourceChart")
@@ -142,6 +142,11 @@ class TypeResourceChart(BaseType):
     created: datetime
     modified: datetime
     description: Optional[str] = ""
+
+    @strawberry.field
+    def resource(self: Any) -> Optional[TypeResource]:
+        """Get resource for this chart."""
+        return TypeResource.from_django(self.resource)
 
     @strawberry.field
     def chart_options(self) -> Optional[ChartOptionsType]:
