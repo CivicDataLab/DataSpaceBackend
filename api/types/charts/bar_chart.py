@@ -18,13 +18,23 @@ from api.utils.enums import AggregateType
 class BarChart(BaseChart):
     def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
         """Override to handle single y-axis column."""
-        # For bar chart, only use the first y-axis column
+        # For bar chart, only use the first y-axis column but preserve original options
         y_axis_column = self.options["y_axis_column"]
-        if isinstance(y_axis_column, list):
-            self.options["y_axis_column"] = y_axis_column[0]
+        chart_options = self.options.copy()  # Create a copy to avoid modifying original
 
-        # Use base chart's implementation
-        super()._handle_regular_data(chart, filtered_data)
+        if isinstance(y_axis_column, list):
+            chart_options["y_axis_column"] = y_axis_column[0]
+
+        # Temporarily set options to our modified version
+        original_options = self.options
+        self.options = chart_options
+
+        try:
+            # Use base chart's implementation
+            super()._handle_regular_data(chart, filtered_data)
+        finally:
+            # Restore original options
+            self.options = original_options
 
     def get_chart_specific_opts(self) -> dict:
         """Override chart specific options for bar chart."""
