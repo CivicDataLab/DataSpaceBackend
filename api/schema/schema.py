@@ -25,15 +25,6 @@ from api.types.type_organization import TypeOrganization
 
 @strawberry.type
 class DefaultQuery:
-    @strawberry_django.field
-    def organisations(self, info: Info) -> List[TypeOrganization]:
-        orgs = Organization.objects.all()
-        return [TypeOrganization.from_django(org) for org in orgs]
-
-    @strawberry_django.field
-    def dataspaces(self, info: Info) -> List[TypeDataSpace]:
-        spaces = DataSpace.objects.all()
-        return [TypeDataSpace.from_django(space) for space in spaces]
 
     @strawberry_django.field
     def metadata(self, info: Info) -> List[TypeMetadata]:

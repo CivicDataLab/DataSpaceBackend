@@ -22,8 +22,8 @@ class DataSpaceInputPartial:
 
 @strawberry.type(name="Query")
 class Query:
-    dataspace: TypeDataSpace = strawberry_django.field()
     dataspaces: list[TypeDataSpace] = strawberry_django.field()
+    dataspace: TypeDataSpace = strawberry_django.field()
 
 
 @strawberry.type
