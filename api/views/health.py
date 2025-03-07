@@ -1,10 +1,10 @@
 from typing import Any, Dict
 
 import structlog
+from django.core.cache import cache
 from django.db import connection
 from django.http import HttpRequest, JsonResponse
 from elasticsearch import Elasticsearch
-from redis import Redis
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
@@ -56,10 +56,13 @@ def health_check(request: HttpRequest) -> JsonResponse:
             "message": f"Failed to connect to Elasticsearch: {str(e)}",
         }
 
-    # Check Redis
+    # Check Redis using Django's cache settings
     try:
-        redis = Redis()
-        redis.ping()
+        cache.set("health_check", "ok", timeout=1)
+        result = cache.get("health_check")
+        if result != "ok":
+            raise Exception("Cache get/set test failed")
+
         status["redis"] = {
             "status": "healthy",
             "message": "Successfully connected to Redis",
