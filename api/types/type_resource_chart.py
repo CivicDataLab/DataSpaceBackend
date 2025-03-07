@@ -232,8 +232,13 @@ class TypeResourceChart(BaseType):
         if not chart_instance:
             return None
 
+        # Convert chart to JSON-serializable format
+        chart_options = chart_instance.dump_options() if chart_instance else None
+        if not chart_options:
+            return None
+
         return ChartConfig(
-            options=chart_instance.options,
+            options=chart_options,
             width=chart_instance.width,
             height=chart_instance.height,
             renderer=chart_instance.renderer,

@@ -51,7 +51,7 @@ def _get_map_chart(
                     lang=["View Data", "Close", "Refresh"],
                 ),
                 save_as_image=opts.ToolBoxFeatureSaveAsImageOpts(
-                    is_show=True, title="Save Image"
+                    is_show=True, title="Save as Image"
                 ),
             )
         ),
