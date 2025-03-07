@@ -6,6 +6,7 @@ from pyecharts import options as opts
 from pyecharts.charts import Map
 
 from api.models import ResourceChartDetails
+from api.types.charts.base_chart import DjangoFieldLike
 
 
 def _get_map_chart(
@@ -13,9 +14,7 @@ def _get_map_chart(
 ) -> Map:
     """Create a map chart with the given data and options."""
     options = cast(Dict[str, Any], chart_details.options)
-    value_col = cast(Dict[str, str], options.get("value_column", {})).get(
-        "field_name", ""
-    )
+    value_col = cast(DjangoFieldLike, options.get("value_column")).field_name
 
     map_chart = Map(init_opts=opts.InitOpts(width="1000px", height="100")).add(
         series_name=value_col,
