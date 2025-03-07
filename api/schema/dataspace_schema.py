@@ -22,10 +22,8 @@ class DataSpaceInputPartial:
 
 @strawberry.type(name="Query")
 class Query:
-    @strawberry_django.field
-    def dataspaces(self, info: Info) -> List[TypeDataSpace]:
-        dataspaces = DataSpace.objects.all()
-        return [TypeDataSpace.from_django(dataspace) for dataspace in dataspaces]
+    dataspace: TypeDataSpace = strawberry_django.field()
+    dataspaces: list[TypeDataSpace] = strawberry_django.field()
 
 
 @strawberry.type
