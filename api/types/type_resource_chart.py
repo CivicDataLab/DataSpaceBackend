@@ -47,7 +47,7 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
 class ChartConfig:
     """Type for chart configuration."""
 
-    options: JSON
+    options: str
     width: str
     height: str
     renderer: str
@@ -233,7 +233,9 @@ class TypeResourceChart(BaseType):
             return None
 
         # Convert chart to JSON-serializable format
-        chart_options = chart_instance.dump_options() if chart_instance else None
+        chart_options = (
+            chart_instance.dump_options_with_quotes() if chart_instance else None
+        )
         if not chart_options:
             return None
 
