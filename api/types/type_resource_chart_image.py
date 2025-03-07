@@ -1,3 +1,5 @@
+from typing import Optional
+
 import strawberry_django
 from strawberry import auto
 
@@ -19,3 +21,4 @@ class ResourceChartImageFilter:
 )
 class TypeResourceChartImage(BaseType):
     modified: auto
+    description: Optional[str] = ""

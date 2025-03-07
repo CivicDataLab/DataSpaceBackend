@@ -138,10 +138,10 @@ class TypeResourceChart(BaseType):
 
     id: uuid.UUID
     name: str
-    description: Optional[str]
     chart_type: str
     created: datetime
     modified: datetime
+    description: Optional[str] = ""
 
     @strawberry.field
     def chart_options(self) -> Optional[ChartOptionsType]:
