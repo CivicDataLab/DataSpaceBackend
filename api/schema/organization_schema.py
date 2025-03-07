@@ -24,11 +24,7 @@ class OrganizationInputPartial:
 
 @strawberry.type(name="Query")
 class Query:
-    @strawberry_django.field(pagination=True)
-    def organizations(self, info: Info) -> List[TypeOrganization]:
-        """Get all organizations."""
-        organizations = Organization.objects.all()
-        return [TypeOrganization.from_django(org) for org in organizations]
+    organizations: list[TypeOrganization] = strawberry_django.field()
 
     @strawberry_django.field
     def organization(self, info: Info, id: str) -> Optional[TypeOrganization]:
