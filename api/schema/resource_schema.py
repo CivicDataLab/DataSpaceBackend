@@ -252,6 +252,19 @@ class Mutation:
         _update_file_resource_schema(resource, schema_update_input.updates)
         return TypeResource.from_django(resource)
 
+    @strawberry_django.mutation(handle_django_errors=True)
+    def reset_file_resource_schema(
+        self, info: Info, resource_id: uuid.UUID
+    ) -> TypeResource:
+        try:
+            resource = Resource.objects.get(id=resource_id)
+        except Resource.DoesNotExist as e:
+            raise ValueError(f"Resource with ID {resource_id} does not exist.")
+        # TODO: validate file vs api type for schema
+        _create_file_resource_schema(resource)
+        resource.save()
+        return TypeResource.from_django(resource)
+
     @strawberry_django.mutation(handle_django_errors=False)
     def delete_file_resource(self, info: Info, resource_id: uuid.UUID) -> bool:
         try:
