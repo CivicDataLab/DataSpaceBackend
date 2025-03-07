@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
 import structlog
+from django.conf import settings
 from django.core.cache import cache
 from django.db import connection
 from django.http import HttpRequest, JsonResponse
@@ -39,9 +40,12 @@ def health_check(request: HttpRequest) -> JsonResponse:
             "message": f"Failed to connect to database: {str(e)}",
         }
 
-    # Check Elasticsearch
+    # Check Elasticsearch using Django settings
     try:
-        es = Elasticsearch()
+        es_settings = settings.ELASTICSEARCH_DSL["default"]
+        es = Elasticsearch(
+            hosts=es_settings["hosts"], http_auth=es_settings["http_auth"]
+        )
         if es.ping():
             status["elasticsearch"] = {
                 "status": "healthy",
