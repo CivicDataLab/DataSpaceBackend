@@ -24,11 +24,7 @@ class CategoryInputPartial:
 
 @strawberry.type(name="Query")
 class Query:
-    @strawberry_django.field(pagination=True)
-    def categories(self, info: Info) -> List[TypeCategory]:
-        """Get all categories."""
-        categories = Category.objects.all()
-        return [TypeCategory.from_django(category) for category in categories]
+    categories: list[TypeCategory] = strawberry_django.field()
 
     @strawberry_django.field
     def category(self, info: Info, id: uuid.UUID) -> Optional[TypeCategory]:

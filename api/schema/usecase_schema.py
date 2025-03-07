@@ -26,10 +26,8 @@ class UseCaseInputPartial:
 
 @strawberry.type(name="Query")
 class Query:
-    @strawberry_django.field(pagination=True)
-    def use_cases(self, info: Info) -> List[TypeUseCase]:
-        use_cases = UseCase.objects.all()
-        return [TypeUseCase.from_django(use_case) for use_case in use_cases]
+    use_cases: list[TypeUseCase] = strawberry_django.field()
+    use_case: TypeUseCase = strawberry_django.field()
 
 
 @strawberry.type

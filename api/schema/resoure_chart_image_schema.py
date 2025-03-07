@@ -25,11 +25,7 @@ class ResourceChartImageInputPartial:
 
 @strawberry.type(name="Query")
 class Query:
-    @strawberry_django.field(pagination=True)
-    def resource_chart_images(self, info: Info) -> List[TypeResourceChartImage]:
-        """Get all resource chart images."""
-        images = ResourceChartImage.objects.all()
-        return [TypeResourceChartImage.from_django(image) for image in images]
+    resource_chart_images: list[TypeResourceChartImage] = strawberry_django.field()
 
     @strawberry_django.field(pagination=True)
     def dataset_resource_charts(
