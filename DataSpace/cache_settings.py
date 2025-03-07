@@ -1,14 +1,18 @@
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
+        "LOCATION": "redis://redis:6379/1",  # Using redis container hostname
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "SOCKET_CONNECT_TIMEOUT": 5,
             "SOCKET_TIMEOUT": 5,
             "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
             "IGNORE_EXCEPTIONS": True,
-        }
+            "RETRY_ON_TIMEOUT": True,  # Added retry on timeout
+            "CONNECTION_POOL_KWARGS": {
+                "max_connections": 100
+            },  # Added connection pool settings
+        },
     }
 }
 

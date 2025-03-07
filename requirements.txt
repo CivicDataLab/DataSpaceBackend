@@ -65,7 +65,8 @@ django-debug-toolbar==4.2.0  # Downgraded for better Django compatibility
 django-ratelimit==4.1.0
 
 # Caching and Performance
-django-redis==5.4.0
+django-redis==5.4.0  # Added for Redis caching
+redis==5.0.1  # Added Redis client
 django-cacheops==7.0.2
 
 # Code Quality and Type Checking
