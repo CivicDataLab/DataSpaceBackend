@@ -53,6 +53,8 @@ Query = merge_types(
         api.schema.resource_chart_schema.Query,
         api.schema.usecase_schema.Query,
         api.schema.resoure_chart_image_schema.Query,
+        api.schema.organization_schema.Query,
+        api.schema.dataspace_schema.Query,
     ),
 )
 
