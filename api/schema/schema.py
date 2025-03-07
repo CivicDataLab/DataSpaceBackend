@@ -26,10 +26,7 @@ from api.types.type_organization import TypeOrganization
 @strawberry.type
 class DefaultQuery:
 
-    @strawberry_django.field
-    def metadata(self, info: Info) -> List[TypeMetadata]:
-        metadata_list = Metadata.objects.all()
-        return [TypeMetadata.from_django(meta) for meta in metadata_list]
+    metadata: list[TypeMetadata] = strawberry_django.field()
 
     @strawberry_django.field
     def resources(self, info: Info) -> List[TypeResource]:

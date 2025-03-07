@@ -38,15 +38,6 @@ class Query:
             metadata_list = metadata_list.filter(id__gt=after_id)
         return [TypeMetadata.from_django(meta) for meta in metadata_list]
 
-    @strawberry_django.field
-    def metadata(self, info: Info, id: str) -> TypeMetadata:
-        """Get metadata by ID."""
-        try:
-            metadata = Metadata.objects.get(id=id)
-            return TypeMetadata.from_django(metadata)
-        except Metadata.DoesNotExist:
-            raise ValueError(f"Metadata with ID {id} does not exist.")
-
 
 @strawberry.type
 class Mutation:
