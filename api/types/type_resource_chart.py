@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Type, TypedDict, TypeVar, Union, cast
@@ -47,7 +48,7 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
 class ChartConfig:
     """Type for chart configuration."""
 
-    options: str
+    options: JSON
     width: str
     height: str
     renderer: str
@@ -240,7 +241,7 @@ class TypeResourceChart(BaseType):
             return None
 
         return ChartConfig(
-            options=chart_options,
+            options=json.loads(chart_options),
             width=chart_instance.width,
             height=chart_instance.height,
             renderer=chart_instance.renderer,
