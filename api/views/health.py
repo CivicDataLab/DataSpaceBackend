@@ -1,5 +1,6 @@
 from typing import Any, Dict
 
+import requests
 import structlog
 from django.conf import settings
 from django.core.cache import cache
@@ -23,6 +24,7 @@ def health_check(request: HttpRequest) -> JsonResponse:
         "database": {"status": "unknown"},
         "elasticsearch": {"status": "unknown"},
         "redis": {"status": "unknown"},
+        "telemetry": {"status": "unknown"},
     }
 
     # Check database
@@ -78,12 +80,39 @@ def health_check(request: HttpRequest) -> JsonResponse:
             "message": f"Failed to connect to Redis: {str(e)}",
         }
 
+    # Check OpenTelemetry collector
+    try:
+        # Convert gRPC port to HTTP health check port (usually 13133)
+        telemetry_url = settings.TELEMETRY_URL.replace("http://", "").replace(
+            "https://", ""
+        )
+        host = telemetry_url.split(":")[0]
+        health_url = (
+            f"http://{host}:13133"  # OpenTelemetry collector health check endpoint
+        )
+
+        response = requests.get(health_url, timeout=5)
+        if response.status_code == 200:
+            status["telemetry"] = {
+                "status": "healthy",
+                "message": "Successfully connected to OpenTelemetry collector",
+            }
+        else:
+            raise Exception(f"Health check returned status code {response.status_code}")
+
+    except Exception as e:
+        logger.error("Telemetry health check failed", error=str(e))
+        status["telemetry"] = {
+            "status": "unhealthy",
+            "message": f"Failed to connect to OpenTelemetry collector: {str(e)}",
+        }
+
     # Overall status
     overall_status = all(service["status"] == "healthy" for service in status.values())
 
-    response = {
+    data = {
         "status": "healthy" if overall_status else "unhealthy",
         "services": status,
     }
 
-    return JsonResponse(response)
+    return JsonResponse(data)
