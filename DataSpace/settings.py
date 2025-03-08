@@ -299,6 +299,37 @@ structlog.configure(
     cache_logger_on_first_use=True,
 )
 
+# OpenTelemetry Configuration
+OTEL_SERVICE_NAME = os.getenv("OTEL_SERVICE_NAME", "dataspace-backend")
+OTEL_PYTHON_DJANGO_INSTRUMENT = True
+OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = [
+    "content-type",
+    "user-agent",
+]
+OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = ["content-type"]
+
+# OpenTelemetry Resource Attributes
+OTEL_RESOURCE_ATTRIBUTES = {
+    "service.name": OTEL_SERVICE_NAME,
+    "service.namespace": "dataspace",
+    "deployment.environment": os.getenv("ENVIRONMENT", "development"),
+}
+
+# OpenTelemetry Exporters Configuration
+OTEL_EXPORTER_OTLP_ENDPOINT = TELEMETRY_URL
+OTEL_EXPORTER_OTLP_PROTOCOL = "grpc"
+OTEL_TRACES_SAMPLER = "parentbased_traceidratio"
+OTEL_TRACES_SAMPLER_ARG = "1.0"  # Sample 100% of traces in development
+
+# OpenTelemetry Instrumentation
+OTEL_INSTRUMENTATION_PACKAGES = [
+    "django",
+    "elasticsearch",
+    "requests",
+    "redis",
+    "sqlalchemy",
+]
+
 # Rate limiting settings
 RATELIMIT_ENABLE = True
 RATELIMIT_USE_CACHE = "default"
