@@ -1,4 +1,5 @@
-import uuid
+"""Schema definitions for organizations."""
+
 from typing import List, Optional
 
 import strawberry
@@ -13,17 +14,23 @@ from api.types.type_organization import TypeOrganization
 
 @strawberry_django.input(Organization, fields="__all__")
 class OrganizationInput:
+    """Input type for organization creation."""
+
     pass
 
 
 @strawberry_django.partial(Organization, fields="__all__")
 class OrganizationInputPartial:
-    id: uuid.UUID
+    """Input type for organization updates."""
+
+    id: str
     slug: auto
 
 
 @strawberry.type(name="Query")
 class Query:
+    """Queries for organizations."""
+
     organizations: list[TypeOrganization] = strawberry_django.field()
 
     @strawberry_django.field
@@ -38,6 +45,8 @@ class Query:
 
 @strawberry.type
 class Mutation:
+    """Mutations for organizations."""
+
     @strawberry_django.mutation(handle_django_errors=True)
     def create_organization(
         self, info: Info, input: OrganizationInput

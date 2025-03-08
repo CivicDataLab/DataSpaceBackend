@@ -10,6 +10,7 @@ from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 
 from api.models import Dataset, DatasetMetadata, Metadata
+from api.utils.telemetry_utils import trace_method, track_metrics
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
 from search.documents import DatasetDocument
 
@@ -88,7 +89,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
 
     serializer_class = DatasetDocumentSerializer
     document_class = DatasetDocument
-    permission_classes = [AllowAny]  # Allow unauthenticated access
+    permission_classes = [AllowAny]
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -99,8 +100,11 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         )
         self.logger = structlog.get_logger(__name__)
 
-    @staticmethod
-    def get_searchable_and_aggregations() -> Tuple[List[str], Dict[str, str]]:
+    @trace_method(
+        name="get_searchable_and_aggregations",
+        attributes={"component": "search_dataset"},
+    )
+    def get_searchable_and_aggregations(self) -> Tuple[List[str], Dict[str, str]]:
         """Get searchable fields and aggregations for the search."""
         enabled_metadata = Metadata.objects.filter(enabled=True).all()
         searchable_fields: List[str] = []
@@ -124,6 +128,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
                 aggregations[f"metadata.{metadata.label}"] = "terms"
         return searchable_fields, aggregations
 
+    @trace_method(name="add_aggregations", attributes={"component": "search_dataset"})
     def add_aggregations(self, search: Search) -> Search:
         """Add aggregations to the search query for metadata value and label using composite aggregation."""
         aggregate_fields: List[str] = []
@@ -171,6 +176,9 @@ class SearchDataset(PaginatedElasticSearchAPIView):
 
         return search
 
+    @trace_method(
+        name="generate_q_expression", attributes={"component": "search_dataset"}
+    )
     def generate_q_expression(
         self, query: str
     ) -> Optional[Union[ESQuery, List[ESQuery]]]:
@@ -208,6 +216,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
 
         return ESQ("bool", should=queries, minimum_should_match=1)
 
+    @trace_method(name="add_filters", attributes={"component": "search_dataset"})
     def add_filters(self, filters: Dict[str, str], search: Search) -> Search:
         """Add filters to the search query."""
         non_filter_metadata = Metadata.objects.filter(filterable=False).all()
@@ -234,6 +243,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
                 )
         return search
 
+    @trace_method(name="add_sort", attributes={"component": "search_dataset"})
     def add_sort(self, sort: str, search: Search) -> Search:
         """Add sorting to the search query."""
         if sort == "alphabetical":

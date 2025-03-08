@@ -49,7 +49,10 @@ repos:
           - djangorestframework
           - django-debug-toolbar
           - django-ratelimit
+          - django-cors-headers
           - psycopg2-binary
+          - python-dotenv
+          - uvicorn
 
         args: [--config-file=mypy.ini]
         exclude: ^tests/

@@ -1,4 +1,5 @@
-import uuid
+"""Schema definitions for metadata."""
+
 from typing import List, Optional
 
 import strawberry
@@ -12,35 +13,42 @@ from api.types import TypeMetadata
 
 @strawberry_django.input(Metadata, fields="__all__")
 class MetadataInput:
+    """Input type for metadata creation."""
+
     pass
 
 
 @strawberry_django.partial(Metadata, fields="__all__")
 class MetadataInputPartial:
-    id: uuid.UUID
+    """Input type for metadata updates."""
+
+    id: str
 
 
 @strawberry.type(name="Query")
 class Query:
+    """Queries for metadata."""
+
     @strawberry_django.field(pagination=True)
     def metadata_list(
         self,
         info: Info,
         first: Optional[int] = None,
-        after: Optional[strawberry.ID] = None,
+        after: Optional[str] = None,
     ) -> List[TypeMetadata]:
-        """Get all metadata."""
+        """Get paginated metadata list."""
         metadata_list = Metadata.objects.all()
         if first is not None:
             metadata_list = metadata_list[:first]
         if after is not None:
-            after_id = uuid.UUID(after)
-            metadata_list = metadata_list.filter(id__gt=after_id)
+            metadata_list = metadata_list.filter(id__gt=after)
         return [TypeMetadata.from_django(meta) for meta in metadata_list]
 
 
 @strawberry.type
 class Mutation:
+    """Mutations for metadata."""
+
     @strawberry_django.mutation(handle_django_errors=True)
     def create_metadata(self, info: Info, input: MetadataInput) -> TypeMetadata:
         """Create a new metadata."""

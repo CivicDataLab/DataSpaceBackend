@@ -20,34 +20,44 @@ from api.utils.file_utils import file_validation
 
 @strawberry.input
 class CreateFileResourceInput:
-    dataset: uuid.UUID
-    files: List[Upload]
+    """Input type for creating a file resource."""
+
+    dataset: uuid.UUID = strawberry.field()
+    files: List[Upload] = strawberry.field()
 
 
 @strawberry.input
 class CreateEmptyFileResourceInput:
-    dataset: uuid.UUID
+    """Input type for creating an empty file resource."""
+
+    dataset: uuid.UUID = strawberry.field()
 
 
 @strawberry.input
 class PreviewDetails:
-    is_all_entries: bool = True
-    start_entry: int = 0
-    end_entry: int = 10
+    """Input type for preview details."""
+
+    is_all_entries: bool = strawberry.field(default=True)
+    start_entry: int = strawberry.field(default=0)
+    end_entry: int = strawberry.field(default=10)
 
 
 @strawberry.input
 class UpdateFileResourceInput:
-    id: uuid.UUID
-    file: Optional[Upload] = None
-    name: Optional[str] = None
-    description: Optional[str] = None
-    preview_enabled: bool = False
-    preview_details: Optional[PreviewDetails] = None
+    """Input type for updating a file resource."""
+
+    id: uuid.UUID = strawberry.field()
+    file: Optional[Upload] = strawberry.field(default=None)
+    name: Optional[str] = strawberry.field(default=None)
+    description: Optional[str] = strawberry.field(default=None)
+    preview_enabled: bool = strawberry.field(default=False)
+    preview_details: Optional[PreviewDetails] = strawberry.field(default=None)
 
 
 @strawberry.enum
 class FieldType(Enum):
+    """Enum for field types."""
+
     STRING = "STRING"
     NUMBER = "NUMBER"
     INTEGER = "INTEGER"
@@ -56,28 +66,36 @@ class FieldType(Enum):
 
 @strawberry.input
 class SchemaUpdate:
-    id: str
-    description: str
-    format: FieldType
+    """Input type for schema updates."""
+
+    id: str = strawberry.field()
+    description: str = strawberry.field()
+    format: FieldType = strawberry.field()
 
 
 @strawberry.input
 class SchemaUpdateInput:
-    resource: uuid.UUID
-    updates: List[SchemaUpdate]
+    """Input type for schema updates."""
+
+    resource: uuid.UUID = strawberry.field()
+    updates: List[SchemaUpdate] = strawberry.field()
 
 
-@strawberry.type(name="Query")
+@strawberry.type
 class Query:
+    """Queries for resources."""
+
     @strawberry_django.field
     def dataset_resources(
         self, info: Info, dataset_id: uuid.UUID
     ) -> List[TypeResource]:
+        """Get resources for a dataset."""
         resources = Resource.objects.filter(dataset_id=dataset_id)
         return [TypeResource.from_django(resource) for resource in resources]
 
 
 def _validate_file_details_and_update_format(resource: Resource) -> None:
+    """Validate file details and update format."""
     file_details = getattr(resource, "resourcefiledetails", None)
     if not file_details:
         raise ValueError("Resource has no file details")
@@ -109,6 +127,7 @@ def _validate_file_details_and_update_format(resource: Resource) -> None:
 
 
 def _create_file_resource_schema(resource: Resource) -> None:
+    """Create file resource schema."""
     existing_schema: QuerySet[ResourceSchema] = ResourceSchema.objects.filter(
         resource=resource
     )
@@ -136,6 +155,7 @@ def _create_file_resource_schema(resource: Resource) -> None:
 def _update_file_resource_schema(
     resource: Resource, updated_schema: List[SchemaUpdate]
 ) -> None:
+    """Update file resource schema."""
     existing_schema: QuerySet[ResourceSchema] = ResourceSchema.objects.filter(
         resource=resource
     )
@@ -154,6 +174,7 @@ def _update_file_resource_schema(
 def _update_resource_preview_details(
     file_resource_input: UpdateFileResourceInput, resource: Resource
 ) -> None:
+    """Update resource preview details."""
     preview_details = getattr(resource, "preview_details", None)
     if preview_details:
         preview_details.delete()
@@ -170,10 +191,13 @@ def _update_resource_preview_details(
 
 @strawberry.type
 class Mutation:
+    """Mutations for resources."""
+
     @strawberry_django.mutation(handle_django_errors=False)
     def create_file_resources(
         self, info: Info, file_resource_input: CreateFileResourceInput
     ) -> List[TypeResource]:
+        """Create file resources."""
         dataset_id = file_resource_input.dataset
         resources = []
         try:
@@ -194,6 +218,7 @@ class Mutation:
     def create_file_resource(
         self, info: Info, file_resource_input: CreateEmptyFileResourceInput
     ) -> TypeResource:
+        """Create a file resource."""
         dataset_id = file_resource_input.dataset
         try:
             dataset = Dataset.objects.get(id=dataset_id)
@@ -207,6 +232,7 @@ class Mutation:
     def update_file_resource(
         self, info: Info, file_resource_input: UpdateFileResourceInput
     ) -> TypeResource:
+        """Update a file resource."""
         try:
             resource = Resource.objects.get(id=file_resource_input.id)
         except Resource.DoesNotExist as e:
@@ -242,6 +268,7 @@ class Mutation:
     def update_file_resource_schema(
         self, info: Info, schema_update_input: SchemaUpdateInput
     ) -> TypeResource:
+        """Update file resource schema."""
         try:
             resource = Resource.objects.get(id=schema_update_input.resource)
         except Resource.DoesNotExist as e:
@@ -256,6 +283,7 @@ class Mutation:
     def reset_file_resource_schema(
         self, info: Info, resource_id: uuid.UUID
     ) -> TypeResource:
+        """Reset file resource schema."""
         try:
             resource = Resource.objects.get(id=resource_id)
         except Resource.DoesNotExist as e:
@@ -267,6 +295,7 @@ class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=False)
     def delete_file_resource(self, info: Info, resource_id: uuid.UUID) -> bool:
+        """Delete a file resource."""
         try:
             resource = Resource.objects.get(id=resource_id)
             resource.delete()

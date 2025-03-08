@@ -1,3 +1,4 @@
+import uuid
 from typing import Any, Dict, List, Optional, TypeVar
 
 import strawberry
@@ -33,14 +34,14 @@ class PreviewData:
     """Type for preview data."""
 
     columns: List[str]
-    rows: List[JSON]
+    rows: List[Any]
 
 
 @type(Resource)
 class TypeResource(BaseType):
     """Type for resource."""
 
-    id: auto
+    id: uuid.UUID
     dataset: auto
     created: auto
     modified: auto
@@ -70,7 +71,7 @@ class TypeResource(BaseType):
             List[TypeResourceMetadata]: List of resource metadata
         """
         try:
-            queryset: QuerySet = ResourceMetadata.objects.filter(resource_id=self.id)
+            queryset: QuerySet = ResourceMetadata.objects.filter(resource__id=self.id)
             return TypeResourceMetadata.from_django_list(queryset)
         except (AttributeError, ResourceMetadata.DoesNotExist):
             return []

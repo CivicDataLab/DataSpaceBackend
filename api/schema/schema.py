@@ -16,11 +16,10 @@ import api.schema.resource_chart_schema
 import api.schema.resource_schema
 import api.schema.resoure_chart_image_schema
 import api.schema.usecase_schema
-from api.models import DataSpace, Metadata, Organization, Resource, Tag
+from api.models import Resource, Tag
 from api.types import TypeMetadata, TypeResource
 from api.types.type_dataset import TypeTag
-from api.types.type_dataspace import TypeDataSpace
-from api.types.type_organization import TypeOrganization
+from api.utils.graphql_telemetry import TelemetryExtension, trace_resolver
 
 
 @strawberry.type
@@ -28,11 +27,13 @@ class DefaultQuery:
 
     metadata: list[TypeMetadata] = strawberry_django.field()
 
+    @trace_resolver(name="resources", attributes={"component": "default"})
     @strawberry_django.field
     def resources(self, info: Info) -> List[TypeResource]:
         resources = Resource.objects.all()
         return [TypeResource.from_django(resource) for resource in resources]
 
+    @trace_resolver(name="tags", attributes={"component": "default"})
     @strawberry_django.field
     def tags(self, info: Info) -> List[TypeTag]:
         tags = Tag.objects.all()
@@ -49,9 +50,9 @@ Query = merge_types(
         api.schema.category_schema.Query,
         api.schema.resource_chart_schema.Query,
         api.schema.usecase_schema.Query,
-        api.schema.resoure_chart_image_schema.Query,
         api.schema.organization_schema.Query,
         api.schema.dataspace_schema.Query,
+        api.schema.resoure_chart_image_schema.Query,
     ),
 )
 
@@ -59,14 +60,14 @@ Mutation = merge_types(
     "Mutation",
     (
         api.schema.dataset_schema.Mutation,
-        api.schema.metadata_schema.Mutation,
         api.schema.resource_schema.Mutation,
         api.schema.access_model_schema.Mutation,
         api.schema.category_schema.Mutation,
-        api.schema.organization_schema.Mutation,
-        api.schema.dataspace_schema.Mutation,
         api.schema.resource_chart_schema.Mutation,
         api.schema.usecase_schema.Mutation,
+        api.schema.organization_schema.Mutation,
+        api.schema.metadata_schema.Mutation,
+        api.schema.dataspace_schema.Mutation,
         api.schema.resoure_chart_image_schema.Mutation,
     ),
 )
@@ -76,7 +77,6 @@ schema = strawberry.Schema(
     mutation=Mutation,
     extensions=[
         DjangoOptimizerExtension,
-        # MaskErrors,
-        # OpenTelemetryExtension
+        TelemetryExtension,
     ],
 )
