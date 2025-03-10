@@ -106,8 +106,9 @@ def health_check(request: HttpRequest) -> JsonResponse:
             "https://", ""
         )
         host = telemetry_url.split(":")[0]
+        port = telemetry_url.split(":")[1]
         health_url = (
-            f"http://{host}:13133"  # OpenTelemetry collector health check endpoint
+            f"http://{host}:{port}"  # OpenTelemetry collector health check endpoint
         )
 
         response = requests.get(health_url, timeout=5)
