@@ -101,15 +101,13 @@ def health_check(request: HttpRequest) -> JsonResponse:
 
     # Check OpenTelemetry collector
     try:
-        # Convert gRPC port to HTTP health check port (usually 13133)
+        # Extract host and port from TELEMETRY_URL
         telemetry_url = settings.TELEMETRY_URL.replace("http://", "").replace(
             "https://", ""
         )
         host = telemetry_url.split(":")[0]
-        port = telemetry_url.split(":")[1]
-        health_url = (
-            f"http://{host}:{port}"  # OpenTelemetry collector health check endpoint
-        )
+        # Use default health check port 13133 instead of gRPC port
+        health_url = f"http://{host}:13133/health"  # OpenTelemetry collector health check endpoint
 
         response = requests.get(health_url, timeout=5)
         if response.status_code == 200:
