@@ -35,7 +35,7 @@ class PreviewData:
     """Type for preview data."""
 
     columns: List[str]
-    rows: List[List[str | int | float | bool | None]]
+    rows: List[List[JSON]]
 
 
 @type(Resource)
@@ -140,7 +140,7 @@ class TypeResource(BaseType):
             object_columns = df.select_dtypes(include=["object"]).columns
             df[object_columns] = df[object_columns].astype(str)
 
-            def convert_value(val: Any) -> str | int | float | bool | None:
+            def convert_value(val: Any) -> Any:
                 """Convert value to appropriate type for GraphQL."""
                 if pd.isna(val):
                     return None
