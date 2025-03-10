@@ -223,7 +223,7 @@ ELASTICSEARCH_DSL = {
         ),
     }
 }
-TELEMETRY_URL = os.getenv("TELEMETRY_URL", "http://otel-collector:4317")
+
 ELASTICSEARCH_INDEX_NAMES = {
     "search.documents.dataset_document": "dataset",
 }
@@ -300,30 +300,52 @@ structlog.configure(
 )
 
 # OpenTelemetry Configuration
-OTEL_SERVICE_NAME = os.getenv("OTEL_SERVICE_NAME", "dataspace-backend")
-OTEL_PYTHON_DJANGO_INSTRUMENT = True
-OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = [
-    "content-type",
-    "user-agent",
-]
-OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = ["content-type"]
-
-# OpenTelemetry Resource Attributes
+TELEMETRY_URL = os.getenv("TELEMETRY_URL", "http://otel-collector:4317")
+OTEL_SERVICE_NAME = "dataspace"
 OTEL_RESOURCE_ATTRIBUTES = {
-    "service.name": OTEL_SERVICE_NAME,
     "service.namespace": "dataspace",
     "deployment.environment": os.getenv("ENVIRONMENT", "development"),
 }
 
-# OpenTelemetry Exporters Configuration
+# OpenTelemetry Endpoint Configuration
 OTEL_EXPORTER_OTLP_ENDPOINT = TELEMETRY_URL
 OTEL_EXPORTER_OTLP_PROTOCOL = "grpc"
-OTEL_TRACES_SAMPLER = "parentbased_traceidratio"
-OTEL_TRACES_SAMPLER_ARG = "1.0"  # Sample 100% of traces in development
 
-# OpenTelemetry Instrumentation
+# OpenTelemetry Sampling Configuration
+OTEL_TRACES_SAMPLER = "parentbased_traceidratio"
+OTEL_TRACES_SAMPLER_ARG = os.getenv(
+    "OTEL_TRACES_SAMPLER_ARG", "1.0"
+)  # Sample 100% in dev
+
+# OpenTelemetry Metrics Configuration
+OTEL_METRIC_EXPORT_INTERVAL_MILLIS = int(
+    os.getenv("OTEL_METRIC_EXPORT_INTERVAL_MILLIS", "30000")
+)
+OTEL_METRIC_EXPORT_TIMEOUT_MILLIS = int(
+    os.getenv("OTEL_METRIC_EXPORT_TIMEOUT_MILLIS", "30000")
+)
+
+# OpenTelemetry Instrumentation Configuration
+OTEL_PYTHON_DJANGO_INSTRUMENT = True
+OTEL_PYTHON_DJANGO_TRACED_REQUEST_ATTRS = [
+    "path",
+    "method",
+    "scheme",
+    "server_port",
+    "remote_addr",
+]
+OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = [
+    "content-type",
+    "user-agent",
+    "x-request-id",
+]
+OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = [
+    "content-type",
+    "content-length",
+]
+
+# OpenTelemetry Instrumentors
 OTEL_INSTRUMENTATION_PACKAGES = [
-    "django",
     "elasticsearch",
     "requests",
     "redis",
