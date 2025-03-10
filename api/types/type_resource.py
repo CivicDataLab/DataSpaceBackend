@@ -1,6 +1,7 @@
 import uuid
 from typing import Any, Dict, List, Optional, TypeVar
 
+import pandas as pd
 import strawberry
 from django.db.models import QuerySet
 from strawberry import auto
@@ -34,7 +35,7 @@ class PreviewData:
     """Type for preview data."""
 
     columns: List[str]
-    rows: List[Any]
+    rows: List[List[str | int | float | bool | None]]
 
 
 @type(Resource)
@@ -135,12 +136,31 @@ class TypeResource(BaseType):
                 return None
 
             df = load_csv(file_details.file.path)
+            # Convert object columns to string to ensure type safety
+            object_columns = df.select_dtypes(include=["object"]).columns
+            df[object_columns] = df[object_columns].astype(str)
+
+            def convert_value(val: Any) -> str | int | float | bool | None:
+                """Convert value to appropriate type for GraphQL."""
+                if pd.isna(val):
+                    return None
+                if isinstance(val, (int, float, bool)):
+                    return val
+                if isinstance(val, (dict, list)):
+                    return str(val)
+                return str(val)
+
             if getattr(self.preview_details, "is_all_entries", False):
-                records = df.to_dict("records")
+                records = [
+                    [convert_value(val) for val in row] for row in df.values.tolist()
+                ]
             else:
                 start = getattr(self.preview_details, "start_entry", None)
                 end = getattr(self.preview_details, "end_entry", None)
-                records = df.iloc[start:end].to_dict("records")
+                records = [
+                    [convert_value(val) for val in row]
+                    for row in df.iloc[start:end].values.tolist()
+                ]
 
             return PreviewData(columns=list(df.columns), rows=records)
         except (AttributeError, FileNotFoundError):
