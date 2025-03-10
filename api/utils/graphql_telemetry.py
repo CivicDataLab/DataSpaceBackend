@@ -197,7 +197,11 @@ class TelemetryExtension(SchemaExtension):
 
     def on_operation(self) -> Iterator[None]:
         """Handle operation start."""
-        if not self.execution_context.operation_type:
+        try:
+            if not self.execution_context.operation_type:
+                return iter(())
+        except RuntimeError:
+            # Skip telemetry for introspection queries
             return iter(())
 
         start_time = time.time()
