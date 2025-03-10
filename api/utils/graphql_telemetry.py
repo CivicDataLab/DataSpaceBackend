@@ -64,8 +64,14 @@ def trace_resolver(
             # Get GraphQL info from args
             info = next((arg for arg in args if isinstance(arg, Info)), None)
 
-            with trace.get_tracer(__name__).start_as_current_span(
-                f"resolver.{span_name}"
+            # Get parent span from context if available
+            parent_span = (
+                info.context.get("telemetry_span") if info and info.context else None
+            )
+
+            with trace.get_tracer(__name__).start_span(
+                f"resolver.{span_name}",
+                context=parent_span.get_span_context() if parent_span else None,
             ) as span:
                 # Add base attributes
                 if attributes:
@@ -81,8 +87,8 @@ def trace_resolver(
                             "graphql.variables", str(info.variable_values)
                         )
 
+                start_time = time.time()
                 try:
-                    start_time = time.time()
                     result = func(*args, **kwargs)
                     duration_ms = (time.time() - start_time) * 1000
 
@@ -101,10 +107,10 @@ def trace_resolver(
                             "field": info.field_name if info else "unknown",
                         },
                     )
-
                     return result
                 except Exception as e:
-                    # Record error metrics
+                    span.set_status(Status(StatusCode.ERROR))
+                    span.record_exception(e)
                     graphql_errors_total.add(
                         1,
                         {
@@ -113,23 +119,30 @@ def trace_resolver(
                             "error": e.__class__.__name__,
                         },
                     )
-                    span.record_exception(e)
-                    span.set_status(Status(StatusCode.ERROR, str(e)))
                     raise
 
-        @functools.wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
-            # Similar to sync_wrapper but for async functions
+            # Get the resolver name
             span_name = name or func.__name__
+
+            # Get GraphQL info from args
             info = next((arg for arg in args if isinstance(arg, Info)), None)
 
-            with trace.get_tracer(__name__).start_as_current_span(
-                f"resolver.{span_name}"
+            # Get parent span from context if available
+            parent_span = (
+                info.context.get("telemetry_span") if info and info.context else None
+            )
+
+            with trace.get_tracer(__name__).start_span(
+                f"resolver.{span_name}",
+                context=parent_span.get_span_context() if parent_span else None,
             ) as span:
+                # Add base attributes
                 if attributes:
                     for key, value in attributes.items():
                         span.set_attribute(key, value)
 
+                # Add GraphQL context if available
                 if info:
                     span.set_attribute("graphql.field", info.field_name)
                     span.set_attribute("graphql.operation", str(info.operation))
@@ -138,11 +151,12 @@ def trace_resolver(
                             "graphql.variables", str(info.variable_values)
                         )
 
+                start_time = time.time()
                 try:
-                    start_time = time.time()
                     result = await func(*args, **kwargs)
                     duration_ms = (time.time() - start_time) * 1000
 
+                    # Record metrics
                     graphql_request_duration.record(
                         duration_ms,
                         {
@@ -157,9 +171,10 @@ def trace_resolver(
                             "field": info.field_name if info else "unknown",
                         },
                     )
-
                     return result
                 except Exception as e:
+                    span.set_status(Status(StatusCode.ERROR))
+                    span.record_exception(e)
                     graphql_errors_total.add(
                         1,
                         {
@@ -168,11 +183,8 @@ def trace_resolver(
                             "error": e.__class__.__name__,
                         },
                     )
-                    span.record_exception(e)
-                    span.set_status(Status(StatusCode.ERROR, str(e)))
                     raise
 
-        # Use appropriate wrapper based on whether the function is async
         if asyncio.iscoroutinefunction(func):
             return cast(F, async_wrapper)
         return cast(F, sync_wrapper)
@@ -188,6 +200,8 @@ class TelemetryExtension(SchemaExtension):
         if not self.execution_context.operation_type:
             return iter(())
 
+        start_time = time.time()
+
         # Start span for the operation
         span = trace.get_tracer(__name__).start_span(
             f"graphql.{self.execution_context.operation_type}",
@@ -195,6 +209,7 @@ class TelemetryExtension(SchemaExtension):
                 "graphql.operation_name": self.execution_context.operation_name
                 or "anonymous",
                 "graphql.operation_type": str(self.execution_context.operation_type),
+                "graphql.query": str(self.execution_context.query),
             },
         )
 
@@ -203,7 +218,33 @@ class TelemetryExtension(SchemaExtension):
 
         try:
             yield
+        except Exception as e:
+            span.set_status(Status(StatusCode.ERROR))
+            span.record_exception(e)
+            graphql_errors_total.add(
+                1,
+                {
+                    "operation": str(self.execution_context.operation_type),
+                    "error": e.__class__.__name__,
+                },
+            )
+            raise
         finally:
+            duration = (time.time() - start_time) * 1000  # Convert to milliseconds
+            graphql_request_duration.record(
+                duration,
+                {
+                    "operation": str(self.execution_context.operation_type),
+                    "name": self.execution_context.operation_name or "anonymous",
+                },
+            )
+            graphql_requests_total.add(
+                1,
+                {
+                    "operation": str(self.execution_context.operation_type),
+                    "name": self.execution_context.operation_name or "anonymous",
+                },
+            )
             span.end()
 
     def on_validation_error(self, errors: Any) -> None:
