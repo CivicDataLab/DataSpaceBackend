@@ -1,6 +1,7 @@
 """Schema definitions for use cases."""
 
 import datetime
+import uuid
 from typing import List, Optional
 
 import strawberry
@@ -64,7 +65,7 @@ class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=True)
     def add_dataset_to_use_case(
-        self, info: Info, use_case_id: str, dataset_id: str
+        self, info: Info, use_case_id: str, dataset_id: uuid.UUID
     ) -> TypeUseCase:
         """Add a dataset to a use case."""
         try:
@@ -83,7 +84,7 @@ class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=True)
     def remove_dataset_from_use_case(
-        self, info: Info, use_case_id: str, dataset_id: str
+        self, info: Info, use_case_id: str, dataset_id: uuid.UUID
     ) -> TypeUseCase:
         """Remove a dataset from a use case."""
         try:
@@ -102,7 +103,7 @@ class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=True)
     def update_usecase_datasets(
-        self, info: Info, use_case_id: str, dataset_ids: List[str]
+        self, info: Info, use_case_id: str, dataset_ids: List[uuid.UUID]
     ) -> TypeUseCase:
         """Update the datasets of a use case."""
         try:
