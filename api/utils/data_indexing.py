@@ -130,7 +130,19 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
                 for col in df.columns:
                     try:
                         # Determine format - always use the detected format from the data
-                        format_value = get_sql_type(str(df[col].dtype)).lower()
+                        sql_type = get_sql_type(str(df[col].dtype))
+
+                        # Map SQL types to FieldTypes enum values
+                        if sql_type == "BIGINT":
+                            format_value = "INTEGER"
+                        elif sql_type == "DOUBLE PRECISION":
+                            format_value = "NUMBER"
+                        elif sql_type == "TIMESTAMP":
+                            format_value = "DATE"
+                        elif sql_type == "BOOLEAN":
+                            format_value = "BOOLEAN"
+                        else:  # TEXT or any other type
+                            format_value = "STRING"
 
                         # For description, preserve existing if available, otherwise auto-generate
                         description = f"Auto-generated from CSV column {col}"
