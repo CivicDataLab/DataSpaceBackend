@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Dict, List, Optional, TypeVar
+from typing import Any, List, Optional, TypeVar
 
 import pandas as pd
 import strawberry
@@ -8,8 +8,13 @@ from strawberry import auto
 from strawberry.scalars import JSON
 from strawberry_django import type
 
-from api.models import Resource, ResourceFileDetails, ResourceMetadata, ResourceSchema
-from api.schema.resource_schema import PreviewDetails
+from api.models import (
+    Resource,
+    ResourceFileDetails,
+    ResourceMetadata,
+    ResourcePreviewDetails,
+    ResourceSchema,
+)
 from api.types.base_type import BaseType
 from api.types.type_file_details import TypeFileDetails
 from api.types.type_resource_metadata import TypeResourceMetadata
@@ -29,6 +34,13 @@ class TypeResourceSchema(BaseType):
     description: auto
     created: auto
     modified: auto
+
+
+@type(ResourcePreviewDetails, fields="__all__")
+class TypePreviewDetails(BaseType):
+    """Type for preview details."""
+
+    pass
 
 
 @strawberry.type
@@ -51,7 +63,7 @@ class TypeResource(BaseType):
     name: auto
     description: auto
     preview_enabled: auto
-    preview_details: PreviewDetails
+    preview_details: TypePreviewDetails
 
     # @strawberry.field
     # def model_resources(self) -> List[TypeAccessModelResourceFields]:
