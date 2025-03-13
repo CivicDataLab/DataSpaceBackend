@@ -13,7 +13,7 @@ from api.utils.file_utils import load_csv
 logger = structlog.get_logger("dataspace.data_indexing")
 
 # Use a separate database for data tables
-DATA_DB = settings.DATA_DB_NAME
+DATA_DB = "data_db"  # This should match the connection name in settings.py
 
 
 def get_sql_type(pandas_dtype: str) -> str:
