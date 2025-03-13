@@ -27,14 +27,14 @@ class DefaultQuery:
 
     metadata: list[TypeMetadata] = strawberry_django.field()
 
-    @trace_resolver(name="resources", attributes={"component": "default"})
     @strawberry_django.field
+    @trace_resolver(name="resources", attributes={"component": "default"})
     def resources(self, info: Info) -> List[TypeResource]:
         resources = Resource.objects.all()
         return [TypeResource.from_django(resource) for resource in resources]
 
-    @trace_resolver(name="tags", attributes={"component": "default"})
     @strawberry_django.field
+    @trace_resolver(name="tags", attributes={"component": "default"})
     def tags(self, info: Info) -> List[TypeTag]:
         tags = Tag.objects.all()
         return [TypeTag.from_django(tag) for tag in tags]

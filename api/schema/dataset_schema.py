@@ -108,8 +108,8 @@ def _add_update_dataset_categories(
 
 @strawberry.type
 class Query:
-    @trace_resolver(name="datasets", attributes={"component": "dataset"})
     @strawberry_django.field(filters=DatasetFilter, pagination=True, order=DatasetOrder)
+    @trace_resolver(name="datasets", attributes={"component": "dataset"})
     def datasets(
         self,
         info: Info,
@@ -140,8 +140,8 @@ class Query:
 
         return TypeDataset.from_django_list(queryset)
 
-    @trace_resolver(name="get_chart_data", attributes={"component": "dataset"})
     @strawberry.field
+    @trace_resolver(name="get_chart_data", attributes={"component": "dataset"})
     def get_chart_data(
         self, dataset_id: uuid.UUID
     ) -> List[Union[TypeResourceChartImage, TypeResourceChart]]:
@@ -179,10 +179,10 @@ class Query:
 
 @strawberry.type
 class Mutation:
+    @strawberry_django.mutation(handle_django_errors=True)
     @trace_resolver(
         name="add_dataset", attributes={"component": "dataset", "operation": "mutation"}
     )
-    @strawberry_django.mutation(handle_django_errors=True)
     def add_dataset(self, info: Info) -> TypeDataset:
         dataset = Dataset.objects.create(
             organization=info.context.request.context.get("organization"),
@@ -191,11 +191,11 @@ class Mutation:
         )
         return TypeDataset.from_django(dataset)
 
+    @strawberry_django.mutation(handle_django_errors=True)
     @trace_resolver(
         name="add_update_dataset_metadata",
         attributes={"component": "dataset", "operation": "mutation"},
     )
-    @strawberry_django.mutation(handle_django_errors=True)
     def add_update_dataset_metadata(
         self, update_metadata_input: UpdateMetadataInput
     ) -> TypeDataset:
@@ -215,11 +215,11 @@ class Mutation:
         _add_update_dataset_categories(dataset, update_metadata_input.categories)
         return TypeDataset.from_django(dataset)
 
+    @strawberry_django.mutation(handle_django_errors=True)
     @trace_resolver(
         name="update_dataset",
         attributes={"component": "dataset", "operation": "mutation"},
     )
-    @strawberry_django.mutation(handle_django_errors=True)
     def update_dataset(self, update_dataset_input: UpdateDatasetInput) -> TypeDataset:
         dataset_id = update_dataset_input.dataset
         try:
@@ -233,11 +233,11 @@ class Mutation:
         _update_dataset_tags(dataset, update_dataset_input.tags)
         return TypeDataset.from_django(dataset)
 
+    @strawberry_django.mutation(handle_django_errors=True)
     @trace_resolver(
         name="publish_dataset",
         attributes={"component": "dataset", "operation": "mutation"},
     )
-    @strawberry_django.mutation(handle_django_errors=True)
     def publish_dataset(self, dataset_id: uuid.UUID) -> TypeDataset:
         try:
             dataset = Dataset.objects.get(id=dataset_id)
@@ -248,11 +248,11 @@ class Mutation:
         dataset.save()
         return TypeDataset.from_django(dataset)
 
+    @strawberry_django.mutation(handle_django_errors=True)
     @trace_resolver(
         name="un_publish_dataset",
         attributes={"component": "dataset", "operation": "mutation"},
     )
-    @strawberry_django.mutation(handle_django_errors=True)
     def un_publish_dataset(self, dataset_id: uuid.UUID) -> TypeDataset:
         try:
             dataset = Dataset.objects.get(id=dataset_id)
@@ -263,11 +263,11 @@ class Mutation:
         dataset.save()
         return TypeDataset.from_django(dataset)
 
+    @strawberry_django.mutation(handle_django_errors=False)
     @trace_resolver(
         name="delete_dataset",
         attributes={"component": "dataset", "operation": "mutation"},
     )
-    @strawberry_django.mutation(handle_django_errors=False)
     def delete_dataset(self, dataset_id: uuid.UUID) -> bool:
         try:
             dataset = Dataset.objects.get(id=dataset_id)
