@@ -67,3 +67,28 @@ class ResourcePreviewDetails(models.Model):
     is_all_entries = models.BooleanField(default=True)
     start_entry = models.IntegerField(default=0)
     end_entry = models.IntegerField(default=10)
+
+
+class ResourceDataTable(models.Model):
+    """Model to store indexed CSV data for a resource."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    resource = models.OneToOneField(
+        Resource, on_delete=models.CASCADE, null=False, blank=False
+    )
+    table_name = models.CharField(max_length=255, unique=True)
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "resource_data_table"
+        ordering = ["-modified"]
+
+    def __str__(self):
+        return f"{self.resource.name} - {self.table_name}"
+
+    def save(self, *args, **kwargs):
+        if not self.table_name:
+            # Generate a unique table name based on resource ID
+            self.table_name = f"resource_data_{self.resource.id.hex}"
+        super().save(*args, **kwargs)

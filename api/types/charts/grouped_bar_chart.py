@@ -100,6 +100,36 @@ class GroupedBarChart(BaseChart):
 
         return str(value_mapping.get(str(value), str(value)))
 
+    def _aggregate_value(
+        self, data: pd.DataFrame, field_name: str, aggregate_type: str
+    ) -> float:
+        """Aggregate values based on specified aggregation type.
+
+        Args:
+            data: DataFrame containing the data to aggregate
+            field_name: The column name to aggregate
+            aggregate_type: Type of aggregation (sum, avg, count, etc.)
+
+        Returns:
+            Aggregated value as a float
+        """
+        if data.empty:
+            return 0.0
+
+        if aggregate_type.lower() == "sum":
+            return float(data[field_name].sum())
+        elif aggregate_type.lower() == "avg" or aggregate_type.lower() == "average":
+            return float(data[field_name].mean())
+        elif aggregate_type.lower() == "count":
+            return float(data[field_name].count())
+        elif aggregate_type.lower() == "min":
+            return float(data[field_name].min())
+        elif aggregate_type.lower() == "max":
+            return float(data[field_name].max())
+        else:
+            # Default to sum if unknown aggregation type
+            return float(data[field_name].sum())
+
     def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
         """Handle non-time-based data with aggregation.
 
@@ -120,7 +150,8 @@ class GroupedBarChart(BaseChart):
             metric_name = self._get_series_name(y_axis_column)
             field = cast(DjangoFieldLike, y_axis_column["field"])
             field_name = field.field_name
-            value_mapping = self._get_value_mapping(y_axis_column)
+            # Use local value mapping instead of calling a non-existent method
+            value_mapping = y_axis_column.get("value_mapping", {})
             aggregate_type = y_axis_column.get(
                 "aggregate_type", "sum"
             )  # Default to "sum" if not specified
@@ -129,7 +160,8 @@ class GroupedBarChart(BaseChart):
             for x_val in x_axis_data:
                 # Filter data for current x value
                 x_filtered_data = filtered_data[filtered_data[x_field] == x_val]
-                value = self._apply_aggregation(
+                # Use a local aggregation function instead of calling a non-existent method
+                value = self._aggregate_value(
                     x_filtered_data, field_name, str(aggregate_type)
                 )
                 y_values.append(value)

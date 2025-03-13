@@ -7,15 +7,24 @@ from typing import Any, Dict, List, Optional, cast
 import pandas as pd
 import strawberry
 import strawberry_django
+import structlog
 from django.db.models import QuerySet
 from strawberry.file_uploads import Upload
 from strawberry.types import Info
 
-from api.models import Dataset, Resource, ResourceFileDetails, ResourcePreviewDetails
-from api.models.ResourceSchema import ResourceSchema
+from api.models import (
+    Dataset,
+    Resource,
+    ResourceFileDetails,
+    ResourcePreviewDetails,
+    ResourceSchema,
+)
 from api.types import TypeResource
 from api.utils.constants import FORMAT_MAPPING
+from api.utils.data_indexing import index_resource_data
 from api.utils.file_utils import file_validation
+
+logger = structlog.get_logger("dataspace.resource_schema")
 
 
 @strawberry.input
@@ -128,47 +137,52 @@ def _validate_file_details_and_update_format(resource: Resource) -> None:
 
 def _create_file_resource_schema(resource: Resource) -> None:
     """Create file resource schema."""
-    existing_schema: QuerySet[ResourceSchema] = ResourceSchema.objects.filter(
-        resource=resource
-    )
-    if existing_schema.exists():
-        existing_schema.delete()
+    # Try to index CSV data if applicable
+    data_table = index_resource_data(resource)
 
-    file_details = getattr(resource, "resourcefiledetails", None)
-    if not file_details or not file_details.file:
-        raise ValueError("Resource has no file details")
-
-    df = pd.read_csv(file_details.file)
-    schema_list = pd.io.json.build_table_schema(df, version=False)
-    fields = cast(List[Dict[str, Any]], schema_list.get("fields", []))
-
-    for each in fields[1:]:
-        schema_item = ResourceSchema(
-            field_name=each["name"],
-            format=str(each["type"]).upper(),
-            description="",
-            resource=resource,
-        )
-        schema_item.save()
+    # After indexing, check again if schema was created
+    if ResourceSchema.objects.filter(resource=resource).exists():
+        logger.info(f"Schema created during indexing for resource {resource.id}")
+        return
 
 
 def _update_file_resource_schema(
     resource: Resource, updated_schema: List[SchemaUpdate]
 ) -> None:
-    """Update file resource schema."""
+    """Update file resource schema and re-index if necessary."""
+    # Check if we need to re-index after schema update
+    format_changes = False
+
+    # Update schema fields
     existing_schema: QuerySet[ResourceSchema] = ResourceSchema.objects.filter(
         resource=resource
     )
+
     for schema in existing_schema:  # type: ResourceSchema
         try:
             schema_change = next(
                 item for item in updated_schema if item.id == str(schema.id)
             )
+            # Check if format is changing, which might require re-indexing
+            if schema.format != schema_change.format.value:
+                format_changes = True
+
+            # Update the schema
             schema.description = schema_change.description
             schema.format = schema_change.format.value
             schema.save()
+
+            logger.info(
+                f"Updated schema field {schema.field_name} for resource {resource.id}"
+            )
         except StopIteration:
             continue
+
+    # Re-index if format changes were made
+    if format_changes:
+        logger.info(f"Re-indexing resource {resource.id} due to schema format changes")
+        # Re-index the resource to apply the schema changes to the database
+        index_resource_data(resource)
 
 
 def _update_resource_preview_details(

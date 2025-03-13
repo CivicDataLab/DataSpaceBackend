@@ -40,7 +40,7 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
     if not chart_class:
         return None
 
-    chart_instance = chart_class(chart_details, data)
+    chart_instance = chart_class(chart_details)
     return chart_instance.create_chart()
 
 

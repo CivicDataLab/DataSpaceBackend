@@ -18,8 +18,16 @@ class MapChart(BaseChart):
         if "region_column" not in self.options or "value_column" not in self.options:
             return None
         try:
+            # Get filtered data using _get_data method
+            data = self._get_data()
+            if data is None:
+                return None
+
+            # Store data temporarily for use by other methods
+            self._filtered_data = data
+
             region_values = self.process_data()
-            return _get_map_chart(self.chart_details, self.data, region_values)
+            return _get_map_chart(self.chart_details, data, region_values)
         except Exception as e:
             print("Error while creating chart", e)
             return None
@@ -80,7 +88,10 @@ class MapChart(BaseChart):
 
     def aggregate_data(self) -> DataFrame:
         """Aggregate data based on region and value columns."""
-        if not isinstance(self.data, DataFrame):
+        # Use the filtered data from _get_data() stored during create_chart
+        if not hasattr(self, "_filtered_data") or not isinstance(
+            self._filtered_data, DataFrame
+        ):
             return DataFrame()
 
         region_column = cast(DjangoFieldLike, self.options.get("region_column"))
@@ -93,7 +104,7 @@ class MapChart(BaseChart):
 
         if agg_type != "none":
             metrics = (
-                self.data.groupby(region_column.field_name)
+                self._filtered_data.groupby(region_column.field_name)
                 .agg({value_column.field_name: agg_type.lower()})
                 .reset_index()
             )
@@ -104,7 +115,9 @@ class MapChart(BaseChart):
             )
             return metrics
         else:
-            return self.data[[region_column.field_name, value_column.field_name]]
+            return self._filtered_data[
+                [region_column.field_name, value_column.field_name]
+            ]
 
     def process_data(self) -> List[List[Any]]:
         """Process data for the map chart."""

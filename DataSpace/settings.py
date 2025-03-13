@@ -41,6 +41,13 @@ DB_PASSWORD = env("DB_PASSWORD", default="DB_PASSWORD")
 DB_HOST = env("DB_HOST", default="DB_HOST")
 DB_PORT = env("DB_PORT", default="DB_PORT")
 
+# Data indexing database
+DATA_DB_NAME = env("DATA_DB_NAME", default=str(BASE_DIR / "data.sqlite3"))
+DATA_DB_USER = env("DB_USER", default=DB_USER)
+DATA_DB_PASSWORD = env("DB_PASSWORD", default=DB_PASSWORD)
+DATA_DB_HOST = env("DB_HOST", default=DB_HOST)
+DATA_DB_PORT = env("DB_PORT", default=DB_PORT)
+
 # SECURITY WARNING: don't run with debug turned on in production!
 whitelisted_urls = env("URL_WHITELIST").split(",")
 ALLOWED_HOSTS = [
@@ -170,7 +177,15 @@ DATABASES = {
         "PASSWORD": DB_PASSWORD,
         "HOST": DB_HOST,
         "PORT": DB_PORT,
-    }
+    },
+    "data_db": {
+        "ENGINE": DB_ENGINE,
+        "NAME": DATA_DB_NAME,
+        "USER": DATA_DB_USER,
+        "PASSWORD": DATA_DB_PASSWORD,
+        "HOST": DATA_DB_HOST,
+        "PORT": DATA_DB_PORT,
+    },
 }
 
 # Password validation
