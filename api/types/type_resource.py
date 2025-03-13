@@ -9,6 +9,7 @@ from strawberry.scalars import JSON
 from strawberry_django import type
 
 from api.models import Resource, ResourceFileDetails, ResourceMetadata, ResourceSchema
+from api.schema.resource_schema import PreviewDetails
 from api.types.base_type import BaseType
 from api.types.type_file_details import TypeFileDetails
 from api.types.type_resource_metadata import TypeResourceMetadata
@@ -50,7 +51,7 @@ class TypeResource(BaseType):
     name: auto
     description: auto
     preview_enabled: auto
-    preview_details: auto
+    preview_details: PreviewDetails
 
     # @strawberry.field
     # def model_resources(self) -> List[TypeAccessModelResourceFields]:
