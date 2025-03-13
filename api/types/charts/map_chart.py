@@ -78,8 +78,10 @@ class MapChart(BaseChart):
         agg_type = AggregateType(aggregate_type)
 
         if aggregate_type != 'none':
+            # Convert the enum value to lowercase for pandas aggregation
+            pandas_agg_func = agg_type.value.lower()
             metrics = self.data.groupby(region_column.field_name).agg(
-                {value_column.field_name: agg_type.value}
+                {value_column.field_name: pandas_agg_func}
             ).reset_index()
 
             metrics.columns = [region_column.field_name, value_column.field_name]
