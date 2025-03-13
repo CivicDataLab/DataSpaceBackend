@@ -4,7 +4,8 @@ import pandas as pd
 import structlog
 from pandas.core.groupby import DataFrameGroupBy
 from pyecharts import options as opts
-from pyecharts.charts import Bar, Chart, Line, Map
+from pyecharts.charts import Bar, Line, Map
+from pyecharts.charts.chart import Chart
 
 from api.models import ResourceChartDetails, ResourceSchema
 from api.utils.data_indexing import query_resource_data
