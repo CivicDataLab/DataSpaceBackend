@@ -74,10 +74,11 @@ class MapChart(BaseChart):
         region_column = self.options['region_column']
         value_column = self.options['value_column']
         aggregate_type = self.options.get('aggregate_type', 'none')
+        agg_type = AggregateType(aggregate_type)
 
         if aggregate_type != 'none':
             metrics = self.data.groupby(region_column.field_name).agg(
-                {value_column.field_name: aggregate_type.lower()}
+                {value_column.field_name: agg_type.value}
             ).reset_index()
 
             metrics.columns = [region_column.field_name, value_column.field_name]
