@@ -74,6 +74,7 @@ class MapChart(BaseChart):
         region_column = self.options['region_column']
         value_column = self.options['value_column']
         aggregate_type = self.options.get('aggregate_type', 'none')
+        aggregate_type = "MEAN" if aggregate_type == "AVERAGE" else aggregate_type
         agg_type = AggregateType(aggregate_type)
 
         if aggregate_type != 'none':
