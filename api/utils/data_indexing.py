@@ -58,11 +58,17 @@ def create_table_for_resource(
 
             # Copy data to temp table
             quoted_columns = [f'"{col}"' for col in df.columns]
+            # Use StringIO to create a file-like object for the CSV data
+            from io import StringIO
+
+            csv_data = StringIO()
+            df.to_csv(csv_data, index=False, header=False)
+            csv_data.seek(0)
+
             copy_sql = (
                 f'COPY "{temp_table}" ({",".join(quoted_columns)}) FROM STDIN WITH CSV'
             )
-            with cursor.copy(copy_sql) as copy:
-                df.to_csv(copy, index=False, header=False)
+            cursor.copy_expert(copy_sql, csv_data)
 
             # Insert from temp to main table with validation
             cursor.execute(f'INSERT INTO "{table_name}" SELECT * FROM "{temp_table}"')
