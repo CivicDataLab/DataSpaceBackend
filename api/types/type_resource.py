@@ -63,7 +63,7 @@ class TypeResource(BaseType):
     name: auto
     description: auto
     preview_enabled: auto
-    preview_details: TypePreviewDetails
+    preview_details: Optional[TypePreviewDetails]
 
     # @strawberry.field
     # def model_resources(self) -> List[TypeAccessModelResourceFields]:
