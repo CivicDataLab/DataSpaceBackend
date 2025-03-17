@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import Any, List, Optional, TypeVar
 
@@ -19,6 +20,8 @@ from api.types.base_type import BaseType
 from api.types.type_file_details import TypeFileDetails
 from api.types.type_resource_metadata import TypeResourceMetadata
 from api.utils.file_utils import load_csv
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound="TypeResource")
 
@@ -149,6 +152,10 @@ class TypeResource(BaseType):
                 return None
 
             df = load_csv(file_details.file.path)
+            logger.info(
+                f"CSV loaded successfully. Columns: {df.columns}, Rows: {len(df)}"
+            )
+
             # Convert object columns to string to ensure type safety
             object_columns = df.select_dtypes(include=["object"]).columns
             df[object_columns] = df[object_columns].astype(str)
@@ -167,14 +174,18 @@ class TypeResource(BaseType):
                 records = [
                     [convert_value(val) for val in row] for row in df.values.tolist()
                 ]
+                logger.info(f"Returning all entries: {len(records)} rows")
             else:
                 start = getattr(self.preview_details, "start_entry", None)
                 end = getattr(self.preview_details, "end_entry", None)
+                logger.info(f"Returning entries from {start} to {end}")
                 records = [
                     [convert_value(val) for val in row]
                     for row in df.iloc[start:end].values.tolist()
                 ]
+                logger.info(f"Returning {len(records)} rows")
 
             return PreviewData(columns=list(df.columns), rows=records)
-        except (AttributeError, FileNotFoundError):
+        except (AttributeError, FileNotFoundError) as e:
+            logger.error(f"Error loading preview data: {str(e)}")
             return None
