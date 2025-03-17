@@ -15,6 +15,7 @@ import api.schema.organization_schema
 import api.schema.resource_chart_schema
 import api.schema.resource_schema
 import api.schema.resoure_chart_image_schema
+import api.schema.tags_schema
 import api.schema.usecase_schema
 from api.models import Resource, Tag
 from api.types import TypeMetadata, TypeResource
@@ -69,6 +70,7 @@ Mutation = merge_types(
         api.schema.metadata_schema.Mutation,
         api.schema.dataspace_schema.Mutation,
         api.schema.resoure_chart_image_schema.Mutation,
+        api.schema.tags_schema.Mutation,
     ),
 )
 
