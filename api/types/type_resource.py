@@ -1,9 +1,9 @@
-import logging
 import uuid
 from typing import Any, List, Optional, TypeVar
 
 import pandas as pd
 import strawberry
+import structlog
 from django.db.models import QuerySet
 from strawberry import auto
 from strawberry.scalars import JSON
@@ -21,7 +21,7 @@ from api.types.type_file_details import TypeFileDetails
 from api.types.type_resource_metadata import TypeResourceMetadata
 from api.utils.file_utils import load_csv
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 T = TypeVar("T", bound="TypeResource")
 
