@@ -258,6 +258,7 @@ class Mutation:
             resource.name = file_resource_input.name
         if file_resource_input.description is not None:
             resource.description = file_resource_input.description
+        resource.preview_enabled = file_resource_input.preview_enabled
         resource.save()
 
         if file_resource_input.file:
