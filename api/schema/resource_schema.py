@@ -190,17 +190,17 @@ def _update_resource_preview_details(
 ) -> None:
     """Update resource preview details."""
     preview_details = getattr(resource, "preview_details", None)
-    if preview_details:
-        preview_details.delete()
 
     if file_resource_input.preview_details:
-        preview_details = ResourcePreviewDetails.objects.create(
-            is_all_entries=file_resource_input.preview_details.is_all_entries,
-            start_entry=file_resource_input.preview_details.start_entry,
-            end_entry=file_resource_input.preview_details.end_entry,
+        preview_details, _ = ResourcePreviewDetails.objects.update_or_create(
+            resource=resource,
+            defaults={
+                "is_all_entries": file_resource_input.preview_details.is_all_entries,
+                "start_entry": file_resource_input.preview_details.start_entry,
+                "end_entry": file_resource_input.preview_details.end_entry,
+            },
         )
         resource.preview_details = preview_details
-        resource.save()
 
 
 @strawberry.type
