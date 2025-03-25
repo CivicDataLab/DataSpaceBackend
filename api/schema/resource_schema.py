@@ -192,15 +192,25 @@ def _update_resource_preview_details(
     preview_details = getattr(resource, "preview_details", None)
 
     if file_resource_input.preview_details:
-        preview_details, _ = ResourcePreviewDetails.objects.update_or_create(
-            resource=resource,
-            defaults={
-                "is_all_entries": file_resource_input.preview_details.is_all_entries,
-                "start_entry": file_resource_input.preview_details.start_entry,
-                "end_entry": file_resource_input.preview_details.end_entry,
-            },
-        )
-        resource.preview_details = preview_details
+        # If preview_details already exists, update it
+        if preview_details:
+            preview_details.is_all_entries = (
+                file_resource_input.preview_details.is_all_entries
+            )
+            preview_details.start_entry = (
+                file_resource_input.preview_details.start_entry
+            )
+            preview_details.end_entry = file_resource_input.preview_details.end_entry
+            preview_details.save()
+        # Otherwise, create a new one
+        else:
+            preview_details = ResourcePreviewDetails.objects.create(
+                is_all_entries=file_resource_input.preview_details.is_all_entries,
+                start_entry=file_resource_input.preview_details.start_entry,
+                end_entry=file_resource_input.preview_details.end_entry,
+            )
+            resource.preview_details = preview_details
+            resource.save()
 
 
 @strawberry.type
