@@ -26,7 +26,7 @@ class ChartFilter(Protocol):
 
 
 class ChartOptions(Protocol):
-    x_axis_column: Dict[str, DjangoFieldLike]
+    x_axis_column: DjangoFieldLike
     y_axis_column: List[Dict[str, Any]]
     time_column: Optional[DjangoFieldLike]
     time_groups: Optional[List[str]]
@@ -476,3 +476,49 @@ class BaseChart:
                 else {}
             ),
         )
+
+    def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
+        """Handle non-time-based data."""
+        # Get x-axis field name
+        x_axis_field = cast(DjangoFieldLike, self.options["x_axis_column"])
+        x_field = x_axis_field.field_name
+        x_axis_data = filtered_data[x_field].tolist()
+
+        # Sort values if needed
+        sort_order = self.options.get("sort_order", "asc")
+        x_axis_data = sorted(x_axis_data, reverse=(sort_order == "desc"))  # type: ignore[type-var]
+
+        # Add x-axis data
+        chart.add_xaxis(x_axis_data)
+
+        # Get y-axis columns configuration
+        y_axis_columns = self._get_y_axis_columns()
+
+        # Add series for each y-axis column
+        for y_axis_column in y_axis_columns:
+            # Get y-axis field name
+            y_field = cast(DjangoFieldLike, y_axis_column["field"])
+            field_name = y_field.field_name
+            y_values = filtered_data[field_name].tolist()
+
+            # Get series name from configuration
+            series_name = self._get_series_name(y_axis_column)
+
+            # Get value mapping from configuration
+            value_mapping = self._get_value_mapping(y_axis_column)
+
+            # Add series to chart
+            self.add_series_to_chart(
+                chart=chart,
+                series_name=series_name,
+                y_values=y_values,
+                color=y_axis_column.get("color"),
+                value_mapping=value_mapping,
+            )
+
+    def _get_value_mapping(self, y_axis_column: Dict[str, Any]) -> Dict[str, Any]:
+        """Get value mapping from y-axis column configuration."""
+        if not isinstance(y_axis_column, dict):
+            return {}
+        mapping = y_axis_column.get("value_mapping")
+        return cast(Dict[str, Any], mapping) if mapping is not None else {}

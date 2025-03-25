@@ -7,7 +7,7 @@ from pyecharts.charts import Timeline
 from pyecharts.charts.chart import Chart
 from pyecharts.commons.utils import JsCode
 
-from api.types.charts.base_chart import BaseChart, DjangoFieldLike
+from api.types.charts.base_chart import BaseChart, ChartOptions, DjangoFieldLike
 from api.types.charts.chart_registry import register_chart
 from api.utils.enums import AggregateType
 
@@ -38,13 +38,13 @@ class BarChart(BaseChart):
 
         try:
             # Process the data and add it to the chart
-            x_axis_col = self.options.get("x_axis_column")
-            if not x_axis_col or not isinstance(x_axis_col, dict):
-                return  # Cannot proceed without valid x-axis column
+            x_axis_col = cast(DjangoFieldLike, self.options.get("x_axis_column"))
+            if not x_axis_col:
+                return
 
-            x_field = x_axis_col.get("field_name")
+            x_field = x_axis_col.field_name
             if not x_field:
-                return  # Cannot proceed without valid x-axis field name
+                return
 
             # Get unique x-axis values and sort them
             x_axis_data = sorted(filtered_data[x_field].unique().tolist())
@@ -53,17 +53,17 @@ class BarChart(BaseChart):
             # Add data for the y-axis column
             y_axis_col = chart_options.get("y_axis_column")
             if not y_axis_col or not isinstance(y_axis_col, dict):
-                return  # Cannot proceed without valid y-axis column
+                return
 
-            field = y_axis_col.get("field")
-            if not field or not isinstance(field, dict):
-                return  # Cannot proceed without valid field
+            field = cast(DjangoFieldLike, y_axis_col.get("field"))
+            if not field:
+                return
 
-            field_name = field.get("field_name")
+            field_name = field.field_name
             if not field_name:
-                return  # Cannot proceed without valid field name
+                return
 
-            display_name = field.get("display_name", field_name)
+            display_name = y_axis_col.get("label") or field_name
 
             # Aggregate data for each x-axis value
             y_values = []
@@ -82,7 +82,7 @@ class BarChart(BaseChart):
                 elif aggregate_type.lower() == "count":
                     value = float(x_filtered_data[field_name].count())
                 else:
-                    value = float(x_filtered_data[field_name].sum())  # Default to sum
+                    value = float(x_filtered_data[field_name].sum())
 
                 y_values.append(value)
 
