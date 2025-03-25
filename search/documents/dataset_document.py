@@ -107,6 +107,14 @@ class DatasetDocument(Document):
             )
         return processed_metadata
 
+    def prepare_organization(self, instance: Dataset) -> Optional[Dict[str, str]]:
+        """Prepare organization data for indexing, including logo URL."""
+        if instance.organization:
+            org = instance.organization
+            logo_url = org.logo.url if org.logo else ""
+            return {"name": org.name, "logo": logo_url}
+        return None
+
     def should_index_object(self, obj: Dataset) -> bool:
         """Check if the object should be indexed."""
         return obj.status == DatasetStatus.PUBLISHED

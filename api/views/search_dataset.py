@@ -65,7 +65,12 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
     formats = serializers.ListField()
     has_charts = serializers.BooleanField()
     slug = serializers.CharField()
-    organization = serializers.CharField()
+
+    class OrganizationSerializer(serializers.Serializer):
+        name = serializers.CharField()
+        logo = serializers.CharField()
+
+    organization = OrganizationSerializer()
 
     class Meta:
         model = Dataset
