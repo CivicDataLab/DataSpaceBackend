@@ -94,11 +94,12 @@ class TypeDataset(BaseType):
     def formats(self: Any) -> List[str]:
         """Get formats for this dataset."""
         try:
-            return list(
-                Resource.objects.filter(dataset_id=self.id).values_list(
-                    "resourcefiledetails__format", flat=True
-                )
+            # Get all format values and filter out None values
+            formats = Resource.objects.filter(dataset_id=self.id).values_list(
+                "resourcefiledetails__format", flat=True
             )
+            # Filter out None values and return as list
+            return [fmt for fmt in formats if fmt is not None]
         except (AttributeError, Resource.DoesNotExist):
             return []
 
