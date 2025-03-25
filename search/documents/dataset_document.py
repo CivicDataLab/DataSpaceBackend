@@ -71,6 +71,13 @@ class DatasetDocument(Document):
         multi=True,
     )
 
+    organization = fields.NestedField(
+        properties={
+            "name": fields.TextField(analyzer=ngram_analyser),
+            "logo": fields.TextField(analyzer=ngram_analyser),
+        }
+    )
+
     formats = fields.TextField(
         attr="formats_indexing",
         analyzer=ngram_analyser,
