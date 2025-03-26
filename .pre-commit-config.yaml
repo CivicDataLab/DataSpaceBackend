@@ -24,5 +24,35 @@ repos:
     rev: v1.9.0
     hooks:
     -   id: mypy
-        additional_dependencies: [types-all]
+        language: python
+        language_version: python3.11
+        additional_dependencies:
+          - types-requests
+          - types-PyYAML
+          - types-python-dateutil
+          - types-setuptools
+          - django-stubs
+          - djangorestframework-stubs
+          - pandas-stubs
+          - types-redis
+          - strawberry-graphql
+          - strawberry-graphql-django
+          - django-environ
+          - structlog
+          - django
+          - elasticsearch-dsl
+          - django-elasticsearch-dsl
+          - django-elasticsearch-dsl-drf
+          - pyecharts
+          - selenium
+          - python-decouple
+          - djangorestframework
+          - django-debug-toolbar
+          - django-ratelimit
+          - django-cors-headers
+          - psycopg2-binary
+          - python-dotenv
+          - uvicorn
+
+        args: [--config-file=mypy.ini]
         exclude: ^tests/

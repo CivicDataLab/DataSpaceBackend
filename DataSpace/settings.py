@@ -12,11 +12,16 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 import os
 from pathlib import Path
+
 import environ
+import structlog
 from decouple import config
+
 from .cache_settings import *
 import structlog
 env = environ.Env(DEBUG=(bool, False))
+DEBUG = env.bool("DEBUG", default=True)
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,122 +31,139 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-af%#657wf@f-hclfimni96qy07fyhjbglc!@^98jpn9z%#9b6%'
+SECRET_KEY = "django-insecure-af%#657wf@f-hclfimni96qy07fyhjbglc!@^98jpn9z%#9b6%"
 
 # load env and variables
-DB_ENGINE = env('DB_ENGINE', default="django.db.backends.sqlite3")
-DB_NAME = env('DB_NAME', default=str(BASE_DIR / "db.sqlite3"))
-DB_USER = env('DB_USER', default="DB_USER")
-DB_PASSWORD = env('DB_PASSWORD', default='DB_PASSWORD')
-DB_HOST = env('DB_HOST', default='DB_HOST')
-DB_PORT = env('DB_PORT', default='DB_PORT')
-WELCOME_TEXT = env('WELCOME_TEXT', default='Hello World')
+DB_ENGINE = env("DB_ENGINE", default="django.db.backends.sqlite3")
+DB_NAME = env("DB_NAME", default=str(BASE_DIR / "db.sqlite3"))
+DB_USER = env("DB_USER", default="DB_USER")
+DB_PASSWORD = env("DB_PASSWORD", default="DB_PASSWORD")
+DB_HOST = env("DB_HOST", default="DB_HOST")
+DB_PORT = env("DB_PORT", default="DB_PORT")
+
+# Data indexing database
+DATA_DB_NAME = env("DATA_DB_NAME", default=str(BASE_DIR / "data.sqlite3"))
+DATA_DB_USER = env("DB_USER", default=DB_USER)
+DATA_DB_PASSWORD = env("DB_PASSWORD", default=DB_PASSWORD)
+DATA_DB_HOST = env("DB_HOST", default=DB_HOST)
+DATA_DB_PORT = env("DB_PORT", default=DB_PORT)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-whitelisted_urls = env("URL_WHITELIST").split(',')
-ALLOWED_HOSTS = whitelisted_urls + env("URL_WHITELIST").replace("https://", "").replace("http://", "").split(",")
+
+whitelisted_urls = env("URL_WHITELIST").split(",")
+ALLOWED_HOSTS = [
+    "localhost",  # Allow localhost without port
+    "127.0.0.1",  # Allow IPv4 loopback
+    "::1",  # Allow IPv6 loopback
+] + [
+    # Extract domains from whitelisted URLs
+    url.replace("https://", "").replace("http://", "").split(":")[0]
+    for url in whitelisted_urls
+]
+
 
 CSRF_TRUSTED_ORIGINS = whitelisted_urls
 
-CORS_ORIGIN_WHITELIST = whitelisted_urls
+# CORS settings
+if DEBUG:
+    # In development, allow all origins
+    CORS_ORIGIN_ALLOW_ALL = True
+else:
+    # In production, only allow whitelisted origins
+    CORS_ORIGIN_ALLOW_ALL = False
+    CORS_ALLOWED_ORIGINS = whitelisted_urls
 
+# Common CORS settings
+CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
 ]
 
 CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-    'referer',
-    'organization',
-    'dataspace',
-    'token',
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "referer",
+    "organization",
+    "dataspace",
+    "token",
 ]
-
-CORS_ORIGIN_ALLOW_ALL = True
 
 # Application definition
 
 INSTALLED_APPS = [
-    'api.apps.ApiConfig',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'strawberry_django',
-    'rest_framework',
-    'django_elasticsearch_dsl',
-    'django_elasticsearch_dsl_drf'
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "corsheaders",  # django-cors-headers package
+    "api.apps.ApiConfig",
+    "strawberry_django",
+    "rest_framework",
+    "django_elasticsearch_dsl",
+    "django_elasticsearch_dsl_drf",
 ]
-
-# Add debug toolbar settings
-if DEBUG:
-    INSTALLED_APPS += [
-        'debug_toolbar',
-    ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'api.utils.middleware.ContextMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "api.utils.middleware.ContextMiddleware",
 ]
+
+# Add debug toolbar middleware first if in debug mode
+if DEBUG:
+    MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
 # Add our custom middleware
 MIDDLEWARE += [
-    'api.middleware.rate_limit.rate_limit_middleware',
-    'api.middleware.request_validator.RequestValidationMiddleware',
-    'api.middleware.logging.StructuredLoggingMiddleware',
+    "api.middleware.rate_limit.rate_limit_middleware",
+    "api.middleware.request_validator.RequestValidationMiddleware",
+    "api.middleware.logging.StructuredLoggingMiddleware",
 ]
 
-if DEBUG:
-    MIDDLEWARE = ['debug_toolbar.middleware.DebugToolbarMiddleware'] + MIDDLEWARE
-    INTERNAL_IPS = ['127.0.0.1']
-
-ROOT_URLCONF = 'DataSpace.urls'
+ROOT_URLCONF = "DataSpace.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'DataSpace.wsgi.application'
+WSGI_APPLICATION = "DataSpace.wsgi.application"
 
 STRAWBERRY_DJANGO = {
     "FIELD_DESCRIPTION_FROM_HELP_TEXT": True,
     "TYPE_DESCRIPTION_FROM_MODEL_DOCSTRING": True,
-    "GENERATE_ENUMS_FROM_CHOICES": True
+    "GENERATE_ENUMS_FROM_CHOICES": True,
 }
 
 # Database
@@ -149,13 +171,21 @@ STRAWBERRY_DJANGO = {
 
 DATABASES = {
     "default": {
-        "ENGINE": env("DB_ENGINE"),
-        "NAME": env("DB_NAME"),
-        "USER": env("DB_USER"),
-        "PASSWORD": env("DB_PASSWORD"),
-        "HOST": env("DB_HOST"),
-        "PORT": env("DB_PORT"),
-    }
+        "ENGINE": DB_ENGINE,
+        "NAME": DB_NAME,
+        "USER": DB_USER,
+        "PASSWORD": DB_PASSWORD,
+        "HOST": DB_HOST,
+        "PORT": DB_PORT,
+    },
+    "data_db": {
+        "ENGINE": DB_ENGINE,
+        "NAME": DATA_DB_NAME,
+        "USER": DATA_DB_USER,
+        "PASSWORD": DATA_DB_PASSWORD,
+        "HOST": DATA_DB_HOST,
+        "PORT": DATA_DB_PORT,
+    },
 }
 
 # Password validation
@@ -163,25 +193,25 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -190,19 +220,22 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
-STATIC_URL = 'static/'
-MEDIA_URL = 'public/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'files', 'public')
+STATIC_URL = "static/"
+MEDIA_URL = "public/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "files", "public")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DJANGO_ALLOW_ASYNC_UNSAFE = True
 ELASTICSEARCH_DSL = {
-    'default': {
-        'hosts': os.getenv("ELASTICSEARCH_INDEX", 'http://elasticsearch:9200'),
-        'http_auth': (os.getenv("ELASTICSEARCH_USERNAME", 'elastic'), os.getenv("ELASTICSEARCH_PASSWORD", 'changeme'))
+    "default": {
+        "hosts": os.getenv("ELASTICSEARCH_INDEX", "http://elasticsearch:9200"),
+        "http_auth": (
+            os.getenv("ELASTICSEARCH_USERNAME", "elastic"),
+            os.getenv("ELASTICSEARCH_PASSWORD", "changeme"),
+        ),
     }
 
 }
@@ -213,38 +246,60 @@ ELASTICSEARCH_DSL = {
     }
 }
 
-TELEMETRY_URL = os.getenv("TELEMETRY_URL", 'http://otel-collector:4317')
 ELASTICSEARCH_INDEX_NAMES = {
-    'search.documents.dataset_document': 'dataset',
+    "search.documents.dataset_document": "dataset",
+}
+
+# Django REST Framework settings
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.AllowAny",  # Allow unauthenticated access by default
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_THROTTLE_RATES": {"anon": "100/hour", "user": "1000/hour"},
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+    "PAGE_SIZE": 10,
+}
+
+# Swagger Settings
+SWAGGER_SETTINGS = {
+    "SECURITY_DEFINITIONS": {
+        "Bearer": {"type": "apiKey", "name": "Authorization", "in": "header"}
+    }
 }
 
 # Structured Logging Configuration
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'json_formatter': {
-            '()': structlog.stdlib.ProcessorFormatter,
-            'processor': structlog.processors.JSONRenderer(),
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json_formatter": {
+            "()": structlog.stdlib.ProcessorFormatter,
+            "processor": structlog.processors.JSONRenderer(),
         },
     },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'json_formatter',
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json_formatter",
         },
-        'file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': 'logs/dataex.log',
-            'maxBytes': 1024 * 1024 * 5,  # 5 MB
-            'backupCount': 5,
-            'formatter': 'json_formatter',
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": "logs/dataex.log",
+            "maxBytes": 1024 * 1024 * 5,  # 5 MB
+            "backupCount": 5,
+            "formatter": "json_formatter",
         },
     },
-    'loggers': {
-        '': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
+    "loggers": {
+        "": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": True,
         },
     },
 }
@@ -267,14 +322,73 @@ structlog.configure(
     cache_logger_on_first_use=True,
 )
 
+# OpenTelemetry Configuration
+TELEMETRY_URL = os.getenv("TELEMETRY_URL", "http://otel-collector:4317")
+OTEL_SERVICE_NAME = "dataspace"
+OTEL_RESOURCE_ATTRIBUTES = {
+    "service.namespace": "dataspace",
+    "deployment.environment": os.getenv("ENVIRONMENT", "development"),
+}
+
+# OpenTelemetry Endpoint Configuration
+OTEL_EXPORTER_OTLP_ENDPOINT = TELEMETRY_URL
+OTEL_EXPORTER_OTLP_PROTOCOL = "grpc"
+
+# OpenTelemetry Sampling Configuration
+OTEL_TRACES_SAMPLER = "parentbased_traceidratio"
+OTEL_TRACES_SAMPLER_ARG = os.getenv(
+    "OTEL_TRACES_SAMPLER_ARG", "1.0"
+)  # Sample 100% in dev
+
+# OpenTelemetry Metrics Configuration
+OTEL_METRIC_EXPORT_INTERVAL_MILLIS = int(
+    os.getenv("OTEL_METRIC_EXPORT_INTERVAL_MILLIS", "30000")
+)
+OTEL_METRIC_EXPORT_TIMEOUT_MILLIS = int(
+    os.getenv("OTEL_METRIC_EXPORT_TIMEOUT_MILLIS", "30000")
+)
+
+# OpenTelemetry Instrumentation Configuration
+OTEL_PYTHON_DJANGO_INSTRUMENT = True
+OTEL_PYTHON_DJANGO_TRACED_REQUEST_ATTRS = [
+    "path",
+    "method",
+    "scheme",
+    "server_port",
+    "remote_addr",
+]
+OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = [
+    "content-type",
+    "user-agent",
+    "x-request-id",
+]
+OTEL_PYTHON_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_RESPONSE = [
+    "content-type",
+    "content-length",
+]
+
+# OpenTelemetry Instrumentors
+OTEL_INSTRUMENTATION_PACKAGES = [
+    "elasticsearch",
+    "requests",
+    "redis",
+    "sqlalchemy",
+]
+
 # Rate limiting settings
 RATELIMIT_ENABLE = True
-RATELIMIT_USE_CACHE = 'default'
-RATELIMIT_VIEW = 'api.views.rate_limit_exceeded_view'
+RATELIMIT_USE_CACHE = "default"
+RATELIMIT_VIEW = "api.views.rate_limit_exceeded_view"
 
 # Security settings
-SECURE_SSL_REDIRECT = not DEBUG
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True

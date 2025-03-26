@@ -13,15 +13,56 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
+from typing import List, Union, cast
+
+from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path, include, re_path
+from django.urls import URLPattern, URLResolver, include, path, re_path
+from drf_yasg import openapi
+from drf_yasg.views import get_schema_view
 
-from DataSpace import settings
-from search import urls as search_index_urls
+from api.views import health
 
-urlpatterns = [
+# Type alias for URL patterns
+URLPatternsList = List[Union[URLPattern, URLResolver]]
+
+# API Documentation
+schema_view = get_schema_view(
+    openapi.Info(
+        title="DataEx API",
+        default_version="v1",
+        description="DataEx Backend API Documentation",
+        terms_of_service="https://www.google.com/policies/terms/",
+        contact=openapi.Contact(email="contact@dataex.com"),
+        license=openapi.License(name="BSD License"),
+    ),
+    public=True,
+    permission_classes=[],
+)
+
+urlpatterns: URLPatternsList = [
     path("api/", include("api.urls")),
-    path('admin/', admin.site.urls),
-    re_path(r'^search/', include(search_index_urls)),
-]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    path("admin/", admin.site.urls),
+    # Health check endpoint
+    path("health/", health.health_check, name="health_check"),
+    # API documentation
+    path(
+        "swagger<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"
+    ),
+    path(
+        "swagger/",
+        schema_view.with_ui("swagger", cache_timeout=0),
+        name="schema-swagger-ui",
+    ),
+    path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+if settings.DEBUG:
+    import debug_toolbar  # type: ignore[import]
+
+    debug_patterns: URLPatternsList = [
+        path("__debug__/", include(debug_toolbar.urls)),
+    ]
+    urlpatterns = debug_patterns + cast(URLPatternsList, urlpatterns)

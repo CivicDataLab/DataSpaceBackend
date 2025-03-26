@@ -1,57 +1,88 @@
 import datetime
 import uuid
+from typing import List, Optional
 
 import strawberry
 import strawberry_django
+from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
-from api.models import ResourceChartImage, Dataset
+from api.models import Dataset, ResourceChartImage
 from api.types.type_resource_chart_image import TypeResourceChartImage
 
 
-@strawberry_django.input(ResourceChartImage, fields="__all__", exclude=["datasets", "slug"])
+@strawberry_django.input(
+    ResourceChartImage, fields="__all__", exclude=["datasets", "slug"]
+)
 class ResourceChartImageInput:
     pass
 
 
 @strawberry_django.partial(ResourceChartImage, fields="__all__", exclude=["datasets"])
 class ResourceChartImageInputPartial:
-    id: str
+    id: uuid.UUID
 
 
 @strawberry.type(name="Query")
 class Query:
     resource_chart_images: list[TypeResourceChartImage] = strawberry_django.field()
 
-    @strawberry_django.field
-    def dataset_resource_charts(self, info, dataset_id: uuid.UUID) -> list[TypeResourceChartImage]:
-        return ResourceChartImage.objects.filter(dataset_id=dataset_id)
+    @strawberry_django.field(pagination=True)
+    def dataset_resource_charts(
+        self, info: Info, dataset_id: uuid.UUID
+    ) -> List[TypeResourceChartImage]:
+        """Get all resource chart images for a dataset."""
+        images = ResourceChartImage.objects.filter(dataset_id=dataset_id)
+        return [TypeResourceChartImage.from_django(image) for image in images]
 
 
 @strawberry.type
 class Mutation:
-    create_resource_chart_image: TypeResourceChartImage = mutations.create(ResourceChartImageInput)
-    update_resource_chart_image: TypeResourceChartImage = mutations.update(ResourceChartImageInputPartial,
-                                                                           key_attr="id")
+    @strawberry_django.mutation(handle_django_errors=True)
+    def create_resource_chart_image(
+        self, info: Info, input: ResourceChartImageInput
+    ) -> TypeResourceChartImage:
+        """Create a new resource chart image."""
+        image = mutations.create(ResourceChartImageInput)(info=info, input=input)
+        return TypeResourceChartImage.from_django(image)
 
     @strawberry_django.mutation(handle_django_errors=True)
-    def add_resource_chart_image(self, info, dataset: uuid.UUID) -> TypeResourceChartImage:
+    def update_resource_chart_image(
+        self, info: Info, input: ResourceChartImageInputPartial
+    ) -> TypeResourceChartImage:
+        """Update an existing resource chart image."""
+        image = mutations.update(ResourceChartImageInputPartial, key_attr="id")(
+            info=info, input=input
+        )
+        return TypeResourceChartImage.from_django(image)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def add_resource_chart_image(
+        self, info: Info, dataset: uuid.UUID
+    ) -> TypeResourceChartImage:
+        """Add a new resource chart image to a dataset."""
         try:
-            dataset = Dataset.objects.get(id=dataset)
-        except Dataset.DoesNotExist as e:
+            dataset_obj = Dataset.objects.get(id=dataset)
+        except Dataset.DoesNotExist:
             raise ValueError(f"Dataset with ID {dataset} does not exist.")
-        resource_chart_image: ResourceChartImage = ResourceChartImage()
+
         now = datetime.datetime.now()
-        resource_chart_image.name = f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M')}"
-        resource_chart_image.dataset = dataset
-        resource_chart_image.save()
-        return resource_chart_image
+        image = ResourceChartImage.objects.create(
+            name=f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M')}",
+            dataset=dataset_obj,
+        )
+        return TypeResourceChartImage.from_django(image)
 
     @strawberry_django.mutation(handle_django_errors=False)
-    def delete_resource_chart_image(self, resource_chart_image_id: str) -> bool:
+    def delete_resource_chart_image(
+        self, info: Info, resource_chart_image_id: uuid.UUID
+    ) -> bool:
+        """Delete a resource chart image."""
         try:
-            resource_chart_image = ResourceChartImage.objects.get(id=resource_chart_image_id)
-        except ResourceChartImage.DoesNotExist as e:
-            raise ValueError(f"ResourceChartImage with ID {resource_chart_image_id} does not exist.")
-        resource_chart_image.delete()
-        return True
+            image = ResourceChartImage.objects.get(id=resource_chart_image_id)
+            image.delete()
+            return True
+        except ResourceChartImage.DoesNotExist:
+            raise ValueError(
+                f"ResourceChartImage with ID {resource_chart_image_id} does not exist."
+            )

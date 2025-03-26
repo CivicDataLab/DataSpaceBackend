@@ -17,14 +17,18 @@ exporters:
     tls:
       insecure: true
 
+extensions:
+  health_check:
+    endpoint: "0.0.0.0:13133"
+
 service:
+  extensions: [health_check]
   pipelines:
     traces:
-      receivers: [ otlp ]
-      exporters: [ logging, otlp/elastic ]
-      processors: [ batch ]
+      receivers: [otlp]
+      exporters: [logging, otlp/elastic]
+      processors: [batch]
     metrics:
-      receivers: [ otlp ]
-      exporters: [ logging, otlp/elastic ]
-      processors: [ batch ]
-
+      receivers: [otlp]
+      exporters: [logging, otlp/elastic]
+      processors: [batch]

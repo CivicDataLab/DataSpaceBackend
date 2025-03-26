@@ -1,32 +1,44 @@
+from typing import List
+
 import strawberry
 import strawberry_django
-# from strawberry.extensions import MaskErrors
 from strawberry.tools import merge_types
+from strawberry.types import Info
 from strawberry_django.optimizer import DjangoOptimizerExtension
 
-import api.schema.dataset_schema
-import api.schema.metadata_schema
-import api.schema.resource_schema
 import api.schema.access_model_schema
 import api.schema.category_schema
-import api.schema.organization_schema
+import api.schema.dataset_schema
 import api.schema.dataspace_schema
+import api.schema.metadata_schema
+import api.schema.organization_schema
 import api.schema.resource_chart_schema
+import api.schema.resource_schema
 import api.schema.resoure_chart_image_schema
+import api.schema.tags_schema
 import api.schema.usecase_schema
+from api.models import Resource, Tag
 from api.types import TypeMetadata, TypeResource
 from api.types.type_dataset import TypeTag
-from api.types.type_dataspace import TypeDataSpace
-from api.types.type_organization import TypeOrganization
+from api.utils.graphql_telemetry import TelemetryExtension, trace_resolver
 
 
 @strawberry.type
 class DefaultQuery:
-    organisations: list[TypeOrganization] = strawberry_django.field()
-    dataspaces: list[TypeDataSpace] = strawberry_django.field()
+
     metadata: list[TypeMetadata] = strawberry_django.field()
-    resource: list[TypeResource] = strawberry_django.field()
-    tags: list[TypeTag] = strawberry_django.field()
+
+    @strawberry_django.field
+    @trace_resolver(name="resources", attributes={"component": "default"})
+    def resources(self, info: Info) -> List[TypeResource]:
+        resources = Resource.objects.all()
+        return [TypeResource.from_django(resource) for resource in resources]
+
+    @strawberry_django.field
+    @trace_resolver(name="tags", attributes={"component": "default"})
+    def tags(self, info: Info) -> List[TypeTag]:
+        tags = Tag.objects.all()
+        return [TypeTag.from_django(tag) for tag in tags]
 
 
 Query = merge_types(
@@ -39,6 +51,8 @@ Query = merge_types(
         api.schema.category_schema.Query,
         api.schema.resource_chart_schema.Query,
         api.schema.usecase_schema.Query,
+        api.schema.organization_schema.Query,
+        api.schema.dataspace_schema.Query,
         api.schema.resoure_chart_image_schema.Query,
     ),
 )
@@ -47,23 +61,24 @@ Mutation = merge_types(
     "Mutation",
     (
         api.schema.dataset_schema.Mutation,
-        api.schema.metadata_schema.Mutation,
         api.schema.resource_schema.Mutation,
         api.schema.access_model_schema.Mutation,
         api.schema.category_schema.Mutation,
-        api.schema.organization_schema.Mutation,
-        api.schema.dataspace_schema.Mutation,
         api.schema.resource_chart_schema.Mutation,
         api.schema.usecase_schema.Mutation,
+        api.schema.organization_schema.Mutation,
+        api.schema.metadata_schema.Mutation,
+        api.schema.dataspace_schema.Mutation,
         api.schema.resoure_chart_image_schema.Mutation,
+        api.schema.tags_schema.Mutation,
     ),
 )
+
 schema = strawberry.Schema(
     query=Query,
     mutation=Mutation,
     extensions=[
         DjangoOptimizerExtension,
-        # MaskErrors,
-        # OpenTelemetryExtension
+        TelemetryExtension,
     ],
 )

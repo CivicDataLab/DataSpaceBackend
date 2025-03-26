@@ -1,29 +1,35 @@
 import datetime
 import uuid
-from typing import Optional, List, Dict, Any
-from dataclasses import field
+from typing import Any, Dict, List, Optional
 
 import strawberry
 import strawberry_django
-from strawberry.scalars import JSON
+from strawberry.types import Info
+from strawberry_django.mutations import mutations
 
-from api.models import ResourceChartDetails, Resource, ResourceSchema
+from api.models import Resource, ResourceChartDetails, ResourceSchema
 from api.types import TypeResourceChart
-from api.utils.enums import ChartTypes, AggregateType
+from api.utils.enums import AggregateType, ChartTypes
 
-ChartType = strawberry.enum(ChartTypes)
-AggregateType = strawberry.enum(AggregateType)
+ChartTypeEnum = strawberry.enum(ChartTypes)
+AggregateTypeEnum = strawberry.enum(AggregateType)
 
 
 @strawberry.type(name="Query")
 class Query:
     @strawberry_django.field
-    def charts_details(self, info, dataset_id: uuid.UUID) -> list[TypeResourceChart]:
-        return ResourceChartDetails.objects.filter(resource__dataset_id=dataset_id)
+    def charts_details(
+        self, info: Info, dataset_id: uuid.UUID
+    ) -> List[TypeResourceChart]:
+        charts = ResourceChartDetails.objects.filter(resource__dataset_id=dataset_id)
+        return [TypeResourceChart.from_django(chart) for chart in charts]
 
     @strawberry_django.field
-    def resource_chart(self, info, chart_details_id: uuid.UUID) -> TypeResourceChart:
-        return ResourceChartDetails.objects.get(id=chart_details_id)
+    def resource_chart(
+        self, info: Info, chart_details_id: uuid.UUID
+    ) -> TypeResourceChart:
+        chart = ResourceChartDetails.objects.get(id=chart_details_id)
+        return TypeResourceChart.from_django(chart)
 
 
 @strawberry.input
@@ -38,10 +44,12 @@ class ValueMapping:
     key: str
     value: str
 
+
 @strawberry.input
 class ValueMappingInput:
     key: str
     value: str
+
 
 @strawberry.input
 class YAxisColumnConfig:
@@ -53,15 +61,15 @@ class YAxisColumnConfig:
 
 @strawberry.input
 class ChartOptions:
-    x_axis_label: Optional[str] = "X-Axis"
-    y_axis_label: Optional[str] = "Y-Axis"
+    x_axis_label: str = "X-Axis"
+    y_axis_label: str = "Y-Axis"
     x_axis_column: Optional[str] = None
-    y_axis_column: Optional[List[YAxisColumnConfig]] = field(default_factory=list)
+    y_axis_column: Optional[List[YAxisColumnConfig]] = None
     region_column: Optional[str] = None
     value_column: Optional[str] = None
     time_column: Optional[str] = None
     show_legend: bool = False
-    aggregate_type: Optional[str] = "none"
+    aggregate_type: str = "none"
 
 
 @strawberry.input
@@ -90,43 +98,60 @@ class ResourceChartInput:
     resource: uuid.UUID
     name: Optional[str]
     description: Optional[str]
-    type: Optional[ChartType]
-    options: Optional[ChartOptions] = field(default_factory=ChartOptions)
+    type: Optional[ChartTypeEnum]
+    options: Optional[ChartOptions] = None
     filters: Optional[List[FilterInput]] = None
 
-def _update_value_mapping(value_mapping):
+
+def _update_value_mapping(
+    value_mapping: Optional[List[ValueMapping]],
+) -> Dict[str, str]:
     if not value_mapping:
         return {}
     return {
-            str(mapping.key): str(mapping.value)
-            for mapping in value_mapping
-            if mapping.key is not None and mapping.value is not None
-        }
-    
-def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChartInput, resource: Resource):
-    chart.chart_type = chart_input.type
-    
+        str(mapping.key): str(mapping.value)
+        for mapping in value_mapping
+        if mapping.key is not None and mapping.value is not None
+    }
+
+
+def _update_chart_fields(
+    chart: ResourceChartDetails, chart_input: ResourceChartInput, resource: Resource
+) -> None:
+    if chart_input.type:
+        chart.chart_type = chart_input.type
+
     # Build options dictionary
-    options = {}
-    for field_name, value in vars(chart_input.options).items():
-        if value is not None:
-            if field_name in ['x_axis_column', 'region_column', 'value_column', 'time_column']:
-                if value:  # Only process if value is not empty
-                    field = ResourceSchema.objects.get(id=value)
-                    options[field_name] = field
-            elif field_name == 'y_axis_column':
-                if value:# Only process if list is not empty
-                    options[field_name] = [
-                        {
-                            'field': ResourceSchema.objects.get(id=column.field_name),
-                            'label': column.label,
-                            'color': column.color,
-                            'value_mapping':_update_value_mapping(column.value_mapping)
-                        }
-                        for column in value
-                    ]
-            else:
-                options[field_name] = value
+    options: Dict[str, Any] = {}
+    if chart_input.options:
+        for field_name, value in vars(chart_input.options).items():
+            if value is not None:
+                if field_name in [
+                    "x_axis_column",
+                    "region_column",
+                    "value_column",
+                    "time_column",
+                ]:
+                    if value:  # Only process if value is not empty
+                        field = ResourceSchema.objects.get(id=value)
+                        options[field_name] = field
+                elif field_name == "y_axis_column":
+                    if value:  # Only process if list is not empty
+                        options[field_name] = [
+                            {
+                                "field": ResourceSchema.objects.get(
+                                    id=column.field_name
+                                ),
+                                "label": column.label,
+                                "color": column.color,
+                                "value_mapping": _update_value_mapping(
+                                    column.value_mapping
+                                ),
+                            }
+                            for column in value
+                        ]
+                else:
+                    options[field_name] = value
 
     if chart_input.name:
         chart.name = chart_input.name
@@ -138,11 +163,11 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
     if chart_input.filters:
         filters = []
         for filter_input in chart_input.filters:
-            if filter_input.column != "":
+            if filter_input.column:
                 filter_dict = {
                     "column": ResourceSchema.objects.get(id=filter_input.column),
                     "operator": filter_input.operator,
-                    "value": filter_input.value
+                    "value": filter_input.value,
                 }
                 filters.append(filter_dict)
         chart.filters = filters
@@ -152,41 +177,45 @@ def _update_chart_fields(chart: ResourceChartDetails, chart_input: ResourceChart
 @strawberry.type
 class Mutation:
     @strawberry_django.mutation(handle_django_errors=True)
-    def add_resource_chart(self, info, resource: uuid.UUID) -> TypeResourceChart:
-        resource_chart: ResourceChartDetails = ResourceChartDetails()
-        now = datetime.datetime.now()
-        resource_chart.name = f"New chart {now.strftime('%d %b %Y - %H:%M')}"
+    def add_resource_chart(self, info: Info, resource: uuid.UUID) -> TypeResourceChart:
         try:
-            resource = Resource.objects.get(id=resource)
+            resource_obj = Resource.objects.get(id=resource)
         except Resource.DoesNotExist as e:
             raise ValueError(f"Resource with ID {resource} does not exist.")
-        resource_chart.resource = resource
-        resource_chart.save()
-        return resource_chart
+
+        now = datetime.datetime.now()
+        chart = ResourceChartDetails.objects.create(
+            name=f"New chart {now.strftime('%d %b %Y - %H:%M')}", resource=resource_obj
+        )
+        return TypeResourceChart.from_django(chart)
 
     @strawberry_django.mutation(handle_django_errors=True)
-    def edit_resource_chart(self, chart_input: ResourceChartInput) -> TypeResourceChart:
+    def edit_resource_chart(
+        self, info: Info, chart_input: ResourceChartInput
+    ) -> TypeResourceChart:
         if not chart_input.chart_id:
-            chart: ResourceChartDetails = ResourceChartDetails()
+            chart = ResourceChartDetails()
         else:
             try:
                 chart = ResourceChartDetails.objects.get(id=chart_input.chart_id)
             except ResourceChartDetails.DoesNotExist as e:
                 raise ValueError(f"Chart ID {chart_input.chart_id} does not exist.")
+
         try:
             resource = Resource.objects.get(id=chart_input.resource)
         except Resource.DoesNotExist as e:
             raise ValueError(f"Resource with ID {chart_input.resource} does not exist.")
+
         chart.resource = resource
         chart.save()
         _update_chart_fields(chart, chart_input, resource)
-        return chart
+        return TypeResourceChart.from_django(chart)
 
     @strawberry_django.mutation(handle_django_errors=False)
-    def delete_resource_chart(self, chart_id: uuid.UUID) -> bool:
+    def delete_resource_chart(self, info: Info, chart_id: uuid.UUID) -> bool:
         try:
             chart = ResourceChartDetails.objects.get(id=chart_id)
+            chart.delete()
+            return True
         except ResourceChartDetails.DoesNotExist as e:
             raise ValueError(f"Resource Chart with ID {chart_id} does not exist.")
-        chart.delete()
-        return True

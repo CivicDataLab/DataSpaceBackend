@@ -1,3 +1,5 @@
+from typing import List, Tuple
+
 from django.db import models
 
 

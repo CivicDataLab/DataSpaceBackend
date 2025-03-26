@@ -1,7 +1,9 @@
+from typing import List, Optional
+
 import strawberry
 import strawberry_django
 from strawberry import auto
-from strawberry_django import NodeInput
+from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
 from api.models import DataSpace
@@ -21,10 +23,30 @@ class DataSpaceInputPartial:
 @strawberry.type(name="Query")
 class Query:
     dataspaces: list[TypeDataSpace] = strawberry_django.field()
+    dataspace: TypeDataSpace = strawberry_django.field()
 
 
 @strawberry.type
 class Mutation:
-    create_dataspace: TypeDataSpace = mutations.create(DataSpaceInput)
-    update_dataspace: TypeDataSpace = mutations.update(DataSpaceInputPartial, key_attr="id")
-    delete_dataspace: TypeDataSpace = mutations.delete(NodeInput)
+    @strawberry_django.mutation
+    def create_dataspace(self, info: Info, input: DataSpaceInput) -> TypeDataSpace:
+        dataspace = mutations.create(DataSpaceInput)(info=info, input=input)
+        return TypeDataSpace.from_django(dataspace)
+
+    @strawberry_django.mutation
+    def update_dataspace(
+        self, info: Info, input: DataSpaceInputPartial
+    ) -> TypeDataSpace:
+        dataspace = mutations.update(DataSpaceInputPartial, key_attr="id")(
+            info=info, input=input
+        )
+        return TypeDataSpace.from_django(dataspace)
+
+    @strawberry_django.mutation
+    def delete_dataspace(
+        self, info: Info, input: DataSpaceInputPartial
+    ) -> TypeDataSpace:
+        dataspace = mutations.delete(DataSpaceInputPartial, key_attr="id")(
+            info=info, input=input
+        )
+        return TypeDataSpace.from_django(dataspace)
