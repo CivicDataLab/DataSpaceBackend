@@ -370,8 +370,8 @@ class BaseChart:
             return
 
         # Get x-axis data
-        x_axis_field = cast(Dict[str, Any], self.options["x_axis_column"])
-        x_field = x_axis_field["field_name"]
+        x_axis_field = cast(DjangoFieldLike, self.options["x_axis_column"])
+        x_field = x_axis_field.field_name
         x_axis_data = filtered_data[x_field].tolist()
 
         # Sort if needed
@@ -384,7 +384,7 @@ class BaseChart:
         # Add series for each y-axis column
         for y_axis_column in self._get_y_axis_columns():
             field = y_axis_column["field"]
-            field_name = field["field_name"]
+            field_name = field.field_name
             series_name = self._get_series_name(y_axis_column)
             y_values = filtered_data[field_name].tolist()
 
