@@ -18,7 +18,7 @@ import structlog
 from decouple import config
 
 from .cache_settings import *
-import structlog
+
 env = environ.Env(DEBUG=(bool, False))
 DEBUG = env.bool("DEBUG", default=True)
 
@@ -231,19 +231,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DJANGO_ALLOW_ASYNC_UNSAFE = True
 ELASTICSEARCH_DSL = {
     "default": {
-        "hosts": os.getenv("ELASTICSEARCH_INDEX", "http://elasticsearch:9200"),
-        "http_auth": (
-            os.getenv("ELASTICSEARCH_USERNAME", "elastic"),
-            os.getenv("ELASTICSEARCH_PASSWORD", "changeme"),
-        ),
-    }
-
-}
-
-ELASTICSEARCH_DSL = {
-    'default': {
-        'hosts': f"http://{os.getenv('ELASTICSEARCH_USERNAME', 'elastic')}:{os.getenv('ELASTICSEARCH_PASSWORD', 'changeme')}@elasticsearch:9200"
-    }
+        "hosts": f"http://{os.getenv('ELASTICSEARCH_USERNAME', 'elastic')}:{os.getenv('ELASTICSEARCH_PASSWORD', 'changeme')}@elasticsearch:9200"
+    },
+    "http_auth": (
+        os.getenv("ELASTICSEARCH_USERNAME", "elastic"),
+        os.getenv("ELASTICSEARCH_PASSWORD", "changeme"),
+    ),
 }
 
 ELASTICSEARCH_INDEX_NAMES = {
