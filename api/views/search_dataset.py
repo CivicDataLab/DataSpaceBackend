@@ -61,7 +61,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
 
     metadata = DatasetMetadataSerializer(many=True)
     tags = serializers.ListField()
-    categories = serializers.ListField()
+    sectors = serializers.ListField()
     formats = serializers.ListField()
     has_charts = serializers.BooleanField()
     slug = serializers.CharField()
@@ -84,7 +84,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
             "status",
             "metadata",
             "tags",
-            "categories",
+            "sectors",
             "formats",
             "has_charts",
             "organization",
@@ -127,7 +127,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         )
         aggregations: Dict[str, str] = {
             "tags.raw": "terms",
-            "categories.raw": "terms",
+            "sectors.raw": "terms",
             "formats.raw": "terms",
         }
         for metadata in enabled_metadata:  # type: Metadata
@@ -232,7 +232,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         for filter in filters:
             if filter in excluded_labels:
                 continue
-            elif filter in ["tags", "categories", "formats"]:
+            elif filter in ["tags", "sectors", "formats"]:
                 raw_filter = filter + ".raw"
                 if raw_filter in self.aggregations:
                     search = search.filter(

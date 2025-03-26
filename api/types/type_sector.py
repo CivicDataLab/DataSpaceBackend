@@ -5,21 +5,19 @@ import strawberry
 import strawberry_django
 from strawberry import auto
 
-from api.models import Category
+from api.models import Sector
 from api.types.base_type import BaseType
 
 
-@strawberry_django.filter(Category)
-class CategoryFilter:
+@strawberry_django.filter(Sector)
+class SectorFilter:
     id: auto
     slug: auto
 
 
-@strawberry_django.type(
-    Category, pagination=True, fields="__all__", filters=CategoryFilter
-)
-class TypeCategory(BaseType):
-    parent_id: Optional["TypeCategory"]
+@strawberry_django.type(Sector, pagination=True, fields="__all__", filters=SectorFilter)
+class TypeSector(BaseType):
+    parent_id: Optional["TypeSector"]
 
     @strawberry.field
     def dataset_count(self: Any) -> int:

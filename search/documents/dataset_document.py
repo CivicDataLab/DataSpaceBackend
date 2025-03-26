@@ -61,8 +61,8 @@ class DatasetDocument(Document):
         multi=True,
     )
 
-    categories = fields.TextField(
-        attr="categories_indexing",
+    sectors = fields.TextField(
+        attr="sectors_indexing",
         analyzer=ngram_analyser,
         fields={
             "raw": fields.KeywordField(multi=True),

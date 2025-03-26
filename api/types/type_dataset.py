@@ -9,10 +9,10 @@ from strawberry.types import Info
 
 from api.models import Dataset, DatasetMetadata, Resource, Tag
 from api.types.base_type import BaseType
-from api.types.type_category import TypeCategory
 from api.types.type_dataset_metadata import TypeDatasetMetadata
 from api.types.type_organization import TypeOrganization
 from api.types.type_resource import TypeResource
+from api.types.type_sector import TypeSector
 from api.utils.enums import DatasetStatus
 
 dataset_status: EnumType = strawberry.enum(DatasetStatus)  # type: ignore
@@ -56,19 +56,19 @@ class TypeDataset(BaseType):
     tags: List["TypeTag"]
 
     @strawberry.field
-    def categories(self, info: Info) -> List["TypeCategory"]:
-        """Get categories for this dataset.
+    def sectors(self, info: Info) -> List["TypeSector"]:
+        """Get sectors for this dataset.
 
         Args:
             info: Request info
 
         Returns:
-            List[TypeCategory]: List of categories
+            List[TypeSector]: List of sectors
         """
         try:
             django_instance = cast(Dataset, self)
-            queryset = django_instance.categories.all()
-            return TypeCategory.from_django_list(queryset)
+            queryset = django_instance.sectors.all()
+            return TypeSector.from_django_list(queryset)
         except (AttributeError, Dataset.DoesNotExist):
             return []
 

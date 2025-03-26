@@ -7,9 +7,9 @@ from django.utils.text import slugify
 from api.utils.enums import DatasetStatus
 
 if TYPE_CHECKING:
-    from api.models.Category import Category
     from api.models.DataSpace import DataSpace
     from api.models.Organization import Organization
+    from api.models.Sector import Sector
 
 
 class Tag(models.Model):
@@ -49,9 +49,7 @@ class Dataset(models.Model):
     status = models.CharField(
         max_length=50, default=DatasetStatus.DRAFT, choices=DatasetStatus.choices
     )
-    categories = models.ManyToManyField(
-        "api.Category", blank=True, related_name="datasets"
-    )
+    sectors = models.ManyToManyField("api.Sector", blank=True, related_name="datasets")
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
@@ -67,12 +65,12 @@ class Dataset(models.Model):
         return [tag.value for tag in self.tags.all()]  # type: ignore
 
     @property
-    def categories_indexing(self) -> list[str]:
-        """Categories for indexing.
+    def sectors_indexing(self) -> list[str]:
+        """Sectors for indexing.
 
         Used in Elasticsearch indexing.
         """
-        return [category.name for category in self.categories.all()]  # type: ignore
+        return [sector.name for sector in self.sectors.all()]  # type: ignore
 
     @property
     def formats_indexing(self) -> list[str]:
