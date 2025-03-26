@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, cast
 import pandas as pd
 import structlog
 from pyecharts import options as opts
+from pyecharts.charts.basic_charts.line import Line
 from pyecharts.charts.chart import Chart
 
 from api.types.charts.base_chart import BaseChart, DjangoFieldLike
@@ -55,16 +56,6 @@ class MultiLineChart(BaseChart):
             theme=self.options.get("theme", "white"),
         )
 
-    def get_series_style_opts(self, color: Optional[str] = None) -> Dict[str, Any]:
-        """Get line chart specific styling options."""
-        # Line chart specific options
-        return {
-            "itemstyle_opts": opts.ItemStyleOpts(color=color) if color else None,
-            "linestyle_opts": opts.LineStyleOpts(width=2, type_="solid"),
-            "is_smooth": True,
-            "is_symbol_show": True,
-        }
-
     def add_series_to_chart(
         self,
         chart: Chart,
@@ -73,30 +64,40 @@ class MultiLineChart(BaseChart):
         color: Optional[str] = None,
         value_mapping: Optional[Dict[Any, Any]] = None,
     ) -> None:
-        """Add a series to the chart with specific styling.
-
-        For MultiLineChart, we need to format the data as [x, y] pairs for proper rendering.
-        """
-        # For line charts, we need to create [x, y] pairs
+        """Override to add line chart specific styling."""
+        # Create a list of value objects with original and formatted values
         data = []
-        x_axis_data = chart.options.get("xAxis", [{}])[0].get("data", [])
-        logger.debug(f"x_axis_data: {x_axis_data}")
-        logger.debug(f"y_values: {y_values}")
+        for val in y_values:
+            try:
+                # Keep original numeric value for plotting
+                value = float(val) if val is not None else 0.0
+                # Get mapped string value for display
+                label = (
+                    value_mapping.get(str(value), str(value))
+                    if value_mapping
+                    else str(value)
+                )
+                data.append(
+                    opts.LineItem(
+                        name=label, value=value, symbol_size=8, symbol="emptyCircle"
+                    )
+                )
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Could not convert y_value to float: {val}, error: {e}")
+                # Add a default value if conversion fails
+                data.append(
+                    opts.LineItem(
+                        name="0", value=0.0, symbol_size=8, symbol="emptyCircle"
+                    )
+                )
 
-        for i, val in enumerate(y_values):
-            if i < len(x_axis_data):
-                x_val = x_axis_data[i]
-                # Convert to float for plotting
-                y_val = float(val) if val is not None else 0.0
-                data.append([x_val, y_val])
-
-        # Get series-specific styling options
-        chart_opts = self.get_series_style_opts(color)
-
-        # Add the series to the chart with the proper format
+        # Add the series to the chart
         chart.add_yaxis(
             series_name=series_name,
             y_axis=data,
             label_opts=opts.LabelOpts(is_show=False),
-            **chart_opts,
+            itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None,
+            linestyle_opts=opts.LineStyleOpts(width=2, type_="solid"),
+            is_smooth=True,
+            is_symbol_show=True,
         )
