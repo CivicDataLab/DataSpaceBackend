@@ -98,8 +98,6 @@ CORS_ALLOW_HEADERS = [
     "token",
 ]
 
-CSRF_TRUSTED_ORIGINS = whitelisted_urls
-
 # Application definition
 
 INSTALLED_APPS = [
