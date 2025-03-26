@@ -18,7 +18,7 @@ import structlog
 from decouple import config
 
 from .cache_settings import *
-
+import structlog
 env = environ.Env(DEBUG=(bool, False))
 DEBUG = env.bool("DEBUG", default=True)
 
@@ -49,6 +49,7 @@ DATA_DB_HOST = env("DB_HOST", default=DB_HOST)
 DATA_DB_PORT = env("DB_PORT", default=DB_PORT)
 
 # SECURITY WARNING: don't run with debug turned on in production!
+
 whitelisted_urls = env("URL_WHITELIST").split(",")
 ALLOWED_HOSTS = [
     "localhost",  # Allow localhost without port
@@ -59,6 +60,7 @@ ALLOWED_HOSTS = [
     url.replace("https://", "").replace("http://", "").split(":")[0]
     for url in whitelisted_urls
 ]
+
 
 CSRF_TRUSTED_ORIGINS = whitelisted_urls
 
@@ -234,6 +236,13 @@ ELASTICSEARCH_DSL = {
             os.getenv("ELASTICSEARCH_USERNAME", "elastic"),
             os.getenv("ELASTICSEARCH_PASSWORD", "changeme"),
         ),
+    }
+
+}
+
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': f"http://{os.getenv('ELASTICSEARCH_USERNAME', 'elastic')}:{os.getenv('ELASTICSEARCH_PASSWORD', 'changeme')}@elasticsearch:9200"
     }
 }
 
