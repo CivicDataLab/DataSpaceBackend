@@ -2,6 +2,7 @@ import uuid
 from typing import TYPE_CHECKING, Any
 
 from django.db import models
+from django.db.models import Sum
 from django.utils.text import slugify
 
 from api.utils.enums import DatasetStatus
@@ -96,6 +97,15 @@ class Dataset(models.Model):
         Used in Elasticsearch indexing.
         """
         return bool(self.resources.filter(resourcechartdetails__isnull=False).exists())
+
+    @property
+    def download_count(self) -> int:
+        return (
+            self.resources.aggregate(total_downloads=Sum("download_count"))[
+                "total_downloads"
+            ]
+            or 0
+        )
 
     def __str__(self) -> str:
         return self.title
