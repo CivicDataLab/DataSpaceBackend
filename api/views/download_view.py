@@ -63,6 +63,10 @@ def get_resource_response(resource: Resource) -> HttpResponse:
     else:
         basename = default_name
 
+    # Increment download count
+    resource.download_count += 1
+    resource.save()
+
     response["Content-Disposition"] = f'attachment; filename="{basename}"'
     return response
 
