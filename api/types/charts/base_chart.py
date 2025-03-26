@@ -365,18 +365,22 @@ class BaseChart:
     def configure_chart(
         self, chart: Chart, filtered_data: Optional[pd.DataFrame] = None
     ) -> None:
-        """Configure chart with data. Override in subclasses."""
+        """Configure chart with data. This method handles common data processing for all chart types.
+
+        Individual chart classes should override this method only if they need to change the basic
+        data processing logic. Otherwise, they should override get_chart_specific_opts() and
+        add_series_to_chart() to customize chart appearance.
+        """
         if filtered_data is None:
             return
+
+        # Process data based on chart type
+        processed_data = self._process_data(filtered_data)
 
         # Get x-axis data
         x_axis_field = cast(DjangoFieldLike, self.options["x_axis_column"])
         x_field = x_axis_field.field_name
-        x_axis_data = filtered_data[x_field].tolist()
-
-        # Sort if needed
-        sort_order = self.options.get("sort_order", "asc")
-        x_axis_data = sorted(x_axis_data, reverse=(sort_order == "desc"))
+        x_axis_data = self._get_x_axis_data(processed_data, x_field)
 
         # Add x-axis
         chart.add_xaxis(x_axis_data)
@@ -387,21 +391,12 @@ class BaseChart:
             field_name = field.field_name
             series_name = self._get_series_name(y_axis_column)
 
-            column_data = filtered_data[field_name]
-            logger.debug(f"Type of filtered_data: {type(filtered_data)}")
-            logger.debug(f"Columns in filtered_data: {filtered_data.columns.tolist()}")
-            logger.debug(f"Looking for field_name: {field_name}")
-            logger.debug(
-                f"Type of filtered_data[field_name]: {type(filtered_data[field_name])}"
+            # Get y values aligned with x-axis data
+            y_values = self._get_y_values(
+                processed_data, x_axis_data, x_field, field_name
             )
-            if hasattr(column_data, "tolist"):
-                y_values = column_data.tolist()
-            elif isinstance(column_data, pd.DataFrame):
-                logger.warning(
-                    f"Expected Series but got DataFrame for field {field_name}. Using first column."
-                )
-                y_values = column_data.iloc[:, 0].tolist()
 
+            # Add the series to the chart
             self.add_series_to_chart(
                 chart=chart,
                 series_name=series_name,
@@ -429,44 +424,37 @@ class BaseChart:
         color: Optional[str] = None,
         value_mapping: Optional[Dict[Any, Any]] = None,
     ) -> None:
-        """Add a series to the chart with specific styling."""
-        # Create a list of value objects with original and formatted values
+        """Add a series to the chart with specific styling.
+
+        This method can be overridden by subclasses to provide chart-specific styling.
+        """
+        # For numeric charts (Line, Bar), we need simple numeric values
         data = []
         for val in y_values:
-            # Keep original numeric value for plotting
+            # Convert to float for plotting
             value = float(val) if val is not None else 0.0
-            # Get mapped string value for display
-            label = (
-                value_mapping.get(str(value), str(value))
-                if value_mapping
-                else str(value)
-            )
+            data.append(value)
 
-            # Use appropriate item type based on chart class
-            if isinstance(chart, Line):
-                data.append(
-                    opts.LineItem(
-                        name=label, value=value, symbol_size=8, symbol="emptyCircle"
-                    )
-                )
-            else:
-                data.append(opts.BarItem(name=label, value=value))
+        # Get series-specific styling options
+        chart_opts = self.get_series_style_opts(color)
 
+        # Add the series to the chart
         chart.add_yaxis(
             series_name=series_name,
             y_axis=data,
             label_opts=opts.LabelOpts(is_show=False),
-            itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None,
-            **(
-                {
-                    "linestyle_opts": opts.LineStyleOpts(width=2, type_="solid"),
-                    "is_smooth": True,
-                    "is_symbol_show": True,
-                }
-                if isinstance(chart, Line)
-                else {}
-            ),
+            **chart_opts,
         )
+
+    def get_series_style_opts(self, color: Optional[str] = None) -> Dict[str, Any]:
+        """Get series-specific styling options.
+
+        This method should be overridden by subclasses to provide series-specific styling options.
+        """
+        # Default options for all chart types
+        return {
+            "itemstyle_opts": opts.ItemStyleOpts(color=color) if color else None,
+        }
 
     def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
         """Handle non-time-based data."""
@@ -506,6 +494,47 @@ class BaseChart:
                 color=y_axis_column.get("color"),
                 value_mapping=value_mapping,
             )
+
+    def _process_data(self, filtered_data: pd.DataFrame) -> pd.DataFrame:
+        """Process data based on chart type and options.
+
+        This method can be overridden by subclasses to perform chart-specific data processing.
+        """
+        # By default, just return the filtered data as is
+        return filtered_data
+
+    def _get_x_axis_data(self, processed_data: pd.DataFrame, x_field: str) -> List[Any]:
+        """Get x-axis data from processed data."""
+        # Extract x-axis values
+        x_axis_data = processed_data[x_field].tolist()
+
+        # Sort if needed
+        sort_order = self.options.get("sort_order", "asc")
+        return sorted(x_axis_data, reverse=(sort_order == "desc"))
+
+    def _get_y_values(
+        self,
+        processed_data: pd.DataFrame,
+        x_axis_data: List[Any],
+        x_field: str,
+        y_field: str,
+    ) -> List[float]:
+        """Get y-axis values aligned with x-axis data."""
+        # Create a dictionary mapping x values to y values
+        x_to_y_map = {}
+
+        # Group by x_field and aggregate y values
+        grouped = processed_data.groupby(x_field)[y_field].sum()
+        for x_val, y_val in grouped.items():
+            if pd.notna(y_val) and y_val is not None:
+                x_to_y_map[x_val] = float(y_val)
+
+        # Create y_values array aligned with x_axis_data
+        y_values = []
+        for x_val in x_axis_data:
+            y_values.append(x_to_y_map.get(x_val, 0.0))
+
+        return y_values
 
     def _get_value_mapping(self, y_axis_column: Dict[str, Any]) -> Dict[str, Any]:
         """Get value mapping from y-axis column configuration."""
