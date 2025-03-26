@@ -40,12 +40,31 @@ class Command(BaseCommand):
         skip_existing = options.get("skip_existing")
 
         # Convert string IDs to UUID objects if provided
-        resource_id: Optional[uuid.UUID] = (
-            uuid.UUID(resource_id_str) if resource_id_str != "" else None
-        )
-        dataset_id: Optional[uuid.UUID] = (
-            uuid.UUID(dataset_id_str) if dataset_id_str != "" else None
-        )
+        resource_id: Optional[uuid.UUID] = None
+        dataset_id: Optional[uuid.UUID] = None
+
+        # Only try to convert valid UUID strings
+        if resource_id_str and resource_id_str.strip():
+            try:
+                resource_id = uuid.UUID(resource_id_str)
+            except ValueError:
+                self.stdout.write(
+                    self.style.ERROR(
+                        f"Invalid UUID format for resource-id: {resource_id_str}"
+                    )
+                )
+                return
+
+        if dataset_id_str and dataset_id_str.strip():
+            try:
+                dataset_id = uuid.UUID(dataset_id_str)
+            except ValueError:
+                self.stdout.write(
+                    self.style.ERROR(
+                        f"Invalid UUID format for dataset-id: {dataset_id_str}"
+                    )
+                )
+                return
 
         start_time = time.time()
         success_count = 0
