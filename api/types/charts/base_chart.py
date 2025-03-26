@@ -386,7 +386,21 @@ class BaseChart:
             field = y_axis_column["field"]
             field_name = field.field_name
             series_name = self._get_series_name(y_axis_column)
-            y_values = filtered_data[field_name].tolist()
+
+            column_data = filtered_data[field_name]
+            logger.debug(f"Type of filtered_data: {type(filtered_data)}")
+            logger.debug(f"Columns in filtered_data: {filtered_data.columns.tolist()}")
+            logger.debug(f"Looking for field_name: {field_name}")
+            logger.debug(
+                f"Type of filtered_data[field_name]: {type(filtered_data[field_name])}"
+            )
+            if hasattr(column_data, "tolist"):
+                y_values = column_data.tolist()
+            elif isinstance(column_data, pd.DataFrame):
+                logger.warning(
+                    f"Expected Series but got DataFrame for field {field_name}. Using first column."
+                )
+                y_values = column_data.iloc[:, 0].tolist()
 
             self.add_series_to_chart(
                 chart=chart,
