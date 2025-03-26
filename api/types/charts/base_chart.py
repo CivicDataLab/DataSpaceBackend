@@ -533,18 +533,22 @@ class BaseChart:
             x_val = row[x_field]
             y_val = row[y_field]
 
-            # Only include non-null values
-            if pd.notna(y_val):
-                # Handle both scalar values and potential Series objects
+            # Handle different types of y_val
+            try:
+                # Check if it's a Series
                 if isinstance(y_val, pd.Series):
+                    # For Series, check if it's not empty
                     if not y_val.empty:
-                        # Use the first value if it's a Series (should be rare)
+                        # Use the first value if it's a Series
                         value = y_val.iloc[0]
-                        if pd.notna(value):
+                        if not isinstance(value, pd.Series) and pd.notna(value):
                             x_to_y_map[x_val] = float(value)
-                else:
-                    # Normal case - just a scalar value
+                # For scalar values, check if not null
+                elif pd.notna(y_val):
                     x_to_y_map[x_val] = float(y_val)
+            except Exception as e:
+                # Log any errors but continue processing
+                logger.warning(f"Error processing y-value for {x_val}: {e}")
 
         # Create y_values array aligned with x_axis_data
         y_values = []
