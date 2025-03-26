@@ -99,11 +99,11 @@ class BaseChart:
 
     def _build_sql_filter(self, filter_dict: Dict[str, Any]) -> tuple[str, Any]:
         """Build SQL WHERE clause from filter dict."""
-        column = cast(Dict[str, Any], filter_dict.get("column", {}))
+        column = cast(DjangoFieldLike, filter_dict.get("column", {}))
         operator = filter_dict.get("operator", "")
         value = self._process_value(filter_dict.get("value", ""), operator)
 
-        field_name = column.get("field_name", "")
+        field_name = column.field_name
         if not field_name:
             return "", None
 
@@ -136,24 +136,20 @@ class BaseChart:
         select_cols = []
         params = []
 
-        x_axis_col = cast(Dict[str, Any], self.options.get("x_axis_column", {}))
-        if x_col := x_axis_col.get("field_name"):
+        x_axis_col = cast(DjangoFieldLike, self.options.get("x_axis_column", {}))
+        if x_col := x_axis_col.field_name:
             select_cols.append(f'"{x_col}"')
 
         y_axis_cols = self._get_y_axis_columns()
         for y_col in y_axis_cols:
             if field := y_col.get("field"):
-                field_name = field.get("field_name")
+                field_name = field.field_name
                 select_cols.append(f'"{field_name}"')
 
         # Handle time-based data
-        time_column = self.options.get("time_column")
-        if (
-            time_column
-            and isinstance(time_column, dict)
-            and time_column.get("field_name")
-        ):
-            time_field = time_column.get("field_name")
+        time_column = cast(DjangoFieldLike, self.options.get("time_column", {}))
+        if time_column:
+            time_field = time_column.field_name
             if time_field and time_field not in select_cols:
                 select_cols.append(f'"{time_field}"')
 
@@ -174,48 +170,29 @@ class BaseChart:
         if where_clauses:
             query += f" WHERE {' AND '.join(where_clauses)}"
 
-        # Handle time groups
-        time_groups = self.options.get("time_groups", [])
-        if (
-            time_column
-            and isinstance(time_column, dict)
-            and isinstance(time_groups, list)
-        ):
-            time_field = time_column.get("field_name")
-            if time_field:
-                time_values = ",".join([f"'{group}'" for group in time_groups])
-                where_clause = f'"{time_field}" IN ({time_values})'
-                query += (
-                    f" AND {where_clause}"
-                    if where_clauses
-                    else f" WHERE {where_clause}"
-                )
-
         # Handle aggregation
         agg_type = self.options.get("aggregate_type", "none")
         group_by = []
         if agg_type != "none":
-            x_col = x_axis_col.get("field_name")
+            x_col = x_axis_col.field_name
             if x_col:
                 group_by.append(f'"{x_col}"')
             if time_column:
-                if isinstance(time_column, dict):
-                    time_field = time_column.get("field_name")
-                    if time_field:
-                        group_by.append(f'"{time_field}"')
+                time_field = time_column.field_name
+                if time_field:
+                    group_by.append(f'"{time_field}"')
 
             # Update y-axis columns with aggregation
             select_cols = [
                 col
                 for col in select_cols
                 if not any(
-                    y_col.get("field", {}).get("field_name") in col
-                    for y_col in y_axis_cols
+                    y_col.get("field", {}).field_name in col for y_col in y_axis_cols
                 )
             ]
             for y_col in y_axis_cols:
                 if field := y_col.get("field"):
-                    field_name = field.get("field_name")
+                    field_name = field.field_name
                     select_cols.append(f'{agg_type}("{field_name}") as "{field_name}"')
 
             query = f"SELECT {', '.join(select_cols)} FROM {{table}}"
@@ -226,15 +203,11 @@ class BaseChart:
 
         # Add order by
         order_by = []
-        if (
-            time_column
-            and isinstance(time_column, dict)
-            and "field_name" in time_column
-        ):
-            time_field = time_column.get("field_name")
+        if time_column:
+            time_field = time_column.field_name
             if time_field:
                 order_by.append(f'"{time_field}"')
-        if x_col := x_axis_col.get("field_name"):
+        if x_col := x_axis_col.field_name:
             order_by.append(f'"{x_col}"')
 
         if order_by:
@@ -328,7 +301,7 @@ class BaseChart:
             y_values = []
             for y_axis_column in self._get_y_axis_columns():
                 if field := y_axis_column.get("field"):
-                    field_name = field.get("field_name")
+                    field_name = field.field_name
                     if field_name in data.columns:
                         y_values.extend(
                             data[field_name].dropna().astype(float).tolist()
@@ -428,7 +401,7 @@ class BaseChart:
 
     def _get_series_name(self, y_axis_column: Dict[str, Any]) -> str:
         """Get series name from y-axis column configuration."""
-        return str(y_axis_column.get("label") or y_axis_column["field"]["field_name"])
+        return str(y_axis_column.get("label") or y_axis_column["field"].field_name)
 
     def add_series_to_chart(
         self,
