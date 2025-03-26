@@ -39,7 +39,7 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
         pass
 
     @abc.abstractmethod
-    def add_sort(self, sort: str, search: SearchType) -> SearchType:
+    def add_sort(self, sort: str, search: SearchType, order: str) -> SearchType:
         """This method should be overridden and return a Search object with sort added."""
         pass
 
@@ -66,6 +66,7 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
             page: int = int(request.GET.get("page", 1))
             size: int = int(request.GET.get("size", 10))
             sort: str = request.GET.get("sort", "alphabetical")
+            order: str = request.GET.get("order", "asc")
             filters: Dict[str, Any] = request.GET.dict()
             filters.pop("query", None)
             filters.pop("page", None)
@@ -76,7 +77,7 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
             search = self.get_search().query(q)
             search = self.add_aggregations(search)
             search = self.add_filters(filters, search)
-            search = self.add_sort(sort, search)
+            search = self.add_sort(sort, search, order)
             search = search[(page - 1) * size : page * size]
             response = search.execute()
 
