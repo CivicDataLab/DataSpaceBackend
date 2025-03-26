@@ -1,11 +1,14 @@
 from typing import Any, Dict, List, Optional, cast
 
 import pandas as pd
+import structlog
 from pyecharts import options as opts
 from pyecharts.charts.chart import Chart
 
 from api.types.charts.base_chart import BaseChart, DjangoFieldLike
 from api.types.charts.chart_registry import register_chart
+
+logger = structlog.get_logger("dataspace.charts")
 
 
 @register_chart("MULTILINE")
@@ -61,3 +64,39 @@ class MultiLineChart(BaseChart):
             "is_smooth": True,
             "is_symbol_show": True,
         }
+
+    def add_series_to_chart(
+        self,
+        chart: Chart,
+        series_name: str,
+        y_values: List[Any],
+        color: Optional[str] = None,
+        value_mapping: Optional[Dict[Any, Any]] = None,
+    ) -> None:
+        """Add a series to the chart with specific styling.
+
+        For MultiLineChart, we need to format the data as [x, y] pairs for proper rendering.
+        """
+        # For line charts, we need to create [x, y] pairs
+        data = []
+        x_axis_data = chart.options.get("xAxis", [{}])[0].get("data", [])
+        logger.debug(f"x_axis_data: {x_axis_data}")
+        logger.debug(f"y_values: {y_values}")
+
+        for i, val in enumerate(y_values):
+            if i < len(x_axis_data):
+                x_val = x_axis_data[i]
+                # Convert to float for plotting
+                y_val = float(val) if val is not None else 0.0
+                data.append([x_val, y_val])
+
+        # Get series-specific styling options
+        chart_opts = self.get_series_style_opts(color)
+
+        # Add the series to the chart with the proper format
+        chart.add_yaxis(
+            series_name=series_name,
+            y_axis=data,
+            label_opts=opts.LabelOpts(is_show=False),
+            **chart_opts,
+        )
