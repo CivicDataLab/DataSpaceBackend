@@ -61,17 +61,7 @@ class MultiLineChart(BaseChart):
         for val in y_values:
             # Keep original numeric value for plotting
             value = float(val) if val is not None else 0.0
-            # Get mapped string value for display
-            label = (
-                value_mapping.get(str(value), str(value))
-                if value_mapping
-                else str(value)
-            )
-            data.append(
-                opts.LineItem(
-                    name=label, value=value, symbol_size=8, symbol="emptyCircle"
-                )
-            )
+            data.append(value)
 
         chart.add_yaxis(
             series_name=series_name,
