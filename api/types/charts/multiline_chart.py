@@ -44,37 +44,6 @@ class MultiLineChart(BaseChart):
         )
         return base_opts
 
-    def add_series_to_chart(
-        self,
-        chart: Chart,
-        series_name: str,
-        y_values: List[Any],
-        color: Optional[str] = None,
-        value_mapping: Optional[Dict[Any, Any]] = None,
-    ) -> None:
-        """Override to add line chart specific styling."""
-        # Create a list of value objects with original and formatted values
-        if value_mapping is None:
-            value_mapping = {}
-        data = []
-        for val in y_values:
-            # Keep original numeric value for plotting
-            value = float(val) if val is not None else 0.0
-            data.append(value)
-
-        chart.add_yaxis(
-            series_name=series_name,
-            y_axis=data,
-            label_opts=opts.LabelOpts(is_show=False),
-            # tooltip_opts=opts.TooltipOpts(
-            #     formatter="{a}: {c}"
-            # ),
-            itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None,
-            linestyle_opts=opts.LineStyleOpts(width=2, type_="solid"),
-            is_smooth=True,
-            is_symbol_show=True,
-        )
-
     def get_init_opts(self) -> opts.InitOpts:
         """Override to provide line chart specific initialization options."""
         return opts.InitOpts(
@@ -104,26 +73,41 @@ class MultiLineChart(BaseChart):
         sort_order = self.options.get("sort_order", "asc")
         x_axis_data = sorted(x_axis_data, reverse=(sort_order == "desc"))
 
+        # Create a mapping of x values to indices for data alignment
+        x_value_to_index = {x_val: i for i, x_val in enumerate(x_axis_data)}
+
         # Add x-axis
         chart.add_xaxis(x_axis_data)
 
-        # Add series for each y-axis column
+        # Process and add series for each y-axis column
         for y_axis_column in self._get_y_axis_columns():
             field = y_axis_column["field"]
             field_name = field.field_name
             series_name = self._get_series_name(y_axis_column)
 
-            # Get y values from the dataframe
-            column_data = filtered_data[field_name]
-            if hasattr(column_data, "tolist"):
-                y_values = column_data.tolist()
-            elif isinstance(column_data, pd.DataFrame):
-                y_values = column_data.iloc[:, 0].tolist()
+            # Create a dictionary mapping x values to y values
+            x_to_y_map = {}
+            for idx, x_val in enumerate(filtered_data[x_field]):
+                y_val = filtered_data.iloc[idx][field_name]
+                if pd.notna(y_val):
+                    x_to_y_map[x_val] = float(y_val) if y_val is not None else 0.0
 
-            self.add_series_to_chart(
-                chart=chart,
+            # Create y_values array aligned with x_axis_data
+            y_values = []
+            for x_val in x_axis_data:
+                y_values.append(x_to_y_map.get(x_val, 0.0))
+
+            # Add the series to the chart
+            chart.add_yaxis(
                 series_name=series_name,
-                y_values=y_values,
-                color=y_axis_column.get("color"),
-                value_mapping=y_axis_column.get("value_mapping"),
+                y_axis=y_values,
+                label_opts=opts.LabelOpts(is_show=False),
+                itemstyle_opts=(
+                    opts.ItemStyleOpts(color=y_axis_column.get("color"))
+                    if y_axis_column.get("color")
+                    else None
+                ),
+                linestyle_opts=opts.LineStyleOpts(width=2, type_="solid"),
+                is_smooth=True,
+                is_symbol_show=True,
             )
