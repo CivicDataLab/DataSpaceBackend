@@ -519,15 +519,32 @@ class BaseChart:
         x_field: str,
         y_field: str,
     ) -> List[float]:
-        """Get y-axis values aligned with x-axis data."""
-        # Create a dictionary mapping x values to y values
+        """Get y-axis values aligned with x-axis data.
+
+        Assumes that the data is already properly aggregated from SQL queries.
+        Simply maps the values to ensure alignment with the x-axis order.
+        """
+        # Create a mapping from x values to their corresponding y values
         x_to_y_map = {}
 
-        # Group by x_field and aggregate y values
-        grouped = processed_data.groupby(x_field)[y_field].sum()
-        for x_val, y_val in grouped.items():
-            if pd.notna(y_val) and y_val is not None:
-                x_to_y_map[x_val] = float(y_val)
+        # Extract unique x values and their corresponding y values
+        # This assumes the SQL query has already done the necessary grouping and aggregation
+        for _, row in processed_data.iterrows():
+            x_val = row[x_field]
+            y_val = row[y_field]
+
+            # Only include non-null values
+            if pd.notna(y_val):
+                # Handle both scalar values and potential Series objects
+                if isinstance(y_val, pd.Series):
+                    if not y_val.empty:
+                        # Use the first value if it's a Series (should be rare)
+                        value = y_val.iloc[0]
+                        if pd.notna(value):
+                            x_to_y_map[x_val] = float(value)
+                else:
+                    # Normal case - just a scalar value
+                    x_to_y_map[x_val] = float(y_val)
 
         # Create y_values array aligned with x_axis_data
         y_values = []
