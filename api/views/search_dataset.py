@@ -65,6 +65,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
     formats = serializers.ListField()
     has_charts = serializers.BooleanField()
     slug = serializers.CharField()
+    download_count = serializers.IntegerField()
 
     class OrganizationSerializer(serializers.Serializer):
         name = serializers.CharField()
@@ -87,6 +88,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
             "categories",
             "formats",
             "has_charts",
+            "download_count",
             "organization",
         ]
 
