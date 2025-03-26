@@ -196,3 +196,19 @@ def query_resource_data(resource: Resource, query: str) -> Optional[pd.DataFrame
             f"Error querying resource {resource.id} with query {query} : {str(e)} , traceback: {traceback.format_exc()}"
         )
         return None
+
+
+def get_row_count(resource: Resource) -> int:
+    """Get the number of rows in the table."""
+    try:
+        data_table = ResourceDataTable.objects.get(resource=resource)
+        with connections[DATA_DB].cursor() as cursor:
+            cursor.execute(f'SELECT COUNT(*) FROM "{data_table.table_name}"')
+            return int(cursor.fetchone()[0])
+    except (ResourceDataTable.DoesNotExist, ProgrammingError) as e:
+        import traceback
+
+        logger.error(
+            f"Error getting row count for resource {resource.id} : {str(e)} , traceback: {traceback.format_exc()}"
+        )
+        return 0

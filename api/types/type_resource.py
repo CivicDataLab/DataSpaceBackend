@@ -19,6 +19,7 @@ from api.models import (
 from api.types.base_type import BaseType
 from api.types.type_file_details import TypeFileDetails
 from api.types.type_resource_metadata import TypeResourceMetadata
+from api.utils.data_indexing import get_row_count
 from api.utils.file_utils import load_csv
 
 logger = structlog.get_logger(__name__)
@@ -189,3 +190,15 @@ class TypeResource(BaseType):
         except (AttributeError, FileNotFoundError) as e:
             logger.error(f"Error loading preview data: {str(e)}")
             return None
+
+    @strawberry.field
+    def no_of_entries(self) -> int:
+        """Get the number of entries in the resource."""
+        try:
+            file_details = getattr(self, "resourcefiledetails", None)
+            if not file_details:
+                return 0
+            return get_row_count(self)  # type: ignore
+        except (AttributeError, FileNotFoundError) as e:
+            logger.error(f"Error getting number of entries: {str(e)}")
+            return 0
