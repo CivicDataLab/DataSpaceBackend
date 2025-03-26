@@ -306,9 +306,38 @@ class BaseChart:
             for y_axis_column in self._get_y_axis_columns():
                 if field := y_axis_column.get("field"):
                     field_name = field.field_name
-                    if field_name in data.columns:
-                        y_values.extend(
-                            data[field_name].dropna().astype(float).tolist()
+
+                    # Check if the field exists in the DataFrame
+                    if field_name not in data.columns:
+                        logger.warning(
+                            f"Field '{field_name}' not found in data columns"
+                        )
+                        continue
+
+                    # Get the column data directly
+                    column_data = data[field_name]
+
+                    # Handle case where column_data is a DataFrame (can happen with SQL queries)
+                    if isinstance(column_data, pd.DataFrame):
+                        logger.debug(
+                            f"Column {field_name} is a DataFrame, using first column"
+                        )
+                        if column_data.empty:
+                            continue
+                        column_data = column_data.iloc[:, 0]  # Take the first column
+
+                    # Drop NA values and convert to float
+                    try:
+                        # For Series, convert to float and extend y_values
+                        clean_values = column_data.dropna()
+                        if not clean_values.empty:
+                            float_values = clean_values.astype(float).tolist()
+                            y_values.extend(float_values)
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Error converting values for {field_name}: {e}")
+                    except Exception as e:
+                        logger.warning(
+                            f"Unexpected error processing values for {field_name}: {e}"
                         )
 
             if not y_values:
@@ -319,7 +348,7 @@ class BaseChart:
 
             # Add buffer for better visualization
             range_val = max_val - min_val
-            buffer = range_val * 0.1
+            buffer = range_val * 0.1 if range_val > 0 else 0.5  # Ensure non-zero buffer
 
             min_bound = max(0, min_val - buffer) if min_val >= 0 else min_val - buffer
             max_bound = max_val + buffer
@@ -527,35 +556,42 @@ class BaseChart:
         # Create a mapping from x values to their corresponding y values
         x_to_y_map = {}
 
-        # Extract unique x values and their corresponding y values
-        # This assumes the SQL query has already done the necessary grouping and aggregation
-        for _, row in processed_data.iterrows():
+        # Check if the y_field exists in the DataFrame
+        if y_field not in processed_data.columns:
+            logger.warning(f"Y-field '{y_field}' not found in processed data")
+            return [0.0] * len(x_axis_data)
+
+        # Get the column data directly
+        y_column = processed_data[y_field]
+
+        # Check if y_column is a DataFrame (can happen with SQL queries)
+        if isinstance(y_column, pd.DataFrame):
+            logger.debug(f"Y-column '{y_field}' is a DataFrame, using first column")
+            if y_column.empty:
+                return [0.0] * len(x_axis_data)
+            y_column = y_column.iloc[:, 0]  # Take the first column
+
+        # Create the mapping efficiently
+        for idx, row in processed_data.iterrows():
             x_val = row[x_field]
             y_val = row[y_field]
 
-            # Handle different types of y_val
             try:
-                # Check if it's a Series
+                # Handle different data types efficiently
                 if isinstance(y_val, pd.Series):
-                    # For Series, check if it's not empty
                     if not y_val.empty:
-                        # Use the first value if it's a Series
                         value = y_val.iloc[0]
-                        if not isinstance(value, pd.Series) and pd.notna(value):
+                        if pd.notna(value):
                             x_to_y_map[x_val] = float(value)
-                # For scalar values, check if not null
                 elif pd.notna(y_val):
                     x_to_y_map[x_val] = float(y_val)
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Error converting y-value for {x_val}: {e}")
             except Exception as e:
-                # Log any errors but continue processing
-                logger.warning(f"Error processing y-value for {x_val}: {e}")
+                logger.warning(f"Unexpected error processing y-value for {x_val}: {e}")
 
-        # Create y_values array aligned with x_axis_data
-        y_values = []
-        for x_val in x_axis_data:
-            y_values.append(x_to_y_map.get(x_val, 0.0))
-
-        return y_values
+        # Create y_values array aligned with x_axis_data (list comprehension is more efficient)
+        return [x_to_y_map.get(x_val, 0.0) for x_val in x_axis_data]
 
     def _get_value_mapping(self, y_axis_column: Dict[str, Any]) -> Dict[str, Any]:
         """Get value mapping from y-axis column configuration."""
