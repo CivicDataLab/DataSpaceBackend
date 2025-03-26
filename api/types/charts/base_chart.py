@@ -86,7 +86,11 @@ class BaseChart:
 
             return chart
         except Exception as e:
-            logger.error(f"Error creating chart: {str(e)}")
+            import traceback
+
+            logger.error(
+                f"Error creating chart: {str(e)} , traceback: {traceback.format_exc()}"
+            )
             return None
 
     def _process_value(self, value: str, operator: str) -> Any:
