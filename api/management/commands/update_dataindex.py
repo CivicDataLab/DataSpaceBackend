@@ -21,12 +21,14 @@ class Command(BaseCommand):
             type=str,
             help="Update dataindex for a specific resource by ID",
             required=False,
+            default="",
         )
         parser.add_argument(
             "--dataset-id",
             type=str,
             help="Update dataindex for all resources in a specific dataset by ID",
             required=False,
+            default="",
         )
         parser.add_argument(
             "--skip-existing",
