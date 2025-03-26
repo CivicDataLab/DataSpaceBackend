@@ -190,5 +190,9 @@ def query_resource_data(resource: Resource, query: str) -> Optional[pd.DataFrame
             data = cursor.fetchall()
             return pd.DataFrame(data, columns=columns)
     except (ResourceDataTable.DoesNotExist, ProgrammingError) as e:
-        logger.error(f"Error querying resource {resource.id}: {str(e)}")
+        import traceback
+
+        logger.error(
+            f"Error querying resource {resource.id} with query {query} : {str(e)} , traceback: {traceback.format_exc()}"
+        )
         return None
