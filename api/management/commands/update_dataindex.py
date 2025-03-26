@@ -41,10 +41,10 @@ class Command(BaseCommand):
 
         # Convert string IDs to UUID objects if provided
         resource_id: Optional[uuid.UUID] = (
-            uuid.UUID(resource_id_str) if resource_id_str else None
+            uuid.UUID(resource_id_str) if resource_id_str != "" else None
         )
         dataset_id: Optional[uuid.UUID] = (
-            uuid.UUID(dataset_id_str) if dataset_id_str else None
+            uuid.UUID(dataset_id_str) if dataset_id_str != "" else None
         )
 
         start_time = time.time()
