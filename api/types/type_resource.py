@@ -19,6 +19,7 @@ from api.types.type_file_details import TypeFileDetails
 from api.types.type_preview_data import PreviewData
 from api.types.type_resource_metadata import TypeResourceMetadata
 from api.utils.data_indexing import get_preview_data, get_row_count
+from api.utils.graphql_telemetry import trace_resolver
 
 logger = structlog.get_logger(__name__)
 
@@ -74,6 +75,7 @@ class TypeResource(BaseType):
     #         return []
 
     @strawberry.field
+    @trace_resolver(name="get_resource_metadata", attributes={"component": "resource"})
     def metadata(self) -> List[TypeResourceMetadata]:
         """Get metadata for this resource
         Returns:
@@ -102,6 +104,9 @@ class TypeResource(BaseType):
     #         return []
 
     @strawberry.field
+    @trace_resolver(
+        name="get_resource_file_details", attributes={"component": "resource"}
+    )
     def file_details(self) -> Optional[TypeFileDetails]:
         """Get file details for this resource.
 
@@ -117,6 +122,7 @@ class TypeResource(BaseType):
             return None
 
     @strawberry.field
+    @trace_resolver(name="get_resource_schema", attributes={"component": "resource"})
     def schema(self) -> List[TypeResourceSchema]:
         """Get schema for this resource.
 
@@ -132,6 +138,9 @@ class TypeResource(BaseType):
             return []
 
     @strawberry.field
+    @trace_resolver(
+        name="get_resource_preview_data", attributes={"component": "resource"}
+    )
     def preview_data(self) -> Optional[PreviewData]:
         """Get preview data for the resource.
 
@@ -164,6 +173,9 @@ class TypeResource(BaseType):
             return None
 
     @strawberry.field
+    @trace_resolver(
+        name="get_resource_no_of_entries", attributes={"component": "resource"}
+    )
     def no_of_entries(self) -> int:
         """Get the number of entries in the resource."""
         try:

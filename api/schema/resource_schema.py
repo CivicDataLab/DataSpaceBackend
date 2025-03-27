@@ -23,6 +23,7 @@ from api.types import TypeResource
 from api.utils.constants import FORMAT_MAPPING
 from api.utils.data_indexing import index_resource_data
 from api.utils.file_utils import file_validation
+from api.utils.graphql_telemetry import trace_resolver
 
 logger = structlog.get_logger("dataspace.resource_schema")
 
@@ -95,6 +96,7 @@ class Query:
     """Queries for resources."""
 
     @strawberry_django.field
+    @trace_resolver(name="get_dataset_resources", attributes={"component": "resource"})
     def dataset_resources(
         self, info: Info, dataset_id: uuid.UUID
     ) -> List[TypeResource]:
@@ -218,6 +220,7 @@ class Mutation:
     """Mutations for resources."""
 
     @strawberry_django.mutation(handle_django_errors=False)
+    @trace_resolver(name="create_file_resources", attributes={"component": "resource"})
     def create_file_resources(
         self, info: Info, file_resource_input: CreateFileResourceInput
     ) -> List[TypeResource]:
@@ -239,6 +242,7 @@ class Mutation:
         return resources
 
     @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(name="create_file_resource", attributes={"component": "resource"})
     def create_file_resource(
         self, info: Info, file_resource_input: CreateEmptyFileResourceInput
     ) -> TypeResource:
@@ -253,6 +257,7 @@ class Mutation:
         return TypeResource.from_django(resource)
 
     @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(name="update_file_resource", attributes={"component": "resource"})
     def update_file_resource(
         self, info: Info, file_resource_input: UpdateFileResourceInput
     ) -> TypeResource:
@@ -290,6 +295,9 @@ class Mutation:
         return TypeResource.from_django(resource)
 
     @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="update_file_resource_schema", attributes={"component": "resource"}
+    )
     def update_file_resource_schema(
         self, info: Info, schema_update_input: SchemaUpdateInput
     ) -> TypeResource:
@@ -305,6 +313,9 @@ class Mutation:
         return TypeResource.from_django(resource)
 
     @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="reset_file_resource_schema", attributes={"component": "resource"}
+    )
     def reset_file_resource_schema(
         self, info: Info, resource_id: uuid.UUID
     ) -> TypeResource:
@@ -319,6 +330,7 @@ class Mutation:
         return TypeResource.from_django(resource)
 
     @strawberry_django.mutation(handle_django_errors=False)
+    @trace_resolver(name="delete_file_resource", attributes={"component": "resource"})
     def delete_file_resource(self, info: Info, resource_id: uuid.UUID) -> bool:
         """Delete a file resource."""
         try:
