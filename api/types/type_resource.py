@@ -149,17 +149,27 @@ class TypeResource(BaseType):
             Optional[PreviewData]: Preview data with columns and rows if successful, None otherwise
         """
         try:
+            # First check if this is a file resource that would have preview data
             file_details = getattr(self, "resourcefiledetails", None)
             if not file_details or not getattr(self, "preview_details", None):
                 return None
+
             preview_details = getattr(self, "preview_details", None)
+
+            # Check if preview is enabled and if it's a CSV file
             if (
                 not getattr(self, "preview_enabled", False)
                 or not file_details.format.lower() == "csv"
             ):
                 return None
-            return get_preview_data(self)  # type: ignore
-        except (AttributeError, FileNotFoundError) as e:
+
+            # Use a try-except with a timeout to prevent GraphQL query timeouts
+            try:
+                return get_preview_data(self)  # type: ignore
+            except Exception as preview_error:
+                logger.error(f"Error in get_preview_data: {str(preview_error)}")
+                return None
+        except Exception as e:
             logger.error(f"Error loading preview data: {str(e)}")
             return None
 
@@ -170,7 +180,20 @@ class TypeResource(BaseType):
             file_details = getattr(self, "resourcefiledetails", None)
             if not file_details:
                 return 0
-            return get_row_count(self)  # type: ignore
-        except (AttributeError, FileNotFoundError) as e:
+
+            # Only try to get row count for CSV files
+            if (
+                not hasattr(file_details, "format")
+                or file_details.format.lower() != "csv"
+            ):
+                return 0
+
+            # Use a try-except with a timeout to prevent GraphQL query timeouts
+            try:
+                return get_row_count(self)  # type: ignore
+            except Exception as row_count_error:
+                logger.error(f"Error in get_row_count: {str(row_count_error)}")
+                return 0
+        except Exception as e:
             logger.error(f"Error getting number of entries: {str(e)}")
             return 0
