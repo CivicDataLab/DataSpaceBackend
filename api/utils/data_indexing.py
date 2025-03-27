@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Dict, Optional
 
 import pandas as pd
 import structlog
@@ -7,7 +7,7 @@ from django.db.utils import ProgrammingError
 
 from api.models.Resource import Resource, ResourceDataTable
 from api.models.ResourceSchema import ResourceSchema
-from api.types.type_resource import PreviewData
+from api.types.type_preview_data import PreviewData
 from api.utils.file_utils import load_csv
 
 logger = structlog.get_logger("dataspace.data_indexing")

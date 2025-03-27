@@ -1,12 +1,10 @@
 import uuid
 from typing import Any, List, Optional, TypeVar
 
-import pandas as pd
 import strawberry
 import structlog
 from django.db.models import QuerySet
 from strawberry import auto
-from strawberry.scalars import JSON
 from strawberry_django import type
 
 from api.models import (
@@ -18,9 +16,9 @@ from api.models import (
 )
 from api.types.base_type import BaseType
 from api.types.type_file_details import TypeFileDetails
+from api.types.type_preview_data import PreviewData
 from api.types.type_resource_metadata import TypeResourceMetadata
 from api.utils.data_indexing import get_preview_data, get_row_count
-from api.utils.file_utils import load_csv
 
 logger = structlog.get_logger(__name__)
 
@@ -45,14 +43,6 @@ class TypePreviewDetails(BaseType):
     """Type for preview details."""
 
     pass
-
-
-@strawberry.type
-class PreviewData:
-    """Type for preview data."""
-
-    columns: List[str]
-    rows: List[List[JSON]]
 
 
 @type(Resource)
