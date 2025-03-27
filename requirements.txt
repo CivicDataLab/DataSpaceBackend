@@ -29,6 +29,8 @@ opentelemetry-exporter-otlp-proto-http==1.23.0
 opentelemetry-instrumentation==0.44b0
 opentelemetry-instrumentation-django==0.44b0
 opentelemetry-instrumentation-wsgi==0.44b0
+opentelemetry-instrumentation-redis==0.44b0
+opentelemetry-instrumentation-elasticsearch==0.44b0
 opentelemetry-proto==1.23.0
 opentelemetry-sdk==1.23.0
 opentelemetry-semantic-conventions==0.44b0
