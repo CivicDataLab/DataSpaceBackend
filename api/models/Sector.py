@@ -5,12 +5,12 @@ from django.db import models
 from django.utils.text import slugify
 
 
-class Category(models.Model):
+class Sector(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=75, unique=True, null=False, blank=False)
     description = models.CharField(max_length=1000, null=True, blank=True)
     parent_id = models.ForeignKey(
-        "api.Category", on_delete=models.CASCADE, null=True, blank=True
+        "api.Sector", on_delete=models.CASCADE, null=True, blank=True
     )
     slug = models.SlugField(max_length=75, null=True, blank=False, unique=True)
 
@@ -19,5 +19,5 @@ class Category(models.Model):
         super().save(*args, **kwargs)
 
     class Meta:
-        db_table = "category"
-        verbose_name_plural = "categories"
+        db_table = "sector"
+        verbose_name_plural = "sectors"

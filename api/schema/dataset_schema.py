@@ -8,12 +8,12 @@ from strawberry.types import Info
 from strawberry_django.pagination import OffsetPaginationInput
 
 from api.models import (
-    Category,
     Dataset,
     Metadata,
     Resource,
     ResourceChartDetails,
     ResourceChartImage,
+    Sector,
 )
 from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata
@@ -36,7 +36,7 @@ class UpdateMetadataInput:
     metadata: List[DSMetadataItemType]
     description: Optional[str]
     tags: Optional[List[str]]
-    categories: List[uuid.UUID]
+    sectors: List[uuid.UUID]
 
 
 @strawberry.input
@@ -94,15 +94,11 @@ def _delete_existing_metadata(dataset: Dataset) -> None:
         pass
 
 
-@trace_resolver(
-    name="add_update_dataset_categories", attributes={"component": "dataset"}
-)
-def _add_update_dataset_categories(
-    dataset: Dataset, categories: List[uuid.UUID]
-) -> None:
-    categories_objs = Category.objects.filter(id__in=categories)
-    dataset.categories.clear()
-    dataset.categories.add(*categories_objs)
+@trace_resolver(name="add_update_dataset_sectors", attributes={"component": "dataset"})
+def _add_update_dataset_sectors(dataset: Dataset, sectors: List[uuid.UUID]) -> None:
+    sectors_objs = Sector.objects.filter(id__in=sectors)
+    dataset.sectors.clear()
+    dataset.sectors.add(*sectors_objs)
     dataset.save()
 
 
@@ -212,7 +208,7 @@ class Mutation:
         if update_metadata_input.tags:
             _update_dataset_tags(dataset, update_metadata_input.tags)
         _add_update_dataset_metadata(dataset, metadata_input)
-        _add_update_dataset_categories(dataset, update_metadata_input.categories)
+        _add_update_dataset_sectors(dataset, update_metadata_input.sectors)
         return TypeDataset.from_django(dataset)
 
     @strawberry_django.mutation(handle_django_errors=True)

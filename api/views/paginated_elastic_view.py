@@ -95,11 +95,11 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                     aggregations[label] = {}
                 aggregations[label][value] = agg["doc_count"]
 
-            categories_agg = aggregations["categories"]["buckets"]
-            aggregations.pop("categories")
-            aggregations["categories"] = {}
-            for agg in categories_agg:
-                aggregations["categories"][agg["key"]] = agg["doc_count"]
+            sectors_agg = aggregations["sectors"]["buckets"]
+            aggregations.pop("sectors")
+            aggregations["sectors"] = {}
+            for agg in sectors_agg:
+                aggregations["sectors"][agg["key"]] = agg["doc_count"]
 
             tags_agg = aggregations["tags"]["buckets"]
             aggregations.pop("tags")
