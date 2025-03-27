@@ -119,6 +119,13 @@ def _add_response_attributes(span: trace.Span, response: Any) -> None:
 
 def _initialize_instrumentors() -> None:
     """Initialize additional OpenTelemetry instrumentors."""
+    # Import and apply the Elasticsearch instrumentation patch
+    from api.utils.elasticsearch_telemetry_patch import (
+        patch_elasticsearch_instrumentation,
+    )
+
+    patch_elasticsearch_instrumentation()
+
     instrumentor_map = {
         "elasticsearch": ElasticsearchInstrumentor,
         "requests": RequestsInstrumentor,
