@@ -1,12 +1,10 @@
 import uuid
 from typing import Any, List, Optional, TypeVar
 
-import pandas as pd
 import strawberry
 import structlog
 from django.db.models import QuerySet
 from strawberry import auto
-from strawberry.scalars import JSON
 from strawberry_django import type
 
 from api.models import (
@@ -18,8 +16,9 @@ from api.models import (
 )
 from api.types.base_type import BaseType
 from api.types.type_file_details import TypeFileDetails
+from api.types.type_preview_data import PreviewData
 from api.types.type_resource_metadata import TypeResourceMetadata
-from api.utils.file_utils import load_csv
+from api.utils.data_indexing import get_preview_data, get_row_count
 
 logger = structlog.get_logger(__name__)
 
@@ -46,14 +45,6 @@ class TypePreviewDetails(BaseType):
     pass
 
 
-@strawberry.type
-class PreviewData:
-    """Type for preview data."""
-
-    columns: List[str]
-    rows: List[List[JSON]]
-
-
 @type(Resource)
 class TypeResource(BaseType):
     """Type for resource."""
@@ -67,6 +58,7 @@ class TypeResource(BaseType):
     description: auto
     preview_enabled: auto
     preview_details: Optional[TypePreviewDetails]
+    download_count: auto
 
     # @strawberry.field
     # def model_resources(self) -> List[TypeAccessModelResourceFields]:
@@ -147,45 +139,51 @@ class TypeResource(BaseType):
             Optional[PreviewData]: Preview data with columns and rows if successful, None otherwise
         """
         try:
+            # First check if this is a file resource that would have preview data
             file_details = getattr(self, "resourcefiledetails", None)
             if not file_details or not getattr(self, "preview_details", None):
                 return None
 
-            df = load_csv(file_details.file.path)
-            logger.info(
-                f"CSV loaded successfully. Columns: {df.columns}, Rows: {len(df)}"
-            )
+            preview_details = getattr(self, "preview_details", None)
 
-            # Convert object columns to string to ensure type safety
-            object_columns = df.select_dtypes(include=["object"]).columns
-            df[object_columns] = df[object_columns].astype(str)
+            # Check if preview is enabled and if it's a CSV file
+            if (
+                not getattr(self, "preview_enabled", False)
+                or not file_details.format.lower() == "csv"
+            ):
+                return None
 
-            def convert_value(val: Any) -> Any:
-                """Convert value to appropriate type for GraphQL."""
-                if pd.isna(val):
-                    return None
-                if isinstance(val, (int, float, bool)):
-                    return val
-                if isinstance(val, (dict, list)):
-                    return str(val)
-                return str(val)
-
-            if getattr(self.preview_details, "is_all_entries", False):
-                records = [
-                    [convert_value(val) for val in row] for row in df.values.tolist()
-                ]
-                logger.info(f"Returning all entries: {len(records)} rows")
-            else:
-                start = getattr(self.preview_details, "start_entry", None)
-                end = getattr(self.preview_details, "end_entry", None)
-                logger.info(f"Returning entries from {start} to {end}")
-                records = [
-                    [convert_value(val) for val in row]
-                    for row in df.iloc[start:end].values.tolist()
-                ]
-                logger.info(f"Returning {len(records)} rows")
-
-            return PreviewData(columns=list(df.columns), rows=records)
-        except (AttributeError, FileNotFoundError) as e:
+            # Use a try-except with a timeout to prevent GraphQL query timeouts
+            try:
+                return get_preview_data(self)  # type: ignore
+            except Exception as preview_error:
+                logger.error(f"Error in get_preview_data: {str(preview_error)}")
+                return None
+        except Exception as e:
             logger.error(f"Error loading preview data: {str(e)}")
             return None
+
+    @strawberry.field
+    def no_of_entries(self) -> int:
+        """Get the number of entries in the resource."""
+        try:
+            file_details = getattr(self, "resourcefiledetails", None)
+            if not file_details:
+                return 0
+
+            # Only try to get row count for CSV files
+            if (
+                not hasattr(file_details, "format")
+                or file_details.format.lower() != "csv"
+            ):
+                return 0
+
+            # Use a try-except with a timeout to prevent GraphQL query timeouts
+            try:
+                return get_row_count(self)  # type: ignore
+            except Exception as row_count_error:
+                logger.error(f"Error in get_row_count: {str(row_count_error)}")
+                return 0
+        except Exception as e:
+            logger.error(f"Error getting number of entries: {str(e)}")
+            return 0

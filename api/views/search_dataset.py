@@ -65,6 +65,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
     formats = serializers.ListField()
     has_charts = serializers.BooleanField()
     slug = serializers.CharField()
+    download_count = serializers.IntegerField()
 
     class OrganizationSerializer(serializers.Serializer):
         name = serializers.CharField()
@@ -87,6 +88,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
             "sectors",
             "formats",
             "has_charts",
+            "download_count",
             "organization",
         ]
 
@@ -251,10 +253,10 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         return search
 
     @trace_method(name="add_sort", attributes={"component": "search_dataset"})
-    def add_sort(self, sort: str, search: Search) -> Search:
+    def add_sort(self, sort: str, search: Search, order: str) -> Search:
         """Add sorting to the search query."""
         if sort == "alphabetical":
-            search = search.sort({"title.raw": {"order": "asc"}})
+            search = search.sort({"title.raw": {"order": order}})
         if sort == "recent":
-            search = search.sort({"modified": {"order": "desc"}})
+            search = search.sort({"modified": {"order": order}})
         return search

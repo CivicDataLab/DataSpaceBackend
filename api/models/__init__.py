@@ -5,7 +5,12 @@ from api.models.DataSpace import DataSpace
 from api.models.Geography import Geography
 from api.models.Metadata import Metadata
 from api.models.Organization import Organization
-from api.models.Resource import Resource, ResourceFileDetails, ResourcePreviewDetails
+from api.models.Resource import (
+    Resource,
+    ResourceDataTable,
+    ResourceFileDetails,
+    ResourcePreviewDetails,
+)
 from api.models.ResourceChartDetails import ResourceChartDetails
 from api.models.ResourceChartImage import ResourceChartImage
 from api.models.ResourceMetadata import ResourceMetadata

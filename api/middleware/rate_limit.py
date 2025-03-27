@@ -29,6 +29,7 @@ def rate_limit_middleware(
 
     def check_rate_limit(request: HttpRequest) -> bool:
         """Check if the request should be rate limited."""
+
         try:
             client_ip = get_client_ip(request)
             method = request.method

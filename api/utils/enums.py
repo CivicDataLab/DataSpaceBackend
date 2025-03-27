@@ -103,5 +103,5 @@ class ChartTypes(models.TextChoices):
 class AggregateType(models.TextChoices):
     NONE = "NONE"
     SUM = "SUM"
-    AVERAGE = "MEAN"
+    AVERAGE = "AVG"
     COUNT = "COUNT"

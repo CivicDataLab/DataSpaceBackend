@@ -86,26 +86,22 @@ class MapChart(BaseChart):
 
         return chart
 
-    def aggregate_data(self) -> DataFrame:
-        """Aggregate data based on region and value columns."""
-        # Use the filtered data from _get_data() stored during create_chart
-        if not hasattr(self, "_filtered_data") or not isinstance(
-            self._filtered_data, DataFrame
-        ):
-            return DataFrame()
+    def aggregate_data(self) -> pd.DataFrame:
+        """
+        Aggregate data based on region and value columns and return the resulting DataFrame.
+        """
+        region_column = cast(DjangoFieldLike, self.options["region_column"])
+        value_column = cast(DjangoFieldLike, self.options["value_column"])
+        agg_type = cast(
+            AggregateType, self.options.get("aggregate_type", AggregateType.NONE)
+        )
 
-        region_column = cast(DjangoFieldLike, self.options.get("region_column"))
-        value_column = cast(DjangoFieldLike, self.options.get("value_column"))
-
-        if not region_column or not value_column:
-            return DataFrame()
-
-        agg_type = str(self.options.get("aggregate_type", "none"))
-
-        if agg_type != "none":
+        if agg_type != AggregateType.NONE:
+            # Convert the enum value to lowercase for pandas aggregation
+            pandas_agg_func = agg_type.value.lower()
             metrics = (
                 self._filtered_data.groupby(region_column.field_name)
-                .agg({value_column.field_name: agg_type.lower()})
+                .agg({value_column.field_name: pandas_agg_func})
                 .reset_index()
             )
 

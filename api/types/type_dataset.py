@@ -54,6 +54,7 @@ class TypeDataset(BaseType):
     created: datetime
     modified: datetime
     tags: List["TypeTag"]
+    download_count: int
 
     @strawberry.field
     def sectors(self, info: Info) -> List["TypeSector"]:

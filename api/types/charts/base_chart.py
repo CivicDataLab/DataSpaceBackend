@@ -1,14 +1,14 @@
-from typing import Any, Dict, Hashable, List, Optional, Protocol, TypeVar, Union, cast
+from typing import Any, Dict, List, Optional, Protocol, Union, cast
 
 import pandas as pd
 import structlog
-from pandas.core.groupby import DataFrameGroupBy
 from pyecharts import options as opts
 from pyecharts.charts import Bar, Line, Map
 from pyecharts.charts.chart import Chart
 
-from api.models import ResourceChartDetails, ResourceSchema
+from api.models import ResourceChartDetails
 from api.utils.data_indexing import query_resource_data
+from api.utils.enums import AggregateType
 
 logger = structlog.get_logger("dataspace.charts")
 
@@ -175,9 +175,11 @@ class BaseChart:
             query += f" WHERE {' AND '.join(where_clauses)}"
 
         # Handle aggregation
-        agg_type = self.options.get("aggregate_type", "none")
+        agg_type = cast(
+            AggregateType, self.options.get("aggregate_type", AggregateType.NONE)
+        )
         group_by = []
-        if agg_type != "none":
+        if agg_type != AggregateType.NONE:
             x_col = x_axis_col.field_name
             if x_col:
                 group_by.append(f'"{x_col}"')

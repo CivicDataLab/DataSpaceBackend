@@ -89,6 +89,7 @@ class DatasetDocument(Document):
     )
 
     has_charts = fields.BooleanField(attr="has_charts")
+    download_count = fields.IntegerField(attr="download_count")
 
     def prepare_metadata(self, instance: Dataset) -> List[Dict[str, Any]]:
         """Preprocess comma-separated metadata values into arrays."""

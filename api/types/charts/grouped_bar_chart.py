@@ -3,12 +3,10 @@ from typing import Any, Dict, List, Optional, Union, cast
 
 import pandas as pd
 from pyecharts import options as opts
-from pyecharts.charts import Bar, Timeline
 from pyecharts.charts.chart import Chart
 
 from api.types.charts.base_chart import BaseChart, DjangoFieldLike
 from api.types.charts.chart_registry import register_chart
-from api.utils.enums import AggregateType
 
 
 @register_chart("GROUPED_BAR_HORIZONTAL")

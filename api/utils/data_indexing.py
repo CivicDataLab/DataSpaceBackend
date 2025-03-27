@@ -1,13 +1,13 @@
-from typing import Any, Dict, List, Optional
+from typing import Dict, Optional
 
 import pandas as pd
 import structlog
-from django.conf import settings
 from django.db import connections, transaction
 from django.db.utils import ProgrammingError
 
 from api.models.Resource import Resource, ResourceDataTable
 from api.models.ResourceSchema import ResourceSchema
+from api.types.type_preview_data import PreviewData
 from api.utils.file_utils import load_csv
 
 logger = structlog.get_logger("dataspace.data_indexing")
@@ -194,5 +194,100 @@ def query_resource_data(resource: Resource, query: str) -> Optional[pd.DataFrame
 
         logger.error(
             f"Error querying resource {resource.id} with query {query} : {str(e)} , traceback: {traceback.format_exc()}"
+        )
+        return None
+
+
+def get_row_count(resource: Resource) -> int:
+    """Get the number of rows in the table."""
+    try:
+        # First check if the data table exists without making a database connection
+        try:
+            data_table = ResourceDataTable.objects.get(resource=resource)
+        except ResourceDataTable.DoesNotExist:
+            return 0
+
+        # Set a timeout for the database query
+        import time
+
+        from django.db import connection
+
+        # Use a timeout to prevent long-running queries
+        with connections[DATA_DB].cursor() as cursor:
+            # Set statement timeout to 2 seconds
+            cursor.execute("SET statement_timeout = 2000")
+            try:
+                cursor.execute(f'SELECT COUNT(*) FROM "{data_table.table_name}"')
+                result = cursor.fetchone()
+                return int(result[0]) if result else 0
+            except Exception as query_error:
+                logger.error(
+                    f"Query timeout or error for resource {resource.id}: {str(query_error)}"
+                )
+                return 0
+    except Exception as e:
+        import traceback
+
+        logger.error(
+            f"Error getting row count for resource {resource.id}: {str(e)}, traceback: {traceback.format_exc()}"
+        )
+        return 0
+
+
+def get_preview_data(resource: Resource) -> Optional[PreviewData]:
+    try:
+        if not resource.preview_enabled:
+            return None
+
+        preview_details = getattr(resource, "preview_details", None)
+        if not preview_details:
+            return None
+
+        # First check if the data table exists without making a database connection
+        try:
+            data_table = ResourceDataTable.objects.get(resource=resource)
+        except ResourceDataTable.DoesNotExist:
+            logger.info(f"No data table exists for resource {resource.id}")
+            return None
+
+        is_all_entries = getattr(preview_details, "is_all_entries", False)
+        start_entry = getattr(preview_details, "start_entry", 0)
+        end_entry = getattr(
+            preview_details, "end_entry", 10
+        )  # Default to showing 10 rows if not specified
+
+        # Use a timeout to prevent long-running queries
+        with connections[DATA_DB].cursor() as cursor:
+            # Set statement timeout to 3 seconds
+            cursor.execute("SET statement_timeout = 3000")
+
+            try:
+                if is_all_entries:
+                    # For safety, always limit the number of rows returned even for 'all entries'
+                    cursor.execute(
+                        f'SELECT * FROM "{data_table.table_name}" LIMIT 1000'
+                    )
+                else:
+                    # Ensure we have valid integer values for the calculation
+                    start = int(start_entry) if start_entry is not None else 0
+                    end = int(end_entry) if end_entry is not None else 10
+                    limit = min(end - start + 1, 1000)  # Cap at 1000 rows for safety
+                    cursor.execute(
+                        f'SELECT * FROM "{data_table.table_name}" LIMIT {limit} OFFSET {start}'
+                    )
+
+                columns = [desc[0] for desc in cursor.description]
+                data = cursor.fetchall()
+                return PreviewData(columns=columns, rows=data)
+            except Exception as query_error:
+                logger.error(
+                    f"Query timeout or error for resource {resource.id}: {str(query_error)}"
+                )
+                return None
+    except Exception as e:
+        import traceback
+
+        logger.error(
+            f"Error getting preview data for resource {resource.id}: {str(e)}, traceback: {traceback.format_exc()}"
         )
         return None

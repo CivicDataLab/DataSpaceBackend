@@ -42,6 +42,7 @@ class Resource(models.Model):
     preview_details = models.OneToOneField(
         "api.ResourcePreviewDetails", on_delete=models.CASCADE, null=True, blank=True
     )
+    download_count = models.IntegerField(default=0)
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:

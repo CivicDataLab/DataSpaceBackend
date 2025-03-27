@@ -49,6 +49,7 @@ DATA_DB_HOST = env("DB_HOST", default=DB_HOST)
 DATA_DB_PORT = env("DB_PORT", default=DB_PORT)
 
 # SECURITY WARNING: don't run with debug turned on in production!
+
 whitelisted_urls = env("URL_WHITELIST").split(",")
 ALLOWED_HOSTS = [
     "localhost",  # Allow localhost without port
@@ -59,6 +60,7 @@ ALLOWED_HOSTS = [
     url.replace("https://", "").replace("http://", "").split(":")[0]
     for url in whitelisted_urls
 ]
+
 
 CSRF_TRUSTED_ORIGINS = whitelisted_urls
 
@@ -97,8 +99,6 @@ CORS_ALLOW_HEADERS = [
     "dataspace",
     "token",
 ]
-
-CSRF_TRUSTED_ORIGINS = whitelisted_urls
 
 # Application definition
 
@@ -231,12 +231,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DJANGO_ALLOW_ASYNC_UNSAFE = True
 ELASTICSEARCH_DSL = {
     "default": {
-        "hosts": os.getenv("ELASTICSEARCH_INDEX", "http://elasticsearch:9200"),
+        "hosts": f"http://{os.getenv('ELASTICSEARCH_USERNAME', 'elastic')}:{os.getenv('ELASTICSEARCH_PASSWORD', 'changeme')}@elasticsearch:9200",
         "http_auth": (
             os.getenv("ELASTICSEARCH_USERNAME", "elastic"),
             os.getenv("ELASTICSEARCH_PASSWORD", "changeme"),
         ),
-    }
+    },
 }
 
 ELASTICSEARCH_INDEX_NAMES = {
