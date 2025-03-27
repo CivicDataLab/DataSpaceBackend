@@ -2,12 +2,12 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import structlog
-from django.conf import settings
 from django.db import connections, transaction
 from django.db.utils import ProgrammingError
 
 from api.models.Resource import Resource, ResourceDataTable
 from api.models.ResourceSchema import ResourceSchema
+from api.types.type_resource import PreviewData
 from api.utils.file_utils import load_csv
 
 logger = structlog.get_logger("dataspace.data_indexing")
@@ -212,3 +212,42 @@ def get_row_count(resource: Resource) -> int:
             f"Error getting row count for resource {resource.id} : {str(e)} , traceback: {traceback.format_exc()}"
         )
         return 0
+
+
+def get_preview_data(resource: Resource) -> Optional[PreviewData]:
+    try:
+        if not resource.preview_enabled:
+            return None
+
+        preview_details = getattr(resource, "preview_details", None)
+        if not preview_details:
+            return None
+
+        is_all_entries = getattr(preview_details, "is_all_entries", False)
+        start_entry = getattr(preview_details, "start_entry", 0)
+        end_entry = getattr(
+            preview_details, "end_entry", 10
+        )  # Default to showing 10 rows if not specified
+
+        data_table = ResourceDataTable.objects.get(resource=resource)
+        with connections[DATA_DB].cursor() as cursor:
+            if is_all_entries:
+                cursor.execute(f'SELECT * FROM "{data_table.table_name}"')
+            else:
+                # Ensure we have valid integer values for the calculation
+                start = int(start_entry) if start_entry is not None else 0
+                end = int(end_entry) if end_entry is not None else 10
+                limit = end - start + 1
+                cursor.execute(
+                    f'SELECT * FROM "{data_table.table_name}" LIMIT {limit} OFFSET {start}'
+                )
+            columns = [desc[0] for desc in cursor.description]
+            data = cursor.fetchall()
+            return PreviewData(columns=columns, rows=data)
+    except (ResourceDataTable.DoesNotExist, ProgrammingError) as e:
+        import traceback
+
+        logger.error(
+            f"Error getting preview data for resource {resource.id} : {str(e)} , traceback: {traceback.format_exc()}"
+        )
+        return None

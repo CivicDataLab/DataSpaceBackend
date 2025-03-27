@@ -19,7 +19,7 @@ from api.models import (
 from api.types.base_type import BaseType
 from api.types.type_file_details import TypeFileDetails
 from api.types.type_resource_metadata import TypeResourceMetadata
-from api.utils.data_indexing import get_row_count
+from api.utils.data_indexing import get_preview_data, get_row_count
 from api.utils.file_utils import load_csv
 
 logger = structlog.get_logger(__name__)
@@ -152,42 +152,13 @@ class TypeResource(BaseType):
             file_details = getattr(self, "resourcefiledetails", None)
             if not file_details or not getattr(self, "preview_details", None):
                 return None
-
-            df = load_csv(file_details.file.path)
-            logger.info(
-                f"CSV loaded successfully. Columns: {df.columns}, Rows: {len(df)}"
-            )
-
-            # Convert object columns to string to ensure type safety
-            object_columns = df.select_dtypes(include=["object"]).columns
-            df[object_columns] = df[object_columns].astype(str)
-
-            def convert_value(val: Any) -> Any:
-                """Convert value to appropriate type for GraphQL."""
-                if pd.isna(val):
-                    return None
-                if isinstance(val, (int, float, bool)):
-                    return val
-                if isinstance(val, (dict, list)):
-                    return str(val)
-                return str(val)
-
-            if getattr(self.preview_details, "is_all_entries", False):
-                records = [
-                    [convert_value(val) for val in row] for row in df.values.tolist()
-                ]
-                logger.info(f"Returning all entries: {len(records)} rows")
-            else:
-                start = getattr(self.preview_details, "start_entry", None)
-                end = getattr(self.preview_details, "end_entry", None)
-                logger.info(f"Returning entries from {start} to {end}")
-                records = [
-                    [convert_value(val) for val in row]
-                    for row in df.iloc[start:end].values.tolist()
-                ]
-                logger.info(f"Returning {len(records)} rows")
-
-            return PreviewData(columns=list(df.columns), rows=records)
+            preview_details = getattr(self, "preview_details", None)
+            if (
+                not getattr(self, "preview_enabled", False)
+                or not file_details.format.lower() == "csv"
+            ):
+                return None
+            return get_preview_data(self)  # type: ignore
         except (AttributeError, FileNotFoundError) as e:
             logger.error(f"Error loading preview data: {str(e)}")
             return None
