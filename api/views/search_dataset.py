@@ -66,6 +66,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
     has_charts = serializers.BooleanField()
     slug = serializers.CharField()
     download_count = serializers.IntegerField()
+    trending_score = serializers.FloatField(required=False)
 
     class OrganizationSerializer(serializers.Serializer):
         name = serializers.CharField()
@@ -89,6 +90,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
             "formats",
             "has_charts",
             "download_count",
+            "trending_score",
             "organization",
         ]
 
@@ -257,6 +259,10 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         """Add sorting to the search query."""
         if sort == "alphabetical":
             search = search.sort({"title.raw": {"order": order}})
-        if sort == "recent":
+        elif sort == "recent":
             search = search.sort({"modified": {"order": order}})
+        elif sort == "trending":
+            search = search.sort({"trending_score": {"order": order}})
+        elif sort == "popular":
+            search = search.sort({"download_count": {"order": order}})
         return search

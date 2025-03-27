@@ -105,6 +105,43 @@ class Dataset(models.Model):
             or 0
         )
 
+    @property
+    def trending_score(self) -> float:
+        """
+        Calculate a trending score based on download count and recency.
+
+        This score prioritizes datasets with recent download activity.
+        Higher scores indicate more trending datasets.
+        """
+        from datetime import timedelta
+
+        from django.db.models import ExpressionWrapper, F, fields
+        from django.utils import timezone
+
+        # Get recent downloads (last 30 days)
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+
+        # Get resources with recent download activity
+        recent_resources = self.resources.filter(modified__gte=thirty_days_ago)
+
+        # Base score is the total download count
+        base_score = self.download_count
+
+        # If no recent activity, return a lower score
+        if not recent_resources.exists():
+            return float(base_score) * 0.1
+
+        # Calculate recency factor (more recent = higher score)
+        recent_downloads = (
+            recent_resources.aggregate(total=Sum("download_count"))["total"] or 0
+        )
+
+        # Calculate trending score: base score + (recent downloads * recency factor)
+        recency_factor = 2.0  # Weight for recent downloads
+        trending_score = float(base_score) + (float(recent_downloads) * recency_factor)
+
+        return trending_score
+
     def __str__(self) -> str:
         return self.title
 
