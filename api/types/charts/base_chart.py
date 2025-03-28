@@ -199,7 +199,13 @@ class BaseChart:
             for y_col in y_axis_cols:
                 if field := y_col.get("field"):
                     field_name = field.field_name
-                    select_cols.append(f'{agg_type}("{field_name}") as "{field_name}"')
+                    # Handle AggregateType.NONE specially - don't wrap in a function call
+                    if agg_type == AggregateType.NONE:
+                        select_cols.append(f'"{field_name}"')
+                    else:
+                        select_cols.append(
+                            f'{agg_type}("{field_name}") as "{field_name}"'
+                        )
 
             query = f"SELECT {', '.join(select_cols)} FROM {{table}}"
 
