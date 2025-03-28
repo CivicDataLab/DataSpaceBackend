@@ -1,8 +1,8 @@
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import strawberry
 import strawberry_django
-from django.db.models import Count, Q
+from django.db.models import Count, Q, QuerySet
 from strawberry import auto
 
 from api.models import Sector
@@ -29,22 +29,38 @@ class SectorFilter:
     )
 
     def filter_min_dataset_count(self, queryset: Any, value: Optional[int]) -> Any:
+        # Skip filtering if no value provided
         if value is None:
             return queryset
-        return queryset.annotate(
-            dataset_count=Count(
-                "datasets", filter=Q(datasets__status=DatasetStatus.PUBLISHED)
-            )
-        ).filter(dataset_count__gte=value)
+
+        # Get IDs of sectors with at least 'value' datasets
+        sector_ids = []
+        for sector in queryset:
+            published_count = sector.datasets.filter(
+                status=DatasetStatus.PUBLISHED
+            ).count()
+            if published_count >= value:
+                sector_ids.append(sector.id)
+
+        # Return filtered queryset
+        return queryset.filter(id__in=sector_ids)
 
     def filter_max_dataset_count(self, queryset: Any, value: Optional[int]) -> Any:
+        # Skip filtering if no value provided
         if value is None:
             return queryset
-        return queryset.annotate(
-            dataset_count=Count(
-                "datasets", filter=Q(datasets__status=DatasetStatus.PUBLISHED)
-            )
-        ).filter(dataset_count__lte=value)
+
+        # Get IDs of sectors with at most 'value' datasets
+        sector_ids = []
+        for sector in queryset:
+            published_count = sector.datasets.filter(
+                status=DatasetStatus.PUBLISHED
+            ).count()
+            if published_count <= value:
+                sector_ids.append(sector.id)
+
+        # Return filtered queryset
+        return queryset.filter(id__in=sector_ids)
 
 
 @strawberry_django.order(Sector)
@@ -56,16 +72,33 @@ class SectorOrder:
     )
 
     def order_dataset_count(self, queryset: Any, value: Optional[str]) -> Any:
+        # Skip ordering if no value provided
         if value is None:
             return queryset
-        # Annotate queryset with dataset count
-        queryset = queryset.annotate(
-            dataset_count=Count(
-                "datasets", filter=Q(datasets__status=DatasetStatus.PUBLISHED)
+
+        # Get all sectors with their dataset counts
+        sectors_with_counts = []
+        for sector in queryset:
+            published_count = sector.datasets.filter(
+                status=DatasetStatus.PUBLISHED
+            ).count()
+            sectors_with_counts.append((sector.id, published_count))
+
+        # Sort by dataset count
+        reverse_order = value.startswith("-")
+        sorted_sector_ids = [
+            sector_id
+            for sector_id, count in sorted(
+                sectors_with_counts, key=lambda x: x[1], reverse=reverse_order
             )
-        )
-        # Order by dataset count
-        return queryset.order_by(f"{value}dataset_count")
+        ]
+
+        # If no sectors to order, return original queryset
+        if not sorted_sector_ids:
+            return queryset
+
+        # Return ordered queryset
+        return queryset.filter(id__in=sorted_sector_ids).order_by("id").all()
 
 
 @strawberry_django.type(
