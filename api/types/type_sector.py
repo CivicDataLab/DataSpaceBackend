@@ -7,12 +7,14 @@ from strawberry import auto
 
 from api.models import Sector
 from api.types.base_type import BaseType
+from api.utils.enums import DatasetStatus
 
 
 @strawberry_django.filter(Sector)
 class SectorFilter:
     id: auto
     slug: auto
+    dataset_count: auto
 
 
 @strawberry_django.type(Sector, pagination=True, fields="__all__", filters=SectorFilter)
@@ -21,4 +23,4 @@ class TypeSector(BaseType):
 
     @strawberry.field
     def dataset_count(self: Any) -> int:
-        return int(self.datasets.count())
+        return int(self.datasets.filter(status=DatasetStatus.PUBLISHED).count())
