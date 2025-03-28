@@ -72,6 +72,7 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
             filters.pop("page", None)
             filters.pop("size", None)
             filters.pop("sort", None)
+            filters.pop("order", None)
 
             q = self.generate_q_expression(query)
             search = self.get_search().query(q)
