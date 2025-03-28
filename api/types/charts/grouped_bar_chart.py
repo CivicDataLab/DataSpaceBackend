@@ -69,20 +69,6 @@ class GroupedBarChart(BaseChart):
         # Add bar-specific options
         chart.options["series"][-1].update({"barGap": "30%", "barCategoryGap": "20%"})
 
-    def configure_chart(
-        self, chart: Chart, filtered_data: Union[pd.DataFrame, None] = None
-    ) -> None:
-        """Configure grouped bar chart specific options.
-
-        Args:
-            chart (Chart): The chart to configure.
-            filtered_data (Union[pd.DataFrame, None], optional): The filtered data. Defaults to None.
-        """
-        super().configure_chart(chart, filtered_data)
-
-        if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
-            chart.reversal_axis()
-
     def map_value(self, value: float, value_mapping: Dict[str, str]) -> str:
         """Map a numeric value to its string representation.
 
@@ -98,76 +84,51 @@ class GroupedBarChart(BaseChart):
 
         return str(value_mapping.get(str(value), str(value)))
 
-    def _aggregate_value(
-        self, data: pd.DataFrame, field_name: str, aggregate_type: str
-    ) -> float:
-        """Aggregate values based on specified aggregation type.
+    def configure_chart(
+        self, chart: Chart, filtered_data: Optional[pd.DataFrame] = None
+    ) -> None:
+        """Configure chart with data.
 
-        Args:
-            data: DataFrame containing the data to aggregate
-            field_name: The column name to aggregate
-            aggregate_type: Type of aggregation (sum, avg, count, etc.)
-
-        Returns:
-            Aggregated value as a float
+        This implementation handles grouped bar charts with multiple y-axis columns.
+        Includes chart-specific customizations for horizontal/vertical orientation.
         """
-        if data.empty:
-            return 0.0
+        # First call the parent class's configure_chart to handle basic configuration
+        super().configure_chart(chart, filtered_data)
 
-        if aggregate_type.lower() == "sum":
-            return float(data[field_name].sum())
-        elif aggregate_type.lower() == "avg" or aggregate_type.lower() == "average":
-            return float(data[field_name].mean())
-        elif aggregate_type.lower() == "count":
-            return float(data[field_name].count())
-        elif aggregate_type.lower() == "min":
-            return float(data[field_name].min())
-        elif aggregate_type.lower() == "max":
-            return float(data[field_name].max())
-        else:
-            # Default to sum if unknown aggregation type
-            return float(data[field_name].sum())
+        # If there's no data, we can't proceed with additional configuration
+        if filtered_data is None or filtered_data.empty:
+            return
 
-    def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
-        """Handle non-time-based data with aggregation.
+        # Process data based on chart type
+        processed_data = self._process_data(filtered_data)
 
-        Args:
-            chart (Chart): The chart to handle.
-            filtered_data (pd.DataFrame): The filtered data.
-        """
-        x_axis_col = cast(DjangoFieldLike, self.options["x_axis_column"])
-        x_field = x_axis_col.field_name
+        # Get x-axis data
+        x_axis_field = cast(DjangoFieldLike, self.options["x_axis_column"])
+        x_field = x_axis_field.field_name
+        x_axis_data = self._get_x_axis_data(processed_data, x_field)
 
-        # Get unique x-axis values and sort them
-        x_axis_values = filtered_data[x_field].unique().tolist()
-        x_axis_data = sorted(x_axis_values)  # type: ignore[assignment]
+        # Clear existing x-axis data and add our own
         chart.add_xaxis(x_axis_data)
 
-        # Add data for each metric
+        # Add series for each y-axis column
         for y_axis_column in self._get_y_axis_columns():
-            metric_name = self._get_series_name(y_axis_column)
-            field = cast(DjangoFieldLike, y_axis_column["field"])
+            field = y_axis_column["field"]
             field_name = field.field_name
-            # Use local value mapping instead of calling a non-existent method
-            value_mapping = y_axis_column.get("value_mapping", {})
-            aggregate_type = y_axis_column.get(
-                "aggregate_type", "sum"
-            )  # Default to "sum" if not specified
+            series_name = self._get_series_name(y_axis_column)
+            color = y_axis_column.get("color")
 
-            y_values = []
-            for x_val in x_axis_data:
-                # Filter data for current x value
-                x_filtered_data = filtered_data[filtered_data[x_field] == x_val]
-                # Use a local aggregation function instead of calling a non-existent method
-                value = self._aggregate_value(
-                    x_filtered_data, field_name, str(aggregate_type)
-                )
-                y_values.append(value)
+            y_values = self._get_y_values(
+                processed_data, x_axis_data, x_field, field_name
+            )
 
             self.add_series_to_chart(
                 chart=chart,
-                series_name=metric_name,
+                series_name=series_name,
                 y_values=y_values,
-                color=y_axis_column.get("color"),
-                value_mapping=value_mapping,
+                color=color,
+                value_mapping=y_axis_column.get("value_mapping", {}),
             )
+
+        # Apply chart-specific customizations for horizontal bar charts
+        if self.chart_details.chart_type == "GROUPED_BAR_HORIZONTAL":
+            chart.reversal_axis()

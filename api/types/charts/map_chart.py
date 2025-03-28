@@ -1,6 +1,7 @@
-from typing import Any, Dict, List, Optional, TypeVar, Union, cast
+from typing import Any, List, Optional, cast
 
 import pandas as pd
+import structlog
 from pandas import DataFrame, Series
 from pyecharts import options as opts
 from pyecharts.charts.chart import Chart
@@ -8,28 +9,59 @@ from pyecharts.charts.chart import Chart
 from api.types.charts.base_chart import BaseChart, DjangoFieldLike
 from api.types.charts.chart_registry import register_chart
 from api.types.charts.chart_utils import _get_map_chart
-from api.utils.enums import AggregateType
+
+logger = structlog.get_logger(__name__)
 
 
 @register_chart("ASSAM_DISTRICT")
 @register_chart("ASSAM_RC")
 class MapChart(BaseChart):
     def create_chart(self) -> Optional[Chart]:
+        """Create a map chart.
+
+        For map charts, we need to process the data differently than other charts.
+        """
         if "region_column" not in self.options or "value_column" not in self.options:
             return None
+
         try:
             # Get filtered data using _get_data method
-            data = self._get_data()
-            if data is None:
+            filtered_data = self._get_data()
+            if filtered_data is None or filtered_data.empty:
                 return None
 
-            # Store data temporarily for use by other methods
-            self._filtered_data = data
+            # Process data for map chart
+            processed_data = self._process_data(filtered_data)
 
-            region_values = self.process_data()
-            return _get_map_chart(self.chart_details, data, region_values)
+            # Extract region and value columns
+            region_column = cast(DjangoFieldLike, self.options["region_column"])
+            value_column = cast(DjangoFieldLike, self.options["value_column"])
+
+            if not region_column or not value_column:
+                return None
+
+            region_field = region_column.field_name
+            value_field = value_column.field_name
+
+            # Convert region names to uppercase for consistent mapping
+            processed_data = processed_data.assign(
+                **{region_field: lambda x: x[region_field].astype(str).str.upper()}
+            )
+
+            # Extract region-value pairs for map chart
+            # This creates a List[List[Any]] where each inner list is a [region, value] pair
+            # The _get_map_chart function expects the third argument to be List[List[Any]]
+            region_values = processed_data[[region_field, value_field]].values.tolist()
+
+            # Validate that region_values is a list of lists as required by _get_map_chart
+            if not region_values or not isinstance(region_values, list):
+                logger.warning(f"No region-value pairs found for map chart")
+                return None
+
+            # Create the map chart using the utility function
+            return _get_map_chart(self.chart_details, processed_data, region_values)
         except Exception as e:
-            print("Error while creating chart", e)
+            logger.error(f"Error while creating map chart: {e}")
             return None
 
     def initialize_chart(self, filtered_data: Optional[pd.DataFrame] = None) -> Chart:
@@ -85,54 +117,3 @@ class MapChart(BaseChart):
         }
 
         return chart
-
-    def aggregate_data(self) -> pd.DataFrame:
-        """
-        Aggregate data based on region and value columns and return the resulting DataFrame.
-        """
-        region_column = cast(DjangoFieldLike, self.options["region_column"])
-        value_column = cast(DjangoFieldLike, self.options["value_column"])
-        agg_type = cast(
-            AggregateType, self.options.get("aggregate_type", AggregateType.NONE)
-        )
-
-        if agg_type != AggregateType.NONE:
-            # Convert the enum value to lowercase for pandas aggregation
-            pandas_agg_func = agg_type.value.lower()
-            metrics = (
-                self._filtered_data.groupby(region_column.field_name)
-                .agg({value_column.field_name: pandas_agg_func})
-                .reset_index()
-            )
-
-            # Ensure column names are preserved as strings
-            metrics.columns = pd.Index(
-                [region_column.field_name, value_column.field_name]
-            )
-            return metrics
-        else:
-            return self._filtered_data[
-                [region_column.field_name, value_column.field_name]
-            ]
-
-    def process_data(self) -> List[List[Any]]:
-        """Process data for the map chart."""
-        data = self.aggregate_data()
-        if data.empty:
-            return []
-
-        region_column = cast(DjangoFieldLike, self.options.get("region_column"))
-        value_column = cast(DjangoFieldLike, self.options.get("value_column"))
-
-        if not region_column or not value_column:
-            return []
-
-        region_col = region_column.field_name
-        value_col = value_column.field_name
-
-        # Convert region names to uppercase
-        data = data.assign(
-            **{region_col: lambda x: x[region_col].astype(str).str.upper()}
-        )
-
-        return cast(List[List[Any]], data[[region_col, value_col]].values.tolist())
