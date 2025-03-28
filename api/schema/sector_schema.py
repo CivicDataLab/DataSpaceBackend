@@ -11,9 +11,11 @@ from api.models import Sector
 from api.types.type_sector import TypeSector
 
 
-@strawberry_django.input(Sector, fields="__all__")
+@strawberry.input
 class SectorInput:
-    pass
+    name: str
+    description: Optional[str] = None
+    parent_id: Optional[uuid.UUID] = None
 
 
 @strawberry_django.partial(Sector, fields="__all__")
@@ -41,13 +43,25 @@ class Mutation:
     @strawberry_django.mutation(handle_django_errors=True)
     def create_sector(self, info: Info, input: SectorInput) -> TypeSector:
         """Create a new sector."""
-        # Convert input to a dictionary of field values
-        input_dict = {
-            f.name: getattr(input, f.name)
-            for f in Sector._meta.fields
-            if hasattr(input, f.name)
-        }
-        sector = Sector.objects.create(**input_dict)
+        # Create a new sector with the provided name and description
+        sector = Sector(
+            name=input.name,
+            description=input.description,
+        )
+
+        # Handle parent_id if provided
+        if input.parent_id is not None:
+            try:
+                parent_sector = Sector.objects.get(id=input.parent_id)
+                sector.parent_id = parent_sector
+            except Sector.DoesNotExist:
+                raise ValueError(
+                    f"Parent sector with ID {input.parent_id} does not exist."
+                )
+
+        # Save the sector to generate the slug
+        sector.save()
+
         return TypeSector.from_django(sector)
 
     @strawberry_django.mutation(handle_django_errors=True)
