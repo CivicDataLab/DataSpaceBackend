@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Tuple, cast
+from typing import Any, List, Optional, Tuple
 
 import strawberry
 import strawberry_django
@@ -29,33 +29,39 @@ class SectorFilter:
         description="Filter sectors with at most this many published datasets",
     )
 
-    @strawberry_django.filter_field
-    def filter_min_dataset_count(
-        self, info: Info, queryset: Any, value: int, prefix: str
-    ) -> Tuple[Any, Q]:
-        # Annotate the queryset with dataset count
-        queryset = queryset.annotate(
-            dataset_count=Count(
-                f"{prefix}datasets", filter=Q(datasets__status=DatasetStatus.PUBLISHED)
-            )
-        )
+    def filter_min_dataset_count(self, queryset: Any, value: Optional[int]) -> Any:
+        # Skip filtering if no value provided
+        if value is None:
+            return queryset
 
-        # Return the queryset and filter condition
-        return queryset, Q(dataset_count__gte=value)
+        # Get IDs of sectors with at least 'value' datasets
+        sector_ids = []
+        for sector in queryset:
+            published_count = sector.datasets.filter(
+                status=DatasetStatus.PUBLISHED
+            ).count()
+            if published_count >= value:
+                sector_ids.append(sector.id)
 
-    @strawberry_django.filter_field
-    def filter_max_dataset_count(
-        self, info: Info, queryset: Any, value: int, prefix: str
-    ) -> Tuple[Any, Q]:
-        # Annotate the queryset with dataset count
-        queryset = queryset.annotate(
-            dataset_count=Count(
-                f"{prefix}datasets", filter=Q(datasets__status=DatasetStatus.PUBLISHED)
-            )
-        )
+        # Return filtered queryset
+        return queryset.filter(id__in=sector_ids)
 
-        # Return the queryset and filter condition
-        return queryset, Q(dataset_count__lte=value)
+    def filter_max_dataset_count(self, queryset: Any, value: Optional[int]) -> Any:
+        # Skip filtering if no value provided
+        if value is None:
+            return queryset
+
+        # Get IDs of sectors with at most 'value' datasets
+        sector_ids = []
+        for sector in queryset:
+            published_count = sector.datasets.filter(
+                status=DatasetStatus.PUBLISHED
+            ).count()
+            if published_count <= value:
+                sector_ids.append(sector.id)
+
+        # Return filtered queryset
+        return queryset.filter(id__in=sector_ids)
 
 
 @strawberry_django.order(Sector)
@@ -66,27 +72,34 @@ class SectorOrder:
         default=None, description="Order sectors by dataset count"
     )
 
-    @strawberry_django.order_field
-    def order_dataset_count(
-        self,
-        info: Info,
-        queryset: Any,
-        value: Any,
-        prefix: str,
-    ) -> Tuple[Any, List[str]]:
-        # Annotate queryset with dataset count
-        queryset = queryset.annotate(
-            dataset_count=Count(
-                f"{prefix}datasets", filter=Q(datasets__status=DatasetStatus.PUBLISHED)
+    def order_dataset_count(self, queryset: Any, value: Optional[str]) -> Any:
+        # Skip ordering if no value provided
+        if value is None:
+            return queryset
+
+        # Get all sectors with their dataset counts
+        sectors_with_counts = []
+        for sector in queryset:
+            published_count = sector.datasets.filter(
+                status=DatasetStatus.PUBLISHED
+            ).count()
+            sectors_with_counts.append((sector.id, published_count))
+
+        # Sort by dataset count
+        reverse_order = value.startswith("-")
+        sorted_sector_ids = [
+            sector_id
+            for sector_id, count in sorted(
+                sectors_with_counts, key=lambda x: x[1], reverse=reverse_order
             )
-        )
+        ]
 
-        # Get the ordering string
-        order_direction = "-" if str(value).startswith("DESC") else ""
-        ordering = f"{order_direction}dataset_count"
+        # If no sectors to order, return original queryset
+        if not sorted_sector_ids:
+            return queryset
 
-        # Return the queryset and ordering fields
-        return queryset, [ordering]
+        # Return ordered queryset
+        return queryset.filter(id__in=sorted_sector_ids).order_by("id")
 
 
 @strawberry_django.type(
