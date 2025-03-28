@@ -41,7 +41,7 @@ class Mutation:
     @strawberry_django.mutation(handle_django_errors=True)
     def create_sector(self, info: Info, input: SectorInput) -> TypeSector:
         """Create a new sector."""
-        sector = mutations.create(SectorInput)(info=info, input=input)
+        sector = mutations.create(SectorInput)(input=input)
         return TypeSector.from_django(sector)
 
     @strawberry_django.mutation(handle_django_errors=True)
