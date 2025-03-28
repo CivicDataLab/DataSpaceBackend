@@ -14,6 +14,7 @@ from api.utils.enums import DatasetStatus
 class SectorFilter:
     id: auto
     slug: auto
+    name: auto
 
 
 @strawberry_django.type(Sector, pagination=True, fields="__all__", filters=SectorFilter)
