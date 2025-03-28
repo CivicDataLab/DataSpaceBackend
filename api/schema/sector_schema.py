@@ -41,7 +41,13 @@ class Mutation:
     @strawberry_django.mutation(handle_django_errors=True)
     def create_sector(self, info: Info, input: SectorInput) -> TypeSector:
         """Create a new sector."""
-        sector = mutations.create(SectorInput)(input=input)
+        # Convert input to a dictionary of field values
+        input_dict = {
+            f.name: getattr(input, f.name)
+            for f in Sector._meta.fields
+            if hasattr(input, f.name)
+        }
+        sector = Sector.objects.create(**input_dict)
         return TypeSector.from_django(sector)
 
     @strawberry_django.mutation(handle_django_errors=True)
@@ -50,9 +56,20 @@ class Mutation:
     ) -> Optional[TypeSector]:
         """Update an existing sector."""
         try:
-            sector = mutations.update(SectorInputPartial, key_attr="id")(
-                info=info, input=input
-            )
+            sector = Sector.objects.get(id=input.id)
+
+            # Convert input to a dictionary of field values, excluding id
+            input_dict = {
+                f.name: getattr(input, f.name)
+                for f in Sector._meta.fields
+                if hasattr(input, f.name) and f.name != "id"
+            }
+
+            # Update the sector with the provided fields
+            for field, value in input_dict.items():
+                setattr(sector, field, value)
+            sector.save()
+
             return TypeSector.from_django(sector)
         except Sector.DoesNotExist:
             raise ValueError(f"Sector with ID {input.id} does not exist.")
