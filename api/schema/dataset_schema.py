@@ -205,7 +205,7 @@ class Mutation:
         if update_metadata_input.description:
             dataset.description = update_metadata_input.description
             dataset.save()
-        if update_metadata_input.tags:
+        if update_metadata_input.tags is not None:
             _update_dataset_tags(dataset, update_metadata_input.tags)
         _add_update_dataset_metadata(dataset, metadata_input)
         _add_update_dataset_sectors(dataset, update_metadata_input.sectors)
