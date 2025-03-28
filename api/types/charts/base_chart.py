@@ -179,6 +179,8 @@ class BaseChart:
             AggregateType, self.options.get("aggregate_type", AggregateType.NONE)
         )
         group_by = []
+
+        # Determine if we need to group by any columns
         if agg_type != AggregateType.NONE:
             x_col = x_axis_col.field_name
             if x_col:
@@ -188,26 +190,29 @@ class BaseChart:
                 if time_field:
                     group_by.append(f'"{time_field}"')
 
-            # Update y-axis columns with aggregation
-            select_cols = [
-                col
-                for col in select_cols
-                if not any(
-                    y_col.get("field", {}).field_name in col for y_col in y_axis_cols
-                )
-            ]
-            for y_col in y_axis_cols:
-                if field := y_col.get("field"):
-                    field_name = field.field_name
-                    # Handle AggregateType.NONE specially - don't wrap in a function call
-                    if agg_type == AggregateType.NONE:
-                        select_cols.append(f'"{field_name}"')
-                    else:
-                        select_cols.append(
-                            f'{agg_type}("{field_name}") as "{field_name}"'
-                        )
+        # Always rebuild the select columns for consistent handling
+        # Remove y-axis columns from the select list as we'll add them back with proper handling
+        select_cols = [
+            col
+            for col in select_cols
+            if not any(
+                y_col.get("field", {}).field_name in col for y_col in y_axis_cols
+            )
+        ]
 
-            query = f"SELECT {', '.join(select_cols)} FROM {{{{table}}}}"
+        # Add back y-axis columns with proper handling based on aggregation type
+        for y_col in y_axis_cols:
+            if field := y_col.get("field"):
+                field_name = field.field_name
+                if agg_type == AggregateType.NONE:
+                    # For NONE, just use the column name directly
+                    select_cols.append(f'"{field_name}"')
+                else:
+                    # For other aggregation types, wrap in the appropriate function
+                    select_cols.append(f'{agg_type}("{field_name}") as "{field_name}"')
+
+        # Rebuild the query with the updated select columns
+        query = f"SELECT {', '.join(select_cols)} FROM {{{{table}}}}"
 
         # Add group by
         if group_by:
