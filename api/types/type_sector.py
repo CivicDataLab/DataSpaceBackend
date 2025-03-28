@@ -1,4 +1,3 @@
-import uuid
 from typing import Any, Optional
 
 import strawberry
@@ -17,7 +16,14 @@ class SectorFilter:
     name: auto
 
 
-@strawberry_django.type(Sector, pagination=True, fields="__all__", filters=SectorFilter)
+@strawberry_django.order(Sector)
+class SectorOrder:
+    name: auto
+
+
+@strawberry_django.type(
+    Sector, pagination=True, fields="__all__", filters=SectorFilter, order=SectorOrder  # type: ignore
+)
 class TypeSector(BaseType):
     parent_id: Optional["TypeSector"]
 
