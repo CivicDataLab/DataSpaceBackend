@@ -158,7 +158,7 @@ class BaseChart:
                 select_cols.append(f'"{time_field}"')
 
         # Build query
-        query = f"SELECT {', '.join(select_cols)} FROM {{{{table}}}}"
+        query = f"SELECT {', '.join(select_cols)} FROM {{table}}"
 
         # Add filters
         where_clauses = []
@@ -201,7 +201,7 @@ class BaseChart:
                     field_name = field.field_name
                     select_cols.append(f'{agg_type}("{field_name}") as "{field_name}"')
 
-            query = f"SELECT {', '.join(select_cols)} FROM {{{{table}}}}"
+            query = f"SELECT {', '.join(select_cols)} FROM {{table}}"
 
         # Add group by
         if group_by:
