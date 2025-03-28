@@ -61,7 +61,11 @@ class MapChart(BaseChart):
             # Create the map chart using the utility function
             return _get_map_chart(self.chart_details, processed_data, region_values)
         except Exception as e:
-            logger.error(f"Error while creating map chart: {e}")
+            import traceback
+
+            logger.error(
+                f"Error while creating map chart: {e}. {traceback.format_exc()}"
+            )
             return None
 
     def initialize_chart(self, filtered_data: Optional[pd.DataFrame] = None) -> Chart:
