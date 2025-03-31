@@ -96,7 +96,7 @@ class MapChart(BaseChart):
             toolbox_opts=opts.ToolboxOpts(
                 feature=opts.ToolBoxFeatureOpts(
                     data_zoom=opts.ToolBoxFeatureDataZoomOpts(
-                        is_show=True, zoom_title="Zoom", back_title="Back"
+                        is_show=False, zoom_title="Zoom", back_title="Back"
                     ),
                     restore=opts.ToolBoxFeatureRestoreOpts(is_show=True, title="Reset"),
                     data_view=opts.ToolBoxFeatureDataViewOpts(

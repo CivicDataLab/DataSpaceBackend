@@ -272,13 +272,13 @@ class BaseChart:
             "toolbox_opts": opts.ToolboxOpts(
                 is_show=True,
                 pos_left="right",
-                pos_top="8%",
+                pos_top="5%",
                 orient="horizontal",
                 item_size=15,
                 item_gap=10,
                 feature={
                     "dataZoom": {
-                        "show": True,
+                        "show": False,
                         "title": {"zoom": "Area Zoom", "back": "Zoom Reset"},
                     },
                     "restore": {"show": True, "title": "Reset"},
