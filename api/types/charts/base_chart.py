@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Protocol, Union, cast
 import pandas as pd
 import structlog
 from pyecharts import options as opts
-from pyecharts.charts import Bar, Line, Map
+from pyecharts.charts import Bar, Line, Map, TreeMap
 from pyecharts.charts.chart import Chart
 
 from api.models import ResourceChartDetails
@@ -43,6 +43,7 @@ CHART_TYPE_MAP = {
     "ASSAM_DISTRICT": Map,
     "ASSAM_RC": Map,
     "MULTILINE": Line,
+    "TREEMAP": TreeMap,
 }
 
 

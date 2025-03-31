@@ -98,6 +98,7 @@ class ChartTypes(models.TextChoices):
     MULTILINE = "MULTILINE"
     ASSAM_DISTRICT = "ASSAM_DISTRICT"
     ASSAM_RC = "ASSAM_RC"
+    TREEMAP = "TREEMAP"
 
 
 class AggregateType(models.TextChoices):
