@@ -389,11 +389,11 @@ class BaseChart:
 
         # Set global options
         chart.set_global_opts(
-            title_opts=opts.TitleOpts(
-                title=self.chart_details.name or "",
-                subtitle=self.chart_details.description or "",
-                pos_top="5%",
-            ),
+            # title_opts=opts.TitleOpts(
+            #     title=self.chart_details.name or "",
+            #     subtitle=self.chart_details.description or "",
+            #     pos_top="5%",
+            # ),
             xaxis_opts=opts_dict["xaxis_opts"],
             yaxis_opts=opts_dict["yaxis_opts"],
             tooltip_opts=opts_dict["tooltip_opts"],
