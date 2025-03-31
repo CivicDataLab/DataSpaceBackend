@@ -10,7 +10,7 @@ from api.utils.graphql_telemetry import trace_resolver
 class Mutation:
     """Mutations for tags."""
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(handle_django_errors=False)
     @trace_resolver(
         name="delete_tag", attributes={"component": "tag", "operation": "mutation"}
     )
