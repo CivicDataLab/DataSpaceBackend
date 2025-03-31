@@ -93,6 +93,27 @@ class BaseChart:
             )
             return None
 
+    def _get_sql_function_for_aggregate_type(self, agg_type: AggregateType) -> str:
+        """Convert AggregateType enum value to the corresponding SQL function name.
+
+        Args:
+            agg_type: The aggregation type enum value
+
+        Returns:
+            The SQL function name to use in the query
+        """
+        # Map AggregateType enum values to SQL function names
+        if agg_type == AggregateType.SUM:
+            return "sum"
+        elif agg_type == AggregateType.AVERAGE:
+            return "avg"
+        elif agg_type == AggregateType.COUNT:
+            return "count"
+        else:
+            # Default to sum if unknown
+            logger.warning(f"Unknown aggregation type: {agg_type}, defaulting to sum")
+            return "sum"
+
     def _process_value(self, value: str, operator: str) -> Any:
         """Process the filter value based on the operator."""
         if operator in ["contains", "not_contains"]:
@@ -209,7 +230,11 @@ class BaseChart:
                     select_cols.append(f'"{field_name}"')
                 else:
                     # For other aggregation types, wrap in the appropriate function
-                    select_cols.append(f'{agg_type}("{field_name}") as "{field_name}"')
+                    # Need to convert from enum value to SQL function name
+                    sql_function = self._get_sql_function_for_aggregate_type(agg_type)
+                    select_cols.append(
+                        f'{sql_function}("{field_name}") as "{field_name}"'
+                    )
 
         # Rebuild the query with the updated select columns
         query = f"SELECT {', '.join(select_cols)} FROM {{{{table}}}}"
