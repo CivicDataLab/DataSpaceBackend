@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, List, Optional, cast
 
 import strawberry
 import strawberry_django
+import structlog
 from strawberry.enum import EnumType
 from strawberry.types import Info
 
@@ -15,6 +16,8 @@ from api.types.type_resource import TypeResource
 from api.types.type_sector import TypeSector
 from api.types.type_usecase import TypeUseCase
 from api.utils.enums import DatasetStatus
+
+logger = structlog.get_logger("dataspace.type_dataset")
 
 dataset_status: EnumType = strawberry.enum(DatasetStatus)  # type: ignore
 
@@ -112,6 +115,124 @@ class TypeDataset(BaseType):
             queryset = UseCase.objects.filter(datasets__id=self.id)
             return TypeUseCase.from_django_list(queryset)
         except (AttributeError, UseCase.DoesNotExist):
+            return []
+
+    @strawberry.field
+    def similar_datasets(self: Any) -> List["TypeDataset"]:
+        """Get similar datasets for this dataset from elasticsearch index."""
+        try:
+            from elasticsearch_dsl import Q as ESQ
+            from elasticsearch_dsl import Search
+
+            from search.documents import DatasetDocument
+
+            # Get the current dataset
+            dataset = Dataset.objects.get(id=self.id)
+
+            # Create a search query
+            search = Search(index=DatasetDocument._index._name)
+
+            # Build a query to find similar datasets
+            should_queries = []
+
+            # Add title similarity
+            if dataset.title:
+                should_queries.append(
+                    ESQ(
+                        "match",
+                        title={
+                            "query": dataset.title,
+                            "boost": 3.0,  # Give higher weight to title matches
+                        },
+                    )
+                )
+
+            # Add description similarity
+            if dataset.description:
+                should_queries.append(
+                    ESQ(
+                        "match",
+                        description={"query": dataset.description, "boost": 2.0},
+                    )
+                )
+
+            # Add tags similarity
+            from api.models import Tag
+
+            tags = [tag.value for tag in dataset.tags.all().select_related()]  # type: ignore
+            if tags:
+                should_queries.append(ESQ("terms", **{"tags.raw": tags, "boost": 2.5}))
+
+            # Add sectors similarity
+            from api.models import Sector
+
+            sectors = [sector.name for sector in dataset.sectors.all().select_related()]  # type: ignore
+            if sectors:
+                should_queries.append(
+                    ESQ("terms", **{"sectors.raw": sectors, "boost": 2.0})
+                )
+
+            # Add metadata similarity
+            # Dataset.metadata is the related_name for DatasetMetadata
+            from api.models import DatasetMetadata, Metadata
+
+            dataset_metadata_items = dataset.metadata.all().select_related("metadata_item")  # type: ignore
+            if dataset_metadata_items:
+                for item in dataset_metadata_items:
+                    # Explicitly cast to DatasetMetadata
+                    metadata_item = cast(DatasetMetadata, item)
+                    if metadata_item.value and metadata_item.metadata_item:
+                        # Add nested query for metadata
+                        should_queries.append(
+                            ESQ(
+                                "nested",
+                                path="metadata",
+                                query=ESQ(
+                                    "bool",
+                                    must=[
+                                        ESQ(
+                                            "match",
+                                            **{
+                                                "metadata.metadata_item.label": metadata_item.metadata_item.label
+                                            },
+                                        ),
+                                        ESQ(
+                                            "match",
+                                            **{"metadata.value": metadata_item.value},
+                                        ),
+                                    ],
+                                ),
+                                boost=1.5,
+                            )
+                        )
+
+            # Combine all similarity criteria
+            query = ESQ("bool", should=should_queries, minimum_should_match=1)
+
+            # Exclude the current dataset
+            exclude_query = ESQ("bool", must_not=[ESQ("term", id=dataset.id)])
+            final_query = ESQ("bool", must=[query, exclude_query])
+
+            # Execute the search
+            search = search.query(final_query)
+
+            # Limit to 5 similar datasets
+            search = search[:5]
+
+            # Execute the search
+            response = search.execute()
+
+            # Get the dataset IDs from the search results
+            dataset_ids = [hit.id for hit in response]
+
+            # Fetch the actual dataset objects
+            if dataset_ids:
+                similar_datasets = Dataset.objects.filter(id__in=dataset_ids)
+                return TypeDataset.from_django_list(similar_datasets)
+
+            return []
+        except Exception as e:
+            logger.error(f"Error fetching similar datasets: {str(e)}")
             return []
 
 
