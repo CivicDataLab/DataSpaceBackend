@@ -174,7 +174,7 @@ class TypeDataset(BaseType):
 
             # Add metadata similarity
             # Dataset.metadata is the related_name for DatasetMetadata
-            from api.models import DatasetMetadata, Metadata
+            from api.models import DatasetMetadata
 
             dataset_metadata_items = dataset.metadata.all().select_related("metadata_item")  # type: ignore
             if dataset_metadata_items:
@@ -228,7 +228,7 @@ class TypeDataset(BaseType):
             # Fetch the actual dataset objects
             if dataset_ids:
                 similar_datasets = Dataset.objects.filter(id__in=dataset_ids)
-                return TypeDataset.from_django_list(similar_datasets)
+                return similar_datasets  # type: ignore
 
             return []
         except Exception as e:
