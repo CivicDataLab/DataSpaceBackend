@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
 import strawberry
 import strawberry_django
@@ -6,9 +6,11 @@ from strawberry import Info, auto
 from strawberry.enum import EnumType
 
 from api.models import UseCase
-from api.types import TypeDataset
 from api.types.base_type import BaseType
 from api.utils.enums import UseCaseStatus
+
+if TYPE_CHECKING:
+    from api.types import TypeDataset
 
 use_case_status: EnumType = strawberry.enum(UseCaseStatus)
 
@@ -41,7 +43,7 @@ class UseCaseOrder:
 class TypeUseCase(BaseType):
     """GraphQL type for UseCase model."""
 
-    datasets: Optional[List[TypeDataset]]
+    datasets: Optional[List["TypeDataset"]]
 
     @strawberry.field
     def dataset_count(self: "TypeUseCase", info: Info) -> int:

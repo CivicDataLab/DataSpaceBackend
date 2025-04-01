@@ -2,6 +2,9 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional, cast
 
+if TYPE_CHECKING:
+    from api.types.type_usecase import TypeUseCase
+
 import strawberry
 import strawberry_django
 import structlog
@@ -14,7 +17,8 @@ from api.types.type_dataset_metadata import TypeDatasetMetadata
 from api.types.type_organization import TypeOrganization
 from api.types.type_resource import TypeResource
 from api.types.type_sector import TypeSector
-from api.types.type_usecase import TypeUseCase
+
+# Import TypeUseCase inside methods to avoid circular import
 from api.utils.enums import DatasetStatus
 
 logger = structlog.get_logger("dataspace.type_dataset")
@@ -112,6 +116,9 @@ class TypeDataset(BaseType):
     def associated_usecases(self: Any) -> List["TypeUseCase"]:
         """Get use cases associated with this dataset."""
         try:
+            # Import here to avoid circular import
+            from api.types.type_usecase import TypeUseCase  # type: ignore
+
             queryset = UseCase.objects.filter(datasets__id=self.id)
             return TypeUseCase.from_django_list(queryset)
         except (AttributeError, UseCase.DoesNotExist):
