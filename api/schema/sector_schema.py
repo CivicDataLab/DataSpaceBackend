@@ -18,10 +18,13 @@ class SectorInput:
     parent_id: Optional[uuid.UUID] = None
 
 
-@strawberry_django.partial(Sector, fields="__all__")
+@strawberry_django.partial(Sector)
 class SectorInputPartial:
     id: uuid.UUID
-    slug: auto
+    name: Optional[str] = None
+    description: Optional[str] = None
+    slug: Optional[str] = None
+    parent_id: Optional[uuid.UUID] = None
 
 
 @strawberry.type(name="Query")
@@ -72,16 +75,27 @@ class Mutation:
         try:
             sector = Sector.objects.get(id=input.id)
 
-            # Convert input to a dictionary of field values, excluding id
+            # Get the fields to update, excluding id and parent_id (handle separately)
             input_dict = {
                 f.name: getattr(input, f.name)
                 for f in Sector._meta.fields
-                if hasattr(input, f.name) and f.name != "id"
+                if hasattr(input, f.name) and f.name not in ["id", "parent_id"]
             }
 
             # Update the sector with the provided fields
             for field, value in input_dict.items():
                 setattr(sector, field, value)
+
+            # Handle parent_id separately if it's provided
+            if hasattr(input, "parent_id") and input.parent_id is not None:
+                try:
+                    parent_sector = Sector.objects.get(id=input.parent_id)
+                    sector.parent_id = parent_sector
+                except Sector.DoesNotExist:
+                    raise ValueError(
+                        f"Parent sector with ID {input.parent_id} does not exist."
+                    )
+
             sector.save()
 
             return TypeSector.from_django(sector)
