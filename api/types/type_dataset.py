@@ -10,8 +10,7 @@ from strawberry.types import Info
 
 from api.models import Dataset, DatasetMetadata, Resource, Tag, UseCase
 
-# if TYPE_CHECKING:
-from api.types import TypeUseCase
+# Use string annotations to avoid circular imports
 from api.types.base_type import BaseType
 from api.types.type_dataset_metadata import TypeDatasetMetadata
 from api.types.type_organization import TypeOrganization
@@ -113,7 +112,7 @@ class TypeDataset(BaseType):
             return []
 
     @strawberry.field(description="Get use cases associated with this dataset.")
-    def associated_usecases(self: Any) -> List["TypeUseCase"]:
+    def associated_usecases(self: Any) -> List["TypeUseCase"]:  # type: ignore
         """Get use cases associated with this dataset."""
         try:
             # Import from api.types to avoid circular import
