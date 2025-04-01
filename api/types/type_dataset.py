@@ -112,21 +112,20 @@ class TypeDataset(BaseType):
             return []
 
     @strawberry.field(description="Get use cases associated with this dataset.")
-    def associated_usecases(self: Any) -> List["TypeUseCase"]:  # type: ignore
+    def associated_usecases(self: Any) -> List["UseCase"]:
         """Get use cases associated with this dataset."""
         try:
-            # Import from api.types to avoid circular import
-            from api.types import TypeUseCase
-
+            # Avoid importing TypeUseCase directly
+            # Let Strawberry handle the conversion from Django model to GraphQL type
             queryset = UseCase.objects.filter(datasets__id=self.id)
-            return TypeUseCase.from_django_list(queryset)
+            return list(queryset)  # Return Django queryset directly
         except (AttributeError, UseCase.DoesNotExist):
             return []
 
     @strawberry.field(
         description="Get similar datasets for this dataset from elasticsearch index."
     )
-    def similar_datasets(self: Any) -> List["TypeDataset"]:
+    def similar_datasets(self: Any) -> List["Dataset"]:
         """Get similar datasets for this dataset from elasticsearch index."""
         try:
             from elasticsearch_dsl import Q as ESQ
