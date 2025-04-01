@@ -112,14 +112,9 @@ class TypeDataset(BaseType):
         except (AttributeError, Resource.DoesNotExist):
             return []
 
-    # Define the field without a resolver to handle circular import
-    associated_usecases: List["TypeUseCase"] = strawberry.field(
-        description="Get use cases associated with this dataset."
-    )
-
-    @associated_usecases.getter  # type: ignore
-    def resolve_associated_usecases(self: Any) -> List["TypeUseCase"]:
-        """Resolver for associated_usecases field."""
+    @strawberry.field(description="Get use cases associated with this dataset.")
+    def associated_usecases(self: Any) -> List["TypeUseCase"]:
+        """Get use cases associated with this dataset."""
         try:
             # Import here to avoid circular import
             from api.types.type_usecase import TypeUseCase  # type: ignore
@@ -129,13 +124,11 @@ class TypeDataset(BaseType):
         except (AttributeError, UseCase.DoesNotExist):
             return []
 
-    similar_datasets: List["TypeDataset"] = strawberry.field(
+    @strawberry.field(
         description="Get similar datasets for this dataset from elasticsearch index."
     )
-
-    @similar_datasets.getter  # type: ignore
-    def resolve_similar_datasets(self: Any) -> List["TypeDataset"]:
-        """Resolver for similar_datasets field."""
+    def similar_datasets(self: Any) -> List["TypeDataset"]:
+        """Get similar datasets for this dataset from elasticsearch index."""
         try:
             from elasticsearch_dsl import Q as ESQ
             from elasticsearch_dsl import Search
