@@ -2,9 +2,6 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional, cast
 
-if TYPE_CHECKING:
-    from api.types import TypeUseCase
-
 import strawberry
 import strawberry_django
 import structlog
@@ -12,6 +9,9 @@ from strawberry.enum import EnumType
 from strawberry.types import Info
 
 from api.models import Dataset, DatasetMetadata, Resource, Tag, UseCase
+
+# if TYPE_CHECKING:
+from api.types import TypeUseCase
 from api.types.base_type import BaseType
 from api.types.type_dataset_metadata import TypeDatasetMetadata
 from api.types.type_organization import TypeOrganization
