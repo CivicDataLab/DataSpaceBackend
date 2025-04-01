@@ -7,12 +7,13 @@ import strawberry_django
 from strawberry.enum import EnumType
 from strawberry.types import Info
 
-from api.models import Dataset, DatasetMetadata, Resource, Tag
+from api.models import Dataset, DatasetMetadata, Resource, Tag, UseCase
 from api.types.base_type import BaseType
 from api.types.type_dataset_metadata import TypeDatasetMetadata
 from api.types.type_organization import TypeOrganization
 from api.types.type_resource import TypeResource
 from api.types.type_sector import TypeSector
+from api.types.type_usecase import TypeUseCase
 from api.utils.enums import DatasetStatus
 
 dataset_status: EnumType = strawberry.enum(DatasetStatus)  # type: ignore
@@ -102,6 +103,15 @@ class TypeDataset(BaseType):
             # Filter out None values and return as list
             return [fmt for fmt in formats if fmt is not None]
         except (AttributeError, Resource.DoesNotExist):
+            return []
+
+    @strawberry.field
+    def associated_usecases(self: Any) -> List["TypeUseCase"]:
+        """Get use cases associated with this dataset."""
+        try:
+            queryset = UseCase.objects.filter(datasets__id=self.id)
+            return TypeUseCase.from_django_list(queryset)
+        except (AttributeError, UseCase.DoesNotExist):
             return []
 
 

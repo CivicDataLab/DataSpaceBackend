@@ -3,13 +3,14 @@ from typing import Any, List, Optional
 import strawberry
 import strawberry_django
 from strawberry import Info, auto
+from strawberry.enum import EnumType
 
 from api.models import UseCase
 from api.types import TypeDataset
 from api.types.base_type import BaseType
 from api.utils.enums import UseCaseStatus
 
-use_case_status = strawberry.enum(UseCaseStatus)
+use_case_status: EnumType = strawberry.enum(UseCaseStatus)
 
 
 @strawberry_django.filter(UseCase)
