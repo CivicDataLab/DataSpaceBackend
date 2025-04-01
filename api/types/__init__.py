@@ -5,6 +5,7 @@ from api.types.type_metadata import TypeMetadata
 from api.types.type_resource import TypeResource
 from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_metadata import TypeResourceMetadata
+from api.types.type_usecase import TypeUseCase
 
 __all__ = [
     "TypeGeo",
@@ -12,6 +13,7 @@ __all__ = [
     "TypeDatasetMetadata",
     "TypeResourceMetadata",
     "TypeResource",
+    "TypeUseCase",
     "TypeDataset",
     "TypeTag",
     "TypeResourceChart",

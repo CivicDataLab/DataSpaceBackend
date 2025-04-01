@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional, cast
 
 if TYPE_CHECKING:
-    from api.types.type_usecase import TypeUseCase
+    from api.types import TypeUseCase
 
 import strawberry
 import strawberry_django
@@ -116,8 +116,8 @@ class TypeDataset(BaseType):
     def associated_usecases(self: Any) -> List["TypeUseCase"]:
         """Get use cases associated with this dataset."""
         try:
-            # Import here to avoid circular import
-            from api.types.type_usecase import TypeUseCase  # type: ignore
+            # Import from api.types to avoid circular import
+            from api.types import TypeUseCase
 
             queryset = UseCase.objects.filter(datasets__id=self.id)
             return TypeUseCase.from_django_list(queryset)

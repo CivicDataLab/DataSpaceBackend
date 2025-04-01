@@ -43,11 +43,23 @@ class UseCaseOrder:
 class TypeUseCase(BaseType):
     """GraphQL type for UseCase model."""
 
-    datasets: Optional[List["TypeDataset"]]
+    @strawberry.field
+    def datasets(self) -> Optional[List["TypeDataset"]]:
+        """Get datasets associated with this use case."""
+        try:
+            from api.types import TypeDataset
+
+            queryset = self.datasets.all()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeDataset.from_django_list(queryset)
+        except Exception:
+            return []
 
     @strawberry.field
     def dataset_count(self: "TypeUseCase", info: Info) -> int:
         """Get the count of datasets associated with this use case."""
-        if not self.datasets:
+        try:
+            return self.datasets.count()  # type: ignore
+        except Exception:
             return 0
-        return len(self.datasets)
