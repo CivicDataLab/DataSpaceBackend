@@ -10,7 +10,9 @@ from strawberry.types import Info
 
 from api.models import Dataset, DatasetMetadata, Resource, Tag, UseCase
 
-# Use string annotations to avoid circular imports
+# Import needed for type checking only
+if TYPE_CHECKING:
+    from api.types.type_usecase import TypeUseCase
 from api.types.base_type import BaseType
 from api.types.type_dataset_metadata import TypeDatasetMetadata
 from api.types.type_organization import TypeOrganization
@@ -112,20 +114,21 @@ class TypeDataset(BaseType):
             return []
 
     @strawberry.field(description="Get use cases associated with this dataset.")
-    def associated_usecases(self: Any) -> List["UseCase"]:
+    def associated_usecases(self: Any) -> List["TypeUseCase"]:  # type: ignore
         """Get use cases associated with this dataset."""
         try:
-            # Avoid importing TypeUseCase directly
-            # Let Strawberry handle the conversion from Django model to GraphQL type
+            # Import inside method to avoid circular import
+            from api.types.type_usecase import TypeUseCase  # type: ignore
+
             queryset = UseCase.objects.filter(datasets__id=self.id)
-            return list(queryset)  # Return Django queryset directly
+            return TypeUseCase.from_django_list(queryset)
         except (AttributeError, UseCase.DoesNotExist):
             return []
 
     @strawberry.field(
         description="Get similar datasets for this dataset from elasticsearch index."
     )
-    def similar_datasets(self: Any) -> List["Dataset"]:
+    def similar_datasets(self: Any) -> List["TypeDataset"]:  # type: ignore
         """Get similar datasets for this dataset from elasticsearch index."""
         try:
             from elasticsearch_dsl import Q as ESQ
@@ -234,8 +237,10 @@ class TypeDataset(BaseType):
 
             # Fetch the actual dataset objects
             if dataset_ids:
-                similar_datasets = Dataset.objects.filter(id__in=dataset_ids)
-                return similar_datasets  # type: ignore
+                # Get Django Dataset objects
+                django_datasets = Dataset.objects.filter(id__in=dataset_ids)
+                # Convert to TypeDataset objects
+                return TypeDataset.from_django_list(django_datasets)  # type: ignore
 
             return []
         except Exception as e:

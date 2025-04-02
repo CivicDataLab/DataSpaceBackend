@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import strawberry
 import strawberry_django
@@ -10,7 +10,7 @@ from api.types.base_type import BaseType
 from api.utils.enums import UseCaseStatus
 
 if TYPE_CHECKING:
-    from api.types import TypeDataset
+    from api.types.type_dataset import TypeDataset
 
 use_case_status: EnumType = strawberry.enum(UseCaseStatus)
 
