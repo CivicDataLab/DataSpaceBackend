@@ -7,10 +7,8 @@ from strawberry.enum import EnumType
 
 from api.models import UseCase
 from api.types.base_type import BaseType
+from api.types.type_dataset import TypeDataset
 from api.utils.enums import UseCaseStatus
-
-if TYPE_CHECKING:
-    from api.types.type_dataset import TypeDataset
 
 use_case_status: EnumType = strawberry.enum(UseCaseStatus)
 
@@ -47,9 +45,7 @@ class TypeUseCase(BaseType):
     def datasets(self) -> Optional[List["TypeDataset"]]:
         """Get datasets associated with this use case."""
         try:
-            # Import inside the method to avoid circular imports
-            from api.types.type_dataset import TypeDataset
-
+            # Return raw Django objects and let Strawberry handle conversion
             queryset = self.datasets.all()  # type: ignore
             if not queryset.exists():
                 return []

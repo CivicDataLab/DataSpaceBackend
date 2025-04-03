@@ -8,18 +8,12 @@ import structlog
 from strawberry.enum import EnumType
 from strawberry.types import Info
 
-from api.models import Dataset, DatasetMetadata, Resource, Tag, UseCase
-
-# Import needed for type checking only
-if TYPE_CHECKING:
-    from api.types.type_usecase import TypeUseCase
+from api.models import Dataset, DatasetMetadata, Resource, Tag
 from api.types.base_type import BaseType
 from api.types.type_dataset_metadata import TypeDatasetMetadata
 from api.types.type_organization import TypeOrganization
 from api.types.type_resource import TypeResource
 from api.types.type_sector import TypeSector
-
-# Import TypeUseCase inside methods to avoid circular import
 from api.utils.enums import DatasetStatus
 
 logger = structlog.get_logger("dataspace.type_dataset")
@@ -111,18 +105,6 @@ class TypeDataset(BaseType):
             # Filter out None values and return as list
             return [fmt for fmt in formats if fmt is not None]
         except (AttributeError, Resource.DoesNotExist):
-            return []
-
-    @strawberry.field(description="Get use cases associated with this dataset.")
-    def associated_usecases(self: Any) -> List["TypeUseCase"]:  # type: ignore
-        """Get use cases associated with this dataset."""
-        try:
-            # Import inside method to avoid circular import
-            from api.types.type_usecase import TypeUseCase  # type: ignore
-
-            queryset = UseCase.objects.filter(datasets__id=self.id)
-            return TypeUseCase.from_django_list(queryset)
-        except (AttributeError, UseCase.DoesNotExist):
             return []
 
     @strawberry.field(
