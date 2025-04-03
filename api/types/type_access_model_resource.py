@@ -1,8 +1,7 @@
 import strawberry_django
 
 from api.models import AccessModelResource
-from api.types import TypeResource
-from api.types.type_resource import TypeResourceSchema
+from api.types.type_resource import TypeResource, TypeResourceSchema
 
 
 @strawberry_django.type(AccessModelResource, fields="__all__")

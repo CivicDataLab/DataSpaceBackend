@@ -19,7 +19,7 @@ from api.models import (
     ResourcePreviewDetails,
     ResourceSchema,
 )
-from api.types import TypeResource
+from api.types.type_resource import TypeResource
 from api.utils.constants import FORMAT_MAPPING
 from api.utils.data_indexing import index_resource_data
 from api.utils.file_utils import file_validation

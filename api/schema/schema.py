@@ -18,8 +18,9 @@ import api.schema.sector_schema
 import api.schema.tags_schema
 import api.schema.usecase_schema
 from api.models import Resource, Tag
-from api.types import TypeMetadata, TypeResource
 from api.types.type_dataset import TypeTag
+from api.types.type_metadata import TypeMetadata
+from api.types.type_resource import TypeResource
 from api.utils.graphql_telemetry import TelemetryExtension, trace_resolver
 
 

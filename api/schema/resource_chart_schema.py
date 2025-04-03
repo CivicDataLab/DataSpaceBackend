@@ -8,7 +8,7 @@ from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
 from api.models import Resource, ResourceChartDetails, ResourceSchema
-from api.types import TypeResourceChart
+from api.types.type_resource_chart import TypeResourceChart
 from api.utils.enums import AggregateType, ChartTypes
 
 ChartTypeEnum = strawberry.enum(ChartTypes)

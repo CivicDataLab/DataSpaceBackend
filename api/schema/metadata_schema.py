@@ -8,7 +8,7 @@ from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
 from api.models import Metadata
-from api.types import TypeMetadata
+from api.types.type_metadata import TypeMetadata
 
 
 @strawberry_django.input(Metadata, fields="__all__")
