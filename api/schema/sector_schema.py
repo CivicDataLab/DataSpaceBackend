@@ -84,7 +84,8 @@ class Mutation:
 
             # Update the sector with the provided fields
             for field, value in input_dict.items():
-                setattr(sector, field, value)
+                if value is not None:
+                    setattr(sector, field, value)
 
             # Handle parent_id separately if it's provided
             if hasattr(input, "parent_id") and input.parent_id is not None:
