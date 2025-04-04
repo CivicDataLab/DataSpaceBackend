@@ -11,8 +11,10 @@ from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
 from api.models import Dataset, UseCase
+from api.types.type_dataset import TypeDataset
 from api.types.type_usecase import TypeUseCase
 from api.utils.enums import UseCaseStatus
+from api.utils.graphql_telemetry import trace_resolver
 
 
 @strawberry_django.input(UseCase, fields="__all__", exclude=["datasets", "slug"])
@@ -36,6 +38,15 @@ class Query:
 
     use_cases: list[TypeUseCase] = strawberry_django.field()
     use_case: TypeUseCase = strawberry_django.field()
+
+    @strawberry_django.field
+    @trace_resolver(
+        name="get_datasets_by_use_case", attributes={"component": "usecase"}
+    )
+    def dataset_by_use_case(self, info: Info, use_case_id: str) -> list[TypeDataset]:
+        """Get datasets by use case."""
+        queryset = Dataset.objects.filter(usecase__id=use_case_id)
+        return TypeDataset.from_django_list(queryset)
 
 
 @strawberry.type
