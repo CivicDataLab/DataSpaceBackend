@@ -32,7 +32,7 @@ class UCMetadataItemType:
 
 @strawberry.input
 class UpdateUseCaseMetadataInput:
-    usecase: str
+    id: str
     metadata: List[UCMetadataItemType]
     summary: Optional[str]
     tags: Optional[List[str]]
@@ -45,6 +45,7 @@ class UseCaseInputPartial:
 
     id: str
     slug: auto
+    summary: auto
 
 
 @strawberry.type(name="Query")
@@ -145,7 +146,7 @@ class Mutation:
     def add_update_usecase_metadata(
         self, update_metadata_input: UpdateUseCaseMetadataInput
     ) -> TypeUseCase:
-        usecase_id = update_metadata_input.usecase
+        usecase_id = update_metadata_input.id
         metadata_input = update_metadata_input.metadata
         try:
             usecase = UseCase.objects.get(id=usecase_id)
