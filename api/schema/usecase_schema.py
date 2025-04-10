@@ -10,7 +10,7 @@ from strawberry import auto
 from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
-from api.models import Dataset, UseCase
+from api.models import Dataset, Metadata, Sector, Tag, UseCase, UseCaseMetadata
 from api.types.type_dataset import TypeDataset
 from api.types.type_usecase import TypeUseCase
 from api.utils.enums import UseCaseStatus
@@ -22,6 +22,21 @@ class UseCaseInput:
     """Input type for use case creation."""
 
     pass
+
+
+@strawberry.input
+class UCMetadataItemType:
+    id: str
+    value: str
+
+
+@strawberry.input
+class UpdateUseCaseMetadataInput:
+    usecase: str
+    metadata: List[UCMetadataItemType]
+    description: Optional[str]
+    tags: Optional[List[str]]
+    sectors: List[uuid.UUID]
 
 
 @strawberry_django.partial(UseCase, fields="__all__", exclude=["datasets"])
@@ -49,6 +64,64 @@ class Query:
         return TypeDataset.from_django_list(queryset)
 
 
+@trace_resolver(name="update_usecase_tags", attributes={"component": "usecase"})
+def _update_usecase_tags(usecase: UseCase, tags: List[str]) -> None:
+    usecase.tags.clear()
+    for tag in tags:
+        usecase.tags.add(
+            Tag.objects.get_or_create(defaults={"value": tag}, value__iexact=tag)[0]
+        )
+    usecase.save()
+
+
+@trace_resolver(name="update_usecase_sectors", attributes={"component": "usecase"})
+def _update_usecase_sectors(usecase: UseCase, sectors: List[uuid.UUID]) -> None:
+    sectors_objs = Sector.objects.filter(id__in=sectors)
+    usecase.sectors.clear()
+    usecase.sectors.add(*sectors_objs)
+    usecase.save()
+
+
+@trace_resolver(
+    name="add_update_usecase_metadata",
+    attributes={"component": "usecase", "operation": "mutation"},
+)
+def _add_update_usecase_metadata(
+    usecase: UseCase, metadata_input: List[UCMetadataItemType]
+) -> None:
+    if not metadata_input or len(metadata_input) == 0:
+        return
+    _delete_existing_metadata(usecase)
+    for metadata_input_item in metadata_input:
+        try:
+            metadata_field = Metadata.objects.get(id=metadata_input_item.id)
+            if not metadata_field.enabled:
+                _delete_existing_metadata(usecase)
+                raise ValueError(
+                    f"Metadata with ID {metadata_input_item.id} is not enabled."
+                )
+            uc_metadata = UseCaseMetadata(
+                usecase=usecase,
+                metadata_item=metadata_field,
+                value=metadata_input_item.value,
+            )
+            uc_metadata.save()
+        except Metadata.DoesNotExist:
+            _delete_existing_metadata(usecase)
+            raise ValueError(
+                f"Metadata with ID {metadata_input_item.id} does not exist."
+            )
+
+
+@trace_resolver(name="delete_existing_metadata", attributes={"component": "usecase"})
+def _delete_existing_metadata(usecase: UseCase) -> None:
+    try:
+        existing_metadata = UseCaseMetadata.objects.filter(usecase=usecase)
+        existing_metadata.delete()
+    except UseCaseMetadata.DoesNotExist:
+        pass
+
+
 @strawberry.type
 class Mutation:
     """Mutations for use cases."""
@@ -63,6 +136,30 @@ class Mutation:
             title=f"New use_case {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}"
         )
         return TypeUseCase.from_django(use_case)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="add_update_usecase_metadata",
+        attributes={"component": "usecase", "operation": "mutation"},
+    )
+    def add_update_usecase_metadata(
+        self, update_metadata_input: UpdateUseCaseMetadataInput
+    ) -> TypeUseCase:
+        usecase_id = update_metadata_input.usecase
+        metadata_input = update_metadata_input.metadata
+        try:
+            usecase = UseCase.objects.get(id=usecase_id)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"UseCase with ID {usecase_id} does not exist.")
+
+        if update_metadata_input.description:
+            usecase.description = update_metadata_input.description
+            usecase.save()
+        if update_metadata_input.tags is not None:
+            _update_usecase_tags(usecase, update_metadata_input.tags)
+        _add_update_usecase_metadata(usecase, metadata_input)
+        _update_usecase_sectors(usecase, update_metadata_input.sectors)
+        return TypeUseCase.from_django(usecase)
 
     @strawberry_django.mutation(handle_django_errors=False)
     def delete_use_case(self, info: Info, use_case_id: str) -> bool:

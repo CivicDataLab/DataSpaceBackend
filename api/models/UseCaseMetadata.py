@@ -5,12 +5,12 @@ from django.db import models
 from api.models.Metadata import BaseMetadata
 
 if TYPE_CHECKING:
-    from api.models.Dataset import Dataset
+    from api.models.UseCase import UseCase
 
 
-class DatasetMetadata(BaseMetadata):
-    dataset = models.ForeignKey(
-        "api.Dataset",
+class UseCaseMetadata(BaseMetadata):
+    usecase = models.ForeignKey(
+        "api.UseCase",
         on_delete=models.CASCADE,
         null=False,
         blank=False,
@@ -18,8 +18,8 @@ class DatasetMetadata(BaseMetadata):
     )
 
     def __str__(self) -> str:
-        return f"{self.dataset.title} - {self.metadata_item.label}"
+        return f"{self.usecase.title} - {self.metadata_item.label}"
 
     class Meta(BaseMetadata.Meta):
-        db_table = "dataset_metadata"
-        unique_together = ("dataset", "metadata_item")
+        db_table = "usecase_metadata"
+        unique_together = ("usecase", "metadata_item")

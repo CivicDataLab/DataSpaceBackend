@@ -39,6 +39,7 @@ class DataType(models.TextChoices):
 class MetadataModels(models.TextChoices):
     DATASET = "DATASET"
     RESEOURCE = "RESOURCE"
+    USECASE = "USECASE"
 
 
 class MetadataStandards(models.TextChoices):

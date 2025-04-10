@@ -25,6 +25,11 @@ class UseCase(models.Model):
         max_length=50, default=UseCaseStatus.DRAFT, choices=UseCaseStatus.choices
     )
     datasets = models.ManyToManyField("api.Dataset", blank=True)
+    tags = models.ManyToManyField("api.Tag", blank=True)
+    running_status = models.CharField(
+        max_length=50, default=UseCaseStatus.DRAFT, choices=UseCaseStatus.choices
+    )
+    sectors = models.ManyToManyField("api.Sector", blank=True, related_name="usecases")
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if self.title and not self.slug:
