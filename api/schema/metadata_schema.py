@@ -1,21 +1,42 @@
 """Schema definitions for metadata."""
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import strawberry
 import strawberry_django
+from strawberry.enum import EnumType
 from strawberry.types import Info
-from strawberry_django.mutations import mutations
 
 from api.models import Metadata
 from api.types.type_metadata import TypeMetadata
+from api.utils.enums import (
+    MetadataDataTypes,
+    MetadataModels,
+    MetadataStandards,
+    MetadataTypes,
+)
+
+metadata_data_type: EnumType = strawberry.enum(MetadataDataTypes)
+metadata_standard: EnumType = strawberry.enum(MetadataStandards)
+metadata_type: EnumType = strawberry.enum(MetadataTypes)
+metadata_model: EnumType = strawberry.enum(MetadataModels)
 
 
-@strawberry_django.input(Metadata, fields="__all__")
+@strawberry.input
 class MetadataInput:
     """Input type for metadata creation."""
 
-    pass
+    label: str
+    data_standard: metadata_standard
+    urn: Optional[str] = None
+    data_type: metadata_data_type
+    options: Optional[List[str]] = None
+    validator: Optional[List[str]] = None
+    validator_options: Optional[Dict[str, str]] = None
+    type: Optional[metadata_type] = MetadataTypes.OPTIONAL
+    model: Optional[metadata_model] = MetadataModels.DATASET
+    enabled: Optional[bool] = True
+    filterable: Optional[bool] = False
 
 
 @strawberry_django.partial(Metadata, fields="__all__")
