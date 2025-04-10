@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 import strawberry
 import strawberry_django
@@ -7,6 +7,9 @@ from strawberry import auto
 
 from api.models import Metadata
 from api.types.base_type import BaseType
+from api.utils.enums import MetadataModels
+
+metadata_models = strawberry.enum(MetadataModels)
 
 
 @strawberry.enum
@@ -22,7 +25,7 @@ class ValidatorType(Enum):
 class MetadataFilter:
     """Filter for metadata."""
 
-    model: str
+    model: metadata_models
     enabled: bool
 
 
@@ -32,7 +35,7 @@ class TypeMetadata(BaseType):
 
     id: auto
     label: auto
-    model: auto
+    model: metadata_models
     type: auto
     enabled: auto
     validator: List[ValidatorType]
