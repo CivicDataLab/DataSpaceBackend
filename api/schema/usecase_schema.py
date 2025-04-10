@@ -34,7 +34,6 @@ class UCMetadataItemType:
 class UpdateUseCaseMetadataInput:
     id: str
     metadata: List[UCMetadataItemType]
-    summary: Optional[str]
     tags: Optional[List[str]]
     sectors: List[uuid.UUID]
 
@@ -153,9 +152,6 @@ class Mutation:
         except UseCase.DoesNotExist:
             raise ValueError(f"UseCase with ID {usecase_id} does not exist.")
 
-        if update_metadata_input.summary:
-            usecase.summary = update_metadata_input.summary
-            usecase.save()
         if update_metadata_input.tags is not None:
             _update_usecase_tags(usecase, update_metadata_input.tags)
         _add_update_usecase_metadata(usecase, metadata_input)
