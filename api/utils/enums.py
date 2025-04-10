@@ -90,6 +90,14 @@ class UseCaseStatus(models.TextChoices):
     ARCHIVED = "ARCHIVED"
 
 
+class UseCaseRunningStatus(models.TextChoices):
+    INITIATED = "INITIATED"
+    ON_GOING = "ON_GOING"
+    COMPLETED = "COMPLETED"
+    ON_HOLD = "ON_HOLD"
+    CANCELLED = "CANCELLED"
+
+
 class ChartTypes(models.TextChoices):
     BAR_VERTICAL = "BAR_VERTICAL"
     BAR_HORIZONTAL = "BAR_HORIZONTAL"

@@ -7,7 +7,7 @@ from django.utils.text import slugify
 if TYPE_CHECKING:
     from api.models.Dataset import Dataset
 
-from api.utils.enums import UseCaseStatus
+from api.utils.enums import UseCaseRunningStatus, UseCaseStatus
 from api.utils.file_paths import _use_case_directory_path
 
 
@@ -27,7 +27,9 @@ class UseCase(models.Model):
     datasets = models.ManyToManyField("api.Dataset", blank=True)
     tags = models.ManyToManyField("api.Tag", blank=True)
     running_status = models.CharField(
-        max_length=50, default=UseCaseStatus.DRAFT, choices=UseCaseStatus.choices
+        max_length=50,
+        default=UseCaseRunningStatus.INITIATED,
+        choices=UseCaseRunningStatus.choices,
     )
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="usecases")
 
