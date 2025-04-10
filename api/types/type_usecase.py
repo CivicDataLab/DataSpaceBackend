@@ -5,9 +5,10 @@ import strawberry_django
 from strawberry import Info, auto
 from strawberry.enum import EnumType
 
-from api.models import UseCase
+from api.models import Organization, UseCase
 from api.types.base_type import BaseType
 from api.types.type_dataset import TypeDataset
+from api.types.type_organization import TypeOrganization
 from api.utils.enums import UseCaseStatus
 
 use_case_status: EnumType = strawberry.enum(UseCaseStatus)
@@ -60,3 +61,14 @@ class TypeUseCase(BaseType):
             return self.datasets.count()  # type: ignore
         except Exception:
             return 0
+
+    @strawberry.field
+    def publishers(self) -> Optional[List["TypeOrganization"]]:
+        """Get publishers associated with this use case."""
+        try:
+            queryset = Organization.objects.filter(datasets__in=self.datasets.all()).distinct()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeOrganization.from_django_list(queryset)
+        except Exception:
+            return []
