@@ -9,11 +9,6 @@ from strawberry.types import Info
 from api.models import Metadata
 from api.types.type_metadata import TypeMetadata
 
-# metadata_data_type: EnumType = strawberry.enum(MetadataDataTypes)
-# metadata_standard: EnumType = strawberry.enum(MetadataStandards)
-# metadata_type: EnumType = strawberry.enum(MetadataTypes)
-# metadata_model: EnumType = strawberry.enum(MetadataModels)
-
 
 @strawberry_django.input(Metadata, fields="__all__")
 class MetadataInput:
@@ -54,31 +49,7 @@ class Mutation:
     """Mutations for metadata."""
 
     create_metadata: TypeMetadata = strawberry_django.mutations.create(MetadataInput)
-    # @strawberry_django.mutation(handle_django_errors=True)
-    # def create_metadata(self, info: Info, input: MetadataInput) -> TypeMetadata:
-    #     """Create a new metadata."""
-    #     metadata = Metadata.objects.create(**input.__dict__)
-    #     return TypeMetadata.from_django(metadata)
-
-    @strawberry_django.mutation(handle_django_errors=True)
-    def update_metadata(self, info: Info, input: MetadataInputPartial) -> TypeMetadata:
-        """Update an existing metadata."""
-        try:
-            metadata = Metadata.objects.get(id=input.id)
-            for key, value in input.__dict__.items():
-                if key == "id":
-                    continue
-                setattr(metadata, key, value)
-            metadata.save()
-            return TypeMetadata.from_django(metadata)
-        except Metadata.DoesNotExist:
-            raise ValueError(f"Metadata with ID {input.id} does not exist.")
-
-    @strawberry_django.mutation(handle_django_errors=False)
-    def delete_metadata(self, metadata_id: str) -> bool:
-        """Delete a metadata."""
-        try:
-            Metadata.objects.get(id=metadata_id).delete()
-            return True
-        except Metadata.DoesNotExist:
-            raise ValueError(f"Metadata with ID {metadata_id} does not exist.")
+    update_metadata: TypeMetadata = strawberry_django.mutations.update(
+        MetadataInputPartial
+    )
+    delete_metadata: bool = strawberry_django.mutations.delete(MetadataInputPartial)
