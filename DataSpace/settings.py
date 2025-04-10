@@ -243,6 +243,10 @@ ELASTICSEARCH_INDEX_NAMES = {
     "search.documents.dataset_document": "dataset",
 }
 
+
+# DVC settings
+DVC_REPO_PATH = os.path.join(BASE_DIR, "dvc")
+
 # Django REST Framework settings
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
