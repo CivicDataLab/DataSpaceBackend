@@ -52,14 +52,16 @@ class Mutation:
     @strawberry_django.mutation(handle_django_errors=True)
     def create_metadata(self, input: MetadataInput) -> TypeMetadata:
         """Create a new metadata."""
-        metadata = mutations.create(MetadataInput)(input=input)
+        # Handle the input parameter properly
+        metadata = mutations.create(MetadataInput)(**input.__dict__)
         return TypeMetadata.from_django(metadata)
 
     @strawberry_django.mutation(handle_django_errors=True)
     def update_metadata(self, input: MetadataInputPartial) -> TypeMetadata:
         """Update an existing metadata."""
         try:
-            metadata = mutations.update(MetadataInputPartial)(input=input)
+            # Handle the input parameter properly
+            metadata = mutations.update(MetadataInputPartial)(**input.__dict__)
             return TypeMetadata.from_django(metadata)
         except Metadata.DoesNotExist:
             raise ValueError(f"Metadata with ID {input.id} does not exist.")
