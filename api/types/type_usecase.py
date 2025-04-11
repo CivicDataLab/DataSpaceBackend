@@ -5,10 +5,12 @@ import strawberry_django
 from strawberry import Info, auto
 from strawberry.enum import EnumType
 
-from api.models import Organization, UseCase
+from api.models import Organization, UseCase, UseCaseMetadata
 from api.types.base_type import BaseType
-from api.types.type_dataset import TypeDataset
+from api.types.type_dataset import TypeDataset, TypeTag
 from api.types.type_organization import TypeOrganization
+from api.types.type_sector import TypeSector
+from api.types.type_usecase_metadata import TypeUseCaseMetadata
 from api.utils.enums import UseCaseStatus
 
 use_case_status: EnumType = strawberry.enum(UseCaseStatus)
@@ -70,5 +72,38 @@ class TypeUseCase(BaseType):
             if not queryset.exists():
                 return []
             return TypeOrganization.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field
+    def sectors(self) -> Optional[List["TypeSector"]]:
+        """Get sectors associated with this use case."""
+        try:
+            queryset = self.sectors.all()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeSector.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field
+    def tags(self) -> Optional[List["TypeTag"]]:
+        """Get tags associated with this use case."""
+        try:
+            queryset = self.tags.all()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeTag.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field
+    def metadata(self) -> Optional[List["TypeUseCaseMetadata"]]:
+        """Get metadata associated with this use case."""
+        try:
+            queryset = UseCaseMetadata.objects.filter(usecase=self)  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeUseCaseMetadata.from_django_list(queryset)
         except Exception:
             return []
