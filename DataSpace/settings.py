@@ -246,6 +246,8 @@ ELASTICSEARCH_INDEX_NAMES = {
 
 # DVC settings
 DVC_REPO_PATH = os.path.join(BASE_DIR, "dvc")
+DVC_REMOTE_NAME = os.getenv("DVC_REMOTE_NAME", None)
+DVC_REMOTE_URL = os.getenv("DVC_REMOTE_URL", None)
 
 # Django REST Framework settings
 REST_FRAMEWORK = {
