@@ -31,23 +31,25 @@ class Command(BaseCommand):
                 self.stdout.write("Initialized DVC repository")
 
                 # Configure chunking for large files
-                subprocess.run(
-                    ["dvc", "config", "cache.type", "hardlink,symlink"],
-                    cwd=repo_path,
-                    check=True,
-                )
-                subprocess.run(
-                    ["dvc", "config", "cache.shared", "group"],
-                    cwd=repo_path,
-                    check=True,
-                )
+                try:
+                    subprocess.run(
+                        ["dvc", "config", "cache.type", "hardlink,symlink"],
+                        cwd=repo_path,
+                        check=True,
+                    )
+                    self.stdout.write("Configured DVC cache type")
+                except subprocess.CalledProcessError as e:
+                    logger.warning(f"Failed to configure cache type: {str(e)}")
 
-                # Configure cache size limits to prevent excessive disk usage
-                subprocess.run(
-                    ["dvc", "config", "cache.size_limit", "10G"],
-                    cwd=repo_path,
-                    check=True,
-                )
+                try:
+                    subprocess.run(
+                        ["dvc", "config", "cache.shared", "group"],
+                        cwd=repo_path,
+                        check=True,
+                    )
+                    self.stdout.write("Configured DVC cache sharing")
+                except subprocess.CalledProcessError as e:
+                    logger.warning(f"Failed to configure cache sharing: {str(e)}")
 
                 self.stdout.write("Configured DVC for large file handling")
 
