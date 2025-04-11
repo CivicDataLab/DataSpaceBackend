@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import List, Optional
 
 import strawberry
 import strawberry_django

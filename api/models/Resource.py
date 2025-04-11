@@ -1,12 +1,17 @@
+import os
+import random
 import uuid
 from typing import TYPE_CHECKING, Any, Optional
 
+import structlog
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.text import slugify
+
+logger = structlog.getLogger(__name__)
 
 from api.managers.dvc_manager import DVCManager
 from api.utils.enums import DataType
@@ -113,64 +118,131 @@ class ResourceVersion(models.Model):
         db_table = "resource_version"
 
 
-@receiver(post_save, sender=Resource)
-def version_resource_with_dvc(sender, instance: Resource, created, **kwargs):
+@receiver(post_save, sender=ResourceFileDetails)
+def version_resource_with_dvc(sender, instance: ResourceFileDetails, created, **kwargs):
     """Create a new version using DVC when resource is updated"""
+    # Initialize DVC manager
+    dvc = DVCManager(settings.DVC_REPO_PATH)
+
     # Skip if this is just being created (first version)
     if created:
         # For first version, we just track it
-        dvc = DVCManager(settings.DVC_REPO_PATH)
-        dvc_file = dvc.track_resource(instance.resourcefiledetails.file.path)
-        message = f"Add resource: {instance.name} version {instance.version}"
-        dvc.commit_version(dvc_file, message)
-        dvc.tag_version(f"{instance.name}-{instance.version}")
+        try:
+            # Use chunked mode for large files (over 100MB)
+            file_size = (
+                instance.file.size
+                if hasattr(instance.file, "size")
+                else os.path.getsize(instance.file.path)
+            )
+            use_chunked = file_size > 100 * 1024 * 1024  # 100MB threshold
 
-        # Create first version record
-        ResourceVersion.objects.create(
-            resource=instance,
-            version_number=instance.version,
-            change_description=f"Initial version of {instance.name}",
-        )
+            dvc_file = dvc.track_resource(instance.file.path, chunked=use_chunked)
+            message = f"Add resource: {instance.resource.name} version {instance.resource.version}"
+            dvc.commit_version(dvc_file, message)
+            dvc.tag_version(f"{instance.resource.name}-{instance.resource.version}")
+
+            # Create first version record
+            ResourceVersion.objects.create(
+                resource=instance.resource,
+                version_number=instance.resource.version,
+                change_description=f"Initial version of {instance.resource.name}",
+            )
+        except Exception as e:
+            logger.error(f"Failed to version resource: {str(e)}")
+            # Continue without versioning if it fails
+            # This allows the resource to be created even if DVC fails
+            pass
     else:
-        # For updates, create a new version
-        # Determine version number (could implement semantic versioning logic)
-        last_version: Optional[ResourceVersion] = instance.versions.order_by(
-            "-created_at"
-        ).first()
+        # For updates, check if the file has actually changed before creating a new version
+        try:
+            # Skip versioning if the file hasn't changed
+            if dvc.verify_file(instance.file.path):
+                logger.info(
+                    f"No changes detected for {instance.resource.name}, skipping version creation"
+                )
+                return
 
-        # Handle case when there are no versions yet
-        if last_version is None:
-            new_version = "v1.0"
-        else:
-            new_version = _increment_version(last_version.version_number)
+            # Determine version number using semantic versioning
+            last_version: Optional[ResourceVersion] = (
+                instance.resource.versions.order_by("-created_at").first()
+            )
 
-        # Update using DVC
-        dvc = DVCManager(settings.DVC_REPO_PATH)
-        dvc_file = dvc.track_resource(instance.resourcefiledetails.file.path)
-        message = f"Update resource: {instance.name} to version {new_version}"
-        dvc.commit_version(dvc_file, message)
-        dvc.tag_version(f"{instance.name}-{new_version}")
+            # Handle case when there are no versions yet
+            if last_version is None:
+                new_version = "v1.0.0"
+            else:
+                # Default to minor version increment, could be configurable in the future
+                new_version = _increment_version(
+                    last_version.version_number, increment_type="minor"
+                )
 
-        # Create version record
-        ResourceVersion.objects.create(
-            resource=instance,
-            version_number=new_version,
-            change_description=f"Updated version of {instance.name}",
-        )
+            # Use chunked mode for large files (over 100MB)
+            file_size = (
+                instance.file.size
+                if hasattr(instance.file, "size")
+                else os.path.getsize(instance.file.path)
+            )
+            use_chunked = file_size > 100 * 1024 * 1024  # 100MB threshold
 
-        # Update dataset version field
-        instance.version = new_version
-        instance.save(update_fields=["version"])
+            # Update using DVC
+            dvc_file = dvc.track_resource(instance.file.path, chunked=use_chunked)
+            message = (
+                f"Update resource: {instance.resource.name} to version {new_version}"
+            )
+            dvc.commit_version(dvc_file, message)
+            dvc.tag_version(f"{instance.resource.name}-{new_version}")
+
+            # Create version record
+            ResourceVersion.objects.create(
+                resource=instance.resource,
+                version_number=new_version,
+                change_description=f"Updated version of {instance.resource.name}",
+            )
+
+            # Update resource version field
+            instance.resource.version = new_version
+            instance.resource.save(update_fields=["version"])
+
+            # Optional: Trigger garbage collection periodically
+            # This could be moved to a scheduled task instead
+            if random.random() < 0.05:  # 5% chance to run GC on version update
+                try:
+                    dvc.gc_cache()
+                except Exception as e:
+                    logger.warning(f"Failed to run garbage collection: {str(e)}")
+        except Exception as e:
+            logger.error(f"Failed to update resource version: {str(e)}")
+            # Continue without versioning if it fails
+            pass
 
 
-def _increment_version(version: str) -> str:
-    """Simple version incrementing logic"""
+def _increment_version(version: str, increment_type: str = "minor") -> str:
+    """Semantic version incrementing logic
+
+    Args:
+        version: Current version string (e.g., "v1.0.0")
+        increment_type: One of "major", "minor", or "patch"
+
+    Returns:
+        New version string
+    """
     if version.startswith("v"):
         version = version[1:]
 
     parts = version.split(".")
-    if len(parts) == 2:
-        major, minor = map(int, parts)
+    if len(parts) < 3:
+        parts = parts + ["0"] * (3 - len(parts))
+
+    major, minor, patch = map(int, parts)
+
+    if increment_type == "major":
+        major += 1
+        minor = 0
+        patch = 0
+    elif increment_type == "minor":
         minor += 1
-        return f"v{major}.{minor}"
-    return f"v1.0"
+        patch = 0
+    else:  # patch
+        patch += 1
+
+    return f"v{major}.{minor}.{patch}"
