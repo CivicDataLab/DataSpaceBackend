@@ -121,7 +121,11 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("DVC repository set up successfully"))
 
         except Exception as e:
-            logger.error(f"Failed to set up DVC repository: {str(e)}")
+            import traceback
+
+            logger.error(
+                f"Failed to set up DVC repository: {str(e)}, Traceback: {traceback.format_exc()}"
+            )
             self.stdout.write(
                 self.style.ERROR(f"Failed to set up DVC repository: {str(e)}")
             )
