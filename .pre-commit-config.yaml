@@ -34,6 +34,8 @@ repos:
           - django-stubs
           - djangorestframework-stubs
           - pandas-stubs
+          - pandas
+          - deepdiff
           - types-redis
           - strawberry-graphql
           - strawberry-graphql-django

@@ -83,6 +83,9 @@ pre-commit==3.6.2
 flake8==7.0.0
 pandas-stubs==2.2.0.240218  # Matched with pandas version
 
+# Data Comparison and Versioning
+deepdiff==6.7.1  # For intelligent version detection
+
 # Logging
 structlog==24.1.0  # Downgraded for better compatibility
 

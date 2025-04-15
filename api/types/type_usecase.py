@@ -13,7 +13,7 @@ from api.types.type_sector import TypeSector
 from api.types.type_usecase_metadata import TypeUseCaseMetadata
 from api.utils.enums import UseCaseStatus
 
-use_case_status: EnumType = strawberry.enum(UseCaseStatus)
+use_case_status = strawberry.enum(UseCaseStatus)  # type: ignore
 
 
 @strawberry_django.filter(UseCase)

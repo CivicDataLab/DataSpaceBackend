@@ -623,7 +623,7 @@ class BaseChart:
                         if pd.notna(value):
                             x_to_y_map[x_val] = float(value)
                 elif pd.notna(y_val):
-                    x_to_y_map[x_val] = float(y_val)
+                    x_to_y_map[x_val] = float(y_val)  # type: ignore
             except (ValueError, TypeError) as e:
                 logger.warning(f"Error converting y-value for {x_val}: {e}")
             except Exception as e:

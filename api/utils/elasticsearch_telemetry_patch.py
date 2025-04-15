@@ -47,4 +47,4 @@ def patch_elasticsearch_instrumentation() -> None:
     from opentelemetry.instrumentation.elasticsearch import utils
 
     # Replace the internal _flatten_dict function with our patched version
-    utils._flatten_dict = patched_flatten_dict
+    utils._flatten_dict = patched_flatten_dict  # type: ignore

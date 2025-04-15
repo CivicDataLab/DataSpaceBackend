@@ -10,6 +10,7 @@ from api.models.Resource import (
     ResourceDataTable,
     ResourceFileDetails,
     ResourcePreviewDetails,
+    ResourceVersion,
 )
 from api.models.ResourceChartDetails import ResourceChartDetails
 from api.models.ResourceChartImage import ResourceChartImage

@@ -1,6 +1,7 @@
 import os
 import random
 import uuid
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
 import structlog
@@ -15,6 +16,7 @@ logger = structlog.getLogger(__name__)
 
 from api.managers.dvc_manager import DVCManager
 from api.utils.enums import DataType
+from api.utils.version_detection import detect_version_change_type
 
 if TYPE_CHECKING:
     from api.models.Dataset import Dataset
@@ -162,7 +164,7 @@ def version_resource_with_dvc(sender, instance: ResourceFileDetails, created, **
                 )
                 return
 
-            # Determine version number using semantic versioning
+            # Get the latest version
             last_version: Optional[ResourceVersion] = (
                 instance.resource.versions.order_by("-created_at").first()
             )
@@ -171,9 +173,64 @@ def version_resource_with_dvc(sender, instance: ResourceFileDetails, created, **
             if last_version is None:
                 new_version = "v1.0.0"
             else:
-                # Default to minor version increment, could be configurable in the future
+                # Determine appropriate version increment type by analyzing changes
+                try:
+                    # Get the previous version file path
+                    # We need to create a temporary copy of the previous version
+                    import shutil
+                    import tempfile
+
+                    from django.core.files.storage import default_storage
+
+                    # Create a temporary directory for the previous version
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        # Get the previous version file path
+                        prev_file_name = f"prev_version_{instance.resource.id}.{instance.file.name.split('.')[-1]}"
+                        prev_file_path = os.path.join(temp_dir, prev_file_name)
+
+                        # Use DVC to get the previous version
+                        try:
+                            # Try to checkout the previous version using DVC
+                            rel_path = Path(instance.file.path).relative_to(
+                                settings.DVC_REPO_PATH
+                            )
+                            tag_name = f"{instance.resource.name}-{last_version.version_number}"
+
+                            # Save current file to temp location
+                            current_file_path = instance.file.path
+                            temp_current = os.path.join(temp_dir, "current_file")
+                            shutil.copy2(current_file_path, temp_current)
+
+                            # Checkout previous version
+                            dvc.rollback_to_version(instance.file.path, tag_name)
+
+                            # Copy the previous version to our temp location
+                            shutil.copy2(instance.file.path, prev_file_path)
+
+                            # Restore current file
+                            shutil.copy2(temp_current, current_file_path)
+
+                            # Detect version change type
+                            increment_type = detect_version_change_type(
+                                prev_file_path, current_file_path
+                            )
+                            logger.info(
+                                f"Detected version change type: {increment_type} for {instance.resource.name}"
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                f"Could not analyze version changes: {str(e)}, defaulting to minor version"
+                            )
+                            increment_type = "minor"
+                except Exception as e:
+                    logger.warning(
+                        f"Error in version detection: {str(e)}, defaulting to minor version"
+                    )
+                    increment_type = "minor"
+
+                # Increment version based on detected change type
                 new_version = _increment_version(
-                    last_version.version_number, increment_type="minor"
+                    last_version.version_number, increment_type=increment_type
                 )
 
             # Use chunked mode for large files (over 100MB)
