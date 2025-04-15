@@ -109,30 +109,11 @@ class DVCManager:
         result = self._run_command(["dvc", "metrics", "show"])
         return str(result.stdout.strip())
 
-    def gc_cache(
-        self, force: bool = False, cloud: bool = False, workspace: bool = True
-    ) -> None:
-        """Clean up unused cache to save disk space
-
-        Args:
-            force: Force garbage collection without prompting
-            cloud: Also collect garbage in remote storage
-            workspace: Keep files used in current workspace
-        """
+    def gc_cache(self, force: bool = False) -> None:
+        """Clean up unused cache to save disk space"""
         cmd = ["dvc", "gc"]
-
-        # Keep files used in current workspace (default behavior)
-        if workspace:
-            cmd.append("-w")
-
-        # Also collect garbage in remote storage
-        if cloud:
-            cmd.append("-c")
-
-        # Force garbage collection without prompting
         if force:
             cmd.append("-f")
-
         self._run_command(cmd)
 
     def configure(self, section: str, option: str, value: str) -> None:
