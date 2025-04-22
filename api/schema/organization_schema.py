@@ -55,34 +55,31 @@ class OrganizationInputPartial:
 class Query:
     """Queries for organizations."""
 
-    @strawberry_django.field(  # type: ignore[call-overload]
-        permission_classes=[IsAuthenticated],
-        # Import OrganizationFilter inside the decorator to avoid circular imports
-        filters=lambda: __import__(
-            "api.types.type_organization", fromlist=["OrganizationFilter"]
-        ).OrganizationFilter,
-        listable=True,  # Enable automatic filter application
-    )
+    @strawberry_django.field(permission_classes=[IsAuthenticated])
     def organizations(
-        self, info: Info, filters: Optional["OrganizationFilter"] = None  # type: ignore[name-defined]
+        self, info: Info, slug: Optional[str] = None, id: Optional[str] = None
     ) -> List[TypeOrganization]:
-        # Import OrganizationFilter only when needed
-        from api.types.type_organization import OrganizationFilter  # noqa
-
         """Get all organizations the user has access to."""
         user = info.context.request.user
 
         # If superuser, return all organizations
         if user.is_superuser:
-            organizations = Organization.objects.all()
+            queryset = Organization.objects.all()
         else:
             # Get organizations the user is a member of
             user_orgs = OrganizationMembership.objects.filter(user=user).values_list(
                 "organization_id", flat=True
             )
-            organizations = Organization.objects.filter(id__in=user_orgs)
+            queryset = Organization.objects.filter(id__in=user_orgs)
 
-        return [TypeOrganization.from_django(org) for org in organizations]
+        # Apply manual filtering based on parameters
+        if slug is not None:
+            queryset = queryset.filter(slug=slug)
+
+        if id is not None:
+            queryset = queryset.filter(id=id)
+
+        return [TypeOrganization.from_django(org) for org in queryset]
 
     @strawberry_django.field(
         permission_classes=[IsAuthenticated, IsOrganizationMember]  # type: ignore[list-item]
