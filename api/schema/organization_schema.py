@@ -12,6 +12,24 @@ from api.models import Organization
 from api.types.type_organization import TypeOrganization
 from authorization.models import OrganizationMembership
 from authorization.permissions import HasOrganizationRoleGraphQL as HasOrganizationRole
+
+
+# Create permission classes dynamically with different operations
+class ViewOrganizationPermission(HasOrganizationRole):
+    def __init__(self) -> None:
+        super().__init__(operation="view")
+
+
+class ChangeOrganizationPermission(HasOrganizationRole):
+    def __init__(self) -> None:
+        super().__init__(operation="change")
+
+
+class DeleteOrganizationPermission(HasOrganizationRole):
+    def __init__(self) -> None:
+        super().__init__(operation="delete")
+
+
 from authorization.permissions import IsAuthenticated
 from authorization.permissions import (
     IsOrganizationMemberGraphQL as IsOrganizationMember,
@@ -100,7 +118,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
-        permission_classes=[IsAuthenticated, HasOrganizationRole("change")],  # type: ignore[list-item]
+        permission_classes=[IsAuthenticated, ChangeOrganizationPermission],  # type: ignore[list-item]
     )
     def update_organization(
         self, info: Info, input: OrganizationInputPartial
@@ -135,7 +153,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=False,
-        permission_classes=[IsAuthenticated, HasOrganizationRole("delete")],  # type: ignore[list-item]
+        permission_classes=[IsAuthenticated, DeleteOrganizationPermission],  # type: ignore[list-item]
     )
     def delete_organization(self, info: Info, organization_id: str) -> bool:
         """Delete an organization."""

@@ -43,6 +43,14 @@ class DeleteDatasetPermission(DatasetPermission):
 
 
 from authorization.permissions import HasOrganizationRoleGraphQL as HasOrganizationRole
+
+
+# Create organization permission class for 'add' operation
+class AddOrganizationPermission(HasOrganizationRole):
+    def __init__(self) -> None:
+        super().__init__(operation="add")
+
+
 from authorization.permissions import IsAuthenticated
 
 
@@ -215,7 +223,7 @@ class Query:
 class Mutation:
     @strawberry_django.mutation(
         handle_django_errors=True,
-        permission_classes=[IsAuthenticated, HasOrganizationRole(operation="add")],  # type: ignore[list-item]
+        permission_classes=[IsAuthenticated, AddOrganizationPermission],  # type: ignore[list-item]
     )
     @trace_resolver(
         name="add_dataset", attributes={"component": "dataset", "operation": "mutation"}
