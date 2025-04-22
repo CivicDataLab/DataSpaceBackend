@@ -24,6 +24,18 @@ from api.utils.enums import DatasetStatus
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.models import OrganizationMembership
 from authorization.permissions import DatasetPermissionGraphQL as DatasetPermission
+
+# Runtime check to ensure DatasetPermission is a class, not an instance
+if not isinstance(DatasetPermission, type):
+    raise RuntimeError(
+        "DatasetPermission must be a class, but is an instance. Check for accidental reassignment."
+    )
+
+
+def make_dataset_permission(operation: str) -> DatasetPermission:
+    return DatasetPermission(operation=operation)
+
+
 from authorization.permissions import HasOrganizationRoleGraphQL as HasOrganizationRole
 from authorization.permissions import IsAuthenticated
 
@@ -155,7 +167,7 @@ class Query:
         return TypeDataset.from_django_list(queryset)
 
     @strawberry.field(
-        permission_classes=[IsAuthenticated, DatasetPermission(operation="view")],  # type: ignore[list-item]
+        permission_classes=[IsAuthenticated, make_dataset_permission("view")],  # type: ignore[list-item]
     )
     @trace_resolver(name="get_chart_data", attributes={"component": "dataset"})
     def get_chart_data(
@@ -232,7 +244,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
-        permission_classes=[IsAuthenticated, DatasetPermission(operation="change")],  # type: ignore[list-item]
+        permission_classes=[IsAuthenticated, make_dataset_permission("change")],  # type: ignore[list-item]
     )
     @trace_resolver(
         name="add_update_dataset_metadata",
@@ -274,7 +286,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
-        permission_classes=[IsAuthenticated, DatasetPermission(operation="change")],  # type: ignore[list-item]
+        permission_classes=[IsAuthenticated, make_dataset_permission("change")],  # type: ignore[list-item]
     )
     @trace_resolver(
         name="update_dataset",
@@ -313,7 +325,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
-        permission_classes=[IsAuthenticated, DatasetPermission(operation="change")],  # type: ignore[list-item]
+        permission_classes=[IsAuthenticated, make_dataset_permission("change")],  # type: ignore[list-item]
     )
     @trace_resolver(
         name="publish_dataset",
@@ -349,7 +361,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
-        permission_classes=[IsAuthenticated, DatasetPermission(operation="change")],  # type: ignore[list-item]
+        permission_classes=[IsAuthenticated, make_dataset_permission("change")],  # type: ignore[list-item]
     )
     @trace_resolver(
         name="un_publish_dataset",
@@ -385,7 +397,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=False,
-        permission_classes=[IsAuthenticated, DatasetPermission(operation="delete")],  # type: ignore[list-item]
+        permission_classes=[IsAuthenticated, make_dataset_permission("delete")],  # type: ignore[list-item]
     )
     @trace_resolver(
         name="delete_dataset",
