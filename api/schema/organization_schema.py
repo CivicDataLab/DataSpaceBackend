@@ -1,6 +1,6 @@
 """Schema definitions for organizations."""
 
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import strawberry
 import strawberry_django
@@ -9,7 +9,7 @@ from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
 from api.models import Organization
-from api.types.type_organization import TypeOrganization
+from api.types.type_organization import OrganizationFilter, TypeOrganization
 from authorization.models import OrganizationMembership
 from authorization.permissions import HasOrganizationRoleGraphQL as HasOrganizationRole
 
@@ -55,8 +55,14 @@ class OrganizationInputPartial:
 class Query:
     """Queries for organizations."""
 
-    @strawberry_django.field(permission_classes=[IsAuthenticated])
-    def organizations(self, info: Info) -> list[TypeOrganization]:
+    @strawberry_django.field(  # type: ignore[call-overload]
+        permission_classes=[IsAuthenticated],
+        filters=OrganizationFilter,  # Explicitly include the filter
+        listable=True,  # Enable automatic filter application
+    )
+    def organizations(
+        self, info: Info, filters: Optional[OrganizationFilter] = None
+    ) -> list[TypeOrganization]:
         """Get all organizations the user has access to."""
         user = info.context.request.user
 
