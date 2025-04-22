@@ -9,7 +9,7 @@ from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
 from api.models import Organization
-from api.types.type_organization import OrganizationFilter, TypeOrganization
+from api.types.type_organization import TypeOrganization
 from authorization.models import OrganizationMembership
 from authorization.permissions import HasOrganizationRoleGraphQL as HasOrganizationRole
 
@@ -57,12 +57,18 @@ class Query:
 
     @strawberry_django.field(  # type: ignore[call-overload]
         permission_classes=[IsAuthenticated],
-        filters=OrganizationFilter,  # Explicitly include the filter
+        # Import OrganizationFilter inside the decorator to avoid circular imports
+        filters=lambda: __import__(
+            "api.types.type_organization", fromlist=["OrganizationFilter"]
+        ).OrganizationFilter,
         listable=True,  # Enable automatic filter application
     )
     def organizations(
-        self, info: Info, filters: Optional[OrganizationFilter] = None
-    ) -> list[TypeOrganization]:
+        self, info: Info, filters: Optional["OrganizationFilter"] = None  # type: ignore[name-defined]
+    ) -> List[TypeOrganization]:
+        # Import OrganizationFilter only when needed
+        from api.types.type_organization import OrganizationFilter  # noqa
+
         """Get all organizations the user has access to."""
         user = info.context.request.user
 
