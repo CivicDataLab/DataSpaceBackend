@@ -99,7 +99,6 @@ djangorestframework-simplejwt==5.3.1  # Downgraded for better DRF compatibility
 
 # Keycloak Integration
 python-keycloak==3.3.0
-django-keycloak==0.5.1
 django-keycloak-auth==0.5.0
 
 # API Versioning and Throttling
