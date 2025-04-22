@@ -4,7 +4,6 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from api.models import User
 from api.utils.keycloak_utils import keycloak_manager
 
 
@@ -66,7 +65,7 @@ class KeycloakLoginView(views.APIView):
                             "name": org.organization.name,  # type: ignore[attr-defined]
                             "role": org.role,  # type: ignore[attr-defined]
                         }
-                        for org in user.userorganization_set.all()  # type: ignore[union-attr]
+                        for org in user.organizationmembership_set.all()  # type: ignore[union-attr, arg-type]
                     ],
                 },
             }
@@ -95,7 +94,7 @@ class UserInfoView(views.APIView):
                         "name": org.organization.name,  # type: ignore[attr-defined]
                         "role": org.role.name,  # type: ignore[attr-defined]
                     }
-                    for org in user.userorganization_set.all()  # type: ignore[union-attr]
+                    for org in user.organizationmembership_set.all()  # type: ignore[union-attr, arg-type]
                 ],
             }
         )

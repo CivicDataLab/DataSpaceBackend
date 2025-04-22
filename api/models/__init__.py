@@ -20,4 +20,3 @@ from api.models.Sector import Sector
 from api.models.SerializableJSONField import SerializableJSONField
 from api.models.UseCase import UseCase
 from api.models.UseCaseMetadata import UseCaseMetadata
-from api.models.User import User, UserOrganization

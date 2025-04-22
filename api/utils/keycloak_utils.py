@@ -1,14 +1,15 @@
-import logging
 from typing import Any, Dict, List, Optional
 
+import structlog
 from django.conf import settings
 from django.db import transaction
 from keycloak import KeycloakOpenID
 from keycloak.exceptions import KeycloakError
 
-from api.models import Organization, User, UserOrganization
+from api.models import Organization
+from authorization.models import OrganizationMembership, User
 
-logger = logging.getLogger(__name__)
+logger = structlog.getLogger(__name__)
 
 
 class KeycloakManager:
@@ -194,7 +195,7 @@ class KeycloakManager:
 
             # Update organization memberships
             # First, get all existing organization memberships
-            existing_memberships = UserOrganization.objects.filter(user=user)
+            existing_memberships = OrganizationMembership.objects.filter(user=user)
             existing_org_ids = {
                 membership.organization_id for membership in existing_memberships  # type: ignore[attr-defined]
             }
@@ -211,7 +212,7 @@ class KeycloakManager:
                     organization = Organization.objects.get(id=org_id)  # type: ignore[misc]
 
                     # Create or update the membership
-                    UserOrganization.objects.update_or_create(
+                    OrganizationMembership.objects.update_or_create(
                         user=user, organization=organization, defaults={"role": role}
                     )
 
@@ -223,7 +224,7 @@ class KeycloakManager:
 
             # Remove memberships that no longer exist in Keycloak
             if existing_org_ids:
-                UserOrganization.objects.filter(
+                OrganizationMembership.objects.filter(
                     user=user, organization_id__in=existing_org_ids
                 ).delete()
 
