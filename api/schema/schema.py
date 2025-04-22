@@ -88,7 +88,8 @@ class CustomContext:
 
 
 # Context getter function for Strawberry
-def get_context(request: Optional[HttpRequest] = None) -> CustomContext:
+def get_context(request: Optional[HttpRequest] = None, response=None) -> CustomContext:  # type: ignore
+    # Ignore the response parameter as we don't need it, but Strawberry tries to pass it
     return CustomContext(request=request)
 
 
