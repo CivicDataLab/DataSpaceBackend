@@ -1,12 +1,9 @@
 import uuid
-from typing import TYPE_CHECKING
 
 from django.db import models
 
+# Import the Dataset model indirectly to avoid duplicate import error
 from api.utils.file_paths import _chart_image_directory_path
-
-if TYPE_CHECKING:
-    from api.models import Dataset
 
 
 class ResourceChartImage(models.Model):

@@ -22,6 +22,10 @@ from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
 from api.utils.enums import DatasetStatus
 from api.utils.graphql_telemetry import trace_resolver
+from authorization.models import OrganizationMembership
+from authorization.permissions import DatasetPermissionGraphQL as DatasetPermission
+from authorization.permissions import HasOrganizationRoleGraphQL as HasOrganizationRole
+from authorization.permissions import IsAuthenticated
 
 
 @strawberry.input
@@ -104,7 +108,12 @@ def _add_update_dataset_sectors(dataset: Dataset, sectors: List[uuid.UUID]) -> N
 
 @strawberry.type
 class Query:
-    @strawberry_django.field(filters=DatasetFilter, pagination=True, order=DatasetOrder)
+    @strawberry_django.field(
+        filters=DatasetFilter,
+        pagination=True,
+        order=DatasetOrder,
+        permission_classes=[IsAuthenticated],
+    )
     @trace_resolver(name="datasets", attributes={"component": "dataset"})
     def datasets(
         self,
@@ -116,6 +125,7 @@ class Query:
         """Get all datasets."""
         organization = info.context.request.context.get("organization")
         dataspace = info.context.request.context.get("dataspace")
+        user = info.context.request.user
 
         # Base queryset filtering by organization or dataspace
         if dataspace:
@@ -123,7 +133,15 @@ class Query:
         elif organization:
             queryset = Dataset.objects.filter(organization=organization)
         else:
-            queryset = Dataset.objects.all()
+            # If user is superuser, show all datasets
+            if user.is_superuser:
+                queryset = Dataset.objects.all()
+            else:
+                # Show only datasets from organizations the user belongs to
+                user_orgs = OrganizationMembership.objects.filter(
+                    user=user
+                ).values_list("organization_id", flat=True)
+                queryset = Dataset.objects.filter(organization_id__in=user_orgs)
 
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
@@ -136,7 +154,9 @@ class Query:
 
         return TypeDataset.from_django_list(queryset)
 
-    @strawberry.field
+    @strawberry.field(
+        permission_classes=[IsAuthenticated, DatasetPermission(operation="view")],  # type: ignore[list-item]
+    )
     @trace_resolver(name="get_chart_data", attributes={"component": "dataset"})
     def get_chart_data(
         self, dataset_id: uuid.UUID
@@ -175,30 +195,71 @@ class Query:
 
 @strawberry.type
 class Mutation:
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        permission_classes=[IsAuthenticated, HasOrganizationRole(operation="add")],  # type: ignore[list-item]
+    )
     @trace_resolver(
         name="add_dataset", attributes={"component": "dataset", "operation": "mutation"}
     )
     def add_dataset(self, info: Info) -> TypeDataset:
+        # Get organization from context
+        organization = info.context.request.context.get("organization")
+        dataspace = info.context.request.context.get("dataspace")
+        user = info.context.request.user
+
+        # Check if user has permission to create a dataset for this organization
+        if organization and not user.is_superuser:
+            try:
+                user_org = OrganizationMembership.objects.get(
+                    user=user, organization=organization
+                )
+                if user_org.role not in ["admin", "editor"]:
+                    raise ValueError(
+                        "You don't have permission to create datasets for this organization"
+                    )
+            except OrganizationMembership.DoesNotExist:
+                raise ValueError(
+                    "You don't have permission to create datasets for this organization"
+                )
+
         dataset = Dataset.objects.create(
-            organization=info.context.request.context.get("organization"),
-            dataspace=info.context.request.context.get("dataspace"),
+            organization=organization,
+            dataspace=dataspace,
             title=f"New dataset {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}",
         )
         return TypeDataset.from_django(dataset)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        permission_classes=[IsAuthenticated, DatasetPermission(operation="change")],  # type: ignore[list-item]
+    )
     @trace_resolver(
         name="add_update_dataset_metadata",
         attributes={"component": "dataset", "operation": "mutation"},
     )
     def add_update_dataset_metadata(
-        self, update_metadata_input: UpdateMetadataInput
+        self, info: Info, update_metadata_input: UpdateMetadataInput
     ) -> TypeDataset:
         dataset_id = update_metadata_input.dataset
         metadata_input = update_metadata_input.metadata
         try:
             dataset = Dataset.objects.get(id=dataset_id)
+
+            # Check if user has permission to update this dataset
+            user = info.context.request.user
+            if not user.is_superuser:
+                try:
+                    user_org = OrganizationMembership.objects.get(
+                        user=user, organization=dataset.organization
+                    )
+                    if user_org.role not in ["admin", "editor"]:
+                        raise ValueError(
+                            "You don't have permission to update this dataset"
+                        )
+                except OrganizationMembership.DoesNotExist:
+                    raise ValueError("You don't have permission to update this dataset")
+
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
@@ -211,17 +272,38 @@ class Mutation:
         _add_update_dataset_sectors(dataset, update_metadata_input.sectors)
         return TypeDataset.from_django(dataset)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        permission_classes=[IsAuthenticated, DatasetPermission(operation="change")],  # type: ignore[list-item]
+    )
     @trace_resolver(
         name="update_dataset",
         attributes={"component": "dataset", "operation": "mutation"},
     )
-    def update_dataset(self, update_dataset_input: UpdateDatasetInput) -> TypeDataset:
+    def update_dataset(
+        self, info: Info, update_dataset_input: UpdateDatasetInput
+    ) -> TypeDataset:
         dataset_id = update_dataset_input.dataset
         try:
             dataset = Dataset.objects.get(id=dataset_id)
+
+            # Check if user has permission to update this dataset
+            user = info.context.request.user
+            if not user.is_superuser:
+                try:
+                    user_org = OrganizationMembership.objects.get(
+                        user=user, organization=dataset.organization
+                    )
+                    if user_org.role not in ["admin", "editor"]:
+                        raise ValueError(
+                            "You don't have permission to update this dataset"
+                        )
+                except OrganizationMembership.DoesNotExist:
+                    raise ValueError("You don't have permission to update this dataset")
+
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
+
         if update_dataset_input.title:
             dataset.title = update_dataset_input.title
         if update_dataset_input.description:
@@ -229,44 +311,104 @@ class Mutation:
         _update_dataset_tags(dataset, update_dataset_input.tags)
         return TypeDataset.from_django(dataset)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        permission_classes=[IsAuthenticated, DatasetPermission(operation="change")],  # type: ignore[list-item]
+    )
     @trace_resolver(
         name="publish_dataset",
         attributes={"component": "dataset", "operation": "mutation"},
     )
-    def publish_dataset(self, dataset_id: uuid.UUID) -> TypeDataset:
+    def publish_dataset(self, info: Info, dataset_id: uuid.UUID) -> TypeDataset:
         try:
             dataset = Dataset.objects.get(id=dataset_id)
+
+            # Check if user has permission to publish this dataset
+            user = info.context.request.user
+            if not user.is_superuser:
+                try:
+                    user_org = OrganizationMembership.objects.get(
+                        user=user, organization=dataset.organization
+                    )
+                    if user_org.role not in ["admin", "editor"]:
+                        raise ValueError(
+                            "You don't have permission to publish this dataset"
+                        )
+                except OrganizationMembership.DoesNotExist:
+                    raise ValueError(
+                        "You don't have permission to publish this dataset"
+                    )
+
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
+
         # TODO: validate dataset
         dataset.status = DatasetStatus.PUBLISHED.value
         dataset.save()
         return TypeDataset.from_django(dataset)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        permission_classes=[IsAuthenticated, DatasetPermission(operation="change")],  # type: ignore[list-item]
+    )
     @trace_resolver(
         name="un_publish_dataset",
         attributes={"component": "dataset", "operation": "mutation"},
     )
-    def un_publish_dataset(self, dataset_id: uuid.UUID) -> TypeDataset:
+    def un_publish_dataset(self, info: Info, dataset_id: uuid.UUID) -> TypeDataset:
         try:
             dataset = Dataset.objects.get(id=dataset_id)
+
+            # Check if user has permission to unpublish this dataset
+            user = info.context.request.user
+            if not user.is_superuser:
+                try:
+                    user_org = OrganizationMembership.objects.get(
+                        user=user, organization=dataset.organization
+                    )
+                    if user_org.role not in ["admin", "editor"]:
+                        raise ValueError(
+                            "You don't have permission to unpublish this dataset"
+                        )
+                except OrganizationMembership.DoesNotExist:
+                    raise ValueError(
+                        "You don't have permission to unpublish this dataset"
+                    )
+
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
+
         # TODO: validate dataset
         dataset.status = DatasetStatus.DRAFT
         dataset.save()
         return TypeDataset.from_django(dataset)
 
-    @strawberry_django.mutation(handle_django_errors=False)
+    @strawberry_django.mutation(
+        handle_django_errors=False,
+        permission_classes=[IsAuthenticated, DatasetPermission(operation="delete")],  # type: ignore[list-item]
+    )
     @trace_resolver(
         name="delete_dataset",
         attributes={"component": "dataset", "operation": "mutation"},
     )
-    def delete_dataset(self, dataset_id: uuid.UUID) -> bool:
+    def delete_dataset(self, info: Info, dataset_id: uuid.UUID) -> bool:
         try:
             dataset = Dataset.objects.get(id=dataset_id)
+
+            # Check if user has permission to delete this dataset
+            user = info.context.request.user
+            if not user.is_superuser:
+                try:
+                    user_org = OrganizationMembership.objects.get(
+                        user=user, organization=dataset.organization
+                    )
+                    if user_org.role != "admin":
+                        raise ValueError(
+                            "You don't have permission to delete this dataset"
+                        )
+                except OrganizationMembership.DoesNotExist:
+                    raise ValueError("You don't have permission to delete this dataset")
+
             dataset.delete()
             return True
         except Dataset.DoesNotExist as e:

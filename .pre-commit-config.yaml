@@ -55,6 +55,8 @@ repos:
           - psycopg2-binary
           - python-dotenv
           - uvicorn
+          - djangorestframework-simplejwt
+          - python-keycloak
 
         args: [--config-file=mypy.ini]
         exclude: ^tests/

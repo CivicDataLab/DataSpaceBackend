@@ -17,6 +17,9 @@ import environ
 import structlog
 from decouple import config
 
+# Import authorization settings
+from authorization.keycloak_settings import *
+
 from .cache_settings import *
 
 env = environ.Env(DEBUG=(bool, False))
@@ -109,10 +112,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "corsheaders",  # django-cors-headers package
+    "corsheaders",
+    "authorization.apps.AuthorizationConfig",
     "api.apps.ApiConfig",
     "strawberry_django",
     "rest_framework",
+    "rest_framework_simplejwt",
     "django_elasticsearch_dsl",
     "django_elasticsearch_dsl_drf",
 ]
@@ -138,6 +143,7 @@ MIDDLEWARE += [
     "api.middleware.rate_limit.rate_limit_middleware",
     "api.middleware.request_validator.RequestValidationMiddleware",
     "api.middleware.logging.StructuredLoggingMiddleware",
+    "authorization.middleware.KeycloakAuthenticationMiddleware",
 ]
 
 ROOT_URLCONF = "DataSpace.urls"
@@ -164,6 +170,7 @@ STRAWBERRY_DJANGO = {
     "FIELD_DESCRIPTION_FROM_HELP_TEXT": True,
     "TYPE_DESCRIPTION_FROM_MODEL_DOCSTRING": True,
     "GENERATE_ENUMS_FROM_CHOICES": True,
+    "DEFAULT_PERMISSION_CLASSES": ["authorization.graphql_permissions.AllowAny"],
 }
 
 # Database
@@ -229,6 +236,15 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "files", "public")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DJANGO_ALLOW_ASYNC_UNSAFE = True
+
+# Custom User model
+AUTH_USER_MODEL = "authorization.User"
+
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    "authorization.backends.KeycloakAuthenticationBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
 ELASTICSEARCH_DSL = {
     "default": {
         "hosts": f"http://{os.getenv('ELASTICSEARCH_USERNAME', 'elastic')}:{os.getenv('ELASTICSEARCH_PASSWORD', 'changeme')}@elasticsearch:9200",
@@ -252,9 +268,11 @@ DVC_REMOTE_URL = os.getenv("DVC_REMOTE_URL", None)
 # Django REST Framework settings
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",  # Allow unauthenticated access by default
+        "rest_framework.permissions.AllowAny",  # Allow public access by default
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "authorization.authentication.KeycloakAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
     ],

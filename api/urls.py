@@ -2,10 +2,12 @@ from django.conf import settings
 from django.urls import include, path, re_path
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import routers
+from rest_framework_simplejwt.views import TokenRefreshView
 from strawberry.django.views import AsyncGraphQLView, GraphQLView
 
 from api.schema.schema import schema
 from api.views import (
+    auth,
     download,
     generate_dynamic_chart,
     search_dataset,
@@ -13,6 +15,12 @@ from api.views import (
 )
 
 urlpatterns = [
+    # Authentication endpoints
+    path(
+        "auth/keycloak/login/", auth.KeycloakLoginView.as_view(), name="keycloak_login"
+    ),
+    path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("auth/user/info/", auth.UserInfoView.as_view(), name="user_info"),
     # API endpoints
     path(
         "search/dataset/", search_dataset.SearchDataset.as_view(), name="search_dataset"
@@ -28,6 +36,7 @@ urlpatterns = [
             GraphQLView.as_view(
                 schema=schema,
                 graphql_ide="apollo-sandbox",
+                get_context=lambda request, _: {"request": request},
             )
         ),
     ),

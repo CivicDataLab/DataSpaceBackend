@@ -44,6 +44,7 @@ schema_view = get_schema_view(
 
 urlpatterns: URLPatternsList = [
     path("api/", include("api.urls")),
+    path("auth/", include("authorization.urls")),
     path("admin/", admin.site.urls),
     # Health check endpoint
     path("health/", health.health_check, name="health_check"),

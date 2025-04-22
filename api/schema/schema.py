@@ -1,7 +1,8 @@
-from typing import List
+from typing import List, Optional
 
 import strawberry
 import strawberry_django
+from django.http import HttpRequest
 from strawberry.tools import merge_types
 from strawberry.types import Info
 from strawberry_django.optimizer import DjangoOptimizerExtension
@@ -22,6 +23,8 @@ from api.types.type_dataset import TypeTag
 from api.types.type_metadata import TypeMetadata
 from api.types.type_resource import TypeResource
 from api.utils.graphql_telemetry import TelemetryExtension, trace_resolver
+from authorization.graphql import Mutation as AuthMutation
+from authorization.graphql import Query as AuthQuery
 
 
 @strawberry.type
@@ -55,6 +58,7 @@ Query = merge_types(
         api.schema.organization_schema.Query,
         api.schema.dataspace_schema.Query,
         api.schema.resoure_chart_image_schema.Query,
+        AuthQuery,
     ),
 )
 
@@ -72,8 +76,21 @@ Mutation = merge_types(
         api.schema.dataspace_schema.Mutation,
         api.schema.resoure_chart_image_schema.Mutation,
         api.schema.tags_schema.Mutation,
+        AuthMutation,
     ),
 )
+
+
+# Custom context class to include authentication information
+class CustomContext:
+    def __init__(self, request: Optional[HttpRequest] = None) -> None:
+        self.request = request
+
+
+# Context getter function for Strawberry
+def get_context(request: Optional[HttpRequest] = None) -> CustomContext:
+    return CustomContext(request=request)
+
 
 schema = strawberry.Schema(
     query=Query,
@@ -82,4 +99,9 @@ schema = strawberry.Schema(
         DjangoOptimizerExtension,
         TelemetryExtension,
     ],
+    # The SchemaConfig type ignore is needed because mypy can't find this attribute
+    # in the strawberry module, but it exists at runtime
+    config=strawberry.SchemaConfig(  # type: ignore
+        auto_camel_case=True,
+    ),
 )
