@@ -23,7 +23,17 @@ class ContextMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: CustomHttpRequest) -> HttpResponse:
-        auth_token: Optional[str] = request.headers.get("authorization", None)
+        # Get token from Authorization header (Bearer token) or x-keycloak-token header
+        auth_header: Optional[str] = request.headers.get("authorization", None)
+        keycloak_token: Optional[str] = request.headers.get("x-keycloak-token", None)
+
+        # Extract token from Authorization header if present (remove 'Bearer ' prefix)
+        auth_token: Optional[str] = None
+        if auth_header and auth_header.startswith("Bearer "):
+            auth_token = auth_header[7:]
+        elif keycloak_token:
+            auth_token = keycloak_token
+
         organization_slug: Optional[str] = request.headers.get("organization", None)
         dataspace_slug: Optional[str] = request.headers.get("dataspace", None)
 

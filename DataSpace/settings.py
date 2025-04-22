@@ -101,6 +101,7 @@ CORS_ALLOW_HEADERS = [
     "organization",
     "dataspace",
     "token",
+    "x-keycloak-token",  # Add Keycloak token header
 ]
 
 # Application definition

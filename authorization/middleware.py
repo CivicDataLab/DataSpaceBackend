@@ -25,10 +25,19 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
 
     # Get the token from the request
     auth_header = request.META.get("HTTP_AUTHORIZATION", "")
-    if not auth_header.startswith("Bearer "):
-        return cast(User, AnonymousUser())
+    keycloak_token = request.META.get("HTTP_X_KEYCLOAK_TOKEN", "")
 
-    token = auth_header[7:]  # Remove 'Bearer ' prefix
+    # Try to get token from Authorization header first
+    token = None
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]  # Remove 'Bearer ' prefix
+    # If not found, try the x-keycloak-token header
+    elif keycloak_token:
+        token = keycloak_token
+
+    # If no token found, return anonymous user
+    if not token:
+        return cast(User, AnonymousUser())
 
     # Validate the token and get user info
     user_info: Dict[str, Any] = keycloak_manager.validate_token(token)
