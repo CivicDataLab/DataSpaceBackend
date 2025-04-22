@@ -1,5 +1,6 @@
 """Schema definitions for organizations."""
 
+import logging
 from typing import Any, List, Optional
 
 import strawberry
@@ -10,6 +11,7 @@ from strawberry_django.mutations import mutations
 
 from api.models import Organization
 from api.types.type_organization import TypeOrganization
+from api.utils.debug_utils import debug_context
 from api.utils.graphql_utils import get_user_from_info, is_superuser
 from authorization.models import OrganizationMembership
 from authorization.permissions import HasOrganizationRoleGraphQL as HasOrganizationRole
@@ -61,9 +63,33 @@ class Query:
         self, info: Info, slug: Optional[str] = None, id: Optional[str] = None
     ) -> List[TypeOrganization]:
         """Get all organizations the user has access to."""
-        # Get user using the utility function
-        user = get_user_from_info(info)
+        # Debug the context structure
+        debug_context(info, "Organizations resolver")
+
+        # Direct context handling for maximum robustness
+        user = None
+
+        # Try to get user directly from context if it's a dictionary
+        if isinstance(info.context, dict):
+            # Try direct user access
+            if "user" in info.context:
+                user = info.context["user"]
+            # Try request.user access
+            elif "request" in info.context and hasattr(info.context["request"], "user"):
+                user = info.context["request"].user
+        # Try object-style context
+        elif hasattr(info.context, "user"):
+            user = info.context.user
+        elif hasattr(info.context, "request") and hasattr(info.context.request, "user"):
+            user = info.context.request.user
+
+        # Fall back to utility function as last resort
         if not user:
+            user = get_user_from_info(info)
+
+        # Handle anonymous users
+        if not user or getattr(user, "is_anonymous", True):
+            logging.warning("Anonymous user or no user found in context")
             return []
 
         # If superuser, return all organizations
@@ -93,9 +119,37 @@ class Query:
         try:
             organization = Organization.objects.get(id=id)
 
-            # Check if user has permission to view this organization
-            user = get_user_from_info(info)
+            # Debug the context structure
+            debug_context(info, "Organization resolver")
+
+            # Direct context handling for maximum robustness
+            user = None
+
+            # Try to get user directly from context if it's a dictionary
+            if isinstance(info.context, dict):
+                # Try direct user access
+                if "user" in info.context:
+                    user = info.context["user"]
+                # Try request.user access
+                elif "request" in info.context and hasattr(
+                    info.context["request"], "user"
+                ):
+                    user = info.context["request"].user
+            # Try object-style context
+            elif hasattr(info.context, "user"):
+                user = info.context.user
+            elif hasattr(info.context, "request") and hasattr(
+                info.context.request, "user"
+            ):
+                user = info.context.request.user
+
+            # Fall back to utility function as last resort
             if not user:
+                user = get_user_from_info(info)
+
+            # Handle anonymous users
+            if not user or getattr(user, "is_anonymous", True):
+                logging.warning("Anonymous user or no user found in context")
                 raise ValueError("Authentication required")
 
             if (

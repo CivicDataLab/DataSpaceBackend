@@ -31,13 +31,41 @@ def get_user_from_info(info: Info) -> Optional[AbstractUser]:
     Handles both dictionary and object contexts.
     Returns None for anonymous users.
     """
-    request = get_request_from_info(info)
-    if not request:
-        return None
+    # Direct access to context dictionary
+    if isinstance(info.context, dict):
+        # Try to get user directly from context
+        if "user" in info.context:
+            user = info.context["user"]
+            if user and not isinstance(user, AnonymousUser):
+                return cast(AbstractUser, user)
+        # Try to get user from request in context
+        if "request" in info.context:
+            request = info.context["request"]
+            if hasattr(request, "user"):
+                user = request.user
+                if user and not isinstance(user, AnonymousUser):
+                    return cast(AbstractUser, user)
+    # Object-style context
+    elif hasattr(info.context, "user"):
+        # Direct user attribute
+        user = info.context.user
+        if user and not isinstance(user, AnonymousUser):
+            return cast(AbstractUser, user)
+    elif hasattr(info.context, "request"):
+        # User from request attribute
+        request = info.context.request
+        if hasattr(request, "user"):
+            user = request.user
+            if user and not isinstance(user, AnonymousUser):
+                return cast(AbstractUser, user)
 
-    user = getattr(request, "user", None)
-    if user and not isinstance(user, AnonymousUser):
-        return cast(AbstractUser, user)
+    # Fall back to old method using get_request_from_info
+    request = get_request_from_info(info)
+    if request and hasattr(request, "user"):
+        user = request.user
+        if user and not isinstance(user, AnonymousUser):
+            return cast(AbstractUser, user)
+
     return None
 
 
