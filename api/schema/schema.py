@@ -99,9 +99,4 @@ schema = strawberry.Schema(
         DjangoOptimizerExtension,
         TelemetryExtension,
     ],
-    # The SchemaConfig type ignore is needed because mypy can't find this attribute
-    # in the strawberry module, but it exists at runtime
-    config=strawberry.SchemaConfig(  # type: ignore
-        auto_camel_case=True,
-    ),
 )
