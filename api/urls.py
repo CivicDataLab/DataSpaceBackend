@@ -36,7 +36,7 @@ urlpatterns = [
             GraphQLView.as_view(
                 schema=schema,
                 graphql_ide="apollo-sandbox",
-                get_context=lambda request, _: {"request": request},
+                get_context=lambda request, _, **kwargs: {"request": request},
             )
         ),
     ),
