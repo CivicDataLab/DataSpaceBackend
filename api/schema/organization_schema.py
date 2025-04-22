@@ -10,6 +10,7 @@ from strawberry_django.mutations import mutations
 
 from api.models import Organization
 from api.types.type_organization import TypeOrganization
+from api.utils.graphql_utils import get_user_from_info, is_superuser
 from authorization.models import OrganizationMembership
 from authorization.permissions import HasOrganizationRoleGraphQL as HasOrganizationRole
 
@@ -60,14 +61,17 @@ class Query:
         self, info: Info, slug: Optional[str] = None, id: Optional[str] = None
     ) -> List[TypeOrganization]:
         """Get all organizations the user has access to."""
-        user = info.context.request.user
+        # Get user using the utility function
+        user = get_user_from_info(info)
+        if not user:
+            return []
 
         # If superuser, return all organizations
-        if user.is_superuser:
+        if is_superuser(info):
             queryset = Organization.objects.all()
         else:
             # Get organizations the user is a member of
-            user_orgs = OrganizationMembership.objects.filter(user=user).values_list(
+            user_orgs = OrganizationMembership.objects.filter(user=user).values_list(  # type: ignore[misc]
                 "organization_id", flat=True
             )
             queryset = Organization.objects.filter(id__in=user_orgs)
@@ -90,11 +94,14 @@ class Query:
             organization = Organization.objects.get(id=id)
 
             # Check if user has permission to view this organization
-            user = info.context.request.user
+            user = get_user_from_info(info)
+            if not user:
+                raise ValueError("Authentication required")
+
             if (
-                not user.is_superuser
+                not is_superuser(info)
                 and not OrganizationMembership.objects.filter(
-                    user=user, organization=organization
+                    user=user, organization=organization  # type: ignore[misc]
                 ).exists()
             ):
                 raise ValueError("You don't have permission to view this organization")
