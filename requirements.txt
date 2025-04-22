@@ -98,8 +98,8 @@ drf-yasg[validation]==1.21.7
 djangorestframework-simplejwt==5.3.1  # Downgraded for better DRF compatibility
 
 # Keycloak Integration
-python-keycloak==3.3.0
-django-keycloak-auth==0.5.0
+python-keycloak==5.5.0
+django-keycloak-auth==1.0.0
 
 # API Versioning and Throttling
 django-filter==23.5  # Downgraded for better Django compatibility
