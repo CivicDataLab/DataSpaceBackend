@@ -43,7 +43,7 @@ def debug_context(info: Any, prefix: str = "Context") -> None:
 
             # Check if request is an attribute
             if hasattr(info.context, "request"):
-                request = info.context.request
+                request = info.context
                 logger.info(f"{prefix} request type: {type(request)}")
                 logger.info(f"{prefix} request attrs: {dir(request)[:20]}...")
 

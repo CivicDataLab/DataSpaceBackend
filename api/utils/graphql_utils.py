@@ -18,7 +18,7 @@ def get_request_from_info(info: Info) -> Optional[HttpRequest]:
             return request
         return None  # Return None if request is not a HttpRequest
     elif hasattr(info.context, "request"):
-        request = info.context.request
+        request = info.context
         if isinstance(request, HttpRequest):
             return request
         return None  # Return None if request is not a HttpRequest
@@ -53,7 +53,7 @@ def get_user_from_info(info: Info) -> Optional[AbstractUser]:
             return cast(AbstractUser, user)
     elif hasattr(info.context, "request"):
         # User from request attribute
-        request = info.context.request
+        request = info.context
         if hasattr(request, "user"):
             user = request.user
             if user and not isinstance(user, AnonymousUser):

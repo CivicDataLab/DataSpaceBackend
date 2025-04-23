@@ -131,7 +131,7 @@ class Mutation:
 
         # Add the current user as an admin of the organization
         OrganizationMembership.objects.create(
-            user=info.context.request.user, organization=organization, role="admin"  # type: ignore[misc]
+            user=info.context.user, organization=organization, role="admin"  # type: ignore[misc]
         )
 
         return TypeOrganization.from_django(organization)
@@ -147,7 +147,7 @@ class Mutation:
         try:
             # Check if user has permission to update this organization
             organization = Organization.objects.get(id=input.id)
-            user = info.context.request.user
+            user = info.context.user
 
             if not user.is_superuser:
                 try:
@@ -181,7 +181,7 @@ class Mutation:
             organization = Organization.objects.get(id=organization_id)
 
             # Check if user has permission to delete this organization
-            user = info.context.request.user
+            user = info.context.user
             if not user.is_superuser:
                 try:
                     user_org = OrganizationMembership.objects.get(

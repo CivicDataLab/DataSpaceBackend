@@ -149,9 +149,9 @@ class Query:
         order: Optional[DatasetOrder] = strawberry.UNSET,
     ) -> List[TypeDataset]:
         """Get all datasets."""
-        organization = info.context.request.context.get("organization")
-        dataspace = info.context.request.context.get("dataspace")
-        user = info.context.request.user
+        organization = info.context.context.get("organization")
+        dataspace = info.context.context.get("dataspace")
+        user = info.context.user
 
         # Base queryset filtering by organization or dataspace
         if dataspace:
@@ -230,9 +230,9 @@ class Mutation:
     )
     def add_dataset(self, info: Info) -> TypeDataset:
         # Get organization from context
-        organization = info.context.request.context.get("organization")
-        dataspace = info.context.request.context.get("dataspace")
-        user = info.context.request.user
+        organization = info.context.context.get("organization")
+        dataspace = info.context.context.get("dataspace")
+        user = info.context.user
 
         # Check if user has permission to create a dataset for this organization
         if organization and not user.is_superuser:
@@ -273,7 +273,7 @@ class Mutation:
             dataset = Dataset.objects.get(id=dataset_id)
 
             # Check if user has permission to update this dataset
-            user = info.context.request.user
+            user = info.context.user
             if not user.is_superuser:
                 try:
                     user_org = OrganizationMembership.objects.get(
@@ -314,7 +314,7 @@ class Mutation:
             dataset = Dataset.objects.get(id=dataset_id)
 
             # Check if user has permission to update this dataset
-            user = info.context.request.user
+            user = info.context.user
             if not user.is_superuser:
                 try:
                     user_org = OrganizationMembership.objects.get(
@@ -350,7 +350,7 @@ class Mutation:
             dataset = Dataset.objects.get(id=dataset_id)
 
             # Check if user has permission to publish this dataset
-            user = info.context.request.user
+            user = info.context.user
             if not user.is_superuser:
                 try:
                     user_org = OrganizationMembership.objects.get(
@@ -386,7 +386,7 @@ class Mutation:
             dataset = Dataset.objects.get(id=dataset_id)
 
             # Check if user has permission to unpublish this dataset
-            user = info.context.request.user
+            user = info.context.user
             if not user.is_superuser:
                 try:
                     user_org = OrganizationMembership.objects.get(
@@ -422,7 +422,7 @@ class Mutation:
             dataset = Dataset.objects.get(id=dataset_id)
 
             # Check if user has permission to delete this dataset
-            user = info.context.request.user
+            user = info.context.user
             if not user.is_superuser:
                 try:
                     user_org = OrganizationMembership.objects.get(

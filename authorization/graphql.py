@@ -54,7 +54,7 @@ class Query:
         """
         Get all permissions for the current user.
         """
-        user = info.context.request.user
+        user = info.context.user
 
         # Get organization permissions
         org_memberships = OrganizationMembership.objects.filter(
@@ -138,7 +138,7 @@ class Mutation:
         Assign a role to a user for an organization.
         """
         # Check if the current user has permission to assign roles
-        current_user = info.context.request.user
+        current_user = info.context.user
         if not current_user.is_superuser:
             org_id = input.organization_id
             try:
@@ -165,7 +165,7 @@ class Mutation:
         Assign a permission to a user for a dataset.
         """
         # Check if the current user has permission to assign dataset permissions
-        current_user = info.context.request.user
+        current_user = info.context.user
         if not current_user.is_superuser:
             # Get the dataset's organization
             try:

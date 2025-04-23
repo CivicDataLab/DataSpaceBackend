@@ -132,7 +132,7 @@ class IsAuthenticated(BasePermission):
     message = "User is not authenticated"
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        request = info.context.request
+        request = info.context
         return request.user.is_authenticated  # type: ignore[no-any-return]
 
 
@@ -145,7 +145,7 @@ class IsOrganizationMemberGraphQL(BasePermission):  # type: ignore[misc]
     message = "User is not a member of the organization"
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        request = info.context.request
+        request = info.context
 
         # If the user is a superuser, grant permission
         if request.user.is_superuser:
@@ -192,7 +192,7 @@ class HasOrganizationRoleGraphQL(BasePermission):  # type: ignore[misc]
         self.operation = operation
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        request = info.context.request
+        request = info.context
 
         # If the user is a superuser, grant permission
         if request.user.is_superuser:
@@ -264,7 +264,7 @@ class DatasetPermissionGraphQL(HasOrganizationRoleGraphQL):  # type: ignore[misc
             return True
 
         # If not allowed at organization level, check dataset-specific permissions
-        request = info.context.request
+        request = info.context
 
         # For queries/mutations that don't have a source yet
         if source is None:

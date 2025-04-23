@@ -28,7 +28,7 @@ class IsAuthenticated(BasePermission):
     message = "User is not authenticated"
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        request = info.context.request
+        request = info.context
         return request.user.is_authenticated  # type: ignore[no-any-return]
 
 
@@ -43,7 +43,7 @@ class IsOrganizationMember(BasePermission):
         self.organization_id_arg = organization_id_arg
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        request = info.context.request
+        request = info.context
 
         # If the user is a superuser, grant permission
         if request.user.is_superuser:
@@ -77,7 +77,7 @@ class HasOrganizationRole(BasePermission):
         self.organization_id_arg = organization_id_arg
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        request = info.context.request
+        request = info.context
 
         # If the user is a superuser, grant permission
         if request.user.is_superuser:
@@ -108,7 +108,7 @@ class HasDatasetPermission(BasePermission):
         self.dataset_id_arg = dataset_id_arg
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        request = info.context.request
+        request = info.context
 
         # If the user is a superuser, grant permission
         if request.user.is_superuser:
