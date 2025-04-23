@@ -63,31 +63,8 @@ class Query:
         self, info: Info, slug: Optional[str] = None, id: Optional[str] = None
     ) -> List[TypeOrganization]:
         """Get all organizations the user has access to."""
-        # Debug the context structure
-        debug_context(info, "Organizations resolver")
-
-        # Direct context handling for maximum robustness
-        user = None
-
-        # Try to get user directly from context if it's a dictionary
-        if isinstance(info.context, dict):
-            # Try direct user access
-            if "user" in info.context:
-                user = info.context["user"]
-            # Try request.user access
-            elif "request" in info.context and hasattr(info.context["request"], "user"):
-                user = info.context["request"].user
-        # Try object-style context
-        elif hasattr(info.context, "user"):
-            user = info.context.user
-        elif hasattr(info.context, "request") and hasattr(info.context.request, "user"):
-            user = info.context.request.user
-
-        # Fall back to utility function as last resort
-        if not user:
-            user = get_user_from_info(info)
-
-        # Handle anonymous users
+        # Now info.context is the request object
+        user = info.context.user
         if not user or getattr(user, "is_anonymous", True):
             logging.warning("Anonymous user or no user found in context")
             return []
@@ -119,35 +96,8 @@ class Query:
         try:
             organization = Organization.objects.get(id=id)
 
-            # Debug the context structure
-            debug_context(info, "Organization resolver")
-
-            # Direct context handling for maximum robustness
-            user = None
-
-            # Try to get user directly from context if it's a dictionary
-            if isinstance(info.context, dict):
-                # Try direct user access
-                if "user" in info.context:
-                    user = info.context["user"]
-                # Try request.user access
-                elif "request" in info.context and hasattr(
-                    info.context["request"], "user"
-                ):
-                    user = info.context["request"].user
-            # Try object-style context
-            elif hasattr(info.context, "user"):
-                user = info.context.user
-            elif hasattr(info.context, "request") and hasattr(
-                info.context.request, "user"
-            ):
-                user = info.context.request.user
-
-            # Fall back to utility function as last resort
-            if not user:
-                user = get_user_from_info(info)
-
-            # Handle anonymous users
+            # Now info.context is the request object
+            user = info.context.user
             if not user or getattr(user, "is_anonymous", True):
                 logging.warning("Anonymous user or no user found in context")
                 raise ValueError("Authentication required")
