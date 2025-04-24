@@ -54,7 +54,14 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
             else:
                 # Use the raw Authorization header value as the token
                 token = auth_header
-                logger.debug("Found raw token in Authorization header")
+                logger.debug(
+                    f"Found raw token in Authorization header, length: {len(token)}"
+                )
+                # Log first and last few characters for debugging
+                if len(token) > 20:
+                    logger.debug(
+                        f"Token starts with: {token[:10]}..., ends with: ...{token[-10:]}"
+                    )
         # If not found, try the x-keycloak-token header
         elif keycloak_token:
             token = keycloak_token

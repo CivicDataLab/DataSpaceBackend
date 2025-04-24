@@ -74,6 +74,12 @@ class KeycloakManager:
             token_info: Dict[str, Any] = {}
 
             try:
+                # Log token format for debugging
+                logger.debug(
+                    f"Token format check: alphanumeric only: {token.isalnum()}"
+                )
+
+                # Try standard introspection first
                 token_info = self.keycloak_openid.introspect(token)
                 logger.debug(
                     f"Token introspection result: active={token_info.get('active', False)}"
@@ -83,6 +89,40 @@ class KeycloakManager:
                 # If introspection fails, try to decode the token directly
                 try:
                     logger.debug("Attempting to decode token directly")
+
+                    # First, try to extract a JWT if this is a non-standard format
+                    # Look for JWT pattern: base64url.base64url.base64url
+                    import re
+
+                    jwt_pattern = re.compile(
+                        r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"
+                    )
+                    jwt_match = jwt_pattern.search(token)
+
+                    if jwt_match:
+                        extracted_jwt = jwt_match.group(0)
+                        logger.debug(
+                            f"Found potential JWT within token: {extracted_jwt[:10]}...{extracted_jwt[-10:]}"
+                        )
+                        try:
+                            # Try to decode the extracted JWT
+                            decoded_token = self.keycloak_openid.decode_token(
+                                extracted_jwt
+                            )
+                            if decoded_token and isinstance(decoded_token, dict):
+                                token_info = {"active": True}
+                                logger.debug("Successfully decoded extracted JWT")
+                                # Use the extracted JWT for subsequent operations
+                                token = extracted_jwt
+                                return self.validate_token(
+                                    token
+                                )  # Restart validation with extracted token
+                        except Exception as jwt_error:
+                            logger.warning(
+                                f"Failed to decode extracted JWT: {jwt_error}"
+                            )
+
+                    # If no JWT found or JWT decode failed, try the original token
                     decoded_token = self.keycloak_openid.decode_token(token)
                     # If we can decode it, consider it valid for now
                     if decoded_token and isinstance(decoded_token, dict):
