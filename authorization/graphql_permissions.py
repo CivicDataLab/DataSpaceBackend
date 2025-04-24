@@ -23,12 +23,14 @@ class AllowAny(BasePermission):
 class IsAuthenticated(BasePermission):
     """
     Permission class that checks if the user is authenticated.
+    In development mode (KEYCLOAK_DEV_MODE=True), this will always return True.
     """
 
     message = "User is not authenticated"
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
         import structlog
+        from django.conf import settings
 
         from api.utils.debug_utils import debug_context
 
@@ -39,6 +41,14 @@ class IsAuthenticated(BasePermission):
 
         # Log the type of the context object
         logger.info(f"Context type: {type(info.context).__name__}")
+
+        # Check if we're in development mode
+        dev_mode = getattr(settings, "KEYCLOAK_DEV_MODE", False)
+        if dev_mode:
+            logger.warning(
+                "KEYCLOAK_DEV_MODE is enabled in GraphQL permission - bypassing authentication check"
+            )
+            return True  # Allow all requests in development mode
 
         # Get the request from context
         request = info.context
@@ -55,6 +65,7 @@ class IsAuthenticated(BasePermission):
 class IsOrganizationMember(BasePermission):
     """
     Permission class that checks if the user is a member of the organization.
+    In development mode (KEYCLOAK_DEV_MODE=True), this will always return True.
     """
 
     message = "User is not a member of the organization"
@@ -94,6 +105,7 @@ class IsOrganizationMember(BasePermission):
 class HasOrganizationRole(BasePermission):
     """
     Permission class that checks if the user has the required role in the organization.
+    In development mode (KEYCLOAK_DEV_MODE=True), this will always return True.
     """
 
     message = "User does not have the required role in the organization"
@@ -107,6 +119,7 @@ class HasOrganizationRole(BasePermission):
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
         import structlog
+        from django.conf import settings
 
         logger = structlog.getLogger(__name__)
 
@@ -114,6 +127,14 @@ class HasOrganizationRole(BasePermission):
         logger.info(
             f"Context type in HasOrganizationRole: {type(info.context).__name__}"
         )
+
+        # Check if we're in development mode
+        dev_mode = getattr(settings, "KEYCLOAK_DEV_MODE", False)
+        if dev_mode:
+            logger.warning(
+                "KEYCLOAK_DEV_MODE is enabled in HasOrganizationRole - bypassing permission check"
+            )
+            return True  # Allow all requests in development mode
 
         request = info.context
 
@@ -137,6 +158,7 @@ class HasOrganizationRole(BasePermission):
 class HasDatasetPermission(BasePermission):
     """
     Permission class that checks if the user has the required permission for the dataset.
+    In development mode (KEYCLOAK_DEV_MODE=True), this will always return True.
     """
 
     message = "User does not have the required permission for the dataset"
@@ -147,6 +169,7 @@ class HasDatasetPermission(BasePermission):
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
         import structlog
+        from django.conf import settings
 
         logger = structlog.getLogger(__name__)
 
@@ -154,6 +177,14 @@ class HasDatasetPermission(BasePermission):
         logger.info(
             f"Context type in HasDatasetPermission: {type(info.context).__name__}"
         )
+
+        # Check if we're in development mode
+        dev_mode = getattr(settings, "KEYCLOAK_DEV_MODE", False)
+        if dev_mode:
+            logger.warning(
+                "KEYCLOAK_DEV_MODE is enabled in HasDatasetPermission - bypassing permission check"
+            )
+            return True  # Allow all requests in development mode
 
         request = info.context
 

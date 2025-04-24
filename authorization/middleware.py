@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, List, Optional, cast
 import structlog
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
+from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.utils.functional import SimpleLazyObject
 from rest_framework.request import Request
@@ -39,7 +40,7 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
                     logger.info(f"Using superuser {superuser.username} for development")
                     return superuser
             except Exception as e:
-                logger.error(f"Error getting superuser: {e}")
+                logger.error(f"Error setting up development user: {e}")
 
         # Check if there's already a user in the request
         if hasattr(request, "_cached_user"):
