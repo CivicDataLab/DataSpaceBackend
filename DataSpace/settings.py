@@ -154,10 +154,9 @@ MIDDLEWARE = [
 if DEBUG:
     MIDDLEWARE.insert(1, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
-# Add Keycloak middleware last - it was previously causing issues
 MIDDLEWARE += [
-    "authorization.middleware.KeycloakAuthenticationMiddleware",
     "api.middleware.rate_limit.rate_limit_middleware",
+    "authorization.middleware.KeycloakAuthenticationMiddleware",
 ]
 
 ROOT_URLCONF = "DataSpace.urls"
