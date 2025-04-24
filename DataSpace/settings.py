@@ -88,8 +88,7 @@ CORS_EXPOSE_HEADERS = ["*"]
 # Apply CORS to all URLs including redirects
 CORS_URLS_REGEX = r".*"
 
-# Fix issues with HTTPS and redirects
-CORS_REPLACE_HTTPS_REFERER = True
+# CORS preflight settings
 CORS_PREFLIGHT_MAX_AGE = 86400
 # Common CORS settings
 CORS_ALLOW_CREDENTIALS = True
