@@ -68,6 +68,10 @@ class KeycloakAuthenticationMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
+        # Skip authentication for OPTIONS requests
+        if request.method == "OPTIONS":
+            return self.get_response(request)
+
         # Process the request before the view is called
         if not hasattr(request, "user") or request.user.is_anonymous:
             request.user = SimpleLazyObject(  # type: ignore[assignment]
