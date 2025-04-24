@@ -21,17 +21,41 @@ class Command(BaseCommand):
     def handle(self, *args: Any, **options: Any) -> None:  # type: ignore[no-untyped-def]
         identifier = options["identifier"]
 
-        # Try to find the user by username or email
+        # Try to find the user by username, email, or keycloak_id
         user = None
         try:
+            # Try username first
             user = User.objects.filter(username=identifier).first()
+            if user:
+                self.stdout.write(
+                    self.style.SUCCESS(f"Found user by username: {user.username}")
+                )
+
+            # Try email next
             if not user:
                 user = User.objects.filter(email=identifier).first()
+                if user:
+                    self.stdout.write(
+                        self.style.SUCCESS(f"Found user by email: {user.email}")
+                    )
+
+            # Try keycloak_id last
+            if not user:
+                user = User.objects.filter(keycloak_id=identifier).first()
+                if user:
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"Found user by keycloak_id: {user.keycloak_id}"
+                        )
+                    )
 
             if not user:
                 self.stdout.write(
+                    self.style.ERROR(f"User with identifier '{identifier}' not found")
+                )
+                self.stdout.write(
                     self.style.ERROR(
-                        f"User with username or email '{identifier}' not found"
+                        "Make sure the user has logged in at least once or check the identifier"
                     )
                 )
                 return

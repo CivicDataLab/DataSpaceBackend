@@ -100,6 +100,16 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
             logger.warning("Token validation failed, returning anonymous user")
             return cast(User, AnonymousUser())
 
+        # Log the user info for debugging
+        logger.debug(
+            f"User info from token: {user_info.keys() if user_info else 'None'}"
+        )
+        logger.debug(f"User sub: {user_info.get('sub', 'None')}")
+        logger.debug(f"User email: {user_info.get('email', 'None')}")
+        logger.debug(
+            f"User preferred_username: {user_info.get('preferred_username', 'None')}"
+        )
+
         # Get user roles and organizations from the token
         roles = keycloak_manager.get_user_roles(token)
         organizations = keycloak_manager.get_user_organizations(token)

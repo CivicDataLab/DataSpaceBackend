@@ -47,8 +47,6 @@ class KeycloakManager:
             logger.info("Keycloak client initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Keycloak client: {e}")
-            # Create a dummy client that will log errors instead of failing
-            # Create a dummy client that will log errors instead of failing
             # Use cast to satisfy the type checker
             self.keycloak_openid = cast(KeycloakOpenID, object())
 
@@ -443,30 +441,103 @@ class KeycloakManager:
                 logger.error("Missing required user information from Keycloak")
                 return None
 
-            # Get or create the user
-            user, created = User.objects.update_or_create(
-                keycloak_id=keycloak_id,
-                defaults={
-                    "username": username,
-                    "email": email,
-                    "first_name": user_info.get("given_name", ""),
-                    "last_name": user_info.get("family_name", ""),
-                    "is_active": True,
-                },
-            )
+            # Try to find user by keycloak_id first
+            user = None
+            created = False
 
-            # We're not using Keycloak roles, so we don't update is_staff or is_superuser
+            try:
+                user = User.objects.get(keycloak_id=keycloak_id)
+                logger.info(f"Found existing user by keycloak_id: {user.username}")
+                # Update user details
+                user.username = str(username) if username else ""  # type: ignore[assignment]
+                user.email = str(email) if email else ""  # type: ignore[assignment]
+                user.first_name = (
+                    str(user_info.get("given_name", ""))
+                    if user_info.get("given_name")
+                    else ""
+                )
+                user.last_name = (
+                    str(user_info.get("family_name", ""))
+                    if user_info.get("family_name")
+                    else ""
+                )
+                user.is_active = True
+                user.save()
+            except User.DoesNotExist:
+                # Try to find user by email
+                try:
+                    if email:
+                        user = User.objects.get(email=email)
+                        logger.info(f"Found existing user by email: {user.username}")
+                        # Update keycloak_id and other details
+                        user.keycloak_id = str(keycloak_id) if keycloak_id else ""  # type: ignore[assignment]
+                        user.username = str(username) if username else ""  # type: ignore[assignment]
+                        user.first_name = (
+                            str(user_info.get("given_name", ""))
+                            if user_info.get("given_name")
+                            else ""
+                        )
+                        user.last_name = (
+                            str(user_info.get("family_name", ""))
+                            if user_info.get("family_name")
+                            else ""
+                        )
+                        user.is_active = True
+                        user.save()
+                except User.DoesNotExist:
+                    # Try to find user by username
+                    try:
+                        user = User.objects.get(username=username)
+                        logger.info(f"Found existing user by username: {user.username}")
+                        # Update keycloak_id and other details
+                        user.keycloak_id = str(keycloak_id) if keycloak_id else ""  # type: ignore[assignment]
+                        user.email = str(email) if email else ""  # type: ignore[assignment]
+                        user.first_name = (
+                            str(user_info.get("given_name", ""))
+                            if user_info.get("given_name")
+                            else ""
+                        )
+                        user.last_name = (
+                            str(user_info.get("family_name", ""))
+                            if user_info.get("family_name")
+                            else ""
+                        )
+                        user.is_active = True
+                        user.save()
+                    except User.DoesNotExist:
+                        # Create new user
+                        logger.info(
+                            f"Creating new user with keycloak_id: {keycloak_id}"
+                        )
+                        user = User.objects.create(
+                            keycloak_id=str(keycloak_id) if keycloak_id else "",  # type: ignore[arg-type]
+                            username=str(username) if username else "",  # type: ignore[arg-type]
+                            email=str(email) if email else "",  # type: ignore[arg-type]
+                            first_name=(
+                                str(user_info.get("given_name", ""))
+                                if user_info.get("given_name")
+                                else ""
+                            ),
+                            last_name=(
+                                str(user_info.get("family_name", ""))
+                                if user_info.get("family_name")
+                                else ""
+                            ),
+                            is_active=True,
+                        )
+                        created = True
+
             # If this is a new user, we'll keep default permissions
             if created:
-                # You might want to assign default roles here
                 pass
 
-            user.save()
+            if user is not None:  # Check that user is not None before saving
+                user.save()
 
             # If this is a new user and we want to sync organization memberships
             # We'll only create new memberships for organizations found in Keycloak
             # but we won't update existing memberships or remove any
-            if created and organizations:
+            if user is not None and created and organizations:
                 # Process organizations from Keycloak - only for new users
                 for org_info in organizations:
                     org_id: Optional[str] = org_info.get("organization_id")
