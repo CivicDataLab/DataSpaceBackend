@@ -67,7 +67,8 @@ ALLOWED_HOSTS = [
 
 CSRF_TRUSTED_ORIGINS = whitelisted_urls
 
-APPEND_SLASH = False
+# Let Django handle URLs naturally without forcing redirects
+APPEND_SLASH = None
 # CORS settings - simplified and optimized for runtime execution
 CORS_ORIGIN_ALLOW_ALL = True  # Allow all origins for now to fix CORS issues
 CORS_URLS_REGEX = r".*"  # Apply to all URLs including redirects

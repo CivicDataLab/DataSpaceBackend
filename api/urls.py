@@ -30,8 +30,20 @@ urlpatterns = [
         trending_datasets.TrendingDatasets.as_view(),
         name="trending_datasets",
     ),
-    re_path(
-        r"^graphql/?$",
+    # Use path() instead of re_path to avoid regex complexity
+    path(
+        "graphql",  # No trailing slash
+        csrf_exempt(
+            GraphQLView.as_view(
+                schema=schema,
+                graphql_ide="apollo-sandbox",
+                get_context=lambda request, *args, **kwargs: request,
+            )
+        ),
+    ),
+    # Also handle the trailing slash version explicitly
+    path(
+        "graphql/",  # With trailing slash
         csrf_exempt(
             GraphQLView.as_view(
                 schema=schema,
