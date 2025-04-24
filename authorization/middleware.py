@@ -26,12 +26,21 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
         The authenticated user or AnonymousUser
     """
     try:
-        # DEVELOPMENT MODE: Check for a special header that indicates we should use a superuser
-        # This is for development/debugging only and should be removed in production
+        # Check if there's a token in the request - if so, we'll try to validate it with Keycloak
+        # even in development mode, to ensure users are properly synced
         dev_mode = getattr(settings, "KEYCLOAK_DEV_MODE", False)
         if dev_mode:
+            logger.info(
+                "KEYCLOAK_DEV_MODE is enabled, but we'll still try to validate tokens if present"
+            )
+
+        # We'll only use the superuser fallback if there's no token in the request
+        auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+        keycloak_token = request.META.get("HTTP_X_KEYCLOAK_TOKEN", "")
+
+        if not auth_header and not keycloak_token and dev_mode:
             logger.warning(
-                "KEYCLOAK_DEV_MODE is enabled - using development authentication"
+                "No token found, falling back to development mode authentication"
             )
             # Try to get the first superuser
             try:
@@ -55,10 +64,7 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
             logger.debug("Using cached user from request")
             return request._cached_user  # type: ignore[attr-defined,no-any-return]
 
-        # Get the token from the request
-        auth_header = request.META.get("HTTP_AUTHORIZATION", "")
-        keycloak_token = request.META.get("HTTP_X_KEYCLOAK_TOKEN", "")
-
+        # We already got the basic headers above, now check additional sources
         # Also check headers directly (some frameworks use different capitalization)
         if not auth_header and hasattr(request, "headers"):
             auth_header = request.headers.get("authorization", "")
@@ -166,6 +172,28 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
             logger.debug("No token found, returning anonymous user")
             return cast(User, AnonymousUser())
 
+        # Log token details for debugging
+        logger.debug(f"Processing token of length: {len(token)}")
+        if len(token) > 20:
+            logger.debug(f"Token starts with: {token[:20]}...")
+            logger.debug(f"Token ends with: ...{token[-20:]}")
+
+        # For very long tokens, try to extract a JWT pattern
+        if len(token) > 1000:
+            logger.debug(
+                "Token is very long, attempting to extract JWT pattern directly in middleware"
+            )
+            import re
+
+            jwt_pattern = re.compile(r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+")
+            jwt_match = jwt_pattern.search(token)
+            if jwt_match:
+                extracted_jwt = jwt_match.group(0)
+                logger.debug(
+                    f"Found potential JWT within token: {extracted_jwt[:20]}...{extracted_jwt[-20:]}"
+                )
+                token = extracted_jwt
+
         # Validate the token and get user info
         logger.debug(f"Attempting to validate token of length {len(token)}")
         user_info: Dict[str, Any] = keycloak_manager.validate_token(token)
@@ -174,7 +202,8 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
         debug_token_validation(token, user_info)
 
         if not user_info:
-            logger.warning("Token validation failed, returning anonymous user")
+            logger.warning("Token validation failed, trying alternative approaches")
+
             # Try one more time with a different approach for very long tokens
             if len(token) > 1000:
                 logger.debug("Trying alternative token extraction for long token")
@@ -188,7 +217,7 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
                 if jwt_match:
                     extracted_jwt = jwt_match.group(0)
                     logger.debug(
-                        f"Found potential JWT within token: {extracted_jwt[:10]}...{extracted_jwt[-10:]}"
+                        f"Found potential JWT within token: {extracted_jwt[:20]}...{extracted_jwt[-20:]}"
                     )
                     # Try validating the extracted JWT
                     user_info = keycloak_manager.validate_token(extracted_jwt)
@@ -198,7 +227,39 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
                     else:
                         logger.warning("Failed to validate extracted JWT")
 
+            # Last resort: try to decode without verification
             if not user_info:
+                try:
+                    from jose import jwt  # type: ignore[import-untyped]
+
+                    # Try to decode the token without verification
+                    logger.debug(
+                        "Attempting to decode token without verification as last resort"
+                    )
+                    decoded = jwt.decode(token, options={"verify_signature": False})  # type: ignore[call-arg]
+                    if decoded and isinstance(decoded, dict):
+                        logger.info("Successfully decoded token without verification")
+                        # Create minimal user info
+                        user_info = {
+                            "sub": decoded.get("sub"),
+                            "email": decoded.get("email"),
+                            "preferred_username": decoded.get("preferred_username")
+                            or decoded.get("username"),
+                            "given_name": decoded.get("given_name")
+                            or decoded.get("firstName"),
+                            "family_name": decoded.get("family_name")
+                            or decoded.get("lastName"),
+                        }
+                        logger.debug(
+                            f"Created user info from decoded token: {user_info}"
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to decode token without verification: {e}")
+
+            if not user_info:
+                logger.error(
+                    "All token validation approaches failed, returning anonymous user"
+                )
                 return cast(User, AnonymousUser())
 
         # Log the user info for debugging

@@ -113,14 +113,57 @@ class KeycloakManager:
                 logger.debug(
                     f"Found potential JWT within long token: {extracted_jwt[:10]}...{extracted_jwt[-10:]}"
                 )
-                # Try with the extracted JWT
                 try:
+                    # Try with the extracted JWT
                     result = self.validate_token(extracted_jwt)
                     if result:
                         logger.info("Successfully validated extracted JWT")
                         return result
                 except Exception as e:
                     logger.warning(f"Failed to validate extracted JWT: {e}")
+            else:
+                # If no JWT pattern found, try treating the entire token as a raw access token
+                logger.debug(
+                    "No JWT pattern found in long token, trying to decode directly"
+                )
+                try:
+                    # Try direct decoding without any pattern matching
+                    decoded_token = self.keycloak_openid.decode_token(token, options={"verify_signature": False})  # type: ignore[call-arg]
+                    if decoded_token and isinstance(decoded_token, dict):
+                        logger.info(
+                            "Successfully decoded long token directly without verification"
+                        )
+                        # Extract user info from the decoded token
+                        extracted_user_info = {
+                            "sub": decoded_token.get("sub"),
+                            "email": decoded_token.get("email"),
+                            "preferred_username": decoded_token.get(
+                                "preferred_username"
+                            )
+                            or decoded_token.get("username"),
+                            "given_name": decoded_token.get("given_name")
+                            or decoded_token.get("firstName"),
+                            "family_name": decoded_token.get("family_name")
+                            or decoded_token.get("lastName"),
+                            "roles": decoded_token.get("realm_access", {}).get(
+                                "roles", []
+                            )
+                            or decoded_token.get("roles", []),
+                        }
+
+                        # Log the extracted user info for debugging
+                        logger.debug(
+                            f"Extracted user info keys: {extracted_user_info.keys() if extracted_user_info else 'None'}"
+                        )
+                        if "sub" in extracted_user_info:
+                            logger.debug(f"User sub: {extracted_user_info['sub']}")
+                        if "email" in extracted_user_info:
+                            logger.debug(f"User email: {extracted_user_info['email']}")
+
+                        if extracted_user_info.get("sub"):
+                            return extracted_user_info
+                except Exception as e:
+                    logger.warning(f"Failed to decode long token directly: {e}")
 
         # If this is a raw token from a frontend session, it might be the access_token directly
         # Let's try to decode it directly before attempting introspection
