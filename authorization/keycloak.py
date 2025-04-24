@@ -44,6 +44,7 @@ class KeycloakManager:
                 realm_name=self.realm,
                 client_secret_key=self.client_secret,
             )
+
             logger.info("Keycloak client initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Keycloak client: {e}")
@@ -77,252 +78,51 @@ class KeycloakManager:
         Returns:
             Dict containing the user information
         """
-        import json
-
         import structlog
-        from django.conf import settings
 
         logger = structlog.getLogger(__name__)
 
-        # Check if we're in development mode
-        dev_mode = getattr(settings, "KEYCLOAK_DEV_MODE", False)
-        if dev_mode:
-            logger.warning("KEYCLOAK_DEV_MODE is enabled - using mock token validation")
-            # Return a mock user_info for development
-            return {
-                "sub": "dev-user-id",
-                "email": "admin@example.com",
-                "preferred_username": "admin",
-                "given_name": "Admin",
-                "family_name": "User",
-                "roles": ["admin"],
-            }
-
-        # Log token length for debugging
+        # Log token for debugging
         logger.debug(f"Validating token of length: {len(token)}")
 
-        # For very long tokens (>1000 chars), try to extract a JWT first
-        if len(token) > 1000:
-            logger.debug("Token is very long, attempting to extract JWT pattern")
-            import re
-
-            jwt_pattern = re.compile(r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+")
-            jwt_match = jwt_pattern.search(token)
-            if jwt_match:
-                extracted_jwt = jwt_match.group(0)
-                logger.debug(
-                    f"Found potential JWT within long token: {extracted_jwt[:10]}...{extracted_jwt[-10:]}"
-                )
-                try:
-                    # Try with the extracted JWT
-                    result = self.validate_token(extracted_jwt)
-                    if result:
-                        logger.info("Successfully validated extracted JWT")
-                        return result
-                except Exception as e:
-                    logger.warning(f"Failed to validate extracted JWT: {e}")
-            else:
-                # If no JWT pattern found, try treating the entire token as a raw access token
-                logger.debug(
-                    "No JWT pattern found in long token, trying to decode directly"
-                )
-                try:
-                    # Try direct decoding without any pattern matching
-                    decoded_token = self.keycloak_openid.decode_token(token, options={"verify_signature": False})  # type: ignore[call-arg]
-                    if decoded_token and isinstance(decoded_token, dict):
-                        logger.info(
-                            "Successfully decoded long token directly without verification"
-                        )
-                        # Extract user info from the decoded token
-                        extracted_user_info = {
-                            "sub": decoded_token.get("sub"),
-                            "email": decoded_token.get("email"),
-                            "preferred_username": decoded_token.get(
-                                "preferred_username"
-                            )
-                            or decoded_token.get("username"),
-                            "given_name": decoded_token.get("given_name")
-                            or decoded_token.get("firstName"),
-                            "family_name": decoded_token.get("family_name")
-                            or decoded_token.get("lastName"),
-                            "roles": decoded_token.get("realm_access", {}).get(
-                                "roles", []
-                            )
-                            or decoded_token.get("roles", []),
-                        }
-
-                        # Log the extracted user info for debugging
-                        logger.debug(
-                            f"Extracted user info keys: {extracted_user_info.keys() if extracted_user_info else 'None'}"
-                        )
-                        if "sub" in extracted_user_info:
-                            logger.debug(f"User sub: {extracted_user_info['sub']}")
-                        if "email" in extracted_user_info:
-                            logger.debug(f"User email: {extracted_user_info['email']}")
-
-                        if extracted_user_info.get("sub"):
-                            return extracted_user_info
-                except Exception as e:
-                    logger.warning(f"Failed to decode long token directly: {e}")
-
-        # If this is a raw token from a frontend session, it might be the access_token directly
-        # Let's try to decode it directly before attempting introspection
+        # Try to get user info directly from the token using userinfo API
         try:
-            logger.debug("Attempting direct token decode before introspection")
-            decoded_token = self.keycloak_openid.decode_token(token)
-            if decoded_token and isinstance(decoded_token, dict):
-                logger.info("Successfully decoded token directly")
-                # Extract user info from the decoded token
-                extracted_user_info = {
-                    "sub": decoded_token.get("sub"),
-                    "email": decoded_token.get("email"),
-                    "preferred_username": decoded_token.get("preferred_username")
-                    or decoded_token.get("username"),
-                    "given_name": decoded_token.get("given_name")
-                    or decoded_token.get("firstName"),
-                    "family_name": decoded_token.get("family_name")
-                    or decoded_token.get("lastName"),
-                    "roles": decoded_token.get("realm_access", {}).get("roles", [])
-                    or decoded_token.get("roles", []),
-                }
-
-                # Log the extracted user info for debugging
-                logger.debug(
-                    f"Extracted user info from direct decode: {extracted_user_info.keys() if extracted_user_info else 'None'}"
-                )
-                if extracted_user_info.get("sub"):
-                    return extracted_user_info
+            logger.debug("Attempting to get user info directly from token")
+            user_info = self.keycloak_openid.userinfo(token)
+            if user_info and isinstance(user_info, dict):
+                logger.info("Successfully retrieved user info from token")
+                logger.debug(f"User info: {user_info}")
+                return user_info
         except Exception as e:
-            logger.debug(
-                f"Direct token decode failed: {e}, continuing with standard validation"
-            )
+            logger.warning(f"Failed to get user info directly from token: {e}")
 
+        # If direct userinfo fails, try introspection
         try:
-            # Verify the token is valid
-            logger.debug("Attempting to introspect token")
-            token_info: Dict[str, Any] = {}
+            logger.debug("Attempting token introspection")
+            introspection_result = self.keycloak_openid.introspect(token)
+            logger.debug(f"Introspection result: {introspection_result}")
 
-            try:
-                # Log token format for debugging
-                logger.debug(
-                    f"Token format check: alphanumeric only: {token.isalnum()}"
-                )
-
-                # Try standard introspection first
-                try:
-                    token_info = self.keycloak_openid.introspect(token)
-                    logger.debug(
-                        f"Token introspection result: active={token_info.get('active', False)}"
-                    )
-                except Exception as e:
-                    logger.warning(
-                        f"Standard introspection failed: {e}, trying alternative methods"
-                    )
-            except Exception as introspect_error:
-                logger.warning(f"Token introspection failed: {introspect_error}")
-                # If introspection fails, try to decode the token directly
-                try:
-                    logger.debug("Attempting to decode token directly")
-
-                    # First, try to extract a JWT if this is a non-standard format
-                    # Look for JWT pattern: base64url.base64url.base64url
-                    import re
-
-                    jwt_pattern = re.compile(
-                        r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"
-                    )
-                    jwt_match = jwt_pattern.search(token)
-
-                    if jwt_match:
-                        extracted_jwt = jwt_match.group(0)
-                        logger.debug(
-                            f"Found potential JWT within token: {extracted_jwt[:10]}...{extracted_jwt[-10:]}"
-                        )
-                        try:
-                            # Try to decode the extracted JWT
-                            decoded_token = self.keycloak_openid.decode_token(
-                                extracted_jwt
-                            )
-                            if decoded_token and isinstance(decoded_token, dict):
-                                token_info = {"active": True}
-                                logger.debug("Successfully decoded extracted JWT")
-                                # Use the extracted JWT for subsequent operations
-                                token = extracted_jwt
-                                return self.validate_token(
-                                    token
-                                )  # Restart validation with extracted token
-                        except Exception as jwt_error:
-                            logger.warning(
-                                f"Failed to decode extracted JWT: {jwt_error}"
-                            )
-
-                    # If no JWT found or JWT decode failed, try the original token
-                    decoded_token = self.keycloak_openid.decode_token(token)
-                    # If we can decode it, consider it valid for now
-                    if decoded_token and isinstance(decoded_token, dict):
-                        token_info = {"active": True}
-                        logger.debug("Successfully decoded token")
-                except Exception as decode_error:
-                    logger.error(f"Token decode failed: {decode_error}")
-                    return {}
-
-            if not token_info.get("active", False):
-                logger.warning("Token is not active")
+            if not introspection_result.get("active", False):
+                logger.warning("Token is not active according to introspection")
                 return {}
 
-            # Get user info from the token
-            logger.debug("Attempting to get user info from token")
-            user_info: Dict[str, Any] = {}
-
+            # Try userinfo again after successful introspection
             try:
                 user_info = self.keycloak_openid.userinfo(token)
-                logger.debug(
-                    f"Successfully retrieved user info: {user_info.keys() if user_info else 'None'}"
+                logger.debug(f"User info after introspection: {user_info}")
+                return user_info
+            except Exception as inner_e:
+                logger.warning(
+                    f"Failed to get user info after introspection: {inner_e}"
                 )
-            except Exception as userinfo_error:
-                logger.warning(f"Failed to get user info: {userinfo_error}")
-                # Try to extract user info from the decoded token
-                try:
-                    decoded_token = self.keycloak_openid.decode_token(token)
-                    # Extract basic user info from token claims
-                    extracted_user_info = {
-                        "sub": decoded_token.get("sub"),
-                        "email": decoded_token.get("email"),
-                        "preferred_username": decoded_token.get("preferred_username")
-                        or decoded_token.get("username"),
-                        "given_name": decoded_token.get("given_name")
-                        or decoded_token.get("firstName"),
-                        "family_name": decoded_token.get("family_name")
-                        or decoded_token.get("lastName"),
-                        "roles": decoded_token.get("realm_access", {}).get("roles", [])
-                        or decoded_token.get("roles", []),
-                    }
-
-                    # Log the extracted user info for debugging
-                    logger.debug(
-                        f"Extracted user info from token: {extracted_user_info.keys() if extracted_user_info else 'None'}"
-                    )
-                    if "sub" in extracted_user_info:
-                        logger.debug(f"User sub: {extracted_user_info['sub']}")
-                    if "email" in extracted_user_info:
-                        logger.debug(f"User email: {extracted_user_info['email']}")
-                    if "preferred_username" in extracted_user_info:
-                        logger.debug(
-                            f"User preferred_username: {extracted_user_info['preferred_username']}"
-                        )
-                except Exception as extract_error:
-                    logger.error(
-                        f"Failed to extract user info from token: {extract_error}"
-                    )
-                    return {}
-
-            return user_info
-        except KeycloakError as e:
-            logger.error(f"Error validating token: {e}")
-            return {}
+                # Return the introspection result as a fallback
+                return introspection_result
         except Exception as e:
-            logger.error(f"Unexpected error validating token: {e}")
-            return {}
+            logger.error(f"Error during token introspection: {e}")
+
+        # If all else fails, return empty dict
+        logger.error("All token validation approaches failed")
+        return {}
 
     def get_user_roles(self, token: str) -> List[str]:
         """
