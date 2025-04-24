@@ -101,6 +101,59 @@ class KeycloakManager:
         # Log token length for debugging
         logger.debug(f"Validating token of length: {len(token)}")
 
+        # For very long tokens (>1000 chars), try to extract a JWT first
+        if len(token) > 1000:
+            logger.debug("Token is very long, attempting to extract JWT pattern")
+            import re
+
+            jwt_pattern = re.compile(r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+")
+            jwt_match = jwt_pattern.search(token)
+            if jwt_match:
+                extracted_jwt = jwt_match.group(0)
+                logger.debug(
+                    f"Found potential JWT within long token: {extracted_jwt[:10]}...{extracted_jwt[-10:]}"
+                )
+                # Try with the extracted JWT
+                try:
+                    result = self.validate_token(extracted_jwt)
+                    if result:
+                        logger.info("Successfully validated extracted JWT")
+                        return result
+                except Exception as e:
+                    logger.warning(f"Failed to validate extracted JWT: {e}")
+
+        # If this is a raw token from a frontend session, it might be the access_token directly
+        # Let's try to decode it directly before attempting introspection
+        try:
+            logger.debug("Attempting direct token decode before introspection")
+            decoded_token = self.keycloak_openid.decode_token(token)
+            if decoded_token and isinstance(decoded_token, dict):
+                logger.info("Successfully decoded token directly")
+                # Extract user info from the decoded token
+                extracted_user_info = {
+                    "sub": decoded_token.get("sub"),
+                    "email": decoded_token.get("email"),
+                    "preferred_username": decoded_token.get("preferred_username")
+                    or decoded_token.get("username"),
+                    "given_name": decoded_token.get("given_name")
+                    or decoded_token.get("firstName"),
+                    "family_name": decoded_token.get("family_name")
+                    or decoded_token.get("lastName"),
+                    "roles": decoded_token.get("realm_access", {}).get("roles", [])
+                    or decoded_token.get("roles", []),
+                }
+
+                # Log the extracted user info for debugging
+                logger.debug(
+                    f"Extracted user info from direct decode: {extracted_user_info.keys() if extracted_user_info else 'None'}"
+                )
+                if extracted_user_info.get("sub"):
+                    return extracted_user_info
+        except Exception as e:
+            logger.debug(
+                f"Direct token decode failed: {e}, continuing with standard validation"
+            )
+
         try:
             # Verify the token is valid
             logger.debug("Attempting to introspect token")
@@ -113,10 +166,15 @@ class KeycloakManager:
                 )
 
                 # Try standard introspection first
-                token_info = self.keycloak_openid.introspect(token)
-                logger.debug(
-                    f"Token introspection result: active={token_info.get('active', False)}"
-                )
+                try:
+                    token_info = self.keycloak_openid.introspect(token)
+                    logger.debug(
+                        f"Token introspection result: active={token_info.get('active', False)}"
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Standard introspection failed: {e}, trying alternative methods"
+                    )
             except Exception as introspect_error:
                 logger.warning(f"Token introspection failed: {introspect_error}")
                 # If introspection fails, try to decode the token directly
@@ -184,14 +242,31 @@ class KeycloakManager:
                 try:
                     decoded_token = self.keycloak_openid.decode_token(token)
                     # Extract basic user info from token claims
-                    user_info = {
+                    extracted_user_info = {
                         "sub": decoded_token.get("sub"),
                         "email": decoded_token.get("email"),
-                        "preferred_username": decoded_token.get("preferred_username"),
-                        "given_name": decoded_token.get("given_name"),
-                        "family_name": decoded_token.get("family_name"),
+                        "preferred_username": decoded_token.get("preferred_username")
+                        or decoded_token.get("username"),
+                        "given_name": decoded_token.get("given_name")
+                        or decoded_token.get("firstName"),
+                        "family_name": decoded_token.get("family_name")
+                        or decoded_token.get("lastName"),
+                        "roles": decoded_token.get("realm_access", {}).get("roles", [])
+                        or decoded_token.get("roles", []),
                     }
-                    logger.debug(f"Extracted user info from token: {user_info.keys()}")
+
+                    # Log the extracted user info for debugging
+                    logger.debug(
+                        f"Extracted user info from token: {extracted_user_info.keys() if extracted_user_info else 'None'}"
+                    )
+                    if "sub" in extracted_user_info:
+                        logger.debug(f"User sub: {extracted_user_info['sub']}")
+                    if "email" in extracted_user_info:
+                        logger.debug(f"User email: {extracted_user_info['email']}")
+                    if "preferred_username" in extracted_user_info:
+                        logger.debug(
+                            f"User preferred_username: {extracted_user_info['preferred_username']}"
+                        )
                 except Exception as extract_error:
                     logger.error(
                         f"Failed to extract user info from token: {extract_error}"
