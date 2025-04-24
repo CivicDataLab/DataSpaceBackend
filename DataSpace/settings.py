@@ -67,6 +67,7 @@ ALLOWED_HOSTS = [
 
 CSRF_TRUSTED_ORIGINS = whitelisted_urls
 
+APPEND_SLASH = False
 # CORS settings
 if DEBUG:
     # In development, allow all origins
@@ -81,32 +82,33 @@ CORS_ALLOW_ALL_ORIGINS = True  # During debugging
 CORS_REPLACE_HTTPS_REFERER = True
 # Common CORS settings
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_METHODS = [
-    "DELETE",
-    "GET",
-    "OPTIONS",
-    "PATCH",
-    "POST",
-    "PUT",
-]
+# CORS_ALLOW_METHODS = [
+#     "DELETE",
+#     "GET",
+#     "OPTIONS",
+#     "PATCH",
+#     "POST",
+#     "PUT",
+# ]
 
-CORS_ALLOW_HEADERS = [
-    "accept",
-    "accept-encoding",
-    "authorization",
-    "content-type",
-    "dnt",
-    "origin",
-    "user-agent",
-    "x-csrftoken",
-    "x-requested-with",
-    "referer",
-    "organization",
-    "dataspace",
-    "token",
-    "x-keycloak-token",  # Add Keycloak token header
-]
-
+# CORS_ALLOW_HEADERS = [
+#     "accept",
+#     "accept-encoding",
+#     "authorization",
+#     "content-type",
+#     "dnt",
+#     "origin",
+#     "user-agent",
+#     "x-csrftoken",
+#     "x-requested-with",
+#     "referer",
+#     "organization",
+#     "dataspace",
+#     "token",
+#     "x-keycloak-token",  # Add Keycloak token header
+# ]
+CORS_ALLOW_METHODS = ["*"]
+CORS_ALLOW_HEADERS = ["*"]
 # Application definition
 
 INSTALLED_APPS = [
