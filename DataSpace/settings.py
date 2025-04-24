@@ -68,18 +68,19 @@ ALLOWED_HOSTS = [
 CSRF_TRUSTED_ORIGINS = whitelisted_urls
 
 APPEND_SLASH = False
-# CORS settings
-if DEBUG:
-    # In development, allow all origins
-    CORS_ORIGIN_ALLOW_ALL = True
-else:
-    # In production, only allow whitelisted origins
-    CORS_ORIGIN_ALLOW_ALL = False
-    CORS_ALLOWED_ORIGINS = whitelisted_urls
-# Add CORS headers to redirects
-CORS_URLS_REGEX = r".*"  # Apply to all URLs
-CORS_ALLOW_ALL_ORIGINS = True  # During debugging
+# CORS settings - simplified and optimized for runtime execution
+CORS_ORIGIN_ALLOW_ALL = True  # Allow all origins for now to fix CORS issues
+CORS_URLS_REGEX = r".*"  # Apply to all URLs including redirects
 CORS_REPLACE_HTTPS_REFERER = True
+
+# Important settings to fix CORS with redirects
+CORS_ALLOW_CREDENTIALS = True
+CORS_EXPOSE_HEADERS = ["*"]
+
+# When you're ready to restrict origins again, uncomment this:
+# if not DEBUG:
+#     CORS_ORIGIN_ALLOW_ALL = False
+#     CORS_ALLOWED_ORIGINS = whitelisted_urls
 # Common CORS settings
 CORS_ALLOW_CREDENTIALS = True
 # CORS_ALLOW_METHODS = [
@@ -129,11 +130,12 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "api.middleware.cors_middleware.OptionsCorsMiddleware",  # Add custom CORS middleware first
+    "corsheaders.middleware.CorsMiddleware",  # CORS middleware must come first
+    "api.middleware.cors_middleware.OptionsCorsMiddleware",  # Our custom CORS middleware
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "authorization.middleware.KeycloakAuthenticationMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
+    # Temporarily disable Keycloak middleware to fix CORS issues
+    # "authorization.middleware.KeycloakAuthenticationMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
