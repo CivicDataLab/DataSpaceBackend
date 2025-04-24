@@ -72,6 +72,11 @@ APPEND_SLASH = False
 
 # Disable trailing slash redirects for GraphQL
 STRICT_URL_HANDLING = True
+
+# Disable HTTPS redirects - this is critical
+SECURE_SSL_REDIRECT = False
+SECURITY_MIDDLEWARE_REDIRECT_HTTPS = False
+SECURE_PROXY_SSL_HEADER = None
 # Maximally permissive CORS settings to fix issues
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
@@ -418,6 +423,6 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    #     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
