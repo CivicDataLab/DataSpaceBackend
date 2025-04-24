@@ -130,31 +130,32 @@ INSTALLED_APPS = [
     "django_elasticsearch_dsl_drf",
 ]
 
+# Minimal middleware stack to fix CORS issues
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",  # CORS middleware must come first
-    "api.middleware.cors_middleware.OptionsCorsMiddleware",  # Our custom CORS middleware
+    "corsheaders.middleware.CorsMiddleware",  # CORS middleware must be first
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    # Temporarily disable Keycloak middleware to fix CORS issues
-    # "authorization.middleware.KeycloakAuthenticationMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "api.utils.middleware.ContextMiddleware",
 ]
 
-# Add debug toolbar middleware first if in debug mode
+# Only add essential middleware - temporarily disable others to isolate the issue
+# We'll add these back one by one after fixing the CORS issue
 if DEBUG:
-    MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
+    MIDDLEWARE.insert(1, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
-# Add our custom middleware
-MIDDLEWARE += [
-    "api.middleware.rate_limit.rate_limit_middleware",
-    "api.middleware.request_validator.RequestValidationMiddleware",
-    "api.middleware.logging.StructuredLoggingMiddleware",
-]
+# Commented out middleware that might be causing issues
+# MIDDLEWARE += [
+#     "api.middleware.cors_middleware.OptionsCorsMiddleware",
+#     "api.utils.middleware.ContextMiddleware",
+#     "api.middleware.rate_limit.rate_limit_middleware",
+#     "api.middleware.request_validator.RequestValidationMiddleware",
+#     "api.middleware.logging.StructuredLoggingMiddleware",
+#     "authorization.middleware.KeycloakAuthenticationMiddleware",
+# ]
 
 ROOT_URLCONF = "DataSpace.urls"
 
