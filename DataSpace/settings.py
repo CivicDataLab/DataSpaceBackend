@@ -25,7 +25,8 @@ from .cache_settings import *
 env = environ.Env(DEBUG=(bool, False))
 DEBUG = env.bool("DEBUG", default=True)
 
-
+# Development mode for authentication - REMOVE IN PRODUCTION
+KEYCLOAK_DEV_MODE = DEBUG  # Set to False in production
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))

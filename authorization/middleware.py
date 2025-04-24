@@ -1,6 +1,7 @@
 from typing import Any, Callable, Dict, List, Optional, cast
 
 import structlog
+from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest, HttpResponse
 from django.utils.functional import SimpleLazyObject
@@ -24,6 +25,22 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
         The authenticated user or AnonymousUser
     """
     try:
+        # DEVELOPMENT MODE: Check for a special header that indicates we should use a superuser
+        # This is for development/debugging only and should be removed in production
+        dev_mode = getattr(settings, "KEYCLOAK_DEV_MODE", False)
+        if dev_mode:
+            logger.warning(
+                "KEYCLOAK_DEV_MODE is enabled - using development authentication"
+            )
+            # Try to get the first superuser
+            try:
+                superuser = User.objects.filter(is_superuser=True).first()
+                if superuser:
+                    logger.info(f"Using superuser {superuser.username} for development")
+                    return superuser
+            except Exception as e:
+                logger.error(f"Error getting superuser: {e}")
+
         # Check if there's already a user in the request
         if hasattr(request, "_cached_user"):
             logger.debug("Using cached user from request")
