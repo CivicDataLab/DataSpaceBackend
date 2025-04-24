@@ -75,7 +75,10 @@ else:
     # In production, only allow whitelisted origins
     CORS_ORIGIN_ALLOW_ALL = False
     CORS_ALLOWED_ORIGINS = whitelisted_urls
-
+# Add CORS headers to redirects
+CORS_URLS_REGEX = r".*"  # Apply to all URLs
+CORS_ALLOW_ALL_ORIGINS = True  # During debugging
+CORS_REPLACE_HTTPS_REFERER = True
 # Common CORS settings
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
