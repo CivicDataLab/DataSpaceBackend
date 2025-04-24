@@ -67,21 +67,24 @@ ALLOWED_HOSTS = [
 
 CSRF_TRUSTED_ORIGINS = whitelisted_urls
 
-# Let Django handle URLs naturally without forcing redirects
-APPEND_SLASH = None
-# CORS settings - simplified and optimized for runtime execution
-CORS_ORIGIN_ALLOW_ALL = True  # Allow all origins for now to fix CORS issues
-CORS_URLS_REGEX = r".*"  # Apply to all URLs including redirects
-CORS_REPLACE_HTTPS_REFERER = True
+# Explicitly disable automatic URL normalization to prevent redirects
+APPEND_SLASH = False
 
-# Important settings to fix CORS with redirects
+# Disable trailing slash redirects for GraphQL
+STRICT_URL_HANDLING = True
+# Maximally permissive CORS settings to fix issues
+CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = ["*"]
+CORS_ALLOW_HEADERS = ["*"]
 CORS_EXPOSE_HEADERS = ["*"]
 
-# When you're ready to restrict origins again, uncomment this:
-# if not DEBUG:
-#     CORS_ORIGIN_ALLOW_ALL = False
-#     CORS_ALLOWED_ORIGINS = whitelisted_urls
+# Apply CORS to all URLs including redirects
+CORS_URLS_REGEX = r".*"
+
+# Fix issues with HTTPS and redirects
+CORS_REPLACE_HTTPS_REFERER = True
+CORS_PREFLIGHT_MAX_AGE = 86400
 # Common CORS settings
 CORS_ALLOW_CREDENTIALS = True
 # CORS_ALLOW_METHODS = [
@@ -109,8 +112,6 @@ CORS_ALLOW_CREDENTIALS = True
 #     "token",
 #     "x-keycloak-token",  # Add Keycloak token header
 # ]
-CORS_ALLOW_METHODS = ["*"]
-CORS_ALLOW_HEADERS = ["*"]
 # Application definition
 
 INSTALLED_APPS = [

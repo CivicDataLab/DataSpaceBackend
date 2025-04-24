@@ -30,24 +30,13 @@ urlpatterns = [
         trending_datasets.TrendingDatasets.as_view(),
         name="trending_datasets",
     ),
-    # Use path() instead of re_path to avoid regex complexity
+    # Single, simple GraphQL endpoint with no redirects
     path(
-        "graphql",  # No trailing slash
+        "graphql",
         csrf_exempt(
             GraphQLView.as_view(
                 schema=schema,
-                graphql_ide="apollo-sandbox",
-                get_context=lambda request, *args, **kwargs: request,
-            )
-        ),
-    ),
-    # Also handle the trailing slash version explicitly
-    path(
-        "graphql/",  # With trailing slash
-        csrf_exempt(
-            GraphQLView.as_view(
-                schema=schema,
-                graphql_ide="apollo-sandbox",
+                graphql_ide=None,  # Disable IDE to simplify response
                 get_context=lambda request, *args, **kwargs: request,
             )
         ),
