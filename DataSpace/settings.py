@@ -136,7 +136,6 @@ INSTALLED_APPS = [
     "django_elasticsearch_dsl_drf",
 ]
 
-# Minimal middleware stack to fix CORS issues
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",  # CORS middleware must be first
     "django.middleware.security.SecurityMiddleware",
@@ -146,22 +145,20 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "api.utils.middleware.ContextMiddleware",
+    "api.middleware.request_validator.RequestValidationMiddleware",
+    "api.middleware.logging.StructuredLoggingMiddleware",
 ]
 
-# Only add essential middleware - temporarily disable others to isolate the issue
-# We'll add these back one by one after fixing the CORS issue
+# Add debug toolbar middleware if in debug mode
 if DEBUG:
     MIDDLEWARE.insert(1, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
-# Commented out middleware that might be causing issues
-# MIDDLEWARE += [
-#     "api.middleware.cors_middleware.OptionsCorsMiddleware",
-#     "api.utils.middleware.ContextMiddleware",
-#     "api.middleware.rate_limit.rate_limit_middleware",
-#     "api.middleware.request_validator.RequestValidationMiddleware",
-#     "api.middleware.logging.StructuredLoggingMiddleware",
-#     "authorization.middleware.KeycloakAuthenticationMiddleware",
-# ]
+# Add Keycloak middleware last - it was previously causing issues
+MIDDLEWARE += [
+    "authorization.middleware.KeycloakAuthenticationMiddleware",
+    "api.middleware.rate_limit.rate_limit_middleware",
+]
 
 ROOT_URLCONF = "DataSpace.urls"
 
