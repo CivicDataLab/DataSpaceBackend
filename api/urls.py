@@ -31,7 +31,7 @@ urlpatterns = [
         name="trending_datasets",
     ),
     re_path(
-        r"^graphql/?$",  # This matches both with and without trailing slash
+        r"^graphql/?$",
         csrf_exempt(
             GraphQLView.as_view(
                 schema=schema,

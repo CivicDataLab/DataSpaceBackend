@@ -129,6 +129,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "authorization.middleware.KeycloakAuthenticationMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -147,7 +148,6 @@ MIDDLEWARE += [
     "api.middleware.rate_limit.rate_limit_middleware",
     "api.middleware.request_validator.RequestValidationMiddleware",
     "api.middleware.logging.StructuredLoggingMiddleware",
-    "authorization.middleware.KeycloakAuthenticationMiddleware",
 ]
 
 ROOT_URLCONF = "DataSpace.urls"
