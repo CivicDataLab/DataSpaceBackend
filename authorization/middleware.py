@@ -46,9 +46,15 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
 
         # Try to get token from Authorization header first
         token = None
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header[7:]  # Remove 'Bearer ' prefix
-            logger.debug("Found token in Authorization header")
+        if auth_header:
+            # Check if it has Bearer prefix
+            if auth_header.startswith("Bearer "):
+                token = auth_header[7:]  # Remove 'Bearer ' prefix
+                logger.debug("Found Bearer token in Authorization header")
+            else:
+                # Use the raw Authorization header value as the token
+                token = auth_header
+                logger.debug("Found raw token in Authorization header")
         # If not found, try the x-keycloak-token header
         elif keycloak_token:
             token = keycloak_token

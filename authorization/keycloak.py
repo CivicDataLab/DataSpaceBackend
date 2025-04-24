@@ -61,18 +61,76 @@ class KeycloakManager:
         Returns:
             Dict containing the user information
         """
+        import structlog
+
+        logger = structlog.getLogger(__name__)
+
+        # Log token length for debugging
+        logger.debug(f"Validating token of length: {len(token)}")
+
         try:
             # Verify the token is valid
-            token_info: Dict[str, Any] = self.keycloak_openid.introspect(token)
+            logger.debug("Attempting to introspect token")
+            token_info: Dict[str, Any] = {}
+
+            try:
+                token_info = self.keycloak_openid.introspect(token)
+                logger.debug(
+                    f"Token introspection result: active={token_info.get('active', False)}"
+                )
+            except Exception as introspect_error:
+                logger.warning(f"Token introspection failed: {introspect_error}")
+                # If introspection fails, try to decode the token directly
+                try:
+                    logger.debug("Attempting to decode token directly")
+                    decoded_token = self.keycloak_openid.decode_token(token)
+                    # If we can decode it, consider it valid for now
+                    if decoded_token and isinstance(decoded_token, dict):
+                        token_info = {"active": True}
+                        logger.debug("Successfully decoded token")
+                except Exception as decode_error:
+                    logger.error(f"Token decode failed: {decode_error}")
+                    return {}
+
             if not token_info.get("active", False):
                 logger.warning("Token is not active")
                 return {}
 
             # Get user info from the token
-            user_info: Dict[str, Any] = self.keycloak_openid.userinfo(token)
+            logger.debug("Attempting to get user info from token")
+            user_info: Dict[str, Any] = {}
+
+            try:
+                user_info = self.keycloak_openid.userinfo(token)
+                logger.debug(
+                    f"Successfully retrieved user info: {user_info.keys() if user_info else 'None'}"
+                )
+            except Exception as userinfo_error:
+                logger.warning(f"Failed to get user info: {userinfo_error}")
+                # Try to extract user info from the decoded token
+                try:
+                    decoded_token = self.keycloak_openid.decode_token(token)
+                    # Extract basic user info from token claims
+                    user_info = {
+                        "sub": decoded_token.get("sub"),
+                        "email": decoded_token.get("email"),
+                        "preferred_username": decoded_token.get("preferred_username"),
+                        "given_name": decoded_token.get("given_name"),
+                        "family_name": decoded_token.get("family_name"),
+                    }
+                    logger.debug(f"Extracted user info from token: {user_info.keys()}")
+                except Exception as extract_error:
+                    logger.error(
+                        f"Failed to extract user info from token: {extract_error}"
+                    )
+                    return {}
+
             return user_info
         except KeycloakError as e:
             logger.error(f"Error validating token: {e}")
+            return {}
+        except Exception as e:
+            logger.error(f"Unexpected error validating token: {e}")
             return {}
 
     def get_user_roles(self, token: str) -> List[str]:
@@ -85,13 +143,47 @@ class KeycloakManager:
         Returns:
             List of role names
         """
+        import structlog
+
+        logger = structlog.getLogger(__name__)
+
+        logger.debug(f"Getting roles from token of length: {len(token)}")
+
         try:
             # Decode the token to get the roles
-            token_info: Dict[str, Any] = self.keycloak_openid.decode_token(token)
+            try:
+                token_info: Dict[str, Any] = self.keycloak_openid.decode_token(token)
+                logger.debug("Successfully decoded token for roles")
+            except Exception as decode_error:
+                logger.warning(f"Failed to decode token for roles: {decode_error}")
+                # If we can't decode the token, try to get roles from introspection
+                try:
+                    token_info = self.keycloak_openid.introspect(token)
+                    logger.debug("Using introspection result for roles")
+                except Exception as introspect_error:
+                    logger.error(
+                        f"Failed to introspect token for roles: {introspect_error}"
+                    )
+                    return []
+
+            # Extract roles from token info
             realm_access: Dict[str, Any] = token_info.get("realm_access", {})
-            return cast(List[str], realm_access.get("roles", []))
+            roles = cast(List[str], realm_access.get("roles", []))
+
+            # Also check resource_access for client roles
+            resource_access = token_info.get("resource_access", {})
+            client_roles = resource_access.get(self.client_id, {}).get("roles", [])
+
+            # Combine realm and client roles
+            all_roles = list(set(roles + client_roles))
+            logger.debug(f"Found roles: {all_roles}")
+
+            return all_roles
         except KeycloakError as e:
             logger.error(f"Error getting user roles: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error getting user roles: {e}")
             return []
 
     def get_user_organizations(self, token: str) -> List[Dict[str, Any]]:
@@ -106,15 +198,38 @@ class KeycloakManager:
         Returns:
             List of organization information
         """
+        import structlog
+
+        logger = structlog.getLogger(__name__)
+
+        logger.debug(f"Getting organizations from token of length: {len(token)}")
+
         try:
             # Decode the token to get user info
-            token_info = self.keycloak_openid.decode_token(token)
+            token_info = {}
+            try:
+                token_info = self.keycloak_openid.decode_token(token)
+                logger.debug("Successfully decoded token for organizations")
+            except Exception as decode_error:
+                logger.warning(
+                    f"Failed to decode token for organizations: {decode_error}"
+                )
+                # If we can't decode the token, try to get info from introspection
+                try:
+                    token_info = self.keycloak_openid.introspect(token)
+                    logger.debug("Using introspection result for organizations")
+                except Exception as introspect_error:
+                    logger.error(
+                        f"Failed to introspect token for organizations: {introspect_error}"
+                    )
+                    return []
 
             # Get organization info from resource_access or attributes
             # This implementation depends on how organizations are represented in Keycloak
-            # This is a simplified example - adjust based on your Keycloak configuration
             resource_access = token_info.get("resource_access", {})
             client_roles = resource_access.get(self.client_id, {}).get("roles", [])
+
+            logger.debug(f"Found client roles: {client_roles}")
 
             # Extract organization info from roles
             # Format could be 'org_<org_id>_<role>' or similar
@@ -129,9 +244,32 @@ class KeycloakManager:
                             {"organization_id": org_id, "role": role_name}
                         )
 
+            # If no organizations found through roles, check user attributes
+            if not organizations and token_info.get("attributes"):
+                attrs = token_info.get("attributes", {})
+                org_attrs = attrs.get("organizations", [])
+
+                if isinstance(org_attrs, str):
+                    org_attrs = [org_attrs]  # Convert single string to list
+
+                for org_attr in org_attrs:
+                    try:
+                        # Format could be 'org_id:role'
+                        org_id, role = org_attr.split(":")
+                        organizations.append({"organization_id": org_id, "role": role})
+                    except ValueError:
+                        # If no role specified, use default
+                        organizations.append(
+                            {"organization_id": org_attr, "role": "viewer"}
+                        )
+
+            logger.debug(f"Found organizations: {organizations}")
             return organizations
         except KeycloakError as e:
             logger.error(f"Error getting user organizations: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error getting user organizations: {e}")
             return []
 
     @transaction.atomic
