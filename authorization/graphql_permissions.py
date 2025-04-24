@@ -28,8 +28,28 @@ class IsAuthenticated(BasePermission):
     message = "User is not authenticated"
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        import structlog
+
+        from api.utils.debug_utils import debug_context
+
+        logger = structlog.getLogger(__name__)
+
+        # Debug the context to understand its structure
+        debug_context(info, "Auth")
+
+        # Log the type of the context object
+        logger.info(f"Context type: {type(info.context).__name__}")
+
+        # Get the request from context
         request = info.context
-        return request.user.is_authenticated  # type: ignore[no-any-return]
+
+        # Log authentication status
+        if hasattr(request, "user"):
+            logger.info(f"User authenticated: {request.user.is_authenticated}")
+            return request.user.is_authenticated  # type: ignore[no-any-return]
+        else:
+            logger.warning("No user attribute found in request")
+            return False
 
 
 class IsOrganizationMember(BasePermission):
@@ -43,6 +63,15 @@ class IsOrganizationMember(BasePermission):
         self.organization_id_arg = organization_id_arg
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        import structlog
+
+        logger = structlog.getLogger(__name__)
+
+        # Log the type of the context object
+        logger.info(
+            f"Context type in IsOrganizationMember: {type(info.context).__name__}"
+        )
+
         request = info.context
 
         # If the user is a superuser, grant permission
@@ -77,6 +106,15 @@ class HasOrganizationRole(BasePermission):
         self.organization_id_arg = organization_id_arg
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        import structlog
+
+        logger = structlog.getLogger(__name__)
+
+        # Log the type of the context object
+        logger.info(
+            f"Context type in HasOrganizationRole: {type(info.context).__name__}"
+        )
+
         request = info.context
 
         # If the user is a superuser, grant permission
@@ -108,6 +146,15 @@ class HasDatasetPermission(BasePermission):
         self.dataset_id_arg = dataset_id_arg
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        import structlog
+
+        logger = structlog.getLogger(__name__)
+
+        # Log the type of the context object
+        logger.info(
+            f"Context type in HasDatasetPermission: {type(info.context).__name__}"
+        )
+
         request = info.context
 
         # If the user is a superuser, grant permission
