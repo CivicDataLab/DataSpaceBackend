@@ -1,9 +1,10 @@
 import datetime
 import uuid
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
 import strawberry
 import strawberry_django
+from strawberry.permission import BasePermission
 from strawberry.types import Info
 from strawberry_django.pagination import OffsetPaginationInput
 
@@ -52,6 +53,18 @@ class AddOrganizationPermission(HasOrganizationRole):
 
 
 from authorization.permissions import IsAuthenticated
+
+
+class AllowPublishedDatasets(BasePermission):
+    """Permission class that allows access to published datasets for non-authenticated users."""
+
+    message = "You need to be authenticated to access non-published datasets"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        # Allow access to published datasets for everyone
+        # For other operations, require authentication
+        request = info.context
+        return True
 
 
 @strawberry.input
@@ -138,7 +151,7 @@ class Query:
         filters=DatasetFilter,
         pagination=True,
         order=DatasetOrder,
-        permission_classes=[IsAuthenticated],
+        permission_classes=[AllowPublishedDatasets],
     )
     @trace_resolver(name="datasets", attributes={"component": "dataset"})
     def datasets(
@@ -159,15 +172,20 @@ class Query:
         elif organization:
             queryset = Dataset.objects.filter(organization=organization)
         else:
-            # If user is superuser, show all datasets
-            if user.is_superuser:
-                queryset = Dataset.objects.all()
+            # If user is authenticated
+            if user.is_authenticated:
+                # If user is superuser, show all datasets
+                if user.is_superuser:
+                    queryset = Dataset.objects.all()
+                else:
+                    # Show only datasets from organizations the user belongs to
+                    user_orgs = OrganizationMembership.objects.filter(
+                        user=user
+                    ).values_list("organization_id", flat=True)
+                    queryset = Dataset.objects.filter(organization_id__in=user_orgs)
             else:
-                # Show only datasets from organizations the user belongs to
-                user_orgs = OrganizationMembership.objects.filter(
-                    user=user
-                ).values_list("organization_id", flat=True)
-                queryset = Dataset.objects.filter(organization_id__in=user_orgs)
+                # For non-authenticated users, only show published datasets
+                queryset = Dataset.objects.filter(status=DatasetStatus.PUBLISHED.value)
 
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
@@ -181,7 +199,7 @@ class Query:
         return TypeDataset.from_django_list(queryset)
 
     @strawberry.field(
-        permission_classes=[IsAuthenticated, ViewDatasetPermission],  # type: ignore[list-item]
+        permission_classes=[AllowPublishedDatasets, ViewDatasetPermission],  # type: ignore[list-item]
     )
     @trace_resolver(name="get_chart_data", attributes={"component": "dataset"})
     def get_chart_data(
