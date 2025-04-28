@@ -115,22 +115,23 @@ def get_dataset(self, dataset_id: uuid.UUID) -> TypeDataset:
    - Frontend receives and stores the Keycloak token
 
 2. **API Requests**:
-   - Frontend includes the token in either:
-     - `Authorization: Bearer <token>` header
-     - `x-keycloak-token: <token>` header
+   - Frontend includes the token in the `Authorization: Bearer <token>` header
+   - The token must be a valid Keycloak JWT with a subject ID
 
 3. **Token Validation**:
-   - `KeycloakAuthenticationMiddleware` intercepts the request
-   - Token is validated using `keycloak_manager.validate_token()`
-   - User info is extracted from the token
+   - `KeycloakAuthenticationMiddleware` intercepts the request and extracts the token
+   - Token is validated by contacting Keycloak directly via `keycloak_manager.validate_token()`
+   - The system verifies that the token contains a valid subject ID (`sub`)
+   - If validation fails or the subject ID is missing, the user is treated as anonymous
 
 4. **User Synchronization**:
-   - User data is synchronized with the database
-   - Roles and organization memberships are updated
+   - User data is synchronized with the database only if token validation succeeds
+   - The system creates or updates the user based on the token information
+   - No users are created if Keycloak validation fails
 
 5. **Permission Checking**:
    - Permission classes check if the user has the required role
-   - Access is granted or denied based on the user's roles
+   - Access is granted or denied based on the user's actual roles
 
 ## Role Management
 
@@ -153,27 +154,28 @@ This creates the following default roles:
 
 ## Token Handling
 
-The system supports two methods for sending tokens from the frontend:
+The system now exclusively supports the standard OAuth method for sending tokens from the frontend:
 
-1. **Standard OAuth Method**:
-   ```
-   Authorization: Bearer <token>
-   ```
+```
+Authorization: Bearer <token>
+```
 
-2. **Custom Header Method**:
-   ```
-   x-keycloak-token: <token>
-   ```
+The token extraction is robust and handles:
+- Case-insensitive 'Bearer' prefix
+- Proper whitespace trimming
+- Raw tokens without the 'Bearer' prefix (though using the prefix is recommended)
 
-Both methods are supported to provide flexibility in frontend implementation.
+All tokens must be valid Keycloak JWTs with a subject ID. The system does not support any development mode or fallback authentication mechanisms.
 
 ## Error Handling
 
-The Keycloak integration includes robust error handling:
+The Keycloak integration includes comprehensive error handling with detailed logging:
 
-- Token validation errors return anonymous users
-- User synchronization errors are logged
-- Permission errors return appropriate HTTP status codes
+- Token validation errors return anonymous users with specific error messages
+- Missing subject ID in tokens is explicitly checked and logged
+- User synchronization errors are logged with detailed information
+- API views include try-except blocks with appropriate HTTP status codes
+- All authentication components provide consistent error responses
 
 ## Security Considerations
 
@@ -187,24 +189,32 @@ The Keycloak integration includes robust error handling:
 
 1. **Token Validation Failures**:
    - Check Keycloak server URL and realm configuration
-   - Verify token expiration
+   - Verify token expiration and format
    - Ensure client secret is correct
+   - Check that the token contains a valid subject ID (`sub`)
+   - Verify that the Keycloak server is accessible and responding correctly
 
 2. **Permission Errors**:
    - Verify user has appropriate role assignments
    - Check organization memberships
    - Run `init_roles` command if roles are missing
 
-3. **Migration Issues**:
+3. **User Synchronization Issues**:
+   - Check the logs for detailed error messages
+   - Ensure the token contains all required user information (sub, email, username)
+   - Verify database connectivity and permissions
+
+4. **Migration Issues**:
    - If encountering migration dependency issues, use the techniques described in the migration section
 
 ## Performance Considerations
 
 The implementation prioritizes runtime execution over strict type checking:
 
-1. **Token Caching**: User information is cached to reduce Keycloak API calls
-2. **Lazy Loading**: User data is loaded only when needed
-3. **Type Ignores**: Strategic use of type ignores to maintain runtime functionality
+1. **Direct Token Validation**: Tokens are validated directly with Keycloak for maximum security
+2. **No Caching**: User information is not cached to ensure every request uses fresh token validation
+3. **Type Ignores**: Strategic use of type ignores to maintain runtime functionality while avoiding circular imports
+4. **Detailed Logging**: Comprehensive logging for easier debugging and monitoring
 
 ## Extending the System
 
@@ -216,4 +226,6 @@ To extend the authorization system:
 
 ## Conclusion
 
-The Keycloak integration provides a flexible, secure authentication system while maintaining custom authorization logic. By separating authentication from authorization, the system allows for fine-grained control over permissions while leveraging Keycloak's robust authentication capabilities.
+The Keycloak integration provides a secure, robust authentication system with no development mode or fallback mechanisms. By requiring valid Keycloak tokens for all authenticated operations, the system ensures that only real users with proper credentials can access protected resources. The authentication flow is designed to be reliable, with comprehensive error handling and detailed logging to facilitate debugging and monitoring.
+
+By separating authentication from authorization, the system allows for fine-grained control over permissions while leveraging Keycloak's robust authentication capabilities. The implementation prioritizes runtime execution and security, ensuring that the system works correctly in production environments.
