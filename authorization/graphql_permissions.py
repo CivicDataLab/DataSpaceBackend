@@ -30,6 +30,7 @@ class IsAuthenticated(BasePermission):
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
         import structlog
+        from django.conf import settings
 
         from api.utils.debug_utils import debug_context
 
@@ -40,6 +41,14 @@ class IsAuthenticated(BasePermission):
 
         # Log the type of the context object
         logger.info(f"Context type: {type(info.context).__name__}")
+
+        # Check if we're in development mode
+        dev_mode = getattr(settings, "KEYCLOAK_DEV_MODE", False)
+        if dev_mode:
+            logger.warning(
+                "KEYCLOAK_DEV_MODE is enabled in GraphQL permission - bypassing authentication check"
+            )
+            return True  # Allow all requests in development mode
 
         # Get the request from context
         request = info.context
@@ -110,6 +119,7 @@ class HasOrganizationRole(BasePermission):
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
         import structlog
+        from django.conf import settings
 
         logger = structlog.getLogger(__name__)
 
@@ -117,6 +127,14 @@ class HasOrganizationRole(BasePermission):
         logger.info(
             f"Context type in HasOrganizationRole: {type(info.context).__name__}"
         )
+
+        # Check if we're in development mode
+        dev_mode = getattr(settings, "KEYCLOAK_DEV_MODE", False)
+        if dev_mode:
+            logger.warning(
+                "KEYCLOAK_DEV_MODE is enabled in HasOrganizationRole - bypassing permission check"
+            )
+            return True  # Allow all requests in development mode
 
         request = info.context
 
@@ -151,6 +169,7 @@ class HasDatasetPermission(BasePermission):
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
         import structlog
+        from django.conf import settings
 
         logger = structlog.getLogger(__name__)
 
@@ -158,6 +177,14 @@ class HasDatasetPermission(BasePermission):
         logger.info(
             f"Context type in HasDatasetPermission: {type(info.context).__name__}"
         )
+
+        # Check if we're in development mode
+        dev_mode = getattr(settings, "KEYCLOAK_DEV_MODE", False)
+        if dev_mode:
+            logger.warning(
+                "KEYCLOAK_DEV_MODE is enabled in HasDatasetPermission - bypassing permission check"
+            )
+            return True  # Allow all requests in development mode
 
         request = info.context
 

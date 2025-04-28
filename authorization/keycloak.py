@@ -71,12 +71,13 @@ class KeycloakManager:
     def validate_token(self, token: str) -> Dict[str, Any]:
         """
         Validate a Keycloak token and return the user info.
+        Only validates by contacting Keycloak directly - no local validation.
 
         Args:
             token: The token to validate
 
         Returns:
-            Dict containing the user information
+            Dict containing the user information or empty dict if validation fails
         """
         import structlog
 
@@ -85,44 +86,20 @@ class KeycloakManager:
         # Log token for debugging
         logger.debug(f"Validating token of length: {len(token)}")
 
-        # Try to get user info directly from the token using userinfo API
+        # Only try to contact Keycloak directly - don't create users from local token decoding
         try:
-            logger.debug("Attempting to get user info directly from token")
+            logger.debug("Attempting to get user info from Keycloak")
             user_info = self.keycloak_openid.userinfo(token)
             if user_info and isinstance(user_info, dict):
-                logger.info("Successfully retrieved user info from token")
+                logger.info("Successfully retrieved user info from Keycloak")
                 logger.debug(f"User info: {user_info}")
                 return user_info
-        except Exception as e:
-            logger.warning(f"Failed to get user info directly from token: {e}")
-
-        # If direct userinfo fails, try introspection
-        try:
-            logger.debug("Attempting token introspection")
-            introspection_result = self.keycloak_openid.introspect(token)
-            logger.debug(f"Introspection result: {introspection_result}")
-
-            if not introspection_result.get("active", False):
-                logger.warning("Token is not active according to introspection")
+            else:
+                logger.warning("Keycloak returned empty or invalid user info")
                 return {}
-
-            # Try userinfo again after successful introspection
-            try:
-                user_info = self.keycloak_openid.userinfo(token)
-                logger.debug(f"User info after introspection: {user_info}")
-                return user_info
-            except Exception as inner_e:
-                logger.warning(
-                    f"Failed to get user info after introspection: {inner_e}"
-                )
-                # Return the introspection result as a fallback
-                return introspection_result
         except Exception as e:
-            logger.error(f"Error during token introspection: {e}")
-
-        # If all else fails, return empty dict
-        logger.error("All token validation approaches failed")
-        return {}
+            logger.warning(f"Failed to get user info from Keycloak: {e}")
+            return {}
 
     def get_user_roles(self, token: str) -> List[str]:
         """
@@ -315,57 +292,32 @@ class KeycloakManager:
             The synchronized User object or None if failed
         """
         import structlog
-        from django.conf import settings
 
         logger = structlog.getLogger(__name__)
 
-        # Check if we're in development mode
-        dev_mode = getattr(settings, "KEYCLOAK_DEV_MODE", False)
-        if dev_mode:
-            logger.warning(
-                "KEYCLOAK_DEV_MODE is enabled - using superuser for development"
-            )
-            # Try to get a superuser
-            try:
-                superuser = User.objects.filter(is_superuser=True).first()
-                if superuser:
-                    logger.info(f"Using superuser {superuser.username} for development")
-                    return superuser
-
-                # If no superuser exists, create one
-                logger.info("No superuser found, creating one for development")
-                admin_user = User.objects.create(
-                    username="admin",
-                    email="admin@example.com",
-                    first_name="Admin",
-                    last_name="User",
-                    is_staff=True,
-                    is_superuser=True,
-                    is_active=True,
-                    keycloak_id="dev-user-id",
-                )
-                admin_user.set_password("admin")  # Set a default password
-                admin_user.save()
-                return admin_user
-            except Exception as e:
-                logger.error(f"Error setting up development user: {e}")
+        # Log the user info we're trying to sync
+        logger.info(f"Attempting to sync user with info: {user_info}")
 
         try:
+            # Extract key user information
             keycloak_id = user_info.get("sub")
             email = user_info.get("email")
             username = user_info.get("preferred_username") or email
 
+            # Validate required fields
             if not keycloak_id or not username:
                 logger.error("Missing required user information from Keycloak")
                 return None
 
-            # Try to find user by keycloak_id first
+            # Initialize variables
             user = None
             created = False
 
+            # Try to find user by keycloak_id first
             try:
                 user = User.objects.get(keycloak_id=keycloak_id)
                 logger.info(f"Found existing user by keycloak_id: {user.username}")
+
                 # Update user details
                 user.username = str(username) if username else ""  # type: ignore[assignment]
                 user.email = str(email) if email else ""  # type: ignore[assignment]
@@ -383,10 +335,11 @@ class KeycloakManager:
                 user.save()
             except User.DoesNotExist:
                 # Try to find user by email
-                try:
-                    if email:
+                if email:
+                    try:
                         user = User.objects.get(email=email)
                         logger.info(f"Found existing user by email: {user.username}")
+
                         # Update keycloak_id and other details
                         user.keycloak_id = str(keycloak_id) if keycloak_id else ""  # type: ignore[assignment]
                         user.username = str(username) if username else ""  # type: ignore[assignment]
@@ -402,48 +355,51 @@ class KeycloakManager:
                         )
                         user.is_active = True
                         user.save()
-                except User.DoesNotExist:
-                    # Try to find user by username
-                    try:
-                        user = User.objects.get(username=username)
-                        logger.info(f"Found existing user by username: {user.username}")
-                        # Update keycloak_id and other details
-                        user.keycloak_id = str(keycloak_id) if keycloak_id else ""  # type: ignore[assignment]
-                        user.email = str(email) if email else ""  # type: ignore[assignment]
-                        user.first_name = (
-                            str(user_info.get("given_name", ""))
-                            if user_info.get("given_name")
-                            else ""
-                        )
-                        user.last_name = (
-                            str(user_info.get("family_name", ""))
-                            if user_info.get("family_name")
-                            else ""
-                        )
-                        user.is_active = True
-                        user.save()
                     except User.DoesNotExist:
-                        # Create new user
-                        logger.info(
-                            f"Creating new user with keycloak_id: {keycloak_id}"
-                        )
-                        user = User.objects.create(
-                            keycloak_id=str(keycloak_id) if keycloak_id else "",  # type: ignore[arg-type]
-                            username=str(username) if username else "",  # type: ignore[arg-type]
-                            email=str(email) if email else "",  # type: ignore[arg-type]
-                            first_name=(
+                        # Try to find user by username
+                        try:
+                            user = User.objects.get(username=username)
+                            logger.info(
+                                f"Found existing user by username: {user.username}"
+                            )
+
+                            # Update keycloak_id and other details
+                            user.keycloak_id = str(keycloak_id) if keycloak_id else ""  # type: ignore[assignment]
+                            user.email = str(email) if email else ""  # type: ignore[assignment]
+                            user.first_name = (
                                 str(user_info.get("given_name", ""))
                                 if user_info.get("given_name")
                                 else ""
-                            ),
-                            last_name=(
+                            )
+                            user.last_name = (
                                 str(user_info.get("family_name", ""))
                                 if user_info.get("family_name")
                                 else ""
-                            ),
-                            is_active=True,
-                        )
-                        created = True
+                            )
+                            user.is_active = True
+                            user.save()
+                        except User.DoesNotExist:
+                            # Create new user
+                            logger.info(
+                                f"Creating new user with keycloak_id: {keycloak_id}"
+                            )
+                            user = User.objects.create(
+                                keycloak_id=str(keycloak_id) if keycloak_id else "",  # type: ignore[arg-type]
+                                username=str(username) if username else "",  # type: ignore[arg-type]
+                                email=str(email) if email else "",  # type: ignore[arg-type]
+                                first_name=(
+                                    str(user_info.get("given_name", ""))
+                                    if user_info.get("given_name")
+                                    else ""
+                                ),
+                                last_name=(
+                                    str(user_info.get("family_name", ""))
+                                    if user_info.get("family_name")
+                                    else ""
+                                ),
+                                is_active=True,
+                            )
+                            created = True
 
             # If this is a new user, we'll keep default permissions
             if created:
