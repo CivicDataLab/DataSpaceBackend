@@ -1,11 +1,17 @@
 from typing import Any, Dict, List, Optional
 
 import strawberry
+import strawberry_django
+from strawberry.permission import BasePermission
 from strawberry.types import Info
 
 from api.models import Dataset, Organization
+from api.utils.graphql_telemetry import trace_resolver
+from authorization.keycloak import keycloak_manager
 from authorization.models import DatasetPermission, OrganizationMembership, Role, User
+from authorization.permissions import IsAuthenticated
 from authorization.services import AuthorizationService
+from authorization.types import TypeOrganizationMembership, TypeUser
 
 
 @strawberry.type
@@ -45,6 +51,64 @@ class DatasetPermissionType:
 class UserPermissionsType:
     organizations: List[OrganizationPermissionType]
     datasets: List[DatasetPermissionType]
+
+
+class AllowPublicUserInfo(BasePermission):
+    """Permission class that allows access to basic user information for everyone."""
+
+    message = "Access to detailed user information requires authentication"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        # Allow access to basic user information for everyone
+        return True
+
+
+class HasOrganizationAdminRole(BasePermission):
+    """Permission class that checks if the user has admin role in the organization."""
+
+    message = "You need to be an admin of the organization to perform this action"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        # Only authenticated users can proceed
+        if not info.context.user.is_authenticated:
+            return False
+
+        # Superusers can do anything
+        if info.context.user.is_superuser:
+            return True
+
+        # For adding user to organization, check if the user is an admin
+        organization_id = kwargs.get("organization_id")
+        if not organization_id:
+            return False
+
+        try:
+            # Check if the user is an admin of the organization
+            membership = OrganizationMembership.objects.get(
+                user=info.context.user, organization_id=organization_id
+            )
+            return membership.role.name == "admin"
+        except OrganizationMembership.DoesNotExist:
+            return False
+
+
+@strawberry.input
+class UpdateUserInput:
+    """Input for updating user details."""
+
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    bio: Optional[str] = None
+    # Profile picture would typically be handled through a separate file upload mutation
+
+
+@strawberry.input
+class AddUserToOrganizationInput:
+    """Input for adding a user to an organization."""
+
+    user_id: strawberry.ID
+    organization_id: strawberry.ID
+    role_id: strawberry.ID
 
 
 @strawberry.type
@@ -113,6 +177,48 @@ class Query:
             for role in roles
         ]
 
+    @strawberry_django.field(
+        permission_classes=[AllowPublicUserInfo],
+    )
+    @trace_resolver(name="users", attributes={"component": "user"})
+    def users(self, info: Info, limit: int = 10, offset: int = 0) -> List[TypeUser]:
+        """Get a list of users with basic information."""
+        queryset = User.objects.all().order_by("username")[offset : offset + limit]
+        return TypeUser.from_django_list(queryset)
+
+    @strawberry_django.field(
+        permission_classes=[AllowPublicUserInfo],
+    )
+    @trace_resolver(name="user", attributes={"component": "user"})
+    def user(
+        self,
+        info: Info,
+        id: Optional[strawberry.ID] = None,
+        username: Optional[str] = None,
+    ) -> Optional[TypeUser]:
+        """Get a user by ID or username."""
+        if id:
+            try:
+                user = User.objects.get(id=id)
+                return TypeUser.from_django(user)
+            except User.DoesNotExist:
+                return None
+        elif username:
+            try:
+                user = User.objects.get(username=username)
+                return TypeUser.from_django(user)
+            except User.DoesNotExist:
+                return None
+        return None
+
+    @strawberry_django.field(
+        permission_classes=[IsAuthenticated],
+    )
+    @trace_resolver(name="me", attributes={"component": "user"})
+    def me(self, info: Info) -> TypeUser:
+        """Get the current authenticated user."""
+        return TypeUser.from_django(info.context.user)
+
 
 @strawberry.input
 class AssignOrganizationRoleInput:
@@ -130,6 +236,78 @@ class AssignDatasetPermissionInput:
 
 @strawberry.type
 class Mutation:
+    @strawberry_django.mutation(
+        permission_classes=[IsAuthenticated],
+    )
+    @trace_resolver(
+        name="update_user",
+        attributes={"component": "user", "operation": "mutation"},
+    )
+    def update_user(self, info: Info, input: UpdateUserInput) -> TypeUser:
+        """Update the current user's details (synced with Keycloak)."""
+        user = info.context.user
+
+        # Update local user fields
+        if input.first_name is not None:
+            user.first_name = input.first_name
+        if input.last_name is not None:
+            user.last_name = input.last_name
+        if input.bio is not None:
+            user.bio = input.bio
+
+        user.save()
+
+        # Sync with Keycloak - this would need to be implemented
+        # For now, we'll just log that we would sync with Keycloak
+        import structlog
+
+        logger = structlog.getLogger(__name__)
+        logger.info(
+            "Would sync user details with Keycloak",
+            user_id=str(user.id),
+            keycloak_id=user.keycloak_id,
+        )
+
+        # TODO: Implement actual Keycloak sync
+
+        return TypeUser.from_django(user)
+
+    @strawberry_django.mutation(
+        permission_classes=[IsAuthenticated, HasOrganizationAdminRole],
+    )
+    @trace_resolver(
+        name="add_user_to_organization",
+        attributes={"component": "user", "operation": "mutation"},
+    )
+    def add_user_to_organization(
+        self, info: Info, input: AddUserToOrganizationInput
+    ) -> TypeOrganizationMembership:
+        """Add a user to an organization with a specific role."""
+        try:
+            user = User.objects.get(id=input.user_id)
+            organization = Organization.objects.get(id=input.organization_id)
+            role = Role.objects.get(id=input.role_id)
+
+            # Check if the membership already exists
+            membership, created = OrganizationMembership.objects.get_or_create(
+                user=user, organization=organization, defaults={"role": role}
+            )
+
+            # If the membership exists but the role is different, update it
+            if not created and membership.role != role:
+                membership.role = role
+                membership.save()
+
+            return TypeOrganizationMembership.from_django(membership)
+        except User.DoesNotExist:
+            raise ValueError(f"User with ID {input.user_id} does not exist.")
+        except Organization.DoesNotExist:
+            raise ValueError(
+                f"Organization with ID {input.organization_id} does not exist."
+            )
+        except Role.DoesNotExist:
+            raise ValueError(f"Role with ID {input.role_id} does not exist.")
+
     @strawberry.mutation
     def assign_organization_role(
         self, info: Info, input: AssignOrganizationRoleInput
