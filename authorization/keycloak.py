@@ -116,12 +116,8 @@ class KeycloakManager:
 
         logger = structlog.getLogger(__name__)
 
-        # Check if we're in development mode
-        dev_mode = getattr(settings, "KEYCLOAK_DEV_MODE", False)
-        if dev_mode:
-            logger.warning("KEYCLOAK_DEV_MODE is enabled - using mock roles")
-            # Return mock roles for development
-            return ["admin", "manager", "viewer"]
+        # Get roles directly from token
+        logger.debug("Extracting roles from token")
 
         logger.debug(f"Getting roles from token of length: {len(token)}")
 
@@ -178,29 +174,6 @@ class KeycloakManager:
         from django.conf import settings
 
         logger = structlog.getLogger(__name__)
-
-        # Check if we're in development mode
-        dev_mode = getattr(settings, "KEYCLOAK_DEV_MODE", False)
-        if dev_mode:
-            logger.warning("KEYCLOAK_DEV_MODE is enabled - using mock organizations")
-            # Return mock organizations for development
-            # Try to get real organizations from the database
-            try:
-                from api.models import Organization
-
-                # Get up to 5 organizations
-                orgs = Organization.objects.all()[:5]
-                if orgs.exists():
-                    # Use a more generic approach that doesn't depend on specific attribute names
-                    return [
-                        {"organization_id": str(getattr(org, "id", getattr(org, "pk", "mock-org-id"))), "role": "admin"}  # type: ignore[attr-defined]
-                        for org in orgs
-                    ]
-            except Exception as e:
-                logger.error(f"Failed to get organizations from database: {e}")
-
-            # Fallback to a mock organization
-            return [{"organization_id": "mock-org-id", "role": "admin"}]
 
         logger.debug(f"Getting organizations from token of length: {len(token)}")
 

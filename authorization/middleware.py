@@ -26,10 +26,8 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
         The authenticated user or AnonymousUser
     """
     try:
-        # Check if there's already a user in the request
-        if hasattr(request, "_cached_user"):
-            logger.debug("Using cached user from request")
-            return request._cached_user  # type: ignore[attr-defined,no-any-return]
+        # Always validate the token on each request to ensure user is synchronized
+        logger.debug("Validating token for request")
 
         # Extract token from Authorization header (simplest approach)
         token = None
@@ -77,6 +75,13 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
                 logger.error("Token validation failed, returning anonymous user")
                 return cast(User, AnonymousUser())
 
+            # Check if we have a valid subject ID from Keycloak
+            if not user_info.get("sub"):
+                logger.error(
+                    "Token validation succeeded but missing subject ID, returning anonymous user"
+                )
+                return cast(User, AnonymousUser())
+
             logger.debug(f"Token validation successful, user info: {user_info}")
         except Exception as e:
             logger.error(f"Exception during token validation: {e}")
@@ -109,9 +114,8 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
             f"Successfully authenticated user: {user.username} (ID: {user.id})"
         )
 
-        # Cache the user for future requests
-        lazy_user = SimpleLazyObject(lambda: user)
-        request._cached_user = lazy_user  # type: ignore[attr-defined,assignment]
+        # Return the authenticated user
+        logger.debug(f"Returning authenticated user: {user.username}")
         return user
     except Exception as e:
         logger.error(f"Error in get_user_from_keycloak_token: {str(e)}")
