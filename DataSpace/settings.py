@@ -423,3 +423,4 @@ if not DEBUG:
 
 # Static
 STATIC_ROOT = "static"
+STATIC_URL = "/static/"
