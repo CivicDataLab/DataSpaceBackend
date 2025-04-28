@@ -29,7 +29,7 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
         # Always validate the token on each request to ensure user is synchronized
         logger.debug("Validating token for request")
 
-        # Extract token from Authorization header (simplest approach)
+        # Extract token from Authorization header with improved robustness
         token = None
         auth_header = request.META.get("HTTP_AUTHORIZATION", "")
 
@@ -37,15 +37,18 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
         if not auth_header and hasattr(request, "headers"):
             auth_header = request.headers.get("authorization", "")
 
-        # Process the Authorization header if present
+        # Clean up auth_header if it exists
         if auth_header:
+            auth_header = auth_header.strip()
             logger.debug(f"Auth header found: {auth_header[:30]}...")
-            # Check if it's a Bearer token
-            if auth_header.startswith("Bearer "):
-                token = auth_header[7:]  # Remove 'Bearer ' prefix
+
+            # Check if it's a Bearer token (case insensitive)
+            if auth_header.lower().startswith("bearer "):
+                token = auth_header[7:].strip()  # Remove 'Bearer ' prefix
                 logger.debug(f"Extracted Bearer token, length: {len(token)}")
             else:
-                # Use the raw header value
+                # Use the raw header value, but check if it might be a raw token
+                # (no 'Bearer ' prefix but still a valid JWT format)
                 token = auth_header
                 logger.debug(
                     f"Using raw Authorization header as token, length: {len(token)}"

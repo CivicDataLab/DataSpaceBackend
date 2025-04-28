@@ -38,6 +38,10 @@ class KeycloakAuthenticationBackend(ModelBackend):
         if not user_info:
             return None
 
+        # Ensure we have a subject ID in the token
+        if not user_info.get("sub"):
+            return None
+
         # Get user roles and organizations from the token
         roles: List[str] = keycloak_manager.get_user_roles(token)
         organizations: List[Dict[str, Any]] = keycloak_manager.get_user_organizations(

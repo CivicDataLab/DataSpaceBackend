@@ -18,19 +18,34 @@ class KeycloakLoginView(views.APIView):
     permission_classes = [AllowAny]
 
     def post(self, request: Request) -> Response:
+        import structlog
+
+        logger = structlog.getLogger(__name__)
+
         # Get the Keycloak token from the request
         keycloak_token = request.data.get("token")
         if not keycloak_token:
+            logger.warning("Login attempt without token")
             return Response(
                 {"error": "Keycloak token is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Validate the token and get user info
+        logger.debug(f"Validating token of length: {len(keycloak_token)}")
         user_info = keycloak_manager.validate_token(keycloak_token)
         if not user_info:
+            logger.warning("Token validation failed")
             return Response(
                 {"error": "Invalid or expired token"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # Ensure we have a subject ID in the token
+        if not user_info.get("sub"):
+            logger.warning("Token validation succeeded but missing subject ID")
+            return Response(
+                {"error": "Token missing required user information"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
@@ -41,8 +56,12 @@ class KeycloakLoginView(views.APIView):
         organizations = keycloak_manager.get_user_organizations(keycloak_token)
 
         # Sync the user information with our database
+        logger.info(f"Syncing user with Keycloak ID: {user_info.get('sub')}")
         user = keycloak_manager.sync_user_from_keycloak(user_info, roles, organizations)
         if not user:
+            logger.error(
+                f"Failed to sync user with Keycloak ID: {user_info.get('sub')}"
+            )
             return Response(
                 {"error": "Failed to synchronize user information"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -84,13 +103,27 @@ class UserInfoView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
+        import structlog
+
+        logger = structlog.getLogger(__name__)
+
         user = request.user
+        logger.debug(
+            f"Getting user info for user: {user.username if hasattr(user, 'username') else 'anonymous'}"
+        )
 
-        # Get user's organizations and their roles
-        organizations = AuthorizationService.get_user_organizations(user.id)  # type: ignore[arg-type]
+        try:
+            # Get user's organizations and their roles
+            organizations = AuthorizationService.get_user_organizations(user.id)  # type: ignore[arg-type]
 
-        # Get user's dataset-specific permissions
-        datasets = AuthorizationService.get_user_datasets(user.id)  # type: ignore[arg-type]
+            # Get user's dataset-specific permissions
+            datasets = AuthorizationService.get_user_datasets(user.id)  # type: ignore[arg-type]
+        except Exception as e:
+            logger.error(f"Error retrieving user information: {str(e)}")
+            return Response(
+                {"error": "Failed to retrieve user information"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         return Response(
             {

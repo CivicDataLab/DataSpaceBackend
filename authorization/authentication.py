@@ -39,6 +39,12 @@ class KeycloakAuthentication(BaseAuthentication):
         if not user_info:
             raise AuthenticationFailed("Invalid or expired token")
 
+        # Ensure we have a subject ID in the token
+        if not user_info.get("sub"):
+            raise AuthenticationFailed(
+                "Token validation succeeded but missing subject ID"
+            )
+
         # Get user roles and organizations from the token
         roles = keycloak_manager.get_user_roles(token)
         organizations = keycloak_manager.get_user_organizations(token)
