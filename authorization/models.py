@@ -47,7 +47,7 @@ class User(AbstractUser):
     )
 
     class Meta:
-        db_table = "user"
+        db_table = "ds_user"
 
 
 class OrganizationMembership(models.Model):
