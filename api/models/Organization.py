@@ -18,7 +18,7 @@ class Organization(models.Model):
     homepage = models.URLField(blank=True)
     contact_email = models.EmailField(blank=True, null=True)
     organization_types = models.CharField(
-        max_length=50, choices=OrganizationTypes.choices
+        max_length=100, choices=OrganizationTypes.choices
     )
     parent = models.ForeignKey(
         "api.Organization",
