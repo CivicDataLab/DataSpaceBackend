@@ -132,7 +132,10 @@ class Mutation:
         # Filter out any special Strawberry values like UNSET
         filtered_dict = {}
         for key, value in input_dict.items():
-            if value == "UNSET" or str(value) == "UNSET":
+            if (
+                key in ["id", "created", "modified", "parent", "slug"]
+                or value is strawberry.UNSET
+            ):
                 continue
             filtered_dict[key] = value
 
