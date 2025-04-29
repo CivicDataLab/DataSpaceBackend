@@ -127,7 +127,10 @@ class Mutation:
     ) -> TypeOrganization:
         """Create a new organization."""
         # Create the organization
-        organization = mutations.create(OrganizationInput)(info=info, input=input)
+        input_dict = {k: v for k, v in vars(input).items() if not k.startswith("_")}
+
+        # Create the organization using the input dictionary
+        organization = Organization.objects.create(**input_dict)  # type: ignore[arg-type]
 
         # Add the current user as an admin of the organization
         OrganizationMembership.objects.create(

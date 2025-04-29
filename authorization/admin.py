@@ -29,7 +29,6 @@ class UserAdmin(BaseUserAdmin):
         "is_superuser",
     )
     # Make a copy of the original fieldsets to avoid modifying the original
-    # The type ignore is needed because mypy can't verify the complex nested structure
     fieldsets = list(BaseUserAdmin.fieldsets) + [  # type: ignore
         (
             "Keycloak Information",
