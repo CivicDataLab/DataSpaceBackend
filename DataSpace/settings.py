@@ -422,12 +422,21 @@ if not DEBUG:
 
 
 # Static files configuration
+# Make sure this is an absolute path
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
+# Make sure the URL starts and ends with a slash
 STATIC_URL = "/static/"
 
-# Additional locations of static files
+# Additional locations of static files - where Django will look for static files
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
+]
+
+# Make sure Django can find admin static files
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
 
 # Always use WhiteNoise for static files in both development and production
@@ -437,13 +446,13 @@ MIDDLEWARE.insert(
     "whitenoise.middleware.WhiteNoiseMiddleware",
 )
 
-# Configure static files storage based on DEBUG setting
-if DEBUG:
-    # In debug mode, use the basic storage
-    STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
-else:
-    # In production, use the more efficient storage
-    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-    # Add these settings to help with static files in production
-    WHITENOISE_ROOT = os.path.join(BASE_DIR, "static")
-    WHITENOISE_MAX_AGE = 31536000  # 1 year
+# Use a simpler WhiteNoise storage configuration that's more reliable in production
+# Avoid the manifest storage which can sometimes cause issues with file references
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
+
+# Additional WhiteNoise settings
+WHITENOISE_ROOT = os.path.join(BASE_DIR, "static")
+WHITENOISE_MAX_AGE = 31536000  # 1 year
+
+# This setting helps with missing files
+WHITENOISE_USE_FINDERS = True
