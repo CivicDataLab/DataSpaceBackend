@@ -52,7 +52,6 @@ class OrganizationInputPartial:
     """Input type for organization updates."""
 
     id: str
-    slug: auto
 
 
 @strawberry.type(name="Query")
@@ -139,7 +138,7 @@ class Mutation:
             ):
                 continue
             if key == "organization_types":
-                filtered_dict[key] = OrganizationTypes(value)
+                filtered_dict[key] = OrganizationTypes(value).value
             else:
                 filtered_dict[key] = value
 
@@ -174,7 +173,7 @@ class Mutation:
                 if value is strawberry.UNSET or key in ["created", "modified", "id"]:
                     continue
                 if key == "organization_types":
-                    filtered_dict[key] = OrganizationTypes(value)
+                    filtered_dict[key] = OrganizationTypes(value).value
                 else:
                     filtered_dict[key] = value
 
