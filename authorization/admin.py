@@ -36,7 +36,6 @@ class UserAdmin(BaseUserAdmin):
             {
                 "fields": [
                     "keycloak_id",
-                    "keycloak_roles",
                 ]
             },
         ),
