@@ -409,7 +409,8 @@ RATELIMIT_VIEW = "api.views.rate_limit_exceeded_view"
 
 # Security settings
 SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
+# Disable content type sniffing to fix MIME type issues
+SECURE_CONTENT_TYPE_NOSNIFF = False
 X_FRAME_OPTIONS = "DENY"
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
@@ -446,13 +447,17 @@ MIDDLEWARE.insert(
     "whitenoise.middleware.WhiteNoiseMiddleware",
 )
 
-# Use a simpler WhiteNoise storage configuration that's more reliable in production
-# Avoid the manifest storage which can sometimes cause issues with file references
-STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
+# Use the simplest WhiteNoise storage configuration to avoid MIME type issues
+STATICFILES_STORAGE = "whitenoise.storage.StaticFilesStorage"
 
-# Additional WhiteNoise settings
-WHITENOISE_ROOT = os.path.join(BASE_DIR, "static")
-WHITENOISE_MAX_AGE = 31536000  # 1 year
+# Disable compression to avoid MIME type issues
+WHITENOISE_ENABLE_COMPRESSION = False
 
-# This setting helps with missing files
+# Don't add content-type headers (let the browser determine them)
+WHITENOISE_ADD_HEADERS = False
+
+# Don't use the manifest feature which can cause issues with file references
 WHITENOISE_USE_FINDERS = True
+
+# Don't use the root directory feature which can cause conflicts
+# WHITENOISE_ROOT = os.path.join(BASE_DIR, "static")
