@@ -186,9 +186,16 @@ class Mutation:
                 else:
                     filtered_dict[key] = value
 
-            # Update the organization fields
             for key, value in filtered_dict.items():
-                setattr(organization, key, value)
+                # Get parent organization
+                if key == "parent" and value is not None:
+                    try:
+                        parent_org = Organization.objects.get(id=value)
+                        setattr(organization, key, parent_org)
+                    except Organization.DoesNotExist:
+                        continue
+                else:
+                    setattr(organization, key, value)
 
             # Save the updated organization
             organization.save()
