@@ -138,7 +138,11 @@ class Mutation:
             ):
                 continue
             if key == "organization_types":
-                filtered_dict[key] = OrganizationTypes(value).value
+                # Extract the value from the enum if it's an enum object
+                if hasattr(value, "value"):
+                    filtered_dict[key] = value.value
+                else:
+                    filtered_dict[key] = str(value)
             else:
                 filtered_dict[key] = value
 
@@ -172,8 +176,13 @@ class Mutation:
             for key, value in input_dict.items():
                 if value is strawberry.UNSET or key in ["created", "modified", "id"]:
                     continue
+                # Handle organization_types specially
                 if key == "organization_types":
-                    filtered_dict[key] = OrganizationTypes(value).value
+                    # Extract the value from the enum if it's an enum object
+                    if hasattr(value, "value"):
+                        filtered_dict[key] = value.value
+                    else:
+                        filtered_dict[key] = str(value)
                 else:
                     filtered_dict[key] = value
 
