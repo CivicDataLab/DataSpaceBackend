@@ -162,28 +162,28 @@ class Mutation:
     ) -> Optional[TypeOrganization]:
         """Update an existing organization."""
         try:
-            # Check if user has permission to update this organization
+            # Get the organization to update
             organization = Organization.objects.get(id=input.id)
-            user = info.context.user
 
-            if not user.is_superuser:
-                try:
-                    user_org = OrganizationMembership.objects.get(
-                        user=user, organization=organization
-                    )
-                    if user_org.role not in ["admin", "editor"]:
-                        raise ValueError(
-                            "You don't have permission to update this organization"
-                        )
-                except OrganizationMembership.DoesNotExist:
-                    raise ValueError(
-                        "You don't have permission to update this organization"
-                    )
+            # Get all fields from the input as a dictionary, excluding private attributes
+            input_dict = {k: v for k, v in vars(input).items() if not k.startswith("_")}
 
-            # Update the organization
-            organization = mutations.update(OrganizationInputPartial, key_attr="id")(
-                info=info, input=input
-            )
+            # Filter out any special Strawberry values like UNSET
+            filtered_dict = {}
+            for key, value in input_dict.items():
+                if value is strawberry.UNSET or key in ["created", "modified", "id"]:
+                    continue
+                if key == "organization_types":
+                    filtered_dict[key] = OrganizationTypes(value)
+                else:
+                    filtered_dict[key] = value
+
+            # Update the organization fields
+            for key, value in filtered_dict.items():
+                setattr(organization, key, value)
+
+            # Save the updated organization
+            organization.save()
             return TypeOrganization.from_django(organization)
         except Organization.DoesNotExist:
             raise ValueError(f"Organization with ID {input.id} does not exist.")
