@@ -1,7 +1,9 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import strawberry
 import strawberry_django
+import structlog
+from strawberry.file_uploads import Upload
 from strawberry.permission import BasePermission
 from strawberry.types import Info
 
@@ -12,6 +14,8 @@ from authorization.models import DatasetPermission, OrganizationMembership, Role
 from authorization.permissions import IsAuthenticated
 from authorization.services import AuthorizationService
 from authorization.types import TypeOrganizationMembership, TypeUser
+
+logger = structlog.getLogger(__name__)
 
 
 @strawberry.type
@@ -99,7 +103,8 @@ class UpdateUserInput:
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     bio: Optional[str] = None
-    # Profile picture would typically be handled through a separate file upload mutation
+    profile_picture: Optional[Upload] = None
+    email: Optional[str] = None
 
 
 @strawberry.input
@@ -244,7 +249,8 @@ class Mutation:
         attributes={"component": "user", "operation": "mutation"},
     )
     def update_user(self, info: Info, input: UpdateUserInput) -> TypeUser:
-        """Update the current user's details (synced with Keycloak)."""
+        """Update user details (synced with Keycloak)."""
+        # Get the user to update - either the current user or a specific user by ID
         user = info.context.user
 
         # Update local user fields
@@ -254,14 +260,16 @@ class Mutation:
             user.last_name = input.last_name
         if input.bio is not None:
             user.bio = input.bio
+        if input.email is not None:
+            user.email = input.email
+        if input.profile_picture is not None:
+            user.profile_picture = input.profile_picture  # type: ignore[attr-defined]
 
         user.save()
 
         # Sync with Keycloak - this would need to be implemented
         # For now, we'll just log that we would sync with Keycloak
-        import structlog
 
-        logger = structlog.getLogger(__name__)
         logger.info(
             "Would sync user details with Keycloak",
             user_id=str(user.id),
