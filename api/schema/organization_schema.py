@@ -12,6 +12,7 @@ from strawberry_django.mutations import mutations
 from api.models import Organization
 from api.types.type_organization import TypeOrganization
 from api.utils.debug_utils import debug_context
+from api.utils.enums import OrganizationTypes
 from api.utils.graphql_utils import get_user_from_info, is_superuser
 from authorization.models import OrganizationMembership, Role
 from authorization.permissions import HasOrganizationRoleGraphQL as HasOrganizationRole
@@ -137,7 +138,10 @@ class Mutation:
                 or value is strawberry.UNSET
             ):
                 continue
-            filtered_dict[key] = value
+            if key == "organization_types":
+                filtered_dict[key] = OrganizationTypes(value)
+            else:
+                filtered_dict[key] = value
 
         # Create the organization using the filtered input dictionary
         organization = Organization.objects.create(**filtered_dict)  # type: ignore[arg-type]
