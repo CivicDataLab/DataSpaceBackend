@@ -129,8 +129,15 @@ class Mutation:
         # Create the organization
         input_dict = {k: v for k, v in vars(input).items() if not k.startswith("_")}
 
-        # Create the organization using the input dictionary
-        organization = Organization.objects.create(**input_dict)  # type: ignore[arg-type]
+        # Filter out any special Strawberry values like UNSET
+        filtered_dict = {}
+        for key, value in input_dict.items():
+            if value == "UNSET" or str(value) == "UNSET":
+                continue
+            filtered_dict[key] = value
+
+        # Create the organization using the filtered input dictionary
+        organization = Organization.objects.create(**filtered_dict)  # type: ignore[arg-type]
 
         # Add the current user as an admin of the organization
         OrganizationMembership.objects.create(
