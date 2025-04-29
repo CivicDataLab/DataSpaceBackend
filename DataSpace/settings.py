@@ -237,7 +237,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
-STATIC_URL = "static/"
+# This STATIC_URL setting is overridden below
 MEDIA_URL = "public/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "files", "public")
 
@@ -421,6 +421,29 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
 
 
-# Static
-STATIC_ROOT = "static"
+# Static files configuration
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_URL = "/static/"
+
+# Additional locations of static files
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),
+]
+
+# Always use WhiteNoise for static files in both development and production
+# Insert WhiteNoise middleware after security middleware
+MIDDLEWARE.insert(
+    MIDDLEWARE.index("django.middleware.security.SecurityMiddleware") + 1,
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+)
+
+# Configure static files storage based on DEBUG setting
+if DEBUG:
+    # In debug mode, use the basic storage
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
+else:
+    # In production, use the more efficient storage
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    # Add these settings to help with static files in production
+    WHITENOISE_ROOT = os.path.join(BASE_DIR, "static")
+    WHITENOISE_MAX_AGE = 31536000  # 1 year

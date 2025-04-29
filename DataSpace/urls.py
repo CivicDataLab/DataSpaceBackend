@@ -59,11 +59,21 @@ urlpatterns: URLPatternsList = [
     ),
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# In debug mode, add static URL patterns and debug toolbar
 if settings.DEBUG:
+    # Add static URL patterns for development
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+    # Add debug toolbar
     import debug_toolbar  # type: ignore[import]
 
     debug_patterns: URLPatternsList = [
         path("__debug__/", include(debug_toolbar.urls)),
     ]
     urlpatterns = debug_patterns + cast(URLPatternsList, urlpatterns)
+
+    # In debug mode, explicitly serve admin static files
+    from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+
+    urlpatterns += staticfiles_urlpatterns()

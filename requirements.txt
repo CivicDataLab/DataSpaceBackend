@@ -106,3 +106,6 @@ django-filter==23.5  # Downgraded for better Django compatibility
 
 django-stubs==4.2.7  # Downgraded for better compatibility
 djangorestframework-stubs==3.14.5  # Matched with DRF version
+
+#whitenoise for managing static files
+whitenoise==6.1.0
