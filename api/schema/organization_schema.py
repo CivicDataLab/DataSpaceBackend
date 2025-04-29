@@ -13,7 +13,7 @@ from api.models import Organization
 from api.types.type_organization import TypeOrganization
 from api.utils.debug_utils import debug_context
 from api.utils.graphql_utils import get_user_from_info, is_superuser
-from authorization.models import OrganizationMembership
+from authorization.models import OrganizationMembership, Role
 from authorization.permissions import HasOrganizationRoleGraphQL as HasOrganizationRole
 
 
@@ -144,7 +144,7 @@ class Mutation:
 
         # Add the current user as an admin of the organization
         OrganizationMembership.objects.create(
-            user=info.context.user, organization=organization, role="admin"  # type: ignore[misc]
+            user=info.context.user, organization=organization, role=Role.objects.get(name="admin")  # type: ignore[misc]
         )
 
         return TypeOrganization.from_django(organization)
