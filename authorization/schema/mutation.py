@@ -31,36 +31,54 @@ class Mutation:
         name="update_user", attributes={"component": "user", "operation": "mutation"}
     )
     def update_user(self, info: Info, input: UpdateUserInput) -> TypeUser:
-        """Update user details (synced with Keycloak)."""
+        """Update user details and sync with Keycloak."""
+        from authorization.keycloak import keycloak_manager
+
         user = info.context.user
 
+        # Track if we need to sync with Keycloak
+        needs_keycloak_sync = False
+
         # Update Django user fields
-        if input.first_name is not None:
+        if input.first_name is not None and input.first_name != user.first_name:
             user.first_name = input.first_name
-        if input.last_name is not None:
+            needs_keycloak_sync = True
+
+        if input.last_name is not None and input.last_name != user.last_name:
             user.last_name = input.last_name
+            needs_keycloak_sync = True
+
         if input.bio is not None:
             user.bio = input.bio
+
         if input.email is not None and input.email != user.email:
-            # Email changes should be synced with Keycloak
-            # This is a placeholder for the actual implementation
             user.email = input.email
+            needs_keycloak_sync = True
 
         # Handle profile picture upload
         if input.profile_picture is not None:
-            # Save the uploaded file
             user.profile_picture = input.profile_picture
 
+        # Save the user to the database
         user.save()
 
-        # Log the update for debugging
-        logger.info(
-            "Would sync user details with Keycloak",
-            user_id=str(user.id),
-            keycloak_id=user.keycloak_id,
-        )
+        # Sync with Keycloak if needed
+        if needs_keycloak_sync and user.keycloak_id:
+            logger.info(
+                "Syncing user details with Keycloak",
+                user_id=str(user.id),
+                keycloak_id=user.keycloak_id,
+            )
 
-        # TODO: Implement actual Keycloak sync
+            # Call the Keycloak manager to update the user
+            sync_success = keycloak_manager.update_user_in_keycloak(user)
+
+            if not sync_success:
+                logger.warning(
+                    "Failed to sync user details with Keycloak",
+                    user_id=str(user.id),
+                    keycloak_id=user.keycloak_id,
+                )
 
         return TypeUser.from_django(user)
 

@@ -421,6 +421,80 @@ class KeycloakManager:
             logger.error(f"Error synchronizing user from Keycloak: {e}")
             return None
 
+    def update_user_in_keycloak(self, user: User) -> bool:
+        """
+        Update user information in Keycloak.
+
+        Args:
+            user: The Django user object with updated information
+
+        Returns:
+            True if the update was successful, False otherwise
+        """
+        import structlog
+
+        logger = structlog.getLogger(__name__)
+
+        if not user.keycloak_id:
+            logger.error("Cannot update user in Keycloak: missing keycloak_id")
+            return False
+
+        try:
+            # Get admin credentials from environment variables
+            from django.conf import settings
+
+            admin_username = getattr(settings, "KEYCLOAK_ADMIN_USERNAME", None)
+            admin_password = getattr(settings, "KEYCLOAK_ADMIN_PASSWORD", None)
+
+            if not admin_username or not admin_password:
+                logger.error("Keycloak admin credentials not configured in settings")
+                return False
+
+            # Get admin token for Keycloak operations
+            admin_token = self.keycloak_openid.token(admin_username, admin_password, grant_type="password")  # type: ignore[arg-type]
+            access_token = admin_token.get("access_token")
+
+            if not access_token:
+                logger.error("Failed to get admin token for Keycloak")
+                return False
+
+            # Prepare user data for update
+            user_data = {
+                "firstName": user.first_name,
+                "lastName": user.last_name,
+                "email": user.email,
+                # Add more fields as needed
+            }
+
+            # Update user in Keycloak
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            }
+
+            # Use the Keycloak Admin API to update the user
+            url = (
+                f"{self.server_url}/admin/realms/{self.realm}/users/{user.keycloak_id}"
+            )
+
+            # Use requests library for the API call
+            import requests
+
+            response = requests.put(url, json=user_data, headers=headers)
+
+            if response.status_code == 204:  # Success status for PUT with no content
+                logger.info(f"Successfully updated user {user.username} in Keycloak")
+                return True
+            else:
+                logger.error(
+                    f"Failed to update user in Keycloak: {response.status_code} - {response.text}"
+                )
+                return False
+
+        except Exception as e:
+            logger.error(f"Error updating user in Keycloak: {e}")
+            return False
+
 
 # Create a singleton instance
 keycloak_manager = KeycloakManager()

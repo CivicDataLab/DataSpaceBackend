@@ -22,6 +22,10 @@ KEYCLOAK_CLIENT_CLIENT_ID = config(
     "KEYCLOAK_CLIENT_CLIENT_ID", default=KEYCLOAK_CLIENT_ID
 )
 
+# Keycloak admin credentials for user management
+KEYCLOAK_ADMIN_USERNAME = config("KEYCLOAK_ADMIN_USERNAME", default="")
+KEYCLOAK_ADMIN_PASSWORD = config("KEYCLOAK_ADMIN_PASSWORD", default="")
+
 # Keycloak authorization settings
 KEYCLOAK_AUTHORIZATION_CONFIG = {
     "KEYCLOAK_SERVER_URL": KEYCLOAK_SERVER_URL,
