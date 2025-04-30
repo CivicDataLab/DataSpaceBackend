@@ -380,7 +380,7 @@ class Mutation:
     )
     def remove_supporting_organization_from_use_case(
         self, info: Info, use_case_id: str, organization_id: strawberry.ID
-    ) -> bool:
+    ) -> TypeUseCaseOrganizationRelationship:
         """Remove an organization as a supporter from a use case."""
         try:
             relationship = UseCaseOrganizationRelationship.objects.get(
@@ -389,9 +389,11 @@ class Mutation:
                 relationship_type=OrganizationRelationshipType.SUPPORTER,
             )
             relationship.delete()
-            return True
+            return TypeUseCaseOrganizationRelationship.from_django(relationship)
         except UseCaseOrganizationRelationship.DoesNotExist:
-            return False
+            raise ValueError(
+                f"Organization with ID {organization_id} is not a supporter of use case with ID {use_case_id}"
+            )
 
     # Add an organization as a partner to a use case.
     @strawberry_django.mutation(handle_django_errors=True)
@@ -430,7 +432,7 @@ class Mutation:
     )
     def remove_partner_organization_from_use_case(
         self, info: Info, use_case_id: str, organization_id: strawberry.ID
-    ) -> bool:
+    ) -> TypeUseCaseOrganizationRelationship:
         """Remove an organization as a partner from a use case."""
         try:
             relationship = UseCaseOrganizationRelationship.objects.get(
@@ -439,9 +441,11 @@ class Mutation:
                 relationship_type=OrganizationRelationshipType.PARTNER,
             )
             relationship.delete()
-            return True
+            return TypeUseCaseOrganizationRelationship.from_django(relationship)
         except UseCaseOrganizationRelationship.DoesNotExist:
-            return False
+            raise ValueError(
+                f"Organization with ID {organization_id} is not a partner of use case with ID {use_case_id}"
+            )
 
     # Update organization relationships for a use case.
     @strawberry_django.mutation(handle_django_errors=True)
