@@ -115,3 +115,8 @@ class AggregateType(models.TextChoices):
     SUM = "SUM"
     AVERAGE = "AVG"
     COUNT = "COUNT"
+
+
+class OrganizationRelationshipType(models.TextChoices):
+    SUPPORTER = "SUPPORTER"
+    PARTNER = "PARTNER"

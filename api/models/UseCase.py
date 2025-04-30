@@ -6,9 +6,14 @@ from django.utils.text import slugify
 
 if TYPE_CHECKING:
     from api.models.Dataset import Dataset
+    from api.models.Organization import Organization
     from authorization.models import User
 
-from api.utils.enums import UseCaseRunningStatus, UseCaseStatus
+from api.utils.enums import (
+    OrganizationRelationshipType,
+    UseCaseRunningStatus,
+    UseCaseStatus,
+)
 from api.utils.file_paths import _use_case_directory_path
 
 
@@ -35,6 +40,13 @@ class UseCase(models.Model):
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="usecases")
     contributors = models.ManyToManyField(
         "authorization.User", blank=True, related_name="contributed_usecases"
+    )
+    # Organizations can be added as supporters or partners through the intermediate model
+    organizations = models.ManyToManyField(
+        "api.Organization",
+        through="api.UseCaseOrganizationRelationship",
+        related_name="related_usecases",
+        blank=True,
     )
     started_on = models.DateField(blank=True, null=True)
     completed_on = models.DateField(blank=True, null=True)

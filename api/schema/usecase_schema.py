@@ -11,10 +11,24 @@ from strawberry import auto
 from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
-from api.models import Dataset, Metadata, Sector, Tag, UseCase, UseCaseMetadata
+from api.models import (
+    Dataset,
+    Metadata,
+    Organization,
+    Sector,
+    Tag,
+    UseCase,
+    UseCaseMetadata,
+    UseCaseOrganizationRelationship,
+)
 from api.types.type_dataset import TypeDataset
+from api.types.type_organization import TypeOrganization
 from api.types.type_usecase import TypeUseCase
-from api.utils.enums import UseCaseStatus
+from api.types.type_usecase_organization import (
+    TypeUseCaseOrganizationRelationship,
+    relationship_type,
+)
+from api.utils.enums import OrganizationRelationshipType, UseCaseStatus
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.models import User
 from authorization.types import TypeUser
@@ -327,4 +341,146 @@ class Mutation:
 
         use_case.contributors.set(users)
         use_case.save()
+        return TypeUseCase.from_django(use_case)
+
+    # Add an organization as a supporter to a use case.
+    @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="add_supporting_organization_to_use_case",
+        attributes={"component": "usecase", "operation": "mutation"},
+    )
+    def add_supporting_organization_to_use_case(
+        self, info: Info, use_case_id: str, organization_id: strawberry.ID
+    ) -> TypeUseCaseOrganizationRelationship:
+        """Add an organization as a supporter to a use case."""
+        try:
+            organization = Organization.objects.get(id=organization_id)
+        except Organization.DoesNotExist:
+            raise ValueError(f"Organization with ID {organization_id} does not exist.")
+
+        try:
+            use_case = UseCase.objects.get(id=use_case_id)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+
+        # Create or get the relationship
+        relationship, created = UseCaseOrganizationRelationship.objects.get_or_create(
+            usecase=use_case,
+            organization=organization,
+            relationship_type=OrganizationRelationshipType.SUPPORTER,
+        )
+
+        return TypeUseCaseOrganizationRelationship.from_django(relationship)
+
+    # Remove an organization as a supporter from a use case.
+    @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="remove_supporting_organization_from_use_case",
+        attributes={"component": "usecase", "operation": "mutation"},
+    )
+    def remove_supporting_organization_from_use_case(
+        self, info: Info, use_case_id: str, organization_id: strawberry.ID
+    ) -> bool:
+        """Remove an organization as a supporter from a use case."""
+        try:
+            relationship = UseCaseOrganizationRelationship.objects.get(
+                usecase_id=use_case_id,
+                organization_id=organization_id,
+                relationship_type=OrganizationRelationshipType.SUPPORTER,
+            )
+            relationship.delete()
+            return True
+        except UseCaseOrganizationRelationship.DoesNotExist:
+            return False
+
+    # Add an organization as a partner to a use case.
+    @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="add_partner_organization_to_use_case",
+        attributes={"component": "usecase", "operation": "mutation"},
+    )
+    def add_partner_organization_to_use_case(
+        self, info: Info, use_case_id: str, organization_id: strawberry.ID
+    ) -> TypeUseCaseOrganizationRelationship:
+        """Add an organization as a partner to a use case."""
+        try:
+            organization = Organization.objects.get(id=organization_id)
+        except Organization.DoesNotExist:
+            raise ValueError(f"Organization with ID {organization_id} does not exist.")
+
+        try:
+            use_case = UseCase.objects.get(id=use_case_id)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+
+        # Create or get the relationship
+        relationship, created = UseCaseOrganizationRelationship.objects.get_or_create(
+            usecase=use_case,
+            organization=organization,
+            relationship_type=OrganizationRelationshipType.PARTNER,
+        )
+
+        return TypeUseCaseOrganizationRelationship.from_django(relationship)
+
+    # Remove an organization as a partner from a use case.
+    @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="remove_partner_organization_from_use_case",
+        attributes={"component": "usecase", "operation": "mutation"},
+    )
+    def remove_partner_organization_from_use_case(
+        self, info: Info, use_case_id: str, organization_id: strawberry.ID
+    ) -> bool:
+        """Remove an organization as a partner from a use case."""
+        try:
+            relationship = UseCaseOrganizationRelationship.objects.get(
+                usecase_id=use_case_id,
+                organization_id=organization_id,
+                relationship_type=OrganizationRelationshipType.PARTNER,
+            )
+            relationship.delete()
+            return True
+        except UseCaseOrganizationRelationship.DoesNotExist:
+            return False
+
+    # Update organization relationships for a use case.
+    @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="update_usecase_organization_relationships",
+        attributes={"component": "usecase", "operation": "mutation"},
+    )
+    def update_usecase_organization_relationships(
+        self,
+        info: Info,
+        use_case_id: str,
+        supporter_organization_ids: List[strawberry.ID],
+        partner_organization_ids: List[strawberry.ID],
+    ) -> TypeUseCase:
+        """Update organization relationships for a use case."""
+        try:
+            use_case = UseCase.objects.get(id=use_case_id)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+
+        # Clear existing relationships
+        UseCaseOrganizationRelationship.objects.filter(usecase=use_case).delete()
+
+        # Add supporter organizations
+        supporter_orgs = Organization.objects.filter(id__in=supporter_organization_ids)
+        for org in supporter_orgs:
+            UseCaseOrganizationRelationship.objects.create(
+                usecase=use_case,
+                organization=org,
+                relationship_type=OrganizationRelationshipType.SUPPORTER,
+            )
+
+        # Add partner organizations
+        partner_orgs = Organization.objects.filter(id__in=partner_organization_ids)
+        for org in partner_orgs:
+            UseCaseOrganizationRelationship.objects.create(
+                usecase=use_case,
+                organization=org,
+                relationship_type=OrganizationRelationshipType.PARTNER,
+            )
+
         return TypeUseCase.from_django(use_case)

@@ -5,13 +5,19 @@ import strawberry_django
 from strawberry import Info, auto
 from strawberry.enum import EnumType
 
-from api.models import Organization, UseCase, UseCaseMetadata
+from api.models import (
+    Organization,
+    UseCase,
+    UseCaseMetadata,
+    UseCaseOrganizationRelationship,
+)
 from api.types.base_type import BaseType
 from api.types.type_dataset import TypeDataset, TypeTag
 from api.types.type_organization import TypeOrganization
 from api.types.type_sector import TypeSector
 from api.types.type_usecase_metadata import TypeUseCaseMetadata
-from api.utils.enums import UseCaseStatus
+from api.types.type_usecase_organization import TypeUseCaseOrganizationRelationship
+from api.utils.enums import OrganizationRelationshipType, UseCaseStatus
 from authorization.types import TypeUser
 
 use_case_status = strawberry.enum(UseCaseStatus)  # type: ignore
@@ -117,5 +123,52 @@ class TypeUseCase(BaseType):
             if not queryset.exists():
                 return []
             return TypeUser.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field
+    def organization_relationships(
+        self,
+    ) -> Optional[List["TypeUseCaseOrganizationRelationship"]]:
+        """Get organization relationships associated with this use case."""
+        try:
+            queryset = UseCaseOrganizationRelationship.objects.filter(usecase=self)  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeUseCaseOrganizationRelationship.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field
+    def supporting_organizations(self) -> Optional[List["TypeOrganization"]]:
+        """Get supporting organizations for this use case."""
+        try:
+            relationships = UseCaseOrganizationRelationship.objects.filter(
+                usecase=self,  # type: ignore
+                relationship_type=OrganizationRelationshipType.SUPPORTER,
+            ).select_related("organization")
+
+            if not relationships.exists():
+                return []
+
+            organizations = [rel.organization for rel in relationships]  # type: ignore
+            return TypeOrganization.from_django_list(organizations)
+        except Exception:
+            return []
+
+    @strawberry.field
+    def partner_organizations(self) -> Optional[List["TypeOrganization"]]:
+        """Get partner organizations for this use case."""
+        try:
+            relationships = UseCaseOrganizationRelationship.objects.filter(
+                usecase=self,  # type: ignore
+                relationship_type=OrganizationRelationshipType.PARTNER,
+            ).select_related("organization")
+
+            if not relationships.exists():
+                return []
+
+            organizations = [rel.organization for rel in relationships]  # type: ignore
+            return TypeOrganization.from_django_list(organizations)
         except Exception:
             return []
