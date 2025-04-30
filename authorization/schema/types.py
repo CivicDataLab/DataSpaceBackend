@@ -44,3 +44,11 @@ class DatasetPermissionType:
 class UserPermissionsType:
     organizations: List[OrganizationPermissionType]
     datasets: List[DatasetPermissionType]
+
+
+@strawberry.type
+class SuccessResponse:
+    """Response type for mutations that return success/failure status."""
+
+    success: bool
+    message: Optional[str] = None

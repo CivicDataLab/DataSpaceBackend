@@ -18,6 +18,7 @@ from authorization.schema.inputs import (
     UpdateUserInput,
 )
 from authorization.schema.permissions import HasOrganizationAdminRole
+from authorization.schema.types import SuccessResponse
 from authorization.services import AuthorizationService
 from authorization.types import TypeOrganizationMembership, TypeUser
 
@@ -121,7 +122,7 @@ class Mutation:
     @strawberry.mutation
     def assign_organization_role(
         self, info: Info, input: AssignOrganizationRoleInput
-    ) -> bool:
+    ) -> SuccessResponse:
         """
         Assign a role to a user for an organization.
         """
@@ -134,24 +135,35 @@ class Mutation:
                     user=current_user, organization_id=org_id
                 )
                 if not membership.role.can_change:
-                    return False
+                    return SuccessResponse(
+                        success=False,
+                        message="You don't have permission to assign roles in this organization",
+                    )
             except OrganizationMembership.DoesNotExist:
-                return False
+                return SuccessResponse(
+                    success=False, message="You are not a member of this organization"
+                )
 
         # Assign the role
-        return AuthorizationService.assign_user_to_organization(
+        result = AuthorizationService.assign_user_to_organization(
             user_id=input.user_id,
             organization_id=input.organization_id,
             role_name=input.role_name,
         )
 
+        if result:
+            return SuccessResponse(success=True, message="Role assigned successfully")
+        else:
+            return SuccessResponse(success=False, message="Failed to assign role")
+
     @strawberry.mutation
     def assign_dataset_permission(
         self, info: Info, input: AssignDatasetPermissionInput
-    ) -> bool:
+    ) -> SuccessResponse:
         """
         Assign a permission to a user for a dataset.
         """
+
         # Check if the current user has permission to assign dataset permissions
         current_user = info.context.user
         if not current_user.is_superuser:
@@ -167,15 +179,28 @@ class Mutation:
                         user=current_user, organization_id=organization_id
                     )
                     if not membership.role.can_change:
-                        return False
+                        return SuccessResponse(
+                            success=False,
+                            message="You don't have permission to assign permissions for this dataset",
+                        )
                 except OrganizationMembership.DoesNotExist:
-                    return False
+                    return SuccessResponse(
+                        success=False,
+                        message="You are not a member of the organization that owns this dataset",
+                    )
             except Dataset.DoesNotExist:
-                return False
+                return SuccessResponse(success=False, message="Dataset not found")
 
         # Assign the permission
-        return AuthorizationService.assign_user_to_dataset(
+        result = AuthorizationService.assign_user_to_dataset(
             user_id=input.user_id,
             dataset_id=input.dataset_id,
             role_name=input.role_name,
         )
+
+        if result:
+            return SuccessResponse(
+                success=True, message="Permission assigned successfully"
+            )
+        else:
+            return SuccessResponse(success=False, message="Failed to assign permission")
