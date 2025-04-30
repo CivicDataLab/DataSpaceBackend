@@ -1,19 +1,15 @@
 """Schema definitions for organizations."""
 
 import logging
-from typing import Any, List, Optional
+from typing import List, Optional
 
 import strawberry
 import strawberry_django
-from strawberry import auto
 from strawberry.types import Info
-from strawberry_django.mutations import mutations
 
 from api.models import Organization
 from api.types.type_organization import TypeOrganization
-from api.utils.debug_utils import debug_context
-from api.utils.enums import OrganizationTypes
-from api.utils.graphql_utils import get_user_from_info, is_superuser
+from api.utils.graphql_utils import is_superuser
 from authorization.models import OrganizationMembership, Role
 from authorization.permissions import HasOrganizationRoleGraphQL as HasOrganizationRole
 

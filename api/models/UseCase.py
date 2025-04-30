@@ -32,6 +32,8 @@ class UseCase(models.Model):
         choices=UseCaseRunningStatus.choices,
     )
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="usecases")
+    started_on = models.DateField(blank=True, null=True)
+    completed_on = models.DateField(blank=True, null=True)
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if self.title and not self.slug:
