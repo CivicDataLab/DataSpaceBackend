@@ -12,6 +12,7 @@ from api.types.type_organization import TypeOrganization
 from api.types.type_sector import TypeSector
 from api.types.type_usecase_metadata import TypeUseCaseMetadata
 from api.utils.enums import UseCaseStatus
+from authorization.types import TypeUser
 
 use_case_status = strawberry.enum(UseCaseStatus)  # type: ignore
 
@@ -105,5 +106,16 @@ class TypeUseCase(BaseType):
             if not queryset.exists():
                 return []
             return TypeUseCaseMetadata.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field
+    def contributors(self) -> Optional[List["TypeUser"]]:
+        """Get contributors associated with this use case."""
+        try:
+            queryset = self.contributors.all()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeUser.from_django_list(queryset)
         except Exception:
             return []

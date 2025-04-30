@@ -6,6 +6,7 @@ from django.utils.text import slugify
 
 if TYPE_CHECKING:
     from api.models.Dataset import Dataset
+    from authorization.models import User
 
 from api.utils.enums import UseCaseRunningStatus, UseCaseStatus
 from api.utils.file_paths import _use_case_directory_path
@@ -32,6 +33,9 @@ class UseCase(models.Model):
         choices=UseCaseRunningStatus.choices,
     )
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="usecases")
+    contributors = models.ManyToManyField(
+        "authorization.User", blank=True, related_name="contributed_usecases"
+    )
     started_on = models.DateField(blank=True, null=True)
     completed_on = models.DateField(blank=True, null=True)
 

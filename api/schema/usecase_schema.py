@@ -6,6 +6,7 @@ from typing import List, Optional
 
 import strawberry
 import strawberry_django
+from django.db import models
 from strawberry import auto
 from strawberry.types import Info
 from strawberry_django.mutations import mutations
@@ -15,6 +16,8 @@ from api.types.type_dataset import TypeDataset
 from api.types.type_usecase import TypeUseCase
 from api.utils.enums import UseCaseStatus
 from api.utils.graphql_telemetry import trace_resolver
+from authorization.models import User
+from authorization.types import TypeUser
 
 
 @strawberry_django.input(UseCase, fields="__all__", exclude=["datasets", "slug"])
@@ -62,6 +65,19 @@ class Query:
         """Get datasets by use case."""
         queryset = Dataset.objects.filter(usecase__id=use_case_id)
         return TypeDataset.from_django_list(queryset)
+
+    @strawberry_django.field
+    @trace_resolver(
+        name="get_contributors_by_use_case", attributes={"component": "usecase"}
+    )
+    def contributors_by_use_case(self, info: Info, use_case_id: str) -> list[TypeUser]:
+        """Get contributors by use case."""
+        try:
+            use_case = UseCase.objects.get(id=use_case_id)
+            contributors = use_case.contributors.all()
+            return TypeUser.from_django_list(contributors)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
 
 
 @trace_resolver(name="update_usecase_tags", attributes={"component": "usecase"})
@@ -242,5 +258,73 @@ class Mutation:
             raise ValueError(f"Use Case with ID {use_case_id} doesn't exist")
 
         use_case.status = UseCaseStatus.DRAFT.value
+        use_case.save()
+        return TypeUseCase.from_django(use_case)
+
+    # Add a contributor to a use case.
+    @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="add_contributor_to_use_case",
+        attributes={"component": "usecase", "operation": "mutation"},
+    )
+    def add_contributor_to_use_case(
+        self, info: Info, use_case_id: str, user_id: strawberry.ID
+    ) -> TypeUseCase:
+        """Add a contributor to a use case."""
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            raise ValueError(f"User with ID {user_id} does not exist.")
+
+        try:
+            use_case = UseCase.objects.get(id=use_case_id)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+
+        use_case.contributors.add(user)
+        use_case.save()
+        return TypeUseCase.from_django(use_case)
+
+    # Remove a contributor from a use case.
+    @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="remove_contributor_from_use_case",
+        attributes={"component": "usecase", "operation": "mutation"},
+    )
+    def remove_contributor_from_use_case(
+        self, info: Info, use_case_id: str, user_id: strawberry.ID
+    ) -> TypeUseCase:
+        """Remove a contributor from a use case."""
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            raise ValueError(f"User with ID {user_id} does not exist.")
+
+        try:
+            use_case = UseCase.objects.get(id=use_case_id)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+
+        use_case.contributors.remove(user)
+        use_case.save()
+        return TypeUseCase.from_django(use_case)
+
+    # Update the contributors of a use case.
+    @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="update_usecase_contributors",
+        attributes={"component": "usecase", "operation": "mutation"},
+    )
+    def update_usecase_contributors(
+        self, info: Info, use_case_id: str, user_ids: List[strawberry.ID]
+    ) -> TypeUseCase:
+        """Update the contributors of a use case."""
+        try:
+            users = User.objects.filter(id__in=user_ids)
+            use_case = UseCase.objects.get(id=use_case_id)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"Use Case with ID {use_case_id} doesn't exist")
+
+        use_case.contributors.set(users)
         use_case.save()
         return TypeUseCase.from_django(use_case)
