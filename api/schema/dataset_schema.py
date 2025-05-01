@@ -420,21 +420,6 @@ class Mutation:
     def delete_dataset(self, info: Info, dataset_id: uuid.UUID) -> bool:
         try:
             dataset = Dataset.objects.get(id=dataset_id)
-
-            # Check if user has permission to delete this dataset
-            user = info.context.user
-            if not user.is_superuser:
-                try:
-                    user_org = OrganizationMembership.objects.get(
-                        user=user, organization=dataset.organization
-                    )
-                    if user_org.role != "admin":
-                        raise ValueError(
-                            "You don't have permission to delete this dataset"
-                        )
-                except OrganizationMembership.DoesNotExist:
-                    raise ValueError("You don't have permission to delete this dataset")
-
             dataset.delete()
             return True
         except Dataset.DoesNotExist as e:
