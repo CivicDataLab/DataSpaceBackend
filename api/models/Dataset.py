@@ -5,7 +5,7 @@ from django.db import models
 from django.db.models import Sum
 from django.utils.text import slugify
 
-from api.utils.enums import DatasetStatus
+from api.utils.enums import DatasetAccessType, DatasetLicense, DatasetStatus
 
 if TYPE_CHECKING:
     from api.models.DataSpace import DataSpace
@@ -51,6 +51,16 @@ class Dataset(models.Model):
         max_length=50, default=DatasetStatus.DRAFT, choices=DatasetStatus.choices
     )
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="datasets")
+    access_type = models.CharField(
+        max_length=50,
+        default=DatasetAccessType.PUBLIC,
+        choices=DatasetAccessType.choices,
+    )
+    license = models.CharField(
+        max_length=50,
+        default=DatasetLicense.CC_BY_4_0_ATTRIBUTION,
+        choices=DatasetLicense.choices,
+    )
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:

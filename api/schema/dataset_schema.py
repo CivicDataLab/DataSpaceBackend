@@ -21,11 +21,14 @@ from api.models.DatasetMetadata import DatasetMetadata
 from api.types.type_dataset import DatasetFilter, DatasetOrder, TypeDataset
 from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
-from api.utils.enums import DatasetStatus
+from api.utils.enums import DatasetAccessType, DatasetLicense, DatasetStatus
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.models import OrganizationMembership
 from authorization.permissions import DatasetPermissionGraphQL as DatasetPermission
 from authorization.permissions import HasOrganizationRoleGraphQL
+
+DatasetAccessTypeENUM = strawberry.enum(DatasetAccessType)  # type: ignore
+DatasetLicenseENUM = strawberry.enum(DatasetLicense)  # type: ignore
 
 
 # Create permission classes dynamically with different operations
@@ -86,6 +89,8 @@ class UpdateDatasetInput:
     title: Optional[str]
     description: Optional[str]
     tags: List[str]
+    access_type: DatasetAccessTypeENUM
+    license: DatasetLicenseENUM
 
 
 @trace_resolver(name="add_update_dataset_metadata", attributes={"component": "dataset"})
