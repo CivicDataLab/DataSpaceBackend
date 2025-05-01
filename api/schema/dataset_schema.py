@@ -250,22 +250,6 @@ class Mutation:
         # Get organization from context
         organization = info.context.context.get("organization")
         dataspace = info.context.context.get("dataspace")
-        user = info.context.user
-
-        # Check if user has permission to create a dataset for this organization
-        if organization and not user.is_superuser:
-            try:
-                user_org = OrganizationMembership.objects.get(
-                    user=user, organization=organization
-                )
-                if user_org.role not in ["admin", "editor"]:
-                    raise ValueError(
-                        "You don't have permission to create datasets for this organization"
-                    )
-            except OrganizationMembership.DoesNotExist:
-                raise ValueError(
-                    "You don't have permission to create datasets for this organization"
-                )
 
         dataset = Dataset.objects.create(
             organization=organization,
