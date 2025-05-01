@@ -202,6 +202,13 @@ class HasOrganizationRoleGraphQL(BasePermission):  # type: ignore[misc]
         if source is None:
             # Check if organization_id is provided in the arguments
             organization_id = kwargs.get("organization_id")
+            # Also check if organization is in the context
+            organization = (
+                info.context.context.get("organization")
+                if hasattr(info.context, "context")
+                else None
+            )
+
             if organization_id:
                 try:
                     membership = OrganizationMembership.objects.get(
@@ -211,7 +218,19 @@ class HasOrganizationRoleGraphQL(BasePermission):  # type: ignore[misc]
                     return self._check_role_permission(role)  # type: ignore[no-any-return]
                 except OrganizationMembership.DoesNotExist:
                     return False
-            return True  # If no organization specified, allow and check later
+            elif organization:
+                try:
+                    membership = OrganizationMembership.objects.get(
+                        user=request.user, organization=organization
+                    )
+                    role = membership.role
+                    return self._check_role_permission(role)  # type: ignore[no-any-return]
+                except OrganizationMembership.DoesNotExist:
+                    return False
+
+            # If we're creating something that doesn't need organization permission yet,
+            # we'll check later when the specific object is accessed
+            return request.user.is_authenticated  # type: ignore[no-any-return]
 
         # For queries/mutations that have a source (e.g., updating an existing object)
         organization = self._get_organization(source)

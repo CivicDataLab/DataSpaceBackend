@@ -25,6 +25,7 @@ from api.utils.enums import DatasetStatus
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.models import OrganizationMembership
 from authorization.permissions import DatasetPermissionGraphQL as DatasetPermission
+from authorization.permissions import HasOrganizationRoleGraphQL
 
 
 # Create permission classes dynamically with different operations
@@ -43,11 +44,8 @@ class DeleteDatasetPermission(DatasetPermission):
         super().__init__(operation="delete")
 
 
-from authorization.permissions import HasOrganizationRoleGraphQL as HasOrganizationRole
-
-
 # Create organization permission class for 'add' operation
-class AddOrganizationPermission(HasOrganizationRole):
+class AddOrganizationPermission(HasOrganizationRoleGraphQL):
     def __init__(self) -> None:
         super().__init__(operation="add")
 
