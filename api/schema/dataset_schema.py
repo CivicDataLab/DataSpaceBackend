@@ -222,7 +222,6 @@ class Query:
         filters=DatasetFilter,
         pagination=True,
         order=DatasetOrder,
-        permission_classes=[AllowPublishedDatasets],
     )
     @trace_resolver(name="datasets", attributes={"component": "dataset"})
     def datasets(
