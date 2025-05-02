@@ -62,10 +62,31 @@ class AllowPublishedDatasets(BasePermission):
     message = "You need to be authenticated to access non-published datasets"
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        # Allow access to published datasets for everyone
-        # For other operations, require authentication
         request = info.context
-        return True
+
+        # For queries/mutations that don't have a source yet (e.g., getting a dataset by ID)
+        if source is None:
+            dataset_id = kwargs.get("dataset_id")
+            if dataset_id:
+                try:
+                    dataset = Dataset.objects.get(id=dataset_id)
+                    # Allow access to published datasets for everyone
+                    if dataset.status == DatasetStatus.PUBLISHED.value:
+                        return True
+                except Dataset.DoesNotExist:
+                    pass  # Let the resolver handle the non-existent dataset
+
+            # For non-published datasets, require authentication
+            return hasattr(request, "user") and request.user.is_authenticated
+
+        # For queries/mutations that have a source (e.g., accessing a dataset object)
+        if hasattr(source, "status"):
+            # Allow access to published datasets for everyone
+            if source.status == DatasetStatus.PUBLISHED.value:
+                return True
+
+        # For non-published datasets, require authentication
+        return hasattr(request, "user") and request.user.is_authenticated
 
 
 @strawberry.input
@@ -208,6 +229,12 @@ class Query:
     def get_chart_data(
         self, dataset_id: uuid.UUID
     ) -> List[Union[TypeResourceChartImage, TypeResourceChart]]:
+        # Check if the dataset exists
+        try:
+            dataset = Dataset.objects.get(id=dataset_id)
+        except Dataset.DoesNotExist:
+            raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
+
         # Fetch ResourceChartImage for the dataset
         chart_images = list(
             ResourceChartImage.objects.filter(dataset_id=dataset_id).order_by(
