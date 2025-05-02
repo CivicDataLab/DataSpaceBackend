@@ -285,6 +285,10 @@ class DatasetPermissionGraphQL(HasOrganizationRoleGraphQL):  # type: ignore[misc
         # If not allowed at organization level, check dataset-specific permissions
         request = info.context
 
+        # Check if user is authenticated before proceeding with permission checks
+        if not hasattr(request, "user") or not request.user.is_authenticated:
+            return False
+
         # For queries/mutations that don't have a source yet
         if source is None:
             dataset_id = kwargs.get("dataset_id")
