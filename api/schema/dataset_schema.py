@@ -23,26 +23,28 @@ from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
 from api.utils.enums import DatasetAccessType, DatasetLicense, DatasetStatus
 from api.utils.graphql_telemetry import trace_resolver
-from authorization.models import OrganizationMembership
-from authorization.permissions import DatasetPermissionGraphQL as DatasetPermission
-from authorization.permissions import HasOrganizationRoleGraphQL
+from authorization.models import DatasetPermission, OrganizationMembership
+from authorization.permissions import (
+    DatasetPermissionGraphQL,
+    HasOrganizationRoleGraphQL,
+)
 
 DatasetAccessTypeENUM = strawberry.enum(DatasetAccessType)  # type: ignore
 DatasetLicenseENUM = strawberry.enum(DatasetLicense)  # type: ignore
 
 
 # Create permission classes dynamically with different operations
-class ViewDatasetPermission(DatasetPermission):
+class ViewDatasetPermission(DatasetPermissionGraphQL):
     def __init__(self) -> None:
         super().__init__(operation="view")
 
 
-class ChangeDatasetPermission(DatasetPermission):
+class ChangeDatasetPermission(DatasetPermissionGraphQL):
     def __init__(self) -> None:
         super().__init__(operation="change")
 
 
-class DeleteDatasetPermission(DatasetPermission):
+class DeleteDatasetPermission(DatasetPermissionGraphQL):
     def __init__(self) -> None:
         super().__init__(operation="delete")
 
@@ -87,6 +89,51 @@ class AllowPublishedDatasets(BasePermission):
 
         # For non-published datasets, require authentication
         return hasattr(request, "user") and request.user.is_authenticated
+
+
+class ChartDataPermission(BasePermission):
+    """Permission class specifically for accessing chart data.
+    Allows anonymous access to published datasets and checks permissions for non-published datasets.
+    """
+
+    message = "You don't have permission to access this dataset's chart data"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        request = info.context
+        dataset_id = kwargs.get("dataset_id")
+
+        if not dataset_id:
+            return False
+
+        try:
+            dataset = Dataset.objects.get(id=dataset_id)
+
+            # Allow access to published datasets for everyone
+            if dataset.status == DatasetStatus.PUBLISHED.value:
+                return True
+
+            # For non-published datasets, require authentication
+            if not hasattr(request, "user") or not request.user.is_authenticated:
+                return False
+
+            # Superusers have access to everything
+            if request.user.is_superuser:
+                return True
+
+            # Check if user is a member of the dataset's organization
+            org_member = OrganizationMembership.objects.filter(
+                user=request.user, organization=dataset.organization
+            ).exists()
+
+            # Check if user has specific dataset permissions
+            dataset_perm = DatasetPermission.objects.filter(
+                user=request.user, dataset=dataset
+            ).exists()
+
+            return org_member or dataset_perm
+
+        except Dataset.DoesNotExist:
+            return False  # Let the resolver handle the non-existent dataset
 
 
 @strawberry.input
@@ -223,7 +270,7 @@ class Query:
         return TypeDataset.from_django_list(queryset)
 
     @strawberry.field(
-        permission_classes=[AllowPublishedDatasets, ViewDatasetPermission],  # type: ignore[list-item]
+        permission_classes=[ChartDataPermission],  # type: ignore[list-item]
     )
     @trace_resolver(name="get_chart_data", attributes={"component": "dataset"})
     def get_chart_data(
