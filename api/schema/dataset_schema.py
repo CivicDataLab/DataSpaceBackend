@@ -198,8 +198,10 @@ class UpdateDatasetInput:
     title: Optional[str]
     description: Optional[str]
     tags: List[str]
-    access_type: DatasetAccessTypeENUM
-    license: DatasetLicenseENUM
+    access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
+    license: Optional[DatasetLicenseENUM] = (
+        DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
+    )
 
 
 @trace_resolver(name="add_update_dataset_metadata", attributes={"component": "dataset"})
