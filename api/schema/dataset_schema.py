@@ -136,6 +136,47 @@ class ChartDataPermission(BasePermission):
             return False  # Let the resolver handle the non-existent dataset
 
 
+class UpdateDatasetMetadataPermission(BasePermission):
+    """Permission class for updating dataset metadata.
+    Checks if the user has permission to update the dataset.
+    """
+
+    message = "You don't have permission to update this dataset"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        request = info.context
+
+        # Check if user is authenticated
+        if not hasattr(request, "user") or not request.user.is_authenticated:
+            return False
+
+        # Superusers have access to everything
+        if request.user.is_superuser:
+            return True
+
+        # Get the dataset ID from the input
+        update_metadata_input = kwargs.get("update_metadata_input")
+        if not update_metadata_input or not hasattr(update_metadata_input, "dataset"):
+            return False
+
+        dataset_id = update_metadata_input.dataset
+
+        try:
+            dataset = Dataset.objects.get(id=dataset_id)
+
+            # Check if user is a member of the dataset's organization with appropriate role
+            org_member = OrganizationMembership.objects.filter(
+                user=request.user,
+                organization=dataset.organization,
+                role__in=["admin", "editor"],
+            ).exists()
+
+            return org_member
+
+        except Dataset.DoesNotExist:
+            return False  # Let the resolver handle the non-existent dataset
+
+
 @strawberry.input
 class DSMetadataItemType:
     id: str
@@ -336,7 +377,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
-        permission_classes=[IsAuthenticated, ChangeDatasetPermission],  # type: ignore[list-item]
+        permission_classes=[UpdateDatasetMetadataPermission],  # type: ignore[list-item]
     )
     @trace_resolver(
         name="add_update_dataset_metadata",
@@ -349,21 +390,6 @@ class Mutation:
         metadata_input = update_metadata_input.metadata
         try:
             dataset = Dataset.objects.get(id=dataset_id)
-
-            # Check if user has permission to update this dataset
-            user = info.context.user
-            if not user.is_superuser:
-                try:
-                    user_org = OrganizationMembership.objects.get(
-                        user=user, organization=dataset.organization
-                    )
-                    if user_org.role not in ["admin", "editor"]:
-                        raise ValueError(
-                            "You don't have permission to update this dataset"
-                        )
-                except OrganizationMembership.DoesNotExist:
-                    raise ValueError("You don't have permission to update this dataset")
-
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
