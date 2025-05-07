@@ -183,6 +183,140 @@ class UpdateDatasetMetadataPermission(BasePermission):
             return False  # Let the resolver handle the non-existent dataset
 
 
+class UpdateDatasetPermission(BasePermission):
+    """Permission class for updating dataset basic information.
+    Checks if the user has permission to update the dataset.
+    """
+
+    message = "You don't have permission to update this dataset"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        request = info.context
+
+        # Check if user is authenticated
+        if not hasattr(request, "user") or not request.user.is_authenticated:
+            return False
+
+        # Superusers have access to everything
+        if request.user.is_superuser:
+            return True
+
+        # Get the dataset ID from the input
+        update_dataset_input = kwargs.get("update_dataset_input")
+        if not update_dataset_input or not hasattr(update_dataset_input, "dataset"):
+            return False
+
+        dataset_id = update_dataset_input.dataset
+
+        try:
+            dataset = Dataset.objects.get(id=dataset_id)
+
+            # Get the roles with names 'admin' or 'editor'
+            admin_editor_roles = Role.objects.filter(
+                name__in=["admin", "editor"]
+            ).values_list("id", flat=True)
+
+            # Check if user is a member of the dataset's organization with appropriate role
+            org_member = OrganizationMembership.objects.filter(
+                user=request.user,
+                organization=dataset.organization,
+                role__id__in=admin_editor_roles,
+            ).exists()
+
+            return org_member
+
+        except Dataset.DoesNotExist:
+            return False  # Let the resolver handle the non-existent dataset
+
+
+class PublishDatasetPermission(BasePermission):
+    """Permission class for publishing a dataset.
+    Checks if the user has permission to publish the dataset.
+    """
+
+    message = "You don't have permission to publish this dataset"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        request = info.context
+
+        # Check if user is authenticated
+        if not hasattr(request, "user") or not request.user.is_authenticated:
+            return False
+
+        # Superusers have access to everything
+        if request.user.is_superuser:
+            return True
+
+        # Get the dataset ID from the arguments
+        dataset_id = kwargs.get("dataset_id")
+        if not dataset_id:
+            return False
+
+        try:
+            dataset = Dataset.objects.get(id=dataset_id)
+
+            # Get the roles with names 'admin' or 'editor'
+            admin_editor_roles = Role.objects.filter(
+                name__in=["admin", "editor"]
+            ).values_list("id", flat=True)
+
+            # Check if user is a member of the dataset's organization with appropriate role
+            org_member = OrganizationMembership.objects.filter(
+                user=request.user,
+                organization=dataset.organization,
+                role__id__in=admin_editor_roles,
+            ).exists()
+
+            return org_member
+
+        except Dataset.DoesNotExist:
+            return False  # Let the resolver handle the non-existent dataset
+
+
+class UnpublishDatasetPermission(BasePermission):
+    """Permission class for unpublishing a dataset.
+    Checks if the user has permission to unpublish the dataset.
+    """
+
+    message = "You don't have permission to unpublish this dataset"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        request = info.context
+
+        # Check if user is authenticated
+        if not hasattr(request, "user") or not request.user.is_authenticated:
+            return False
+
+        # Superusers have access to everything
+        if request.user.is_superuser:
+            return True
+
+        # Get the dataset ID from the arguments
+        dataset_id = kwargs.get("dataset_id")
+        if not dataset_id:
+            return False
+
+        try:
+            dataset = Dataset.objects.get(id=dataset_id)
+
+            # Get the roles with names 'admin' or 'editor'
+            admin_editor_roles = Role.objects.filter(
+                name__in=["admin", "editor"]
+            ).values_list("id", flat=True)
+
+            # Check if user is a member of the dataset's organization with appropriate role
+            org_member = OrganizationMembership.objects.filter(
+                user=request.user,
+                organization=dataset.organization,
+                role__id__in=admin_editor_roles,
+            ).exists()
+
+            return org_member
+
+        except Dataset.DoesNotExist:
+            return False  # Let the resolver handle the non-existent dataset
+
+
 @strawberry.input
 class DSMetadataItemType:
     id: str
@@ -196,6 +330,10 @@ class UpdateMetadataInput:
     description: Optional[str]
     tags: Optional[List[str]]
     sectors: List[uuid.UUID]
+    access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
+    license: Optional[DatasetLicenseENUM] = (
+        DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
+    )
 
 
 @strawberry.input
@@ -380,6 +518,9 @@ class Mutation:
             organization=organization,
             dataspace=dataspace,
             title=f"New dataset {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}",
+            description="",
+            access_type=DatasetAccessType.PUBLIC,
+            license=DatasetLicense.CC_BY_4_0_ATTRIBUTION,
         )
         return TypeDataset.from_django(dataset)
 
@@ -412,7 +553,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
-        permission_classes=[IsAuthenticated, ChangeDatasetPermission],  # type: ignore[list-item]
+        permission_classes=[UpdateDatasetPermission],  # type: ignore[list-item]
     )
     @trace_resolver(
         name="update_dataset",
@@ -424,21 +565,6 @@ class Mutation:
         dataset_id = update_dataset_input.dataset
         try:
             dataset = Dataset.objects.get(id=dataset_id)
-
-            # Check if user has permission to update this dataset
-            user = info.context.user
-            if not user.is_superuser:
-                try:
-                    user_org = OrganizationMembership.objects.get(
-                        user=user, organization=dataset.organization
-                    )
-                    if user_org.role not in ["admin", "editor"]:
-                        raise ValueError(
-                            "You don't have permission to update this dataset"
-                        )
-                except OrganizationMembership.DoesNotExist:
-                    raise ValueError("You don't have permission to update this dataset")
-
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
@@ -446,12 +572,16 @@ class Mutation:
             dataset.title = update_dataset_input.title
         if update_dataset_input.description:
             dataset.description = update_dataset_input.description
+        if update_dataset_input.access_type:
+            dataset.access_type = update_dataset_input.access_type
+        if update_dataset_input.license:
+            dataset.license = update_dataset_input.license
         _update_dataset_tags(dataset, update_dataset_input.tags or [])
         return TypeDataset.from_django(dataset)
 
     @strawberry_django.mutation(
         handle_django_errors=True,
-        permission_classes=[IsAuthenticated, ChangeDatasetPermission],  # type: ignore[list-item]
+        permission_classes=[PublishDatasetPermission],  # type: ignore[list-item]
     )
     @trace_resolver(
         name="publish_dataset",
@@ -460,23 +590,6 @@ class Mutation:
     def publish_dataset(self, info: Info, dataset_id: uuid.UUID) -> TypeDataset:
         try:
             dataset = Dataset.objects.get(id=dataset_id)
-
-            # Check if user has permission to publish this dataset
-            user = info.context.user
-            if not user.is_superuser:
-                try:
-                    user_org = OrganizationMembership.objects.get(
-                        user=user, organization=dataset.organization
-                    )
-                    if user_org.role not in ["admin", "editor"]:
-                        raise ValueError(
-                            "You don't have permission to publish this dataset"
-                        )
-                except OrganizationMembership.DoesNotExist:
-                    raise ValueError(
-                        "You don't have permission to publish this dataset"
-                    )
-
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
@@ -487,7 +600,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
-        permission_classes=[IsAuthenticated, ChangeDatasetPermission],  # type: ignore[list-item]
+        permission_classes=[UnpublishDatasetPermission],  # type: ignore[list-item]
     )
     @trace_resolver(
         name="un_publish_dataset",
@@ -496,23 +609,6 @@ class Mutation:
     def un_publish_dataset(self, info: Info, dataset_id: uuid.UUID) -> TypeDataset:
         try:
             dataset = Dataset.objects.get(id=dataset_id)
-
-            # Check if user has permission to unpublish this dataset
-            user = info.context.user
-            if not user.is_superuser:
-                try:
-                    user_org = OrganizationMembership.objects.get(
-                        user=user, organization=dataset.organization
-                    )
-                    if user_org.role not in ["admin", "editor"]:
-                        raise ValueError(
-                            "You don't have permission to unpublish this dataset"
-                        )
-                except OrganizationMembership.DoesNotExist:
-                    raise ValueError(
-                        "You don't have permission to unpublish this dataset"
-                    )
-
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
