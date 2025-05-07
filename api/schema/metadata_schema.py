@@ -8,6 +8,8 @@ from strawberry.types import Info
 
 from api.models import Metadata
 from api.types.type_metadata import TypeMetadata
+from api.utils.graphql_telemetry import trace_resolver
+from authorization.permissions import IsAuthenticated
 
 
 @strawberry_django.input(Metadata, fields="__all__")
@@ -52,4 +54,19 @@ class Mutation:
     update_metadata: TypeMetadata = strawberry_django.mutations.update(
         MetadataInputPartial
     )
-    delete_metadata: bool = strawberry_django.mutations.delete(MetadataInputPartial)
+
+    @strawberry_django.mutation(
+        handle_django_errors=False,
+        permission_classes=[IsAuthenticated],
+    )
+    @trace_resolver(
+        name="delete_metadata",
+        attributes={"component": "metadata", "operation": "mutation"},
+    )
+    def delete_metadata(self, info: Info, metadata_id: str) -> bool:
+        try:
+            metadata = Metadata.objects.get(id=metadata_id)
+            metadata.delete()
+            return True
+        except Metadata.DoesNotExist as e:
+            raise ValueError(f"Metadata with ID {metadata_id} does not exist.")
