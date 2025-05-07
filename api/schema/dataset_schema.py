@@ -201,9 +201,9 @@ class UpdateMetadataInput:
 @strawberry.input
 class UpdateDatasetInput:
     dataset: uuid.UUID
-    title: Optional[str] = ""
-    description: Optional[str] = ""
-    tags: Optional[List[str]] = []
+    title: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
     access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
     license: Optional[DatasetLicenseENUM] = (
         DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
