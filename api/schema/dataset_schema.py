@@ -23,7 +23,7 @@ from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
 from api.utils.enums import DatasetAccessType, DatasetLicense, DatasetStatus
 from api.utils.graphql_telemetry import trace_resolver
-from authorization.models import DatasetPermission, OrganizationMembership
+from authorization.models import DatasetPermission, OrganizationMembership, Role
 from authorization.permissions import (
     DatasetPermissionGraphQL,
     HasOrganizationRoleGraphQL,
@@ -165,10 +165,16 @@ class UpdateDatasetMetadataPermission(BasePermission):
             dataset = Dataset.objects.get(id=dataset_id)
 
             # Check if user is a member of the dataset's organization with appropriate role
+            # First get the roles with names 'admin' or 'editor'
+            admin_editor_roles = Role.objects.filter(
+                name__in=["admin", "editor"]
+            ).values_list("id", flat=True)
+
+            # Then check if the user has any of these roles in the organization
             org_member = OrganizationMembership.objects.filter(
                 user=request.user,
                 organization=dataset.organization,
-                role__in=["admin", "editor"],
+                role__id__in=admin_editor_roles,
             ).exists()
 
             return org_member
