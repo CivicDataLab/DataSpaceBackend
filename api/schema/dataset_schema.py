@@ -149,14 +149,15 @@ class UpdateDatasetPermission(BasePermission):
     message = "You don't have permission to update this dataset"
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        request = info.context
+        request = info.context.context
+        user = request.get("user")
 
         # Check if user is authenticated
-        if not hasattr(request, "user") or not request.user.is_authenticated:
+        if not user or not user.is_authenticated:
             return False
 
         # Superusers have access to everything
-        if request.user.is_superuser:
+        if user.is_superuser:
             return True
 
         # Get the dataset ID from the input
@@ -170,7 +171,7 @@ class UpdateDatasetPermission(BasePermission):
             dataset = Dataset.objects.get(id=dataset_id)
 
             # Check if user owns the dataset
-            if dataset.user and dataset.user == request.user:
+            if dataset.user and dataset.user == user:
                 return True
 
             # If organization-owned, check organization permissions
@@ -182,7 +183,7 @@ class UpdateDatasetPermission(BasePermission):
 
                 # Check if user is a member of the dataset's organization with appropriate role
                 org_member = OrganizationMembership.objects.filter(
-                    user=request.user,
+                    user=user,
                     organization=dataset.organization,
                     role__id__in=admin_editor_roles,
                 ).exists()
@@ -192,7 +193,7 @@ class UpdateDatasetPermission(BasePermission):
 
             # Check dataset-specific permissions
             dataset_perm = DatasetPermission.objects.filter(
-                user=request.user, dataset=dataset
+                user=user, dataset=dataset
             ).first()
             return dataset_perm and dataset_perm.role.can_change and dataset.status == DatasetStatus.DRAFT.value  # type: ignore
 
