@@ -35,6 +35,14 @@ class Command(BaseCommand):
                 "can_change": False,
                 "can_delete": False,
             },
+            {
+                "name": "owner",
+                "description": "Owner with full access",
+                "can_view": True,
+                "can_add": True,
+                "can_change": True,
+                "can_delete": True,
+            },
         ]
 
         # Create or update the roles

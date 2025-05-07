@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from api.models.DataSpace import DataSpace
     from api.models.Organization import Organization
     from api.models.Sector import Sector
+    from authorization.models import User
 
 
 class Tag(models.Model):
@@ -33,6 +34,13 @@ class Dataset(models.Model):
     organization = models.ForeignKey(
         "api.Organization",
         on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="datasets",
+    )
+    user = models.ForeignKey(
+        "authorization.User",
+        on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="datasets",

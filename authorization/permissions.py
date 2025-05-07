@@ -5,7 +5,7 @@ from rest_framework import permissions
 from strawberry.permission import BasePermission
 from strawberry.types import Info
 
-from api.models import Organization
+from api.models import Dataset, Organization
 from authorization.models import DatasetPermission, OrganizationMembership, Role
 
 
@@ -274,7 +274,7 @@ class HasOrganizationRoleGraphQL(BasePermission):  # type: ignore[misc]
 class DatasetPermissionGraphQL(HasOrganizationRoleGraphQL):  # type: ignore[misc]
     """
     Permission class specifically for Dataset objects.
-    Also checks for dataset-specific permissions.
+    Also checks for dataset-specific permissions and user ownership.
     """
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
@@ -294,18 +294,27 @@ class DatasetPermissionGraphQL(HasOrganizationRoleGraphQL):  # type: ignore[misc
             dataset_id = kwargs.get("dataset_id")
             if not dataset_id:
                 return False
-
             try:
+                # Check if the user owns this dataset
+                dataset = Dataset.objects.get(id=dataset_id)
+                if dataset.user and dataset.user == request.user:
+                    return True
+
+                # If not owned by user, check dataset-specific permissions
                 dataset_perm = DatasetPermission.objects.get(
                     user=request.user, dataset_id=dataset_id
                 )
                 role = dataset_perm.role
                 return self._check_role_permission(role)
-            except DatasetPermission.DoesNotExist:
+            except (Dataset.DoesNotExist, DatasetPermission.DoesNotExist):
                 return False
 
         # For queries/mutations that have a source
         if hasattr(source, "id"):
+            # Check if the user owns this dataset
+            if hasattr(source, "user") and source.user == request.user:
+                return True
+
             try:
                 dataset_perm = DatasetPermission.objects.get(
                     user=request.user, dataset=source
@@ -318,6 +327,75 @@ class DatasetPermissionGraphQL(HasOrganizationRoleGraphQL):  # type: ignore[misc
         return False
 
 
+class UserDatasetPermission(BasePermission):
+    """
+    Permission class that allows users to access their own datasets.
+    """
+
+    message = "You don't have permission to access this dataset"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        request = info.context
+
+        # Check if user is authenticated
+        if not hasattr(request, "user") or not request.user.is_authenticated:
+            return False
+
+        # For queries/mutations that don't have a source yet
+        if source is None:
+            dataset_id = kwargs.get("dataset_id")
+            if dataset_id:
+                from api.models import Dataset
+
+                try:
+                    dataset = Dataset.objects.get(id=dataset_id)
+                    # Allow access if user owns the dataset
+                    return bool(dataset.user == request.user)
+                except Dataset.DoesNotExist:
+                    pass  # Let the resolver handle the non-existent dataset
+            return False
+
+        # For queries/mutations that have a source
+        if hasattr(source, "user"):
+            # Allow access if user owns the dataset
+            return bool(source.user == request.user)
+
+        return False
+
+
+class CreateDatasetPermission(BasePermission):
+    """
+    Permission class for dataset creation.
+    Allows users to create datasets either as part of an organization (if they have the right role)
+    or as individual users.
+    """
+
+    message = "You don't have permission to create a dataset"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        request = info.context
+
+        # Check if user is authenticated - basic requirement for all dataset creation
+        if not hasattr(request, "user") or not request.user.is_authenticated:
+            return False
+
+        # If creating in organization context, check organization permissions
+        organization = info.context.context.get("organization")
+        if organization:
+            try:
+                # Check if user has the 'add' permission in the organization
+                membership = OrganizationMembership.objects.get(
+                    user=request.user, organization=organization
+                )
+                role = membership.role
+                return role.can_add
+            except OrganizationMembership.DoesNotExist:
+                return False
+
+        # If not in organization context, any authenticated user can create their own dataset
+        return True
+
+
 class ResourcePermissionGraphQL(HasOrganizationRoleGraphQL):  # type: ignore[misc]
     """
     Permission class specifically for Resource objects.
@@ -325,3 +403,60 @@ class ResourcePermissionGraphQL(HasOrganizationRoleGraphQL):  # type: ignore[mis
 
     def _get_organization(self, obj: Any) -> Optional[Organization]:
         return obj.dataset.organization if hasattr(obj, "dataset") else None  # type: ignore[attr-defined,no-any-return]
+
+
+class PublishDatasetPermission(BasePermission):
+    """Permission class for publishing a dataset.
+    Checks if the user has permission to publish the dataset.
+    """
+
+    message = "You don't have permission to publish this dataset"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        request = info.context
+
+        # Check if user is authenticated
+        if not hasattr(request, "user") or not request.user.is_authenticated:
+            return False
+
+        # Superusers have access to everything
+        if request.user.is_superuser:
+            return True
+
+        # Get the dataset ID from the arguments
+        dataset_id = kwargs.get("dataset_id")
+        if not dataset_id:
+            return False
+
+        try:
+            dataset = Dataset.objects.get(id=dataset_id)
+
+            # Check if user owns the dataset
+            if dataset.user and dataset.user == request.user:
+                return True
+
+            # If organization-owned, check organization permissions
+            if dataset.organization:
+                # Get the roles with names 'admin', 'editor', or 'owner'
+                admin_editor_roles = Role.objects.filter(
+                    name__in=["admin", "editor", "owner"]
+                ).values_list("id", flat=True)
+
+                # Check if user is a member of the dataset's organization with appropriate role
+                org_member = OrganizationMembership.objects.filter(
+                    user=request.user,
+                    organization=dataset.organization,
+                    role__id__in=admin_editor_roles,
+                ).exists()
+
+                if org_member:
+                    return True
+
+            # Check dataset-specific permissions
+            dataset_perm = DatasetPermission.objects.filter(
+                user=request.user, dataset=dataset
+            ).first()
+            return bool(dataset_perm and dataset_perm.role.can_change)
+
+        except Dataset.DoesNotExist:
+            return False
