@@ -577,6 +577,7 @@ class Mutation:
         if update_dataset_input.license:
             dataset.license = update_dataset_input.license
         _update_dataset_tags(dataset, update_dataset_input.tags or [])
+        dataset.save()
         return TypeDataset.from_django(dataset)
 
     @strawberry_django.mutation(
