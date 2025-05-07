@@ -303,13 +303,9 @@ class Query:
     ) -> List[TypeDataset]:
         """Get all datasets."""
         organization = info.context.context.get("organization")
-        dataspace = info.context.context.get("dataspace")
         user = info.context.user
 
-        # Base queryset filtering by organization or dataspace
-        if dataspace:
-            queryset = Dataset.objects.filter(dataspace=dataspace)
-        elif organization:
+        if organization:
             queryset = Dataset.objects.filter(organization=organization)
         else:
             # If user is authenticated
@@ -317,15 +313,23 @@ class Query:
                 # If user is superuser, show all datasets
                 if user.is_superuser:
                     queryset = Dataset.objects.all()
+                elif organization:
+                    # Check id user has access to organization
+                    org_member = OrganizationMembership.objects.filter(
+                        user=user, organization=organization
+                    ).exists()
+                    if org_member and org_member.role.can_view:  # type: ignore
+                        # Show only datasets from current organization
+                        queryset = Dataset.objects.filter(organization=organization)
+                    else:
+                        # if user is not a member of the organization, return empty queryset
+                        queryset = Dataset.objects.none()
                 else:
-                    # Show only datasets from organizations the user belongs to
-                    user_orgs = OrganizationMembership.objects.filter(
-                        user=user
-                    ).values_list("organization_id", flat=True)
-                    queryset = Dataset.objects.filter(organization_id__in=user_orgs)
+                    # For non-organization authenticated users, only owned datasets
+                    queryset = Dataset.objects.filter(user=user)
             else:
-                # For non-authenticated users, only show published datasets
-                queryset = Dataset.objects.filter(status=DatasetStatus.PUBLISHED.value)
+                # For non-authenticated users, return empty queryset
+                queryset = Dataset.objects.none()
 
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
