@@ -201,9 +201,9 @@ class UpdateMetadataInput:
 @strawberry.input
 class UpdateDatasetInput:
     dataset: uuid.UUID
-    title: Optional[str]
-    description: Optional[str]
-    tags: List[str]
+    title: Optional[str] = ""
+    description: Optional[str] = ""
+    tags: Optional[List[str]] = []
     access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
     license: Optional[DatasetLicenseENUM] = (
         DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
@@ -446,7 +446,7 @@ class Mutation:
             dataset.title = update_dataset_input.title
         if update_dataset_input.description:
             dataset.description = update_dataset_input.description
-        _update_dataset_tags(dataset, update_dataset_input.tags)
+        _update_dataset_tags(dataset, update_dataset_input.tags or [])
         return TypeDataset.from_django(dataset)
 
     @strawberry_django.mutation(
