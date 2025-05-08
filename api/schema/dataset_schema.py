@@ -149,8 +149,8 @@ class UpdateDatasetPermission(BasePermission):
     message = "You don't have permission to update this dataset"
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        request = info.context.context
-        user = request.get("user")
+        request = info.context
+        user = request.user
 
         # Check if user is authenticated
         if not user or not user.is_authenticated:
