@@ -105,6 +105,15 @@ class Query:
         return result
 
     @strawberry.field
+    def user_by_organization(self, info: Info) -> List[TypeUser]:
+        """Get a list of users with basic information."""
+        organization = info.context.context.get("organization")
+        if not organization:
+            return []
+        users = User.objects.filter(organizations=organization)
+        return TypeUser.from_django_list(users)
+
+    @strawberry.field
     def users(self, info: Info, limit: int = 10, offset: int = 0) -> List[TypeUser]:
         """Get a list of users with basic information."""
         users = User.objects.all()[offset : offset + limit]
