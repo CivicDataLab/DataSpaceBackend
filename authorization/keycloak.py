@@ -1,15 +1,15 @@
-import logging
 from typing import Any, Dict, List, Optional, Type, TypeVar, cast
 
+import structlog
 from django.conf import settings
 from django.db import transaction
-from keycloak import KeycloakOpenID
+from keycloak import KeycloakAdmin, KeycloakOpenID
 from keycloak.exceptions import KeycloakError
 
 from api.models import Organization
 from authorization.models import OrganizationMembership, Role, User
 
-logger = logging.getLogger(__name__)
+logger = structlog.getLogger(__name__)
 
 # Type variables for model classes
 T = TypeVar("T")
@@ -423,7 +423,7 @@ class KeycloakManager:
 
     def update_user_in_keycloak(self, user: User) -> bool:
         """
-        Update user information in Keycloak.
+        Update user information in Keycloak using KeycloakAdmin.
 
         Args:
             user: The Django user object with updated information
@@ -431,32 +431,32 @@ class KeycloakManager:
         Returns:
             True if the update was successful, False otherwise
         """
-        import structlog
-
-        logger = structlog.getLogger(__name__)
 
         if not user.keycloak_id:
             logger.error("Cannot update user in Keycloak: missing keycloak_id")
             return False
 
         try:
-            # Get admin credentials from environment variables
+            # Get client credentials from settings
             from django.conf import settings
 
-            admin_username = getattr(settings, "KEYCLOAK_ADMIN_USERNAME", None)
-            admin_password = getattr(settings, "KEYCLOAK_ADMIN_PASSWORD", None)
+            server_url = self.server_url
+            realm = self.realm
+            client_id = getattr(settings, "KEYCLOAK_CLIENT_ID", None)
+            client_secret = getattr(settings, "KEYCLOAK_CLIENT_SECRET", None)
 
-            if not admin_username or not admin_password:
-                logger.error("Keycloak admin credentials not configured in settings")
+            if not client_id or not client_secret:
+                logger.error("Keycloak client credentials not configured in settings")
                 return False
 
-            # Get admin token for Keycloak operations
-            admin_token = self.keycloak_openid.token(admin_username, admin_password, grant_type="password")  # type: ignore[arg-type]
-            access_token = admin_token.get("access_token")
-
-            if not access_token:
-                logger.error("Failed to get admin token for Keycloak")
-                return False
+            # Initialize KeycloakAdmin with client credentials
+            keycloak_admin = KeycloakAdmin(
+                server_url=server_url,
+                realm_name=realm,
+                client_id=client_id,
+                client_secret_key=client_secret,
+                verify=True,
+            )
 
             # Prepare user data for update
             user_data = {
@@ -466,30 +466,11 @@ class KeycloakManager:
                 # Add more fields as needed
             }
 
-            # Update user in Keycloak
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json",
-            }
+            # Update the user using KeycloakAdmin
+            keycloak_admin.update_user(user_id=user.keycloak_id, payload=user_data)
 
-            # Use the Keycloak Admin API to update the user
-            url = (
-                f"{self.server_url}/admin/realms/{self.realm}/users/{user.keycloak_id}"
-            )
-
-            # Use requests library for the API call
-            import requests
-
-            response = requests.put(url, json=user_data, headers=headers)
-
-            if response.status_code == 204:  # Success status for PUT with no content
-                logger.info(f"Successfully updated user {user.username} in Keycloak")
-                return True
-            else:
-                logger.error(
-                    f"Failed to update user in Keycloak: {response.status_code} - {response.text}"
-                )
-                return False
+            logger.info(f"Successfully updated user {user.username} in Keycloak")
+            return True
 
         except Exception as e:
             logger.error(f"Error updating user in Keycloak: {e}")
