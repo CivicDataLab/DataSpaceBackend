@@ -117,6 +117,13 @@ class Query:
         resources = Resource.objects.filter(dataset_id=dataset_id)
         return [TypeResource.from_django(resource) for resource in resources]
 
+    @strawberry_django.field
+    @trace_resolver(name="get_resource_by_id", attributes={"component": "resource"})
+    def resource_by_id(self, info: Info, resource_id: uuid.UUID) -> TypeResource:
+        """Get a resource by ID."""
+        resource = Resource.objects.get(id=resource_id)
+        return TypeResource.from_django(resource)
+
 
 def _validate_file_details_and_update_format(resource: Resource) -> None:
     """Validate file details and update format."""
