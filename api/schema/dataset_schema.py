@@ -403,7 +403,7 @@ class Mutation:
         # Get organization from context
         organization = info.context.context.get("organization")
         dataspace = info.context.context.get("dataspace")
-        user = info.context.context.get("user")
+        user = info.context.user
         dataset = Dataset.objects.create(
             organization=organization,
             dataspace=dataspace,
