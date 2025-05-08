@@ -162,6 +162,8 @@ class UpdateDatasetPermission(BasePermission):
 
         # Get the dataset ID from the input
         update_dataset_input = kwargs.get("update_dataset_input")
+        if not update_dataset_input:
+            update_dataset_input = kwargs.get("update_metadata_input")
         if not update_dataset_input or not hasattr(update_dataset_input, "dataset"):
             return False
 
