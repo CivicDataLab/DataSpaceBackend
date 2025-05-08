@@ -102,7 +102,7 @@ class ResourceDataTable(models.Model):
     def save(self, *args, **kwargs):
         if not self.table_name:
             # Generate a unique table name based on resource ID
-            self.table_name = f"{self.resource.name}-{self.resource.dataset.name}-{self.resource.id.hex}"
+            self.table_name = f"{self.resource.name}-{self.resource.dataset.title}-{self.resource.id.hex}"
         super().save(*args, **kwargs)
 
 
