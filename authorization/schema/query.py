@@ -110,7 +110,21 @@ class Query:
         organization = info.context.context.get("organization")
         if not organization:
             return []
-        users = User.objects.filter(organizations=organization)
+
+        # Prefetch only the memberships for the current organization
+        org_memberships_prefetch = models.Prefetch(
+            "organizationmembership",
+            queryset=OrganizationMembership.objects.filter(organization=organization),
+            to_attr="current_org_memberships",
+        )
+
+        # Get users with filtered organization memberships
+        users = (
+            User.objects.filter(organizationmembership__organization=organization)
+            .prefetch_related(org_memberships_prefetch)
+            .distinct()
+        )
+
         return TypeUser.from_django_list(users)
 
     @strawberry.field

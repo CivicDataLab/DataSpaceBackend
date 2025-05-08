@@ -69,8 +69,19 @@ class TypeUser(BaseType):
 
     @strawberry.field
     def organization_memberships(self) -> List[TypeOrganizationMembership]:
-        """Get organization memberships for this user."""
+        """Get organization memberships for this user.
+
+        If current_org_memberships is prefetched (from user_by_organization query),
+        returns only those memberships. Otherwise, returns all memberships.
+        """
         try:
+            # Check if we have prefetched current_org_memberships
+            if hasattr(self, "current_org_memberships"):
+                return TypeOrganizationMembership.from_django_list(
+                    self.current_org_memberships
+                )
+
+            # Otherwise, fall back to fetching all memberships
             user_id = str(getattr(self, "id", None))
             queryset = OrganizationMembership.objects.filter(user_id=user_id)
             return TypeOrganizationMembership.from_django_list(queryset)
