@@ -441,6 +441,10 @@ class Mutation:
         if update_metadata_input.description:
             dataset.description = update_metadata_input.description
             dataset.save()
+        if update_metadata_input.access_type:
+            dataset.access_type = update_metadata_input.access_type
+        if update_metadata_input.license:
+            dataset.license = update_metadata_input.license
         if update_metadata_input.tags is not None:
             _update_dataset_tags(dataset, update_metadata_input.tags)
         _add_update_dataset_metadata(dataset, metadata_input)
