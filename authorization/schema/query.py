@@ -1,6 +1,6 @@
 """Query definitions for authorization GraphQL schema."""
 
-from typing import List, Optional, cast
+from typing import Dict, List, Optional, cast
 
 import strawberry
 import strawberry_django
@@ -111,19 +111,29 @@ class Query:
         if not organization:
             return []
 
-        # Prefetch only the memberships for the current organization
-        org_memberships_prefetch = models.Prefetch(
-            "organizationmembership",
-            queryset=OrganizationMembership.objects.filter(organization=organization),
-            to_attr="current_org_memberships",
+        # Get users belonging to this organization
+        users = User.objects.filter(organizations=organization).distinct()
+
+        # Get all memberships for these users in the current organization in a single query
+        memberships = OrganizationMembership.objects.filter(
+            user__in=users, organization=organization
         )
 
-        # Get users with filtered organization memberships
-        users = (
-            User.objects.filter(organizationmembership__organization=organization)
-            .prefetch_related(org_memberships_prefetch)
-            .distinct()
-        )
+        # Create a mapping of user_id to memberships
+        user_memberships: Dict[str, List[OrganizationMembership]] = {}
+
+        for membership in memberships:
+            user_id = str(membership.user_id)  # type: ignore
+            if user_id not in user_memberships:
+                user_memberships[user_id] = []
+            user_memberships[user_id].append(membership)
+
+        # Attach the filtered memberships to each user
+        for user in users:
+            # Cast to satisfy mypy
+            user_id = str(user.id)  # type: ignore
+            # Use setattr to avoid attribute error
+            setattr(user, "current_org_memberships", user_memberships.get(user_id, []))
 
         return TypeUser.from_django_list(users)
 
