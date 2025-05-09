@@ -56,6 +56,18 @@ class Mutation:
             user.email = input.email
             needs_keycloak_sync = True
 
+        if input.github_profile is not None:
+            user.github_profile = input.github_profile
+
+        if input.linkedin_profile is not None:
+            user.linkedin_profile = input.linkedin_profile
+
+        if input.twitter_profile is not None:
+            user.twitter_profile = input.twitter_profile
+
+        if input.location is not None:
+            user.location = input.location
+
         # Handle profile picture upload
         if input.profile_picture is not None:
             user.profile_picture = input.profile_picture

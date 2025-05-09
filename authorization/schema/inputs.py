@@ -15,6 +15,10 @@ class UpdateUserInput:
     bio: Optional[str] = None
     profile_picture: Optional[Upload] = None
     email: Optional[str] = None
+    github_profile: Optional[str] = None
+    linkedin_profile: Optional[str] = None
+    twitter_profile: Optional[str] = None
+    location: Optional[str] = None
 
 
 @strawberry.input

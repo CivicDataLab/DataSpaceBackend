@@ -47,6 +47,10 @@ class User(AbstractUser):
     profile_picture = models.ImageField(
         upload_to=_user_profile_image_directory_path, blank=True, null=True
     )
+    github_profile = models.URLField(blank=True, null=True)
+    linkedin_profile = models.URLField(blank=True, null=True)
+    twitter_profile = models.URLField(blank=True, null=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
         db_table = "ds_user"
