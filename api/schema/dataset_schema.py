@@ -353,7 +353,7 @@ class Query:
     )
     @trace_resolver(name="get_chart_data", attributes={"component": "dataset"})
     def get_chart_data(
-        self, info: Info, dataset_id: Optional[uuid.UUID]
+        self, info: Info, dataset_id: Optional[uuid.UUID] = None
     ) -> List[Union[TypeResourceChartImage, TypeResourceChart]]:
         # Check if the dataset exists
         if dataset_id:
