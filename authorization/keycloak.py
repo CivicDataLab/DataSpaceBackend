@@ -422,62 +422,53 @@ class KeycloakManager:
             return None
 
     def update_user_in_keycloak(self, user: User) -> bool:
-        """
-        Update user information in Keycloak using KeycloakAdmin.
-
-        Args:
-            user: The Django user object with updated information
-
-        Returns:
-            True if the update was successful, False otherwise
-        """
-
+        """Update user details in Keycloak using admin credentials."""
         if not user.keycloak_id:
-            logger.error("Cannot update user in Keycloak: missing keycloak_id")
+            logger.warning(
+                "Cannot update user in Keycloak: No keycloak_id", user_id=str(user.id)
+            )
             return False
 
         try:
-            # Get client credentials from settings
-            from django.conf import settings
+            # Get admin credentials from settings
+            admin_username = getattr(settings, "KEYCLOAK_ADMIN_USERNAME", "")
+            admin_password = getattr(settings, "KEYCLOAK_ADMIN_PASSWORD", "")
 
-            server_url = self.server_url
-            realm = self.realm
-            client_id = getattr(settings, "KEYCLOAK_CLIENT_ID", None)
-            client_secret = getattr(settings, "KEYCLOAK_CLIENT_SECRET", None)
-            admin_username = getattr(settings, "KEYCLOAK_ADMIN_USERNAME", None)
-            admin_password = getattr(settings, "KEYCLOAK_ADMIN_PASSWORD", None)
-
-            if not client_id or not client_secret:
-                logger.error("Keycloak client credentials not configured in settings")
+            if not admin_username or not admin_password:
+                logger.error("Keycloak admin credentials not configured")
                 return False
 
-            # Initialize KeycloakAdmin with client credentials
+            # Create a direct admin connection
             keycloak_admin = KeycloakAdmin(
-                server_url=server_url,
-                realm_name=realm,
+                server_url=self.server_url,
                 username=admin_username,
                 password=admin_password,
-                client_id=client_id,
-                client_secret_key=client_secret,
+                realm_name=self.realm,
                 verify=True,
             )
 
-            # Prepare user data for update
+            # Prepare user data
             user_data = {
                 "firstName": user.first_name,
                 "lastName": user.last_name,
                 "email": user.email,
-                # Add more fields as needed
+                "emailVerified": True,
             }
 
-            # Update the user using KeycloakAdmin
+            # Update the user
             keycloak_admin.update_user(user_id=user.keycloak_id, payload=user_data)
 
-            logger.debug(f"Successfully updated user {user.username} in Keycloak")
+            logger.info(
+                "Successfully updated user in Keycloak",
+                user_id=str(user.id),
+                keycloak_id=user.keycloak_id,
+            )
             return True
 
         except Exception as e:
-            logger.error(f"Error updating user in Keycloak: {e}")
+            logger.error(
+                f"Error updating user in Keycloak: {str(e)}", user_id=str(user.id)
+            )
             return False
 
 
