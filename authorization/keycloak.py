@@ -269,7 +269,7 @@ class KeycloakManager:
         logger = structlog.getLogger(__name__)
 
         # Log the user info we're trying to sync
-        logger.info(f"Attempting to sync user with info: {user_info}")
+        logger.debug(f"Attempting to sync user with info: {user_info}")
 
         try:
             # Extract key user information
@@ -289,7 +289,7 @@ class KeycloakManager:
             # Try to find user by keycloak_id first
             try:
                 user = User.objects.get(keycloak_id=keycloak_id)
-                logger.info(f"Found existing user by keycloak_id: {user.username}")
+                logger.debug(f"Found existing user by keycloak_id: {user.username}")
 
                 # Update user details
                 user.username = str(username) if username else ""  # type: ignore[assignment]
@@ -332,7 +332,7 @@ class KeycloakManager:
                         # Try to find user by username
                         try:
                             user = User.objects.get(username=username)
-                            logger.info(
+                            logger.debug(
                                 f"Found existing user by username: {user.username}"
                             )
 
@@ -353,7 +353,7 @@ class KeycloakManager:
                             user.save()
                         except User.DoesNotExist:
                             # Create new user
-                            logger.info(
+                            logger.debug(
                                 f"Creating new user with keycloak_id: {keycloak_id}"
                             )
                             user = User.objects.create(
