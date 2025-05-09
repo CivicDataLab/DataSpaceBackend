@@ -434,36 +434,82 @@ class KeycloakManager:
             admin_username = getattr(settings, "KEYCLOAK_ADMIN_USERNAME", "")
             admin_password = getattr(settings, "KEYCLOAK_ADMIN_PASSWORD", "")
 
+            # Log credential presence (not the actual values)
+            logger.info(
+                "Admin credentials check",
+                username_present=bool(admin_username),
+                password_present=bool(admin_password),
+            )
+
             if not admin_username or not admin_password:
                 logger.error("Keycloak admin credentials not configured")
                 return False
 
-            # Create a direct admin connection
-            keycloak_admin = KeycloakAdmin(
+            from keycloak import KeycloakOpenID
+
+            # First get an admin token directly
+            keycloak_openid = KeycloakOpenID(
                 server_url=self.server_url,
-                username=admin_username,
-                password=admin_password,
-                realm_name=self.realm,
+                client_id="admin-cli",  # Special client for admin operations
+                realm_name="master",  # Admin users are in master realm
                 verify=True,
             )
 
-            # Prepare user data
-            user_data = {
-                "firstName": user.first_name,
-                "lastName": user.last_name,
-                "email": user.email,
-                "emailVerified": True,
-            }
+            # Get token
+            try:
+                token = keycloak_openid.token(
+                    username=admin_username,
+                    password=admin_password,
+                    grant_type="password",
+                )
+                access_token = token.get("access_token")
 
-            # Update the user
-            keycloak_admin.update_user(user_id=user.keycloak_id, payload=user_data)
+                if not access_token:
+                    logger.error("Failed to get admin access token")
+                    return False
 
-            logger.info(
-                "Successfully updated user in Keycloak",
-                user_id=str(user.id),
-                keycloak_id=user.keycloak_id,
-            )
-            return True
+                # Now use the token to update the user
+                import requests
+
+                headers = {
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                }
+
+                user_data = {
+                    "firstName": user.first_name,
+                    "lastName": user.last_name,
+                    "email": user.email,
+                    "emailVerified": True,
+                }
+
+                # Direct API call to update user
+                response = requests.put(
+                    f"{self.server_url}/admin/realms/{self.realm}/users/{user.keycloak_id}",
+                    headers=headers,
+                    json=user_data,
+                )
+
+                if response.status_code == 204:  # Success for this endpoint
+                    logger.info(
+                        "Successfully updated user in Keycloak",
+                        user_id=str(user.id),
+                        keycloak_id=user.keycloak_id,
+                    )
+                    return True
+                else:
+                    logger.error(
+                        f"Failed to update user in Keycloak: {response.status_code}: {response.text}",
+                        user_id=str(user.id),
+                    )
+                    return False
+
+            except Exception as token_error:
+                logger.error(
+                    f"Error getting admin token: {str(token_error)}",
+                    user_id=str(user.id),
+                )
+                return False
 
         except Exception as e:
             logger.error(
