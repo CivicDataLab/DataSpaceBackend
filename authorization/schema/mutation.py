@@ -96,7 +96,7 @@ class Mutation:
         """Add a user to an organization with a specific role."""
         try:
             user = User.objects.get(id=input.user_id)
-            organization = Organization.objects.get(id=input.organization_id)
+            organization = info.context.context.get("organization")
             role = Role.objects.get(id=input.role_id)
 
             # Check if the membership already exists
@@ -112,10 +112,6 @@ class Mutation:
             return TypeOrganizationMembership.from_django(membership)
         except User.DoesNotExist:
             raise ValueError(f"User with ID {input.user_id} does not exist.")
-        except Organization.DoesNotExist:
-            raise ValueError(
-                f"Organization with ID {input.organization_id} does not exist."
-            )
         except Role.DoesNotExist:
             raise ValueError(f"Role with ID {input.role_id} does not exist.")
 
@@ -128,11 +124,11 @@ class Mutation:
         """
         # Check if the current user has permission to assign roles
         current_user = info.context.user
+        organization = info.context.context.get("organization")
         if not current_user.is_superuser:
-            org_id = input.organization_id
             try:
                 membership = OrganizationMembership.objects.get(
-                    user=current_user, organization_id=org_id
+                    user=current_user, organization=organization
                 )
                 if not membership.role.can_change:
                     return SuccessResponse(
@@ -147,7 +143,7 @@ class Mutation:
         # Assign the role
         result = AuthorizationService.assign_user_to_organization(
             user_id=input.user_id,
-            organization_id=input.organization_id,
+            organization=organization,
             role_name=input.role_name,
         )
 

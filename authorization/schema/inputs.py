@@ -22,14 +22,12 @@ class AddUserToOrganizationInput:
     """Input for adding a user to an organization."""
 
     user_id: strawberry.ID
-    organization_id: strawberry.ID
     role_id: strawberry.ID
 
 
 @strawberry.input
 class AssignOrganizationRoleInput:
     user_id: strawberry.ID
-    organization_id: strawberry.ID
     role_name: str
 
 

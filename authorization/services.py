@@ -174,7 +174,7 @@ class AuthorizationService:
     @transaction.atomic
     def assign_user_to_organization(
         user_id: Union[int, str],
-        organization_id: Union[int, str],
+        organization: Organization,
         role_name: str = "viewer",
     ) -> bool:
         """
@@ -190,7 +190,6 @@ class AuthorizationService:
         """
         try:
             user = User.objects.get(id=user_id)  # type: ignore[arg-type,misc]
-            organization = Organization.objects.get(id=organization_id)  # type: ignore[arg-type,misc]
             role = Role.objects.get(name=role_name)
 
             # Create or update the membership
@@ -199,7 +198,7 @@ class AuthorizationService:
             )
 
             return True
-        except (User.DoesNotExist, Organization.DoesNotExist, Role.DoesNotExist) as e:
+        except (User.DoesNotExist, Role.DoesNotExist) as e:
             logger.error(f"Error assigning user to organization: {e}")
             return False
 
