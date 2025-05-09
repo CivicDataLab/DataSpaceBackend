@@ -18,8 +18,8 @@ class UpdateUserInput:
 
 
 @strawberry.input
-class AddUserToOrganizationInput:
-    """Input for adding a user to an organization."""
+class AddRemoveUserToOrganizationInput:
+    """Input for adding or removing a user to an organization."""
 
     user_id: strawberry.ID
     role_id: strawberry.ID

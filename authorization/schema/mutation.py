@@ -12,7 +12,7 @@ from api.utils.graphql_telemetry import trace_resolver
 from authorization.models import OrganizationMembership, Role, User
 from authorization.permissions import IsAuthenticated
 from authorization.schema.inputs import (
-    AddUserToOrganizationInput,
+    AddRemoveUserToOrganizationInput,
     AssignDatasetPermissionInput,
     AssignOrganizationRoleInput,
     UpdateUserInput,
@@ -91,7 +91,7 @@ class Mutation:
         attributes={"component": "user", "operation": "mutation"},
     )
     def add_user_to_organization(
-        self, info: Info, input: AddUserToOrganizationInput
+        self, info: Info, input: AddRemoveUserToOrganizationInput
     ) -> TypeOrganizationMembership:
         """Add a user to an organization with a specific role."""
         try:
@@ -151,6 +151,39 @@ class Mutation:
             return SuccessResponse(success=True, message="Role assigned successfully")
         else:
             return SuccessResponse(success=False, message="Failed to assign role")
+
+    @strawberry_django.mutation(
+        permission_classes=[IsAuthenticated, HasOrganizationAdminRole],
+    )
+    @trace_resolver(
+        name="remove_user_from_organization",
+        attributes={"component": "user", "operation": "mutation"},
+    )
+    def remove_user_from_organization(
+        self, info: Info, input: AddRemoveUserToOrganizationInput
+    ) -> SuccessResponse:
+        """Remove a user from an organization."""
+        try:
+            user = User.objects.get(id=input.user_id)
+            organization = info.context.context.get("organization")
+            role = Role.objects.get(id=input.role_id)
+
+            # Check if the membership already exists
+            membership = OrganizationMembership.objects.get(
+                user=user, organization=organization, role=role
+            )
+            membership.delete()
+            return SuccessResponse(
+                success=True, message="User removed from organization"
+            )
+        except User.DoesNotExist:
+            raise ValueError(f"User with ID {input.user_id} does not exist.")
+        except Role.DoesNotExist:
+            raise ValueError(f"Role with ID {input.role_id} does not exist.")
+        except OrganizationMembership.DoesNotExist:
+            raise ValueError(
+                f"User {input.user_id} is not a member of organization {organization.id}"
+            )
 
     @strawberry.mutation
     def assign_dataset_permission(
