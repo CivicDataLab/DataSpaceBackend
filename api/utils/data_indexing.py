@@ -280,8 +280,6 @@ def get_preview_data(resource: Resource) -> Optional[PreviewData]:
                 data = cursor.fetchall()
                 # Convert tuples to lists
                 rows = [list(row) for row in data]
-                if not rows:
-                    return None
                 return PreviewData(columns=columns, rows=rows)
             except Exception as query_error:
                 logger.error(

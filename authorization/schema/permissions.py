@@ -36,14 +36,14 @@ class HasOrganizationAdminRole(BasePermission):
             return True
 
         # For adding user to organization, check if the user is an admin
-        organization_id = kwargs.get("organization_id")
-        if not organization_id:
+        organization = info.context.context.get("organization")
+        if not organization:
             return False
 
         try:
             # Check if the user is an admin of the organization
             membership = OrganizationMembership.objects.get(
-                user=info.context.user, organization_id=organization_id
+                user=info.context.user, organization=organization
             )
             return membership.role.name == "admin"
         except OrganizationMembership.DoesNotExist:
