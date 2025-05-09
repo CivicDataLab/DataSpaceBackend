@@ -141,8 +141,10 @@ class ChartDataPermission(BasePermission):
                 # Check if user has specific dataset permissions
                 dataset_perm = DatasetPermission.objects.filter(
                     user=user, dataset=dataset
-                ).exists()
-                return dataset_perm.role.can_view  # type: ignore
+                ).first()
+                if dataset_perm:
+                    return dataset_perm.role.can_view
+                return False
 
             # For  all datasets' charts, require authentication
             if not user or not user.is_authenticated:
@@ -151,9 +153,10 @@ class ChartDataPermission(BasePermission):
             # Check if user is a member of the dataset's organization
             org_member = OrganizationMembership.objects.filter(
                 user=user, organization=organization
-            ).exists()
-
-            return org_member.role.can_view  # type: ignore
+            ).first()
+            if org_member:
+                return org_member.role.can_view
+            return False
 
         except Dataset.DoesNotExist:
             return False
