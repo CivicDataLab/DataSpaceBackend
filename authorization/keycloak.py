@@ -484,8 +484,9 @@ class KeycloakManager:
                 }
 
                 # Direct API call to update user
+                base_url = self.server_url.rstrip("/")  # Remove any trailing slash
                 response = requests.put(
-                    f"{self.server_url}/admin/realms/{self.realm}/users/{user.keycloak_id}",
+                    f"{base_url}/admin/realms/{self.realm}/users/{user.keycloak_id}",
                     headers=headers,
                     json=user_data,
                 )
