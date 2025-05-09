@@ -2,6 +2,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.text import slugify
 
+from api.utils.file_paths import _user_profile_image_directory_path
+
 
 class Role(models.Model):
     """
@@ -43,7 +45,7 @@ class User(AbstractUser):
     # Additional user profile fields
     bio = models.TextField(blank=True, null=True)
     profile_picture = models.ImageField(
-        upload_to="profile_pictures/", blank=True, null=True
+        upload_to=_user_profile_image_directory_path, blank=True, null=True
     )
 
     class Meta:
