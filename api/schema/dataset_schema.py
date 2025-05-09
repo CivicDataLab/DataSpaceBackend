@@ -350,25 +350,35 @@ class Query:
     )
     @trace_resolver(name="get_chart_data", attributes={"component": "dataset"})
     def get_chart_data(
-        self, info: Info, dataset_id: uuid.UUID
+        self, info: Info, dataset_id: Optional[uuid.UUID]
     ) -> List[Union[TypeResourceChartImage, TypeResourceChart]]:
         # Check if the dataset exists
-        try:
-            dataset = Dataset.objects.get(id=dataset_id)
-        except Dataset.DoesNotExist:
-            raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
-
-        # Fetch ResourceChartImage for the dataset
-        chart_images = list(
-            ResourceChartImage.objects.filter(dataset_id=dataset_id).order_by(
-                "modified"
+        if dataset_id:
+            try:
+                dataset = Dataset.objects.get(id=dataset_id)
+                # Fetch ResourceChartImage for the dataset
+                chart_images = list(
+                    ResourceChartImage.objects.filter(dataset_id=dataset_id).order_by(
+                        "modified"
+                    )
+                )
+                resource_ids = Resource.objects.filter(
+                    dataset_id=dataset_id
+                ).values_list("id", flat=True)
+            except Dataset.DoesNotExist:
+                raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
+        else:
+            organization = info.context.context.get("organization")
+            chart_images = list(
+                ResourceChartImage.objects.filter(
+                    dataset__organization=organization
+                ).order_by("modified")
             )
-        )
+            resource_ids = Resource.objects.filter(
+                dataset__organization=organization
+            ).values_list("id", flat=True)
 
-        # Fetch ResourceChartDetails based on the related Resource in the same dataset
-        resource_ids = Resource.objects.filter(dataset_id=dataset_id).values_list(
-            "id", flat=True
-        )
+        # Fetch ResourceChartDetails based on the related Resources
         chart_details = list(
             ResourceChartDetails.objects.filter(resource_id__in=resource_ids).order_by(
                 "modified"
