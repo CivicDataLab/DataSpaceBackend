@@ -114,7 +114,7 @@ class Query:
         # Get users belonging to this organization
         users = User.objects.filter(organizations=organization).distinct()
 
-        # Get all memberships for these users in the current organization in a single query
+        # Get all memberships for these users in the current organization
         memberships = OrganizationMembership.objects.filter(
             user__in=users, organization=organization
         )

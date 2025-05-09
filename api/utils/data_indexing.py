@@ -278,7 +278,9 @@ def get_preview_data(resource: Resource) -> Optional[PreviewData]:
 
                 columns = [desc[0] for desc in cursor.description]
                 data = cursor.fetchall()
-                return PreviewData(columns=columns, rows=data)
+                # Convert tuples to lists
+                rows = [list(row) for row in data]
+                return PreviewData(columns=columns, rows=rows)
             except Exception as query_error:
                 logger.error(
                     f"Query timeout or error for resource {resource.id}: {str(query_error)}"
