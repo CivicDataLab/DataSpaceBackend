@@ -144,7 +144,7 @@ class Mutation:
         result = AuthorizationService.assign_user_to_organization(
             user_id=input.user_id,
             organization=organization,
-            role_name=input.role_name,
+            role_id=input.role_id,
         )
 
         if result:
@@ -191,7 +191,7 @@ class Mutation:
         result = AuthorizationService.assign_user_to_dataset(
             user_id=input.user_id,
             dataset_id=input.dataset_id,
-            role_name=input.role_name,
+            role_id=input.role_id,
         )
 
         if result:

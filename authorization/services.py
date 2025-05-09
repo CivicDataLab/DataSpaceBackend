@@ -175,7 +175,7 @@ class AuthorizationService:
     def assign_user_to_organization(
         user_id: Union[int, str],
         organization: Organization,
-        role_name: str = "viewer",
+        role_id: Union[int, str],
     ) -> bool:
         """
         Assign a user to an organization with a specific role.
@@ -183,14 +183,14 @@ class AuthorizationService:
         Args:
             user_id: The ID of the user
             organization_id: The ID of the organization
-            role_name: The name of the role to assign (default: viewer)
+            role_id: The ID of the role to assign
 
         Returns:
             Boolean indicating success
         """
         try:
             user = User.objects.get(id=user_id)  # type: ignore[arg-type,misc]
-            role = Role.objects.get(name=role_name)
+            role = Role.objects.get(id=role_id)
 
             # Create or update the membership
             OrganizationMembership.objects.update_or_create(
@@ -205,7 +205,7 @@ class AuthorizationService:
     @staticmethod
     @transaction.atomic
     def assign_user_to_dataset(
-        user_id: Union[int, str], dataset_id: Union[int, str], role_name: str = "viewer"
+        user_id: Union[int, str], dataset_id: Union[int, str], role_id: Union[int, str]
     ) -> bool:
         """
         Assign a user to a dataset with a specific role.
@@ -213,7 +213,7 @@ class AuthorizationService:
         Args:
             user_id: The ID of the user
             dataset_id: The ID of the dataset
-            role_name: The name of the role to assign (default: viewer)
+            role_id: The ID of the role to assign
 
         Returns:
             Boolean indicating success
@@ -221,7 +221,7 @@ class AuthorizationService:
         try:
             user = User.objects.get(id=user_id)  # type: ignore[arg-type,misc]
             dataset = Dataset.objects.get(id=dataset_id)  # type: ignore[arg-type,misc]
-            role = Role.objects.get(name=role_name)
+            role = Role.objects.get(id=role_id)
 
             # Create or update the dataset permission
             DatasetPermission.objects.update_or_create(

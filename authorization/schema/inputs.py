@@ -28,11 +28,11 @@ class AddUserToOrganizationInput:
 @strawberry.input
 class AssignOrganizationRoleInput:
     user_id: strawberry.ID
-    role_name: str
+    role_id: strawberry.ID
 
 
 @strawberry.input
 class AssignDatasetPermissionInput:
     user_id: strawberry.ID
     dataset_id: strawberry.ID
-    role_name: str
+    role_id: strawberry.ID
