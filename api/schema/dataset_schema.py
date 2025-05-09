@@ -83,8 +83,23 @@ class AllowPublishedDatasets(BasePermission):
                 except Dataset.DoesNotExist:
                     pass  # Let the resolver handle the non-existent dataset
 
-            # For non-published datasets, require authentication
-            return hasattr(request, "user") and request.user.is_authenticated
+                # For non-published datasets, require authentication
+                user = request.user
+                if not user.is_authenticated:
+                    return False
+                if user.is_superuser:
+                    return True
+                dataset_perm = DatasetPermission.objects.filter(
+                    user=user, dataset=dataset
+                ).first()
+                if dataset_perm:
+                    return dataset_perm.role.can_view
+                org_perm = OrganizationMembership.objects.filter(
+                    user=user, organization=dataset.organization
+                ).first()
+                if org_perm:
+                    return org_perm.role.can_view
+                return False
 
         # For queries/mutations that have a source (e.g., accessing a dataset object)
         if hasattr(source, "status"):
@@ -347,6 +362,18 @@ class Query:
             queryset = strawberry_django.pagination.apply(pagination, queryset)
 
         return TypeDataset.from_django_list(queryset)
+
+    @strawberry.field(
+        permission_classes=[AllowPublishedDatasets],  # type: ignore[list-item]
+    )
+    @trace_resolver(name="get_dataset", attributes={"component": "dataset"})
+    def get_dataset(self, info: Info, dataset_id: uuid.UUID) -> Optional[TypeDataset]:
+        """Get a dataset by ID."""
+        try:
+            dataset = Dataset.objects.get(id=dataset_id)
+            return TypeDataset.from_django(dataset)
+        except Dataset.DoesNotExist:
+            return None
 
     @strawberry.field(
         permission_classes=[ChartDataPermission],  # type: ignore[list-item]
