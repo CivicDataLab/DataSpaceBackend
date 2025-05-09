@@ -107,35 +107,38 @@ class ChartDataPermission(BasePermission):
         request = info.context
         dataset_id = kwargs.get("dataset_id")
 
-        if not dataset_id:
-            return False
-
         try:
-            dataset = Dataset.objects.get(id=dataset_id)
-
-            # Allow access to published datasets for everyone
-            if dataset.status == DatasetStatus.PUBLISHED.value:
-                return True
-
-            # For non-published datasets, require authentication
-            if not hasattr(request, "user") or not request.user.is_authenticated:
-                return False
-
+            organization = info.context.context.get("organization")
+            user = request.user
             # Superusers have access to everything
-            if request.user.is_superuser:
+            if user.is_superuser:
                 return True
+            if dataset_id:
+                dataset = Dataset.objects.get(id=dataset_id)
+                # Allow access to published datasets for everyone
+                if dataset.status == DatasetStatus.PUBLISHED.value:
+                    return True
+                if not user or not user.is_authenticated:
+                    return False
+                # Check if user owns the dataset
+                if dataset.user and dataset.user == user:
+                    return True
+                # Check if user has specific dataset permissions
+                dataset_perm = DatasetPermission.objects.filter(
+                    user=user, dataset=dataset
+                ).exists()
+                return dataset_perm.role.can_view  # type: ignore
+
+            # For  all datasets' charts, require authentication
+            if not user or not user.is_authenticated:
+                return False
 
             # Check if user is a member of the dataset's organization
             org_member = OrganizationMembership.objects.filter(
-                user=request.user, organization=dataset.organization
+                user=user, organization=organization
             ).exists()
 
-            # Check if user has specific dataset permissions
-            dataset_perm = DatasetPermission.objects.filter(
-                user=request.user, dataset=dataset
-            ).exists()
-
-            return org_member or dataset_perm
+            return org_member.role.can_view  # type: ignore
 
         except Dataset.DoesNotExist:
             return False
