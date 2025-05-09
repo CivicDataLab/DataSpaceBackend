@@ -32,7 +32,7 @@ class KeycloakManager:
         self.client_secret: str = settings.KEYCLOAK_CLIENT_SECRET
 
         # Log Keycloak connection details (without secrets)
-        logger.info(
+        logger.debug(
             f"Initializing Keycloak connection to {self.server_url} "
             f"for realm {self.realm} and client {self.client_id}"
         )
@@ -45,7 +45,7 @@ class KeycloakManager:
                 client_secret_key=self.client_secret,
             )
 
-            logger.info("Keycloak client initialized successfully")
+            logger.debug("Keycloak client initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Keycloak client: {e}")
             # Use cast to satisfy the type checker
@@ -91,7 +91,7 @@ class KeycloakManager:
             logger.debug("Attempting to get user info from Keycloak")
             user_info = self.keycloak_openid.userinfo(token)
             if user_info and isinstance(user_info, dict):
-                logger.info("Successfully retrieved user info from Keycloak")
+                logger.debug("Successfully retrieved user info from Keycloak")
                 logger.debug(f"User info: {user_info}")
                 return user_info
             else:
@@ -311,7 +311,7 @@ class KeycloakManager:
                 if email:
                     try:
                         user = User.objects.get(email=email)
-                        logger.info(f"Found existing user by email: {user.username}")
+                        logger.debug(f"Found existing user by email: {user.username}")
 
                         # Update keycloak_id and other details
                         user.keycloak_id = str(keycloak_id) if keycloak_id else ""  # type: ignore[assignment]
@@ -469,7 +469,7 @@ class KeycloakManager:
             # Update the user using KeycloakAdmin
             keycloak_admin.update_user(user_id=user.keycloak_id, payload=user_data)
 
-            logger.info(f"Successfully updated user {user.username} in Keycloak")
+            logger.debug(f"Successfully updated user {user.username} in Keycloak")
             return True
 
         except Exception as e:
