@@ -444,6 +444,8 @@ class KeycloakManager:
             realm = self.realm
             client_id = getattr(settings, "KEYCLOAK_CLIENT_ID", None)
             client_secret = getattr(settings, "KEYCLOAK_CLIENT_SECRET", None)
+            admin_username = getattr(settings, "KEYCLOAK_ADMIN_USERNAME", None)
+            admin_password = getattr(settings, "KEYCLOAK_ADMIN_PASSWORD", None)
 
             if not client_id or not client_secret:
                 logger.error("Keycloak client credentials not configured in settings")
@@ -453,6 +455,8 @@ class KeycloakManager:
             keycloak_admin = KeycloakAdmin(
                 server_url=server_url,
                 realm_name=realm,
+                username=admin_username,
+                password=admin_password,
                 client_id=client_id,
                 client_secret_key=client_secret,
                 verify=True,
