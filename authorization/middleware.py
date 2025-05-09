@@ -141,7 +141,7 @@ class KeycloakAuthenticationMiddleware:
             return self.get_response(request)
 
         # Debug request headers
-        debug_auth_headers(request)
+        # debug_auth_headers(request)
 
         # Process the request before the view is called
         if not hasattr(request, "user") or request.user.is_anonymous:
