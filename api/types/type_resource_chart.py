@@ -96,6 +96,7 @@ class ChartOptionsType(BaseType):
     aggregate_type: Optional[str]
     orientation: Optional[str]
     allow_multi_series: Optional[bool]
+    stacked: Optional[bool]
 
 
 class ChartOptionsTypeDict(TypedDict, total=False):
@@ -206,6 +207,7 @@ class TypeResourceChart(BaseType):
                 aggregate_type=options_dict.get("aggregate_type"),
                 orientation=options_dict.get("orientation", "vertical"),
                 allow_multi_series=options_dict.get("allow_multi_series", True),
+                stacked=options_dict.get("stacked", False),
             )
         except (AttributeError, KeyError):
             return None

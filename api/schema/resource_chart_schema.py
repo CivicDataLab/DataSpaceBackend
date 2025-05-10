@@ -72,6 +72,7 @@ class ChartOptions:
     aggregate_type: str = "none"
     orientation: str = "vertical"
     allow_multi_series: bool = True
+    stacked: bool = False
 
 
 @strawberry.input

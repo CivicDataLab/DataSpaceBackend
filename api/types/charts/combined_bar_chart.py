@@ -113,9 +113,15 @@ class CombinedChart(BaseChart):
                 chart, series_name, y_values, color, value_mapping
             )
             # Add bar-specific options
-            chart.options["series"][-1].update(
-                {"barGap": "30%", "barCategoryGap": "20%"}
-            )
+            bar_options = {"barGap": "30%", "barCategoryGap": "20%"}
+
+            # Add stack option if stacked bar is enabled
+            is_stacked = self.options.get("stacked", False)
+
+            if is_stacked and self._is_multi_series():
+                bar_options["stack"] = "total"
+
+            chart.options["series"][-1].update(bar_options)
 
         # For line charts, use specialized line styling
         elif self.chart_details.chart_type == "LINE":
@@ -163,6 +169,15 @@ class CombinedChart(BaseChart):
                 chart, series_name, y_values, color, value_mapping
             )
 
+    def _is_multi_series(self) -> bool:
+        """Determine if this chart has multiple series based on y-axis columns.
+
+        Returns:
+            bool: True if there are multiple y-axis columns, False otherwise.
+        """
+        y_axis_columns = self._get_y_axis_columns()
+        return len(y_axis_columns) > 1
+
     def map_value(self, value: float, value_mapping: Dict[str, str]) -> str:
         """Map a numeric value to its string representation.
 
@@ -205,11 +220,14 @@ class CombinedChart(BaseChart):
         y_axis_columns = self._get_y_axis_columns()
 
         # Determine if this is a multi-series chart based on y-axis columns count
-        is_multi_series = len(y_axis_columns) > 1
+        is_multi_series = self._is_multi_series()
 
         # For LINE chart type with single y-column, we always use all columns
         # For BAR chart type, we check the 'allow_multi_series' option
         allow_multi_series = self.options.get("allow_multi_series", True)
+
+        # Check if we should use stacked bar chart
+        is_stacked = self.options.get("stacked", False)
 
         # If it's a bar chart and multi-series is not allowed, use only the first column
         if (
