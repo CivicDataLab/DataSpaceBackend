@@ -113,12 +113,18 @@ class UseCaseRunningStatus(models.TextChoices):
 
 
 class ChartTypes(models.TextChoices):
+    # New simplified chart types
+    BAR = "BAR"
+    LINE = "LINE"
+
+    # Legacy chart types (kept for backward compatibility)
     BAR_VERTICAL = "BAR_VERTICAL"
     BAR_HORIZONTAL = "BAR_HORIZONTAL"
     GROUPED_BAR_VERTICAL = "GROUPED_BAR_VERTICAL"
     GROUPED_BAR_HORIZONTAL = "GROUPED_BAR_HORIZONTAL"
-    LINE = "LINE"
     MULTILINE = "MULTILINE"
+
+    # Map and other specialized charts
     ASSAM_DISTRICT = "ASSAM_DISTRICT"
     ASSAM_RC = "ASSAM_RC"
     TREEMAP = "TREEMAP"

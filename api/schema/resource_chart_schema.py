@@ -70,6 +70,8 @@ class ChartOptions:
     time_column: Optional[str] = None
     show_legend: bool = False
     aggregate_type: str = "none"
+    orientation: str = "vertical"
+    allow_multi_series: bool = True
 
 
 @strawberry.input
