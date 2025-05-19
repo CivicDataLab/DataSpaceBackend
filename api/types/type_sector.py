@@ -18,13 +18,8 @@ class SectorFilter:
     slug: auto
     name: auto
 
-    # Search field for filtering sectors by name or description
-    search: Optional[str] = strawberry.field(
-        default=None,
-        description="Search sectors by name or description",
-    )
-
-    def filter_search(self, queryset: Any, value: Optional[str]) -> Any:
+    @strawberry_django.filter_field
+    def search(self, queryset: Any, value: Optional[str]) -> Any:
         # Skip filtering if no search term provided
         if value is None or value.strip() == "":
             return queryset
@@ -35,51 +30,41 @@ class SectorFilter:
             Q(name__icontains=search_term) | Q(description__icontains=search_term)
         )
 
-    # Filter by minimum dataset count
-    min_dataset_count: Optional[int] = strawberry.field(
-        default=None,
-        description="Filter sectors with at least this many published datasets",
-    )
-
-    # Filter by maximum dataset count
-    max_dataset_count: Optional[int] = strawberry.field(
-        default=None,
-        description="Filter sectors with at most this many published datasets",
-    )
-
-    def filter_min_dataset_count(self, queryset: Any, value: Optional[int]) -> Any:
+    @strawberry_django.filter_field
+    def min_dataset_count(self, queryset: Any, value: Optional[int]) -> Any:
         # Skip filtering if no value provided
         if value is None:
             return queryset
 
-        # Get IDs of sectors with at least 'value' datasets
-        sector_ids = []
-        for sector in queryset:
-            published_count = sector.datasets.filter(
-                status=DatasetStatus.PUBLISHED
-            ).count()
-            if published_count >= value:
-                sector_ids.append(sector.id)
+        # Annotate queryset with dataset count
+        queryset = queryset.annotate(
+            _dataset_count=Count(
+                "datasets",
+                filter=Q(datasets__status=DatasetStatus.PUBLISHED),
+                distinct=True,
+            )
+        )
 
-        # Return filtered queryset
-        return queryset.filter(id__in=sector_ids)
+        # Filter by minimum count
+        return queryset.filter(_dataset_count__gte=value)
 
-    def filter_max_dataset_count(self, queryset: Any, value: Optional[int]) -> Any:
+    @strawberry_django.filter_field
+    def max_dataset_count(self, queryset: Any, value: Optional[int]) -> Any:
         # Skip filtering if no value provided
         if value is None:
             return queryset
 
-        # Get IDs of sectors with at most 'value' datasets
-        sector_ids = []
-        for sector in queryset:
-            published_count = sector.datasets.filter(
-                status=DatasetStatus.PUBLISHED
-            ).count()
-            if published_count <= value:
-                sector_ids.append(sector.id)
+        # Annotate queryset with dataset count
+        queryset = queryset.annotate(
+            _dataset_count=Count(
+                "datasets",
+                filter=Q(datasets__status=DatasetStatus.PUBLISHED),
+                distinct=True,
+            )
+        )
 
-        # Return filtered queryset
-        return queryset.filter(id__in=sector_ids)
+        # Filter by maximum count
+        return queryset.filter(_dataset_count__lte=value)
 
 
 @strawberry_django.order(Sector)
