@@ -19,7 +19,7 @@ class SectorFilter:
     name: auto
 
     @strawberry_django.filter_field
-    def search(self, queryset: Any, value: Optional[str]) -> Any:
+    def search(self, queryset: Any, value: Optional[str], prefix: str) -> Any:  # type: ignore
         # Skip filtering if no search term provided
         if value is None or value.strip() == "":
             return queryset
@@ -27,11 +27,12 @@ class SectorFilter:
         # Search in name and description fields
         search_term = value.strip()
         return queryset.filter(
-            Q(name__icontains=search_term) | Q(description__icontains=search_term)
+            Q(**{f"{prefix}name__icontains": search_term})
+            | Q(**{f"{prefix}description__icontains": search_term})
         )
 
     @strawberry_django.filter_field
-    def min_dataset_count(self, queryset: Any, value: Optional[int]) -> Any:
+    def min_dataset_count(self, queryset: Any, value: Optional[int], prefix: str) -> Any:  # type: ignore
         # Skip filtering if no value provided
         if value is None:
             return queryset
@@ -39,7 +40,7 @@ class SectorFilter:
         # Annotate queryset with dataset count
         queryset = queryset.annotate(
             _dataset_count=Count(
-                "datasets",
+                f"{prefix}datasets",
                 filter=Q(datasets__status=DatasetStatus.PUBLISHED),
                 distinct=True,
             )
@@ -49,7 +50,7 @@ class SectorFilter:
         return queryset.filter(_dataset_count__gte=value)
 
     @strawberry_django.filter_field
-    def max_dataset_count(self, queryset: Any, value: Optional[int]) -> Any:
+    def max_dataset_count(self, queryset: Any, value: Optional[int], prefix: str) -> Any:  # type: ignore
         # Skip filtering if no value provided
         if value is None:
             return queryset
@@ -57,7 +58,7 @@ class SectorFilter:
         # Annotate queryset with dataset count
         queryset = queryset.annotate(
             _dataset_count=Count(
-                "datasets",
+                f"{prefix}datasets",
                 filter=Q(datasets__status=DatasetStatus.PUBLISHED),
                 distinct=True,
             )
