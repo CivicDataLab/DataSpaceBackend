@@ -65,21 +65,29 @@ class SectorFilter:
         return queryset.filter(id__in=sector_ids)
 
 
+# Define enum for ordering direction
+@strawberry.enum
+class OrderingEnum(Enum):
+    ASC = "ASC"
+    DESC = "DESC"
+
+
 @strawberry_django.order(Sector)
 class SectorOrder:
     name: auto
 
-    dataset_count: Optional[str] = strawberry.field(
+    # Use the enum for ordering
+    dataset_count: Optional[OrderingEnum] = strawberry.field(
         default=None, description="Order sectors by dataset count"
     )
 
-    def order_dataset_count(self, queryset: Any, value: Optional[str]) -> Any:
+    def order_dataset_count(self, queryset: Any, value: Optional[OrderingEnum]) -> Any:  # type: ignore
         # Skip ordering if no value provided
         if value is None:
             return queryset
 
         # Determine ordering direction
-        reverse_order = value.startswith("-")
+        reverse_order = value == OrderingEnum.DESC
 
         # Get all sectors with their dataset counts
         sectors_with_counts = []
