@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any, List, Optional, Tuple
 
 import strawberry
@@ -64,37 +65,62 @@ class SectorFilter:
         return queryset.filter(id__in=sector_ids)
 
 
+@strawberry.enum
+class DatasetCountOrdering(Enum):
+    ASC = "asc"
+    DESC = "desc"
+
+
 @strawberry_django.order(Sector)
 class SectorOrder:
     name: auto
 
-    dataset_count: Optional[strawberry_django.Ordering] = strawberry.field(
+    dataset_count: Optional[DatasetCountOrdering] = strawberry.field(
         default=None, description="Order sectors by dataset count"
     )
 
-    @strawberry_django.order_field
     def order_dataset_count(
-        self,
-        queryset: Any,
-        value: strawberry_django.Ordering,
-        prefix: str,
-    ) -> tuple[Any, list[str]]:
-        # Annotate queryset with dataset count
-        queryset = queryset.annotate(
-            _dataset_count=Count(
-                f"{prefix}datasets",
-                filter=Q(datasets__status=DatasetStatus.PUBLISHED),
-                distinct=True,
+        self, queryset: Any, value: Optional[DatasetCountOrdering]
+    ) -> Any:
+        # Skip ordering if no value provided
+        if value is None:
+            return queryset
+
+        # Determine ordering direction
+        reverse_order = value == DatasetCountOrdering.DESC
+
+        # Get all sectors with their dataset counts
+        sectors_with_counts = []
+        for sector in queryset:
+            published_count = sector.datasets.filter(
+                status=DatasetStatus.PUBLISHED
+            ).count()
+            sectors_with_counts.append((sector.id, published_count))
+
+        # Sort by dataset count
+        sorted_sector_ids = [
+            sector_id
+            for sector_id, count in sorted(
+                sectors_with_counts, key=lambda x: x[1], reverse=reverse_order
             )
+        ]
+
+        # If no sectors to order, return original queryset
+        if not sorted_sector_ids:
+            return queryset
+
+        # Use Case/When for preserving the sorted order
+        from django.db.models import Case, IntegerField, Value, When
+
+        # Create a list of When objects for ordering
+        whens = [When(id=pk, then=Value(i)) for i, pk in enumerate(sorted_sector_ids)]
+
+        # Apply the Case/When ordering
+        return (
+            queryset.filter(id__in=sorted_sector_ids)
+            .annotate(_order=Case(*whens, output_field=IntegerField()))
+            .order_by("_order")
         )
-
-        # Determine ordering direction based on the value
-        order_field = f"{prefix}_dataset_count"
-        if value == strawberry_django.Ordering.DESC:
-            order_field = f"-{order_field}"
-
-        # Return the annotated queryset and ordering instructions as strings
-        return queryset, [order_field]
 
 
 @strawberry_django.type(
