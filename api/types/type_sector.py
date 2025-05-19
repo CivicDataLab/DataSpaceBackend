@@ -26,10 +26,14 @@ class SectorFilter:
 
         # Search in name and description fields
         search_term = value.strip()
-        return queryset.filter(
-            Q(**{f"{prefix}name__icontains": search_term})
-            | Q(**{f"{prefix}description__icontains": search_term})
+
+        # Use direct field names without prefix for simple queries
+        # This is more reliable and aligns with preference for runtime execution
+        filtered = queryset.filter(
+            Q(name__icontains=search_term) | Q(description__icontains=search_term)
         )
+
+        return filtered
 
     @strawberry_django.filter_field
     def min_dataset_count(self, queryset: Any, value: Optional[int], prefix: str) -> Any:  # type: ignore
@@ -40,7 +44,7 @@ class SectorFilter:
         # Annotate queryset with dataset count
         queryset = queryset.annotate(
             _dataset_count=Count(
-                f"{prefix}datasets",
+                "datasets",
                 filter=Q(datasets__status=DatasetStatus.PUBLISHED),
                 distinct=True,
             )
@@ -58,7 +62,7 @@ class SectorFilter:
         # Annotate queryset with dataset count
         queryset = queryset.annotate(
             _dataset_count=Count(
-                f"{prefix}datasets",
+                "datasets",
                 filter=Q(datasets__status=DatasetStatus.PUBLISHED),
                 distinct=True,
             )
