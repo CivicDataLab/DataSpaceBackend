@@ -228,8 +228,9 @@ def get_row_count(resource: Resource) -> int:
     except Exception as e:
         import traceback
 
+        error_tb = traceback.format_exc()
         logger.error(
-            f"Error getting row count for resource {resource.id}: {str(e)}, traceback: {traceback.format_exc()}"
+            f"Error getting row count for resource {resource.id}:\n{str(e)}\n{error_tb}"
         )
         return 0
 

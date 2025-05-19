@@ -77,20 +77,41 @@ class SectorOrder:
         if value is None:
             return queryset
 
-        # Use annotation to add dataset_count field to queryset
-        queryset = queryset.annotate(
-            dataset_count=Count(
-                "datasets", filter=Q(datasets__status=DatasetStatus.PUBLISHED)
-            )
-        )
-
         # Determine ordering direction
-        order_field = "dataset_count"
-        if value.startswith("-"):
-            order_field = f"-{order_field}"
+        reverse_order = value.startswith("-")
 
-        # Return ordered queryset
-        return queryset.order_by(order_field)
+        # Get all sectors with their dataset counts
+        sectors_with_counts = []
+        for sector in queryset:
+            published_count = sector.datasets.filter(
+                status=DatasetStatus.PUBLISHED
+            ).count()
+            sectors_with_counts.append((sector.id, published_count))
+
+        # Sort by dataset count
+        sorted_sector_ids = [
+            sector_id
+            for sector_id, count in sorted(
+                sectors_with_counts, key=lambda x: x[1], reverse=reverse_order
+            )
+        ]
+
+        # If no sectors to order, return original queryset
+        if not sorted_sector_ids:
+            return queryset
+
+        # Create a Case/When expression for preserving the sorted order
+        from django.db.models import Case, IntegerField, Value, When
+
+        # Create a list of When objects for ordering
+        whens = [When(id=pk, then=Value(i)) for i, pk in enumerate(sorted_sector_ids)]
+
+        # Apply the Case/When ordering
+        return (
+            queryset.filter(id__in=sorted_sector_ids)
+            .annotate(_order=Case(*whens, output_field=IntegerField()))
+            .order_by("_order")
+        )
 
 
 @strawberry_django.type(
