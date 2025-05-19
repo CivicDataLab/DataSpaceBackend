@@ -70,7 +70,7 @@ class SectorOrder:
     name: auto
 
     @strawberry_django.order_field
-    def dataset_count(self, queryset: Any, value: Optional[str]) -> Any:  # type: ignore
+    def dataset_count(self, queryset: Any, value: Optional[str], prefix: str) -> Any:  # type: ignore
         # Skip ordering if no value provided
         if value is None:
             return queryset
