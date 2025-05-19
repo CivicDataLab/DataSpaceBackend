@@ -36,19 +36,17 @@ class SectorFilter:
         if value is None:
             return queryset, Q()
 
-        # Get IDs of sectors with at least 'value' datasets
-        sector_ids = []
-        for sector in queryset:
-            count = sector.datasets.filter(status=DatasetStatus.PUBLISHED).count()
-            if count >= value:
-                sector_ids.append(sector.id)
-
-        # Return appropriate filter
-        return queryset, (
-            Q(**{f"{prefix}id__in": sector_ids})
-            if sector_ids
-            else ~Q(**{f"{prefix}pk__isnull": False})
+        # Annotate queryset with dataset count
+        queryset = queryset.annotate(
+            _dataset_count=Count(
+                "datasets",
+                filter=Q(datasets__status=DatasetStatus.PUBLISHED),
+                distinct=True,
+            )
         )
+
+        # Return queryset with filter
+        return queryset, Q(**{f"{prefix}_dataset_count__gte": value})
 
     @strawberry_django.filter_field
     def max_dataset_count(self, queryset: Any, value: Optional[int], prefix: str) -> tuple[Any, Q]:  # type: ignore
@@ -56,19 +54,17 @@ class SectorFilter:
         if value is None:
             return queryset, Q()
 
-        # Get IDs of sectors with at most 'value' datasets
-        sector_ids = []
-        for sector in queryset:
-            count = sector.datasets.filter(status=DatasetStatus.PUBLISHED).count()
-            if count <= value:
-                sector_ids.append(sector.id)
-
-        # Return appropriate filter
-        return queryset, (
-            Q(**{f"{prefix}id__in": sector_ids})
-            if sector_ids
-            else ~Q(**{f"{prefix}pk__isnull": False})
+        # Annotate queryset with dataset count
+        queryset = queryset.annotate(
+            _dataset_count=Count(
+                "datasets",
+                filter=Q(datasets__status=DatasetStatus.PUBLISHED),
+                distinct=True,
+            )
         )
+
+        # Return queryset with filter
+        return queryset, Q(**{f"{prefix}_dataset_count__lte": value})
 
 
 @strawberry_django.order(Sector)
