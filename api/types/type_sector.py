@@ -19,17 +19,19 @@ class SectorFilter:
     name: auto
 
     @strawberry_django.filter_field
-    def search(self, value: Optional[str]) -> Q:  # type: ignore
+    def search(self, value: Optional[str], prefix: str) -> Q:  # type: ignore
         # Skip filtering if no value provided
         if not value or not value.strip():
             return Q()
 
         # Search in name and description fields
         search_term = value.strip()
-        return Q(name__icontains=search_term) | Q(description__icontains=search_term)
+        return Q(**{f"{prefix}name__icontains": search_term}) | Q(
+            **{f"{prefix}description__icontains": search_term}
+        )
 
     @strawberry_django.filter_field
-    def min_dataset_count(self, queryset: Any, value: Optional[int]) -> tuple[Any, Q]:  # type: ignore
+    def min_dataset_count(self, queryset: Any, value: Optional[int], prefix: str) -> tuple[Any, Q]:  # type: ignore
         # Skip filtering if no value provided
         if value is None:
             return queryset, Q()
@@ -42,10 +44,14 @@ class SectorFilter:
                 sector_ids.append(sector.id)
 
         # Return appropriate filter
-        return queryset, Q(id__in=sector_ids) if sector_ids else ~Q(pk__isnull=False)
+        return queryset, (
+            Q(**{f"{prefix}id__in": sector_ids})
+            if sector_ids
+            else ~Q(**{f"{prefix}pk__isnull": False})
+        )
 
     @strawberry_django.filter_field
-    def max_dataset_count(self, queryset: Any, value: Optional[int]) -> tuple[Any, Q]:  # type: ignore
+    def max_dataset_count(self, queryset: Any, value: Optional[int], prefix: str) -> tuple[Any, Q]:  # type: ignore
         # Skip filtering if no value provided
         if value is None:
             return queryset, Q()
@@ -58,7 +64,11 @@ class SectorFilter:
                 sector_ids.append(sector.id)
 
         # Return appropriate filter
-        return queryset, Q(id__in=sector_ids) if sector_ids else ~Q(pk__isnull=False)
+        return queryset, (
+            Q(**{f"{prefix}id__in": sector_ids})
+            if sector_ids
+            else ~Q(**{f"{prefix}pk__isnull": False})
+        )
 
 
 @strawberry_django.order(Sector)
