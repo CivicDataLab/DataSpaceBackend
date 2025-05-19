@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, cast
 
 import strawberry
 import strawberry_django
@@ -10,6 +10,12 @@ from strawberry.types import Info
 from api.models import Sector
 from api.types.base_type import BaseType
 from api.utils.enums import DatasetStatus
+
+
+@strawberry.enum
+class OrderDirection(Enum):
+    ASC = "ASC"
+    DESC = "DESC"
 
 
 @strawberry_django.filter(Sector)
@@ -72,23 +78,23 @@ class SectorOrder:
     name: auto
 
     @strawberry_django.order_field
-    def dataset_count(self, queryset: Any, value: Optional[str], prefix: str) -> tuple[Any, list[str]]:  # type: ignore
+    def dataset_count(self, queryset: Any, value: Optional[OrderDirection], prefix: str) -> tuple[Any, list[str]]:  # type: ignore
         # Skip ordering if no value provided
         if value is None:
             return queryset, []
 
-        # Annotate queryset with dataset count
+        # Annotate queryset with dataset count - use prefix for proper relationship traversal
         queryset = queryset.annotate(
             _dataset_count=Count(
                 f"{prefix}datasets",
-                filter=Q(datasets__status=DatasetStatus.PUBLISHED),
+                filter=Q(**{f"{prefix}datasets__status": DatasetStatus.PUBLISHED}),
                 distinct=True,
             )
         )
 
-        # Determine ordering direction and field
+        # Determine ordering direction based on enum value
         order_field = "_dataset_count"
-        if value.startswith("-"):
+        if value == OrderDirection.DESC:
             order_field = f"-{order_field}"
 
         # Return the annotated queryset and ordering instructions
