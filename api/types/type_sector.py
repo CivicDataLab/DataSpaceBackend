@@ -77,29 +77,20 @@ class SectorOrder:
         if value is None:
             return queryset
 
-        # Get all sectors with their dataset counts
-        sectors_with_counts = []
-        for sector in queryset:
-            published_count = sector.datasets.filter(
-                status=DatasetStatus.PUBLISHED
-            ).count()
-            sectors_with_counts.append((sector.id, published_count))
-
-        # Sort by dataset count
-        reverse_order = value.startswith("-")
-        sorted_sector_ids = [
-            sector_id
-            for sector_id, count in sorted(
-                sectors_with_counts, key=lambda x: x[1], reverse=reverse_order
+        # Use annotation to add dataset_count field to queryset
+        queryset = queryset.annotate(
+            dataset_count=Count(
+                "datasets", filter=Q(datasets__status=DatasetStatus.PUBLISHED)
             )
-        ]
+        )
 
-        # If no sectors to order, return original queryset
-        if not sorted_sector_ids:
-            return queryset
+        # Determine ordering direction
+        order_field = "dataset_count"
+        if value.startswith("-"):
+            order_field = f"-{order_field}"
 
         # Return ordered queryset
-        return queryset.filter(id__in=sorted_sector_ids).order_by("id")
+        return queryset.order_by(order_field)
 
 
 @strawberry_django.type(
