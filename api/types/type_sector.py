@@ -66,9 +66,11 @@ class SectorFilter:
 
 
 @strawberry.enum
-class DatasetCountOrdering(Enum):
-    ASC = "asc"
-    DESC = "desc"
+class DatasetCountOrdering(str, Enum):
+    """Ordering options for dataset count"""
+
+    ASC = "ASC"
+    DESC = "DESC"
 
 
 @strawberry_django.order(Sector)
