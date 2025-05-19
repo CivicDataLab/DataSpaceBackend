@@ -18,6 +18,23 @@ class SectorFilter:
     slug: auto
     name: auto
 
+    # Search field for filtering sectors by name or description
+    search: Optional[str] = strawberry.field(
+        default=None,
+        description="Search sectors by name or description",
+    )
+
+    def filter_search(self, queryset: Any, value: Optional[str]) -> Any:
+        # Skip filtering if no search term provided
+        if value is None or value.strip() == "":
+            return queryset
+
+        # Search in name and description fields
+        search_term = value.strip()
+        return queryset.filter(
+            Q(name__icontains=search_term) | Q(description__icontains=search_term)
+        )
+
     # Filter by minimum dataset count
     min_dataset_count: Optional[int] = strawberry.field(
         default=None,
