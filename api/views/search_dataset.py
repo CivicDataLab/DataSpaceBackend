@@ -67,6 +67,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
     slug = serializers.CharField()
     download_count = serializers.IntegerField()
     trending_score = serializers.FloatField(required=False)
+    is_individual_dataset = serializers.BooleanField()
 
     class OrganizationSerializer(serializers.Serializer):
         name = serializers.CharField()
@@ -91,6 +92,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
             "has_charts",
             "download_count",
             "trending_score",
+            "is_individual_dataset",
             "organization",
         ]
 

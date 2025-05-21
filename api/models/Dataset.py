@@ -124,6 +124,11 @@ class Dataset(models.Model):
         )
 
     @property
+    def is_individual_dataset(self) -> bool:
+        """Check if the dataset is an created by an individual."""
+        return self.organization is None and self.user is not None
+
+    @property
     def trending_score(self) -> float:
         """
         Calculate a trending score based on download count and recency.
