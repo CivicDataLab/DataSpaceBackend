@@ -10,6 +10,7 @@ from strawberry_django.mutations import mutations
 
 from api.models import Dataset, ResourceChartImage
 from api.types.type_resource_chart_image import TypeResourceChartImage
+from api.utils.enums import ChartStatus
 
 
 @strawberry_django.input(
@@ -101,6 +102,20 @@ class Mutation:
             dataset=dataset_obj,
         )
         return TypeResourceChartImage.from_django(image)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def publish_resource_chart_image(
+        self, info: Info, resource_chart_image_id: uuid.UUID
+    ) -> bool:
+        try:
+            image = ResourceChartImage.objects.get(id=resource_chart_image_id)
+            image.status = ChartStatus.PUBLISHED
+            image.save()
+            return True
+        except ResourceChartImage.DoesNotExist as e:
+            raise ValueError(
+                f"Resource Chart Image with ID {resource_chart_image_id} does not exist."
+            )
 
     @strawberry_django.mutation(handle_django_errors=False)
     def delete_resource_chart_image(

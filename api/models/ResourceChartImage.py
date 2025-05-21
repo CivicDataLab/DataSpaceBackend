@@ -2,6 +2,8 @@ import uuid
 
 from django.db import models
 
+from api.utils.enums import ChartStatus
+
 # Import the Dataset model indirectly to avoid duplicate import error
 from api.utils.file_paths import _chart_image_directory_path
 
@@ -21,6 +23,13 @@ class ResourceChartImage(models.Model):
         related_name="chart_images",
     )
     modified = models.DateTimeField(auto_now=True)
+    status = models.CharField(
+        max_length=50,
+        choices=ChartStatus.choices,
+        default=ChartStatus.DRAFT,
+        blank=False,
+        unique=False,
+    )
 
     def __str__(self) -> str:
         return self.name

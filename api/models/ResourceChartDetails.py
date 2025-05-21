@@ -5,7 +5,7 @@ from django.db import models
 from django.utils.text import slugify
 
 from api.models.SerializableJSONField import SerializableJSONField
-from api.utils.enums import ChartTypes
+from api.utils.enums import ChartStatus, ChartTypes
 
 if TYPE_CHECKING:
     from api.models.Resource import Resource
@@ -31,6 +31,13 @@ class ResourceChartDetails(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     filters = SerializableJSONField(blank=True, null=True, default=list)
+    status = models.CharField(
+        max_length=50,
+        choices=ChartStatus.choices,
+        default=ChartStatus.DRAFT,
+        blank=False,
+        unique=False,
+    )
 
     def __str__(self) -> str:
         """Return a string representation of the model."""

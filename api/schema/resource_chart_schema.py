@@ -9,7 +9,7 @@ from strawberry_django.mutations import mutations
 
 from api.models import Resource, ResourceChartDetails, ResourceSchema
 from api.types.type_resource_chart import TypeResourceChart
-from api.utils.enums import AggregateType, ChartTypes
+from api.utils.enums import AggregateType, ChartStatus, ChartTypes
 
 ChartTypeEnum = strawberry.enum(ChartTypes)
 AggregateTypeEnum = strawberry.enum(AggregateType)
@@ -219,6 +219,16 @@ class Mutation:
         try:
             chart = ResourceChartDetails.objects.get(id=chart_id)
             chart.delete()
+            return True
+        except ResourceChartDetails.DoesNotExist as e:
+            raise ValueError(f"Resource Chart with ID {chart_id} does not exist.")
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def publish_resource_chart(self, info: Info, chart_id: uuid.UUID) -> bool:
+        try:
+            chart = ResourceChartDetails.objects.get(id=chart_id)
+            chart.status = ChartStatus.PUBLISHED
+            chart.save()
             return True
         except ResourceChartDetails.DoesNotExist as e:
             raise ValueError(f"Resource Chart with ID {chart_id} does not exist.")

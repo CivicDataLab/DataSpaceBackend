@@ -130,6 +130,12 @@ class ChartTypes(models.TextChoices):
     TREEMAP = "TREEMAP"
 
 
+class ChartStatus(models.TextChoices):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"
+
+
 class AggregateType(models.TextChoices):
     NONE = "NONE"
     SUM = "SUM"
