@@ -103,7 +103,7 @@ class Mutation:
         )
         return TypeResourceChartImage.from_django(image)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(handle_django_errors=False)
     def publish_resource_chart_image(
         self, info: Info, resource_chart_image_id: uuid.UUID
     ) -> bool:
