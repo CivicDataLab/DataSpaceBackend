@@ -229,6 +229,11 @@ class TypeDataset(BaseType):
             logger.error(f"Error fetching similar datasets: {str(e)}")
             return []
 
+    @strawberry.field
+    def is_individual_dataset(self) -> bool:
+        """Check if this dataset is published by a individual publisher instead of organization."""
+        return self.organization is None
+
 
 @strawberry_django.type(Tag, fields="__all__")
 class TypeTag(BaseType):
