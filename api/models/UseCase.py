@@ -27,6 +27,7 @@ class UseCase(models.Model):
     website = models.URLField(blank=True)
     contact_email = models.EmailField(blank=True, null=True)
     slug = models.SlugField(max_length=75, null=True, blank=True, unique=True)
+    user = models.ForeignKey("authorization.User", on_delete=models.CASCADE)
     status = models.CharField(
         max_length=50, default=UseCaseStatus.DRAFT, choices=UseCaseStatus.choices
     )

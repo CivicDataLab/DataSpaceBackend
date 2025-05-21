@@ -1,12 +1,22 @@
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import strawberry
 import strawberry_django
 from strawberry import auto
+from strawberry.types import Info
 
 from api.types.base_type import BaseType
 from api.types.type_organization import TypeOrganization
+from api.types.type_sector import TypeSector  # type: ignore
 from authorization.models import OrganizationMembership, Role, User
+
+if TYPE_CHECKING:
+    # Define TypeUseCase as Any for type checking since it might not exist yet
+    from typing import Any
+
+    from api.types.type_dataset import TypeDataset
+
+    TypeUseCase = Any  # type: ignore
 
 
 @strawberry_django.type(Role, fields="__all__")
@@ -105,3 +115,95 @@ class TypeUser(BaseType):
             return last_name
         else:
             return getattr(self, "username", "")
+
+    @strawberry.field
+    def published_datasets(self, info: Info) -> List["TypeDataset"]:  # type: ignore
+        """Get published datasets for this user.
+
+        Returns a list of datasets that have been published by this user.
+        """
+        from api.models import Dataset
+        from api.types.type_dataset import TypeDataset  # type: ignore
+        from api.utils.enums import DatasetStatus
+
+        try:
+            user_id = getattr(self, "id", None)
+            if not user_id:
+                return []
+
+            # Get published datasets where this user is the creator
+            queryset = Dataset.objects.filter(
+                user_id=user_id, status=DatasetStatus.PUBLISHED.value
+            )
+            return TypeDataset.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field
+    def published_use_cases(self, info: Info) -> List["TypeUseCase"]:  # type: ignore
+        """Get published use cases for this user.
+
+        Returns a list of use cases that have been published by this user.
+        """
+        from api.models import UseCase
+
+        # Import with type ignore since the module might not exist yet
+        try:
+            from api.types.type_usecase import TypeUseCase  # type: ignore
+        except ImportError:
+            # Define a fallback for runtime if the module doesn't exist
+            from typing import Any
+
+            TypeUseCase = Any  # type: ignore
+        from api.utils.enums import UseCaseStatus
+
+        try:
+            user_id = getattr(self, "id", None)
+            if not user_id:
+                return []
+
+            queryset = UseCase.objects.filter(
+                user_id=user_id, status=UseCaseStatus.PUBLISHED.value
+            )
+            return TypeUseCase.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field
+    def sectors_contributed(self, info: Info) -> List[TypeSector]:  # type: ignore
+        """Get sectors that this user has contributed to.
+
+        Returns a list of unique sectors from all datasets and use cases published by this user.
+        """
+        from api.models import Dataset, Sector, UseCase
+        from api.utils.enums import DatasetStatus, UseCaseStatus
+
+        try:
+            user_id = getattr(self, "id", None)
+            if not user_id:
+                return []
+
+            # Get sectors from published datasets
+            dataset_sectors = Sector.objects.filter(
+                datasets__user_id=user_id,
+                datasets__status=DatasetStatus.PUBLISHED.value,
+            ).distinct()
+
+            # Get sectors from published use cases
+            usecase_sectors = Sector.objects.filter(
+                usecases__user_id=user_id,
+                usecases__status=UseCaseStatus.PUBLISHED.value,
+            ).distinct()
+
+            # Combine and deduplicate sectors
+            sector_ids = set(dataset_sectors.values_list("id", flat=True))
+            sector_ids.update(usecase_sectors.values_list("id", flat=True))
+
+            if not sector_ids:
+                return []
+
+            # Get all sectors by their IDs
+            queryset = Sector.objects.filter(id__in=sector_ids)
+            return TypeSector.from_django_list(queryset)
+        except Exception:
+            return []

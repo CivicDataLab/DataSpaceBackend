@@ -2,7 +2,7 @@ from typing import List, Optional
 
 import strawberry
 import strawberry_django
-from strawberry import Info, auto
+from strawberry import Info, auto, field
 from strawberry.enum import EnumType
 
 from api.models import (
@@ -50,6 +50,8 @@ class UseCaseOrder:
 )
 class TypeUseCase(BaseType):
     """GraphQL type for UseCase model."""
+
+    user: TypeUser = strawberry.field(description="User who created this use case")
 
     @strawberry.field
     def datasets(self) -> Optional[List["TypeDataset"]]:

@@ -160,11 +160,25 @@ class Mutation:
     update_use_case: TypeUseCase = mutations.update(UseCaseInputPartial, key_attr="id")
 
     @strawberry_django.mutation(handle_django_errors=True)
-    def add_use_case(self, info: Info) -> TypeUseCase:
+    @trace_resolver(
+        name="add_use_case",
+        attributes={"component": "usecase", "operation": "mutation"},
+    )
+    def add_use_case(self, info: Info, input: UseCaseInput) -> TypeUseCase:
         """Add a new use case."""
+        user = info.context["request"].user
+        # Create the use case with the provided data
         use_case = UseCase.objects.create(
-            title=f"New use_case {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}"
+            title=(
+                input.title
+                if hasattr(input, "title") and input.title
+                else f"New use_case {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}"
+            ),
+            summary=input.summary if hasattr(input, "summary") else None,
+            user=user,
+            status=UseCaseStatus.DRAFT,
         )
+
         return TypeUseCase.from_django(use_case)
 
     @strawberry_django.mutation(handle_django_errors=True)
