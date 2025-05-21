@@ -1,22 +1,14 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import Any, Callable, List, Optional
 
 import strawberry
 import strawberry_django
-from strawberry import auto
+from strawberry import auto, lazy
 from strawberry.types import Info
 
 from api.types.base_type import BaseType
 from api.types.type_organization import TypeOrganization
 from api.types.type_sector import TypeSector  # type: ignore
 from authorization.models import OrganizationMembership, Role, User
-
-if TYPE_CHECKING:
-    # Define TypeUseCase as Any for type checking since it might not exist yet
-    from typing import Any
-
-    from api.types.type_dataset import TypeDataset
-
-    TypeUseCase = Any  # type: ignore
 
 
 @strawberry_django.type(Role, fields="__all__")
@@ -146,16 +138,14 @@ class TypeUser(BaseType):
         Returns a list of use cases that have been published by this user.
         """
         from api.models import UseCase
+        from api.utils.enums import UseCaseStatus
 
-        # Import with type ignore since the module might not exist yet
+        # Import lazily to avoid circular imports
         try:
             from api.types.type_usecase import TypeUseCase  # type: ignore
         except ImportError:
             # Define a fallback for runtime if the module doesn't exist
-            from typing import Any
-
             TypeUseCase = Any  # type: ignore
-        from api.utils.enums import UseCaseStatus
 
         try:
             user_id = getattr(self, "id", None)
@@ -170,7 +160,7 @@ class TypeUser(BaseType):
             return []
 
     @strawberry.field
-    def sectors_contributed(self, info: Info) -> List[TypeSector]:  # type: ignore
+    def sectors_contributed(self, info: Info) -> List[TypeSector]:
         """Get sectors that this user has contributed to.
 
         Returns a list of unique sectors from all datasets and use cases published by this user.
