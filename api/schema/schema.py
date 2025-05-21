@@ -18,6 +18,7 @@ import api.schema.resoure_chart_image_schema
 import api.schema.sector_schema
 import api.schema.tags_schema
 import api.schema.usecase_schema
+import api.schema.user_schema
 from api.models import Resource, Tag
 from api.types.type_dataset import TypeTag
 from api.types.type_metadata import TypeMetadata
@@ -58,6 +59,7 @@ Query = merge_types(
         api.schema.organization_schema.Query,
         api.schema.dataspace_schema.Query,
         api.schema.resoure_chart_image_schema.Query,
+        api.schema.user_schema.Query,
         AuthQuery,
     ),
 )
