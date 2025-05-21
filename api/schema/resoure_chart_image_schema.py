@@ -4,6 +4,7 @@ from typing import List, Optional
 
 import strawberry
 import strawberry_django
+from strawberry.file_uploads import Upload
 from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
@@ -12,15 +13,22 @@ from api.types.type_resource_chart_image import TypeResourceChartImage
 
 
 @strawberry_django.input(
-    ResourceChartImage, fields="__all__", exclude=["datasets", "slug"]
+    ResourceChartImage, fields="__all__", exclude=["datasets", "modified"]
 )
 class ResourceChartImageInput:
-    pass
+    dataset: uuid.UUID
+    image: Optional[Upload] = strawberry.field(default=None)
+    name: Optional[str] = strawberry.field(default=None)
 
 
-@strawberry_django.partial(ResourceChartImage, fields="__all__", exclude=["datasets"])
+@strawberry_django.partial(
+    ResourceChartImage, fields="__all__", exclude=["datasets", "modified"]
+)
 class ResourceChartImageInputPartial:
     id: uuid.UUID
+    dataset: uuid.UUID
+    image: Optional[Upload] = strawberry.field(default=None)
+    name: Optional[str] = strawberry.field(default=None)
 
 
 @strawberry.type(name="Query")
@@ -43,7 +51,17 @@ class Mutation:
         self, info: Info, input: ResourceChartImageInput
     ) -> TypeResourceChartImage:
         """Create a new resource chart image."""
-        image = mutations.create(ResourceChartImageInput)(info=info, input=input)
+        try:
+            dataset_obj = Dataset.objects.get(id=input.dataset)
+        except Dataset.DoesNotExist:
+            raise ValueError(f"Dataset with ID {input.dataset} does not exist.")
+        now = datetime.datetime.now()
+        image = ResourceChartImage.objects.create(
+            name=input.name
+            or f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M')}",
+            dataset=dataset_obj,
+            image=input.image,
+        )
         return TypeResourceChartImage.from_django(image)
 
     @strawberry_django.mutation(handle_django_errors=True)
@@ -51,9 +69,20 @@ class Mutation:
         self, info: Info, input: ResourceChartImageInputPartial
     ) -> TypeResourceChartImage:
         """Update an existing resource chart image."""
-        image = mutations.update(ResourceChartImageInputPartial, key_attr="id")(
-            info=info, input=input
-        )
+        try:
+            image = ResourceChartImage.objects.get(id=input.id)
+        except ResourceChartImage.DoesNotExist:
+            raise ValueError(f"ResourceChartImage with ID {input.id} does not exist.")
+        try:
+            dataset_obj = Dataset.objects.get(id=input.dataset)
+        except Dataset.DoesNotExist:
+            raise ValueError(f"Dataset with ID {input.dataset} does not exist.")
+        if input.name:
+            image.name = input.name
+        if input.image:
+            image.image = input.image
+        image.dataset = dataset_obj
+        image.save()
         return TypeResourceChartImage.from_django(image)
 
     @strawberry_django.mutation(handle_django_errors=True)
