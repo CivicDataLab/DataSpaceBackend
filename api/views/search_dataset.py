@@ -73,7 +73,13 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
         name = serializers.CharField()
         logo = serializers.CharField()
 
+    class UserSerializer(serializers.Serializer):
+        name = serializers.CharField()
+        bio = serializers.CharField()
+        profile_picture = serializers.CharField()
+
     organization = OrganizationSerializer()
+    user = UserSerializer()
 
     class Meta:
         model = Dataset
@@ -94,6 +100,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
             "trending_score",
             "is_individual_dataset",
             "organization",
+            "user",
         ]
 
 

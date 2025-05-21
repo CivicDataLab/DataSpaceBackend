@@ -77,6 +77,14 @@ class DatasetDocument(Document):
         }
     )
 
+    user = fields.NestedField(
+        properties={
+            "name": fields.TextField(analyzer=ngram_analyser),
+            "bio": fields.TextField(analyzer=html_strip),
+            "profile_picture": fields.TextField(analyzer=ngram_analyser),
+        }
+    )
+
     formats = fields.TextField(
         attr="formats_indexing",
         analyzer=ngram_analyser,
@@ -116,6 +124,20 @@ class DatasetDocument(Document):
             org = instance.organization
             logo_url = org.logo.url if org.logo else ""
             return {"name": org.name, "logo": logo_url}
+        return None
+
+    def prepare_user(self, instance: Dataset) -> Optional[Dict[str, str]]:
+        """Prepare user data for indexing."""
+        if instance.user:
+            return {
+                "name": instance.user.full_name,
+                "bio": instance.user.bio or "",
+                "profile_picture": (
+                    instance.user.profile_picture.url
+                    if instance.user.profile_picture
+                    else ""
+                ),
+            }
         return None
 
     def should_index_object(self, obj: Dataset) -> bool:
