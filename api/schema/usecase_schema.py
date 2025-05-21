@@ -164,17 +164,13 @@ class Mutation:
         name="add_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
     )
-    def add_use_case(self, info: Info, input: UseCaseInput) -> TypeUseCase:
+    def add_use_case(self, info: Info) -> TypeUseCase:
         """Add a new use case."""
         user = info.context["request"].user
         # Create the use case with the provided data
         use_case = UseCase.objects.create(
-            title=(
-                input.title
-                if hasattr(input, "title") and input.title
-                else f"New use_case {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}"
-            ),
-            summary=input.summary if hasattr(input, "summary") else None,
+            title=f"New use_case {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}",
+            summary="",
             user=user,
             status=UseCaseStatus.DRAFT,
         )
