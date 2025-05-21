@@ -11,6 +11,7 @@ from strawberry_django.pagination import OffsetPaginationInput
 from api.models import (
     Dataset,
     Metadata,
+    Organization,
     Resource,
     ResourceChartDetails,
     ResourceChartImage,
@@ -19,11 +20,13 @@ from api.models import (
 from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata
 from api.types.type_dataset import DatasetFilter, DatasetOrder, TypeDataset
+from api.types.type_organization import TypeOrganization
 from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
+from api.types.type_user import TypeUser
 from api.utils.enums import DatasetAccessType, DatasetLicense, DatasetStatus
 from api.utils.graphql_telemetry import trace_resolver
-from authorization.models import DatasetPermission, OrganizationMembership, Role
+from authorization.models import DatasetPermission, OrganizationMembership, Role, User
 from authorization.permissions import (
     DatasetPermissionGraphQL,
     HasOrganizationRoleGraphQL,
@@ -431,6 +434,41 @@ class Query:
         sorted_list = sorted(combined_list, key=lambda x: x.modified, reverse=True)
 
         return sorted_list
+
+    @strawberry.field(
+        permission_classes=[AllowPublishedDatasets],  # type: ignore[list-item]
+    )
+    @trace_resolver(
+        name="get_publishers",
+        attributes={"component": "dataset", "operation": "query"},
+    )
+    def get_publishers(self, info: Info) -> List[Union[TypeOrganization, TypeUser]]:
+        """Get all publishers (both individual publishers and organizations) who have published datasets."""
+        # Get all published datasets
+        published_datasets = Dataset.objects.filter(
+            status=DatasetStatus.PUBLISHED.value
+        )
+
+        # Get unique organizations that have published datasets
+        org_publishers = Organization.objects.filter(
+            id__in=published_datasets.filter(organization__isnull=False).values_list(
+                "organization_id", flat=True
+            )
+        ).distinct()
+
+        # Get unique individual users who have published datasets without an organization
+        individual_publishers = User.objects.filter(
+            id__in=published_datasets.filter(organization__isnull=True).values_list(
+                "user_id", flat=True
+            )
+        ).distinct()
+
+        # Convert to GraphQL types
+        org_types = [TypeOrganization.from_django(org) for org in org_publishers]
+        user_types = [TypeUser.from_django(user) for user in individual_publishers]
+
+        # Return combined list of publishers
+        return org_types + user_types
 
 
 @strawberry.type
