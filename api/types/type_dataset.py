@@ -14,6 +14,7 @@ from api.types.type_dataset_metadata import TypeDatasetMetadata
 from api.types.type_organization import TypeOrganization
 from api.types.type_resource import TypeResource
 from api.types.type_sector import TypeSector
+from api.types.type_user import TypeUser
 from api.utils.enums import DatasetStatus
 
 logger = structlog.get_logger("dataspace.type_dataset")
@@ -58,6 +59,7 @@ class TypeDataset(BaseType):
     modified: datetime
     tags: List["TypeTag"]
     download_count: int
+    user: "TypeUser"
 
     @strawberry.field
     def sectors(self, info: Info) -> List["TypeSector"]:
