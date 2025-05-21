@@ -44,6 +44,16 @@ class Query:
         images = ResourceChartImage.objects.filter(dataset_id=dataset_id)
         return [TypeResourceChartImage.from_django(image) for image in images]
 
+    @strawberry_django.field
+    def resource_chart_image(
+        self, info: Info, image_id: uuid.UUID
+    ) -> TypeResourceChartImage:
+        try:
+            image = ResourceChartImage.objects.get(id=image_id)
+            return TypeResourceChartImage.from_django(image)
+        except ResourceChartImage.DoesNotExist as e:
+            raise ValueError(f"Resource Chart Image with ID {image_id} does not exist.")
+
 
 @strawberry.type
 class Mutation:
