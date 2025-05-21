@@ -11,6 +11,7 @@ import api.schema.access_model_schema
 import api.schema.dataset_schema
 import api.schema.dataspace_schema
 import api.schema.metadata_schema
+import api.schema.organization_data_schema
 import api.schema.organization_schema
 import api.schema.resource_chart_schema
 import api.schema.resource_schema
@@ -57,6 +58,7 @@ Query = merge_types(
         api.schema.resource_chart_schema.Query,
         api.schema.usecase_schema.Query,
         api.schema.organization_schema.Query,
+        api.schema.organization_data_schema.Query,
         api.schema.dataspace_schema.Query,
         api.schema.resoure_chart_image_schema.Query,
         api.schema.user_schema.Query,
