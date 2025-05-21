@@ -107,3 +107,78 @@ class TypeUser(BaseType):
             return last_name
         else:
             return getattr(self, "username", "")
+
+    @strawberry.field(description="Count of published datasets by this user")
+    def published_datasets_count(self, info: Info) -> int:
+        """Get count of published datasets for this user."""
+        from api.models import Dataset
+        from api.utils.enums import DatasetStatus
+
+        try:
+            user_id = getattr(self, "id", None)
+            if not user_id:
+                return 0
+
+            # Count published datasets where this user is the creator
+            return Dataset.objects.filter(
+                user_id=user_id, status=DatasetStatus.PUBLISHED.value
+            ).count()
+        except Exception:
+            return 0
+
+    @strawberry.field(description="Count of published use cases by this user")
+    def published_use_cases_count(self, info: Info) -> int:
+        """Get count of published use cases for this user."""
+        from api.models import UseCase
+        from api.utils.enums import UseCaseStatus
+
+        try:
+            user_id = getattr(self, "id", None)
+            if not user_id:
+                return 0
+
+            # Count published use cases where this user is the creator
+            return UseCase.objects.filter(
+                user_id=user_id, status=UseCaseStatus.PUBLISHED.value
+            ).count()
+        except Exception:
+            return 0
+
+    @strawberry.field(description="Count of sectors this user has contributed to")
+    def contributed_sectors_count(self, info: Info) -> int:
+        """Get count of sectors that this user has contributed to."""
+        from api.models import Dataset, Sector, UseCase
+        from api.utils.enums import DatasetStatus, UseCaseStatus
+
+        try:
+            user_id = getattr(self, "id", None)
+            if not user_id:
+                return 0
+
+            # Get sectors from published datasets
+            dataset_sectors = (
+                Sector.objects.filter(
+                    datasets__user_id=user_id,
+                    datasets__status=DatasetStatus.PUBLISHED.value,
+                )
+                .values_list("id", flat=True)
+                .distinct()
+            )
+
+            # Get sectors from published use cases
+            usecase_sectors = (
+                Sector.objects.filter(
+                    usecases__user_id=user_id,
+                    usecases__status=UseCaseStatus.PUBLISHED.value,
+                )
+                .values_list("id", flat=True)
+                .distinct()
+            )
+
+            # Combine and deduplicate sectors
+            sector_ids = set(dataset_sectors)
+            sector_ids.update(usecase_sectors)
+
+            return len(sector_ids)
+        except Exception:
+            return 0
