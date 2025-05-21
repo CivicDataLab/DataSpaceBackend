@@ -14,8 +14,8 @@ from api.types.type_dataset_metadata import TypeDatasetMetadata
 from api.types.type_organization import TypeOrganization
 from api.types.type_resource import TypeResource
 from api.types.type_sector import TypeSector
-from api.types.type_user import TypeUser
 from api.utils.enums import DatasetStatus
+from authorization.types import TypeUser
 
 logger = structlog.get_logger("dataspace.type_dataset")
 

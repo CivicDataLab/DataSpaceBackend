@@ -23,7 +23,6 @@ from api.types.type_dataset import DatasetFilter, DatasetOrder, TypeDataset
 from api.types.type_organization import TypeOrganization
 from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
-from api.types.type_user import TypeUser
 from api.utils.enums import DatasetAccessType, DatasetLicense, DatasetStatus
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.models import DatasetPermission, OrganizationMembership, Role, User
@@ -32,6 +31,7 @@ from authorization.permissions import (
     HasOrganizationRoleGraphQL,
     PublishDatasetPermission,
 )
+from authorization.types import TypeUser
 
 DatasetAccessTypeENUM = strawberry.enum(DatasetAccessType)  # type: ignore
 DatasetLicenseENUM = strawberry.enum(DatasetLicense)  # type: ignore
