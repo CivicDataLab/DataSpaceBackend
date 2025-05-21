@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, cast
 
 import strawberry
 import strawberry_django
@@ -108,14 +108,16 @@ class TypeUser(BaseType):
         else:
             return getattr(self, "username", "")
 
-    @strawberry.field
-    def published_datasets(self, info: Info) -> List["TypeDataset"]:  # type: ignore
+    @strawberry.field(description="Get published datasets for this user")
+    def published_datasets(
+        self, info: Info
+    ) -> List["api.types.type_dataset.TypeDataset"]:  # type: ignore
         """Get published datasets for this user.
 
         Returns a list of datasets that have been published by this user.
         """
         from api.models import Dataset
-        from api.types.type_dataset import TypeDataset  # type: ignore
+        from api.types.type_dataset import TypeDataset
         from api.utils.enums import DatasetStatus
 
         try:
@@ -131,21 +133,17 @@ class TypeUser(BaseType):
         except Exception:
             return []
 
-    @strawberry.field
-    def published_use_cases(self, info: Info) -> List["TypeUseCase"]:  # type: ignore
+    @strawberry.field(description="Get published use cases for this user")
+    def published_use_cases(
+        self, info: Info
+    ) -> List["api.types.type_usecase.TypeUseCase"]:  # type: ignore
         """Get published use cases for this user.
 
         Returns a list of use cases that have been published by this user.
         """
         from api.models import UseCase
+        from api.types.type_usecase import TypeUseCase
         from api.utils.enums import UseCaseStatus
-
-        # Import lazily to avoid circular imports
-        try:
-            from api.types.type_usecase import TypeUseCase  # type: ignore
-        except ImportError:
-            # Define a fallback for runtime if the module doesn't exist
-            TypeUseCase = Any  # type: ignore
 
         try:
             user_id = getattr(self, "id", None)
