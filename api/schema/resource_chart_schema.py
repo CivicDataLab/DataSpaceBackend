@@ -232,3 +232,13 @@ class Mutation:
             return True
         except ResourceChartDetails.DoesNotExist as e:
             raise ValueError(f"Resource Chart with ID {chart_id} does not exist.")
+
+    @strawberry_django.mutation(handle_django_errors=False)
+    def unpublish_resource_chart(self, info: Info, chart_id: uuid.UUID) -> bool:
+        try:
+            chart = ResourceChartDetails.objects.get(id=chart_id)
+            chart.status = ChartStatus.DRAFT
+            chart.save()
+            return True
+        except ResourceChartDetails.DoesNotExist as e:
+            raise ValueError(f"Resource Chart with ID {chart_id} does not exist.")

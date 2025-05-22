@@ -128,6 +128,20 @@ class Mutation:
             )
 
     @strawberry_django.mutation(handle_django_errors=False)
+    def unpublish_resource_chart_image(
+        self, info: Info, resource_chart_image_id: uuid.UUID
+    ) -> bool:
+        try:
+            image = ResourceChartImage.objects.get(id=resource_chart_image_id)
+            image.status = ChartStatus.DRAFT
+            image.save()
+            return True
+        except ResourceChartImage.DoesNotExist as e:
+            raise ValueError(
+                f"Resource Chart Image with ID {resource_chart_image_id} does not exist."
+            )
+
+    @strawberry_django.mutation(handle_django_errors=False)
     def delete_resource_chart_image(
         self, info: Info, resource_chart_image_id: uuid.UUID
     ) -> bool:
