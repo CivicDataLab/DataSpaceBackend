@@ -14,7 +14,7 @@ from api.utils.enums import ChartStatus
 
 
 @strawberry_django.input(
-    ResourceChartImage, fields="__all__", exclude=["datasets", "modified"]
+    ResourceChartImage, fields="__all__", exclude=["datasets", "modified", "status"]
 )
 class ResourceChartImageInput:
     dataset: uuid.UUID
@@ -23,7 +23,7 @@ class ResourceChartImageInput:
 
 
 @strawberry_django.partial(
-    ResourceChartImage, fields="__all__", exclude=["datasets", "modified"]
+    ResourceChartImage, fields="__all__", exclude=["datasets", "modified", "status"]
 )
 class ResourceChartImageInputPartial:
     id: uuid.UUID
