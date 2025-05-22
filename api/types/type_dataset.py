@@ -54,12 +54,12 @@ class TypeDataset(BaseType):
     description: Optional[str]
     slug: str
     status: dataset_status
-    organization: "TypeOrganization"
+    organization: Optional["TypeOrganization"]
     created: datetime
     modified: datetime
     tags: List["TypeTag"]
     download_count: int
-    user: "TypeUser"
+    user: Optional["TypeUser"]
 
     @strawberry.field
     def sectors(self, info: Info) -> List["TypeSector"]:
