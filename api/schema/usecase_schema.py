@@ -68,8 +68,23 @@ class UseCaseInputPartial:
 class Query:
     """Queries for use cases."""
 
-    use_cases: list[TypeUseCase] = strawberry_django.field()
     use_case: TypeUseCase = strawberry_django.field()
+
+    @strawberry_django.field
+    @trace_resolver(name="get_use_cases", attributes={"component": "usecase"})
+    def use_cases(self, info: Info) -> list[TypeUseCase]:
+        """Get all use cases."""
+        user = info.context["request"].user
+        organization = info.context.context.get("organization")
+        if organization:
+            queryset = UseCase.objects.filter(datasets__organization=organization)
+        elif user.is_superuser:
+            queryset = UseCase.objects.all()
+        elif user.is_authenticated:
+            queryset = UseCase.objects.filter(user=user)
+        else:
+            queryset = UseCase.objects.none()
+        return TypeUseCase.from_django_list(queryset)
 
     @strawberry_django.field
     @trace_resolver(
