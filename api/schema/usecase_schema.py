@@ -97,7 +97,7 @@ class Query:
         elif user.is_authenticated:
             queryset = UseCase.objects.filter(user=user)
         else:
-            queryset = UseCase.objects.none()
+            queryset = UseCase.objects.filter(status=UseCaseStatus.PUBLISHED)
 
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
