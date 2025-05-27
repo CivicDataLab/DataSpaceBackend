@@ -242,17 +242,21 @@ def _update_resource_preview_details(
 class Mutation:
     """Mutations for resources."""
 
-    @strawberry_django.mutation(handle_django_errors=False)
-    @trace_resolver(name="create_file_resources", attributes={"component": "resource"})
-    @TrackModelActivity(
-        verb="created",
-        get_data=lambda result, file_resource_input, **kwargs: {
-            "resource_id": str(result[0].id) if result else "",
-            "resource_name": result[0].name if result else "",
-            "dataset_id": str(file_resource_input.dataset),
-            "file_count": len(file_resource_input.files),
-        },
+    @strawberry_django.mutation(
+        handle_django_errors=False,
+        extensions=[
+            TrackModelActivity(
+                verb="created",
+                get_data=lambda result, file_resource_input, **kwargs: {
+                    "resource_id": str(result[0].id) if result else "",
+                    "resource_name": result[0].name if result else "",
+                    "dataset_id": str(file_resource_input.dataset),
+                    "file_count": len(file_resource_input.files),
+                },
+            )
+        ],
     )
+    @trace_resolver(name="create_file_resources", attributes={"component": "resource"})
     def create_file_resources(
         self, info: Info, file_resource_input: CreateFileResourceInput
     ) -> List[TypeResource]:
@@ -273,16 +277,20 @@ class Mutation:
             resources.append(TypeResource.from_django(resource))
         return resources
 
-    @strawberry_django.mutation(handle_django_errors=True)
-    @trace_resolver(name="create_file_resource", attributes={"component": "resource"})
-    @TrackModelActivity(
-        verb="created",
-        get_data=lambda result, file_resource_input, **kwargs: {
-            "resource_id": str(result.id),
-            "dataset_id": str(file_resource_input.dataset),
-            "empty_resource": True,
-        },
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        extensions=[
+            TrackModelActivity(
+                verb="created",
+                get_data=lambda result, file_resource_input, **kwargs: {
+                    "resource_id": str(result.id),
+                    "dataset_id": str(file_resource_input.dataset),
+                    "empty_resource": True,
+                },
+            )
+        ],
     )
+    @trace_resolver(name="create_file_resource", attributes={"component": "resource"})
     def create_file_resource(
         self, info: Info, file_resource_input: CreateEmptyFileResourceInput
     ) -> TypeResource:
@@ -296,27 +304,35 @@ class Mutation:
         resource = Resource.objects.create(dataset=dataset)
         return TypeResource.from_django(resource)
 
-    @strawberry_django.mutation(handle_django_errors=True)
-    @trace_resolver(name="update_file_resource", attributes={"component": "resource"})
-    @TrackModelActivity(
-        verb="updated",
-        get_data=lambda result, file_resource_input, **kwargs: {
-            "resource_id": str(result.id),
-            "resource_name": result.name,
-            "updated_fields": {
-                "name": file_resource_input.name if file_resource_input.name else None,
-                "description": (
-                    file_resource_input.description
-                    if file_resource_input.description is not None
-                    else None
-                ),
-                "preview_enabled": file_resource_input.preview_enabled,
-                "file_updated": file_resource_input.file is not None,
-                "preview_details_updated": file_resource_input.preview_details
-                is not None,
-            },
-        },
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        extensions=[
+            TrackModelActivity(
+                verb="updated",
+                get_data=lambda result, file_resource_input, **kwargs: {
+                    "resource_id": str(result.id),
+                    "resource_name": result.name,
+                    "updated_fields": {
+                        "name": (
+                            file_resource_input.name
+                            if file_resource_input.name
+                            else None
+                        ),
+                        "description": (
+                            file_resource_input.description
+                            if file_resource_input.description is not None
+                            else None
+                        ),
+                        "preview_enabled": file_resource_input.preview_enabled,
+                        "file_updated": file_resource_input.file is not None,
+                        "preview_details_updated": file_resource_input.preview_details
+                        is not None,
+                    },
+                },
+            )
+        ],
     )
+    @trace_resolver(name="update_file_resource", attributes={"component": "resource"})
     def update_file_resource(
         self, info: Info, file_resource_input: UpdateFileResourceInput
     ) -> TypeResource:
@@ -388,14 +404,18 @@ class Mutation:
         resource.save()
         return TypeResource.from_django(resource)
 
-    @strawberry_django.mutation(handle_django_errors=False)
-    @trace_resolver(name="delete_file_resource", attributes={"component": "resource"})
-    @TrackActivity(
-        verb="deleted",
-        get_data=lambda info, resource_id, **kwargs: {
-            "resource_id": str(resource_id),
-        },
+    @strawberry_django.mutation(
+        handle_django_errors=False,
+        extensions=[
+            TrackActivity(
+                verb="deleted",
+                get_data=lambda info, resource_id, **kwargs: {
+                    "resource_id": str(resource_id),
+                },
+            )
+        ],
     )
+    @trace_resolver(name="delete_file_resource", attributes={"component": "resource"})
     def delete_file_resource(self, info: Info, resource_id: uuid.UUID) -> bool:
         """Delete a file resource."""
         try:
@@ -405,17 +425,21 @@ class Mutation:
         except Resource.DoesNotExist as e:
             raise ValueError(f"Resource with ID {resource_id} does not exist.")
 
-    @strawberry_django.mutation(handle_django_errors=True)
-    @trace_resolver(name="create_major_version", attributes={"component": "resource"})
-    @TrackModelActivity(
-        verb="versioned",
-        get_data=lambda result, input, **kwargs: {
-            "resource_id": str(result.id),
-            "resource_name": result.name,
-            "version": result.version,
-            "description": input.description,
-        },
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        extensions=[
+            TrackModelActivity(
+                verb="versioned",
+                get_data=lambda result, input, **kwargs: {
+                    "resource_id": str(result.id),
+                    "resource_name": result.name,
+                    "version": result.version,
+                    "description": input.description,
+                },
+            )
+        ],
     )
+    @trace_resolver(name="create_major_version", attributes={"component": "resource"})
     def create_major_version(
         self, info: Info, input: CreateMajorVersionInput
     ) -> TypeResource:

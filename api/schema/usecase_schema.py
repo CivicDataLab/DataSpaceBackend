@@ -198,20 +198,24 @@ class Mutation:
     create_use_case: TypeUseCase = mutations.create(UseCaseInput)
     update_use_case: TypeUseCase = mutations.update(UseCaseInputPartial, key_attr="id")
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        extensions=[
+            TrackModelActivity(
+                verb="created",
+                get_data=lambda result, **kwargs: {
+                    "usecase_id": str(result.id),
+                    "usecase_title": result.title,
+                    "organization_id": (
+                        str(result.organization.id) if result.organization else None
+                    ),
+                },
+            )
+        ],
+    )
     @trace_resolver(
         name="add_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
-    )
-    @TrackModelActivity(
-        verb="created",
-        get_data=lambda result, **kwargs: {
-            "usecase_id": str(result.id),
-            "usecase_title": result.title,
-            "organization_id": (
-                str(result.organization.id) if result.organization else None
-            ),
-        },
     )
     def add_use_case(self, info: Info) -> TypeUseCase:
         """Add a new use case."""
@@ -235,30 +239,37 @@ class Mutation:
 
         return TypeUseCase.from_django(use_case)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        extensions=[
+            TrackModelActivity(
+                verb="updated",
+                get_data=lambda result, update_metadata_input, **kwargs: {
+                    "usecase_id": update_metadata_input.id,
+                    "usecase_title": result.title,
+                    "updated_fields": {
+                        "metadata": True if update_metadata_input.metadata else False,
+                        "tags": (
+                            update_metadata_input.tags
+                            if update_metadata_input.tags is not None
+                            else None
+                        ),
+                        "sectors": (
+                            [
+                                str(sector_id)
+                                for sector_id in update_metadata_input.sectors
+                            ]
+                            if update_metadata_input.sectors
+                            else []
+                        ),
+                    },
+                },
+            )
+        ],
+    )
     @trace_resolver(
         name="add_update_usecase_metadata",
         attributes={"component": "usecase", "operation": "mutation"},
-    )
-    @TrackModelActivity(
-        verb="updated",
-        get_data=lambda result, update_metadata_input, **kwargs: {
-            "usecase_id": update_metadata_input.id,
-            "usecase_title": result.title,
-            "updated_fields": {
-                "metadata": True if update_metadata_input.metadata else False,
-                "tags": (
-                    update_metadata_input.tags
-                    if update_metadata_input.tags is not None
-                    else None
-                ),
-                "sectors": (
-                    [str(sector_id) for sector_id in update_metadata_input.sectors]
-                    if update_metadata_input.sectors
-                    else []
-                ),
-            },
-        },
     )
     def add_update_usecase_metadata(
         self, update_metadata_input: UpdateUseCaseMetadataInput
@@ -276,14 +287,20 @@ class Mutation:
         _update_usecase_sectors(usecase, update_metadata_input.sectors)
         return TypeUseCase.from_django(usecase)
 
-    @strawberry_django.mutation(handle_django_errors=False)
+    @strawberry_django.mutation(
+        handle_django_errors=False,
+        extensions=[
+            TrackActivity(
+                verb="deleted",
+                get_data=lambda info, use_case_id, **kwargs: {
+                    "usecase_id": use_case_id
+                },
+            )
+        ],
+    )
     @trace_resolver(
         name="delete_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
-    )
-    @TrackActivity(
-        verb="deleted",
-        get_data=lambda info, use_case_id, **kwargs: {"usecase_id": use_case_id},
     )
     def delete_use_case(self, info: Info, use_case_id: str) -> bool:
         """Delete a use case."""
@@ -337,16 +354,6 @@ class Mutation:
         name="update_usecase_datasets",
         attributes={"component": "usecase", "operation": "mutation"},
     )
-    @TrackModelActivity(
-        verb="updated",
-        get_data=lambda result, use_case_id, dataset_ids, **kwargs: {
-            "usecase_id": use_case_id,
-            "usecase_title": result.title,
-            "updated_fields": {
-                "datasets": [str(dataset_id) for dataset_id in dataset_ids]
-            },
-        },
-    )
     def update_usecase_datasets(
         self, info: Info, use_case_id: str, dataset_ids: List[uuid.UUID]
     ) -> TypeUseCase:
@@ -361,17 +368,21 @@ class Mutation:
         use_case.save()
         return TypeUseCase.from_django(use_case)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        extensions=[
+            TrackModelActivity(
+                verb="published",
+                get_data=lambda result, use_case_id, **kwargs: {
+                    "usecase_id": use_case_id,
+                    "usecase_title": result.title,
+                },
+            )
+        ],
+    )
     @trace_resolver(
         name="publish_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
-    )
-    @TrackModelActivity(
-        verb="published",
-        get_data=lambda result, use_case_id, **kwargs: {
-            "usecase_id": use_case_id,
-            "usecase_title": result.title,
-        },
     )
     def publish_use_case(self, info: Info, use_case_id: str) -> TypeUseCase:
         """Publish a use case."""
@@ -384,17 +395,21 @@ class Mutation:
         use_case.save()
         return TypeUseCase.from_django(use_case)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        extensions=[
+            TrackModelActivity(
+                verb="unpublished",
+                get_data=lambda result, use_case_id, **kwargs: {
+                    "usecase_id": use_case_id,
+                    "usecase_title": result.title,
+                },
+            )
+        ],
+    )
     @trace_resolver(
         name="unpublish_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
-    )
-    @TrackModelActivity(
-        verb="unpublished",
-        get_data=lambda result, use_case_id, **kwargs: {
-            "usecase_id": use_case_id,
-            "usecase_title": result.title,
-        },
     )
     def unpublish_use_case(self, info: Info, use_case_id: str) -> TypeUseCase:
         """Un-publish a use case."""
@@ -456,18 +471,24 @@ class Mutation:
         return TypeUseCase.from_django(use_case)
 
     # Update the contributors of a use case.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        extensions=[
+            TrackModelActivity(
+                verb="updated",
+                get_data=lambda result, use_case_id, user_ids, **kwargs: {
+                    "usecase_id": use_case_id,
+                    "usecase_title": result.title,
+                    "updated_fields": {
+                        "contributors": [str(user_id) for user_id in user_ids]
+                    },
+                },
+            )
+        ],
+    )
     @trace_resolver(
         name="update_usecase_contributors",
         attributes={"component": "usecase", "operation": "mutation"},
-    )
-    @TrackModelActivity(
-        verb="updated",
-        get_data=lambda result, use_case_id, user_ids, **kwargs: {
-            "usecase_id": use_case_id,
-            "usecase_title": result.title,
-            "updated_fields": {"contributors": [str(user_id) for user_id in user_ids]},
-        },
     )
     def update_usecase_contributors(
         self, info: Info, use_case_id: str, user_ids: List[strawberry.ID]
@@ -588,25 +609,29 @@ class Mutation:
             )
 
     # Update organization relationships for a use case.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        extensions=[
+            TrackModelActivity(
+                verb="updated",
+                get_data=lambda result, use_case_id, supporter_organization_ids, partner_organization_ids, **kwargs: {
+                    "usecase_id": use_case_id,
+                    "usecase_title": result.title,
+                    "updated_fields": {
+                        "supporter_organizations": [
+                            str(org_id) for org_id in supporter_organization_ids
+                        ],
+                        "partner_organizations": [
+                            str(org_id) for org_id in partner_organization_ids
+                        ],
+                    },
+                },
+            )
+        ],
+    )
     @trace_resolver(
         name="update_usecase_organization_relationships",
         attributes={"component": "usecase", "operation": "mutation"},
-    )
-    @TrackModelActivity(
-        verb="updated",
-        get_data=lambda result, use_case_id, supporter_organization_ids, partner_organization_ids, **kwargs: {
-            "usecase_id": use_case_id,
-            "usecase_title": result.title,
-            "updated_fields": {
-                "supporter_organizations": [
-                    str(org_id) for org_id in supporter_organization_ids
-                ],
-                "partner_organizations": [
-                    str(org_id) for org_id in partner_organization_ids
-                ],
-            },
-        },
     )
     def update_usecase_organization_relationships(
         self,
