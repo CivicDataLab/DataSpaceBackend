@@ -105,13 +105,22 @@ class Query:
         if order is not strawberry.UNSET:
             queryset = strawberry_django.ordering.apply(order, queryset, info)
 
-        # Materialize the queryset before pagination
-        queryset = list(queryset)  # type: ignore
+        # First, evaluate the queryset to a list of Django model instances
+        use_case_instances = list(queryset)  # type: ignore
 
+        # Then apply pagination to the list
         if pagination is not strawberry.UNSET:
-            queryset = strawberry_django.pagination.apply(pagination, queryset)
+            offset = pagination.offset if pagination.offset is not None else 0  # type: ignore
+            limit = pagination.limit  # type: ignore
 
-        return TypeUseCase.from_django_list(queryset)
+            if limit is not None:
+                use_case_instances = use_case_instances[offset : offset + limit]
+            else:
+                use_case_instances = use_case_instances[offset:]
+
+        # Manually convert each Django model instance to a TypeUseCase
+        # This is necessary because BaseType.from_django_list just does a cast without conversion
+        return [TypeUseCase.from_django(instance) for instance in use_case_instances]
 
     @strawberry_django.field
     @trace_resolver(
