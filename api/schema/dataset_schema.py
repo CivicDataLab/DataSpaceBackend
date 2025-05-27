@@ -435,9 +435,7 @@ class Query:
 
         return sorted_list
 
-    @strawberry.field(
-        permission_classes=[AllowPublishedDatasets],  # type: ignore[list-item]
-    )
+    @strawberry.field
     @trace_resolver(
         name="get_publishers",
         attributes={"component": "dataset", "operation": "query"},
