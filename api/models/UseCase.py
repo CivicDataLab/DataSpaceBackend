@@ -28,6 +28,9 @@ class UseCase(models.Model):
     contact_email = models.EmailField(blank=True, null=True)
     slug = models.SlugField(max_length=75, null=True, blank=True, unique=True)
     user = models.ForeignKey("authorization.User", on_delete=models.CASCADE)
+    organization = models.ForeignKey(
+        "api.Organization", on_delete=models.CASCADE, null=True, blank=True
+    )
     status = models.CharField(
         max_length=50, default=UseCaseStatus.DRAFT, choices=UseCaseStatus.choices
     )
@@ -56,6 +59,10 @@ class UseCase(models.Model):
         if self.title and not self.slug:
             self.slug = slugify(cast(str, self.title))
         super().save(*args, **kwargs)
+
+    @property
+    def is_individual_usecase(self):
+        return self.organization is None
 
     class Meta:
         db_table = "use_case"

@@ -74,7 +74,7 @@ class Query:
     @trace_resolver(name="get_use_cases", attributes={"component": "usecase"})
     def use_cases(self, info: Info) -> list[TypeUseCase]:
         """Get all use cases."""
-        user = info.context["request"].user
+        user = info.context.user
         organization = info.context.context.get("organization")
         if organization:
             queryset = UseCase.objects.filter(datasets__organization=organization)
@@ -181,14 +181,23 @@ class Mutation:
     )
     def add_use_case(self, info: Info) -> TypeUseCase:
         """Add a new use case."""
-        user = info.context["request"].user
-        # Create the use case with the provided data
-        use_case = UseCase.objects.create(
-            title=f"New use_case {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}",
-            summary="",
-            user=user,
-            status=UseCaseStatus.DRAFT,
-        )
+        user = info.context.user
+        organization = info.context.context.get("organization")
+        if organization:
+            use_case = UseCase.objects.create(
+                title=f"New use_case {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}",
+                summary="",
+                organization=organization,
+                status=UseCaseStatus.DRAFT,
+                user=user,
+            )
+        else:
+            use_case = UseCase.objects.create(
+                title=f"New use_case {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}",
+                summary="",
+                user=user,
+                status=UseCaseStatus.DRAFT,
+            )
 
         return TypeUseCase.from_django(use_case)
 
