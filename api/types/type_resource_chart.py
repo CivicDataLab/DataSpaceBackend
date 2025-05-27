@@ -138,7 +138,7 @@ def ensure_type(
     return value
 
 
-# ChartTypeEnum = strawberry.enum(ChartTypes)
+ChartTypeEnum = strawberry.enum(ChartTypes)  # type: ignore
 
 
 @strawberry_django.type(ResourceChartDetails)
@@ -147,7 +147,7 @@ class TypeResourceChart(BaseType):
 
     id: uuid.UUID
     name: str
-    chart_type: ChartTypes
+    chart_type: ChartTypeEnum
     created: datetime
     modified: datetime
     description: Optional[str] = ""
