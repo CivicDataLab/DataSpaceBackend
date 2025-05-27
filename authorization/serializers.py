@@ -24,12 +24,17 @@ class UserConsentSerializer(serializers.ModelSerializer):
                 # Get the client IP address
                 x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
                 if x_forwarded_for:
-                    instance.consent_ip_address = x_forwarded_for.split(",")[0]
+                    # Take the first IP and strip whitespace, limit length for security
+                    ip = x_forwarded_for.split(",")[0].strip()
+                    instance.consent_ip_address = ip[:45]  # Max IPv6 length
                 else:
-                    instance.consent_ip_address = request.META.get("REMOTE_ADDR")
+                    remote_addr = request.META.get("REMOTE_ADDR", "")
+                    instance.consent_ip_address = remote_addr[:45]
 
                 # Get the user agent
-                instance.consent_user_agent = request.META.get("HTTP_USER_AGENT", "")
+                # Limit user agent length to prevent potential issues
+                user_agent = request.META.get("HTTP_USER_AGENT", "")
+                instance.consent_user_agent = user_agent[:500]
 
         # Update the instance with the validated data
         for attr, value in validated_data.items():
