@@ -2,8 +2,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from authorization.views import KeycloakLoginView, UserInfoView
-from authorization.views.consent import UserConsentView
+from authorization.views import KeycloakLoginView, UserConsentView, UserInfoView
 
 urlpatterns = [
     # Authentication endpoints

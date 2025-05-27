@@ -1,11 +1,14 @@
-from rest_framework import permissions, status, views
+from rest_framework import status, views
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from authorization.consent import UserConsent
 from authorization.keycloak import keycloak_manager
 from authorization.models import User
+from authorization.serializers import UserConsentSerializer
 from authorization.services import AuthorizationService
 
 
@@ -138,3 +141,45 @@ class UserInfoView(views.APIView):
                 "datasets": datasets,
             }
         )
+
+
+class UserConsentView(APIView):
+    """
+    API view for managing user consent for activity tracking.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        """
+        Get the current user's consent settings.
+        """
+        try:
+            consent = UserConsent.objects.get(user=request.user)  # type: ignore[misc]
+        except UserConsent.DoesNotExist:
+            # Create a default consent object with tracking disabled
+            consent = UserConsent.objects.create(
+                user=request.user, activity_tracking_enabled=False  # type: ignore[misc]
+            )
+
+        serializer = UserConsentSerializer(consent)
+        return Response(serializer.data)
+
+    def put(self, request: Request) -> Response:
+        """
+        Update the current user's consent settings.
+        """
+        try:
+            consent = UserConsent.objects.get(user=request.user)  # type: ignore[misc]
+        except UserConsent.DoesNotExist:
+            consent = UserConsent.objects.create(
+                user=request.user, activity_tracking_enabled=False  # type: ignore[misc]
+            )
+
+        serializer = UserConsentSerializer(
+            consent, data=request.data, context={"request": request}
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
