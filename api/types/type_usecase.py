@@ -56,7 +56,14 @@ class TypeUseCase(BaseType):
         description="Organization associated with this use case"
     )
 
-    @strawberry.field
+    @strawberry.field(
+        description="Check if this use case is created by an individual user."
+    )
+    def is_individual_usecase(self) -> bool:
+        """Check if this use case is created by an individual user."""
+        return self.organization is None
+
+    @strawberry.field(description="Get datasets associated with this use case.")
     def datasets(self) -> Optional[List["TypeDataset"]]:
         """Get datasets associated with this use case."""
         try:
