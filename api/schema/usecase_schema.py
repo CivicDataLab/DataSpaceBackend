@@ -10,6 +10,7 @@ from django.db import models
 from strawberry import auto
 from strawberry.types import Info
 from strawberry_django.mutations import mutations
+from strawberry_django.pagination import OffsetPaginationInput
 
 from api.models import (
     Dataset,
@@ -70,9 +71,19 @@ class Query:
 
     use_case: TypeUseCase = strawberry_django.field()
 
-    @strawberry_django.field(pagination=True, filters=UseCaseFilter, order=UseCaseOrder)
+    @strawberry_django.field(
+        filters=UseCaseFilter,
+        pagination=True,
+        order=UseCaseOrder,
+    )
     @trace_resolver(name="get_use_cases", attributes={"component": "usecase"})
-    def use_cases(self, info: Info) -> list[TypeUseCase]:
+    def use_cases(
+        self,
+        info: Info,
+        filters: Optional[UseCaseFilter] = strawberry.UNSET,
+        pagination: Optional[OffsetPaginationInput] = strawberry.UNSET,
+        order: Optional[UseCaseOrder] = strawberry.UNSET,
+    ) -> list[TypeUseCase]:
         """Get all use cases."""
         user = info.context.user
         organization = info.context.context.get("organization")
@@ -84,7 +95,17 @@ class Query:
             queryset = UseCase.objects.filter(user=user)
         else:
             queryset = UseCase.objects.none()
-        return queryset  # type: ignore
+
+        if filters is not strawberry.UNSET:
+            queryset = strawberry_django.filters.apply(filters, queryset, info)
+
+        if order is not strawberry.UNSET:
+            queryset = strawberry_django.ordering.apply(order, queryset, info)
+
+        if pagination is not strawberry.UNSET:
+            queryset = strawberry_django.pagination.apply(pagination, queryset)
+
+        return TypeUseCase.from_django_list(queryset)
 
     @strawberry_django.field
     @trace_resolver(
