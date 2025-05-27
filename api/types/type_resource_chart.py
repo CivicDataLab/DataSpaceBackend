@@ -14,6 +14,7 @@ from api.types.base_type import BaseType
 from api.types.charts.chart_registry import CHART_REGISTRY
 from api.types.type_dataset import TypeDataset
 from api.types.type_resource import TypeResource, TypeResourceSchema
+from api.utils.enums import ChartTypes
 from api.utils.file_utils import load_csv
 
 T = TypeVar("T", bound="TypeResourceChart")
@@ -137,13 +138,16 @@ def ensure_type(
     return value
 
 
+# ChartTypeEnum = strawberry.enum(ChartTypes)
+
+
 @strawberry_django.type(ResourceChartDetails)
 class TypeResourceChart(BaseType):
     """Type for resource chart."""
 
     id: uuid.UUID
     name: str
-    chart_type: str
+    chart_type: ChartTypes
     created: datetime
     modified: datetime
     description: Optional[str] = ""
