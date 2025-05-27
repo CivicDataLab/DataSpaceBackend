@@ -193,6 +193,28 @@ class Mutation:
         return TypeResourceChart.from_django(chart)
 
     @strawberry_django.mutation(handle_django_errors=True)
+    def create_resource_chart(
+        self, info: Info, chart_input: ResourceChartInput
+    ) -> TypeResourceChart:
+        try:
+            resource_obj = Resource.objects.get(id=chart_input.resource)
+        except Resource.DoesNotExist as e:
+            raise ValueError(f"Resource with ID {chart_input.resource} does not exist.")
+
+        chart = ResourceChartDetails.objects.create(
+            name=chart_input.name
+            or f"New chart {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}",
+            resource=resource_obj,
+            description=chart_input.description or "",
+            chart_type=chart_input.type or ChartTypeEnum.BAR,
+            options=chart_input.options or {},
+            filters=chart_input.filters or [],
+        )
+
+        _update_chart_fields(chart, chart_input, resource_obj)
+        return TypeResourceChart.from_django(chart)
+
+    @strawberry_django.mutation(handle_django_errors=True)
     def edit_resource_chart(
         self, info: Info, chart_input: ResourceChartInput
     ) -> TypeResourceChart:
