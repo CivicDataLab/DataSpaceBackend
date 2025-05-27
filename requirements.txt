@@ -98,7 +98,7 @@ drf-yasg[validation]==1.21.7
 djangorestframework-simplejwt==5.3.1  # Downgraded for better DRF compatibility
 
 # Keycloak Integration
-python-keycloak==5.5.0
+python-keycloak==5.5.1
 django-keycloak-auth==1.0.0
 
 # API Versioning and Throttling
@@ -107,8 +107,8 @@ django-filter==23.5  # Downgraded for better Django compatibility
 django-stubs==4.2.7  # Downgraded for better compatibility
 djangorestframework-stubs==3.14.5  # Matched with DRF version
 
-#whitenoise for managing static files
-whitenoise==6.1.0
+ #whitenoise for managing static files
+ whitenoise==6.9.0
 
 # Activity stream for tracking user actions
 django-activity-stream==2.0.0
