@@ -227,7 +227,7 @@ class Mutation:
             raise ValueError(f"Organization with ID {input.id} does not exist.")
 
     @strawberry_django.mutation(
-        handle_django_errors=True,
+        handle_django_errors=False,
         permission_classes=[IsAuthenticated, DeleteOrganizationPermission],  # type: ignore[list-item]
         extensions=[
             TrackActivity(
