@@ -8,6 +8,7 @@ from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
 from api.models import Resource, ResourceChartDetails, ResourceSchema
+from api.schema.extensions import TrackModelActivity
 from api.types.type_resource_chart import TypeResourceChart
 from api.utils.enums import AggregateType, ChartStatus, ChartTypes
 
@@ -192,7 +193,24 @@ class Mutation:
         )
         return TypeResourceChart.from_django(chart)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        extensions=[
+            # Use TrackModelActivity to automatically track the activity
+            # The extension will use the returned chart as the action object
+            # and the resource as the target
+            TrackModelActivity(
+                verb="created chart",
+                target_attr="resource",
+                get_data=lambda result, **kwargs: {
+                    "chart_name": result.name,
+                    "chart_type": result.chart_type,
+                    "resource_id": str(result.resource.id),
+                    "resource_name": result.resource.name,
+                },
+            )
+        ],
+    )
     def create_resource_chart(
         self, info: Info, chart_input: ResourceChartInput
     ) -> TypeResourceChart:
@@ -214,7 +232,23 @@ class Mutation:
         _update_chart_fields(chart, chart_input, resource_obj)
         return TypeResourceChart.from_django(chart)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        extensions=[
+            # Track updates to charts
+            TrackModelActivity(
+                verb="updated chart",
+                target_attr="resource",
+                get_data=lambda result, **kwargs: {
+                    "chart_id": str(result.id),
+                    "chart_name": result.name,
+                    "chart_type": result.chart_type,
+                    "resource_id": str(result.resource.id),
+                    "resource_name": result.resource.name,
+                },
+            )
+        ],
+    )
     def edit_resource_chart(
         self, info: Info, chart_input: ResourceChartInput
     ) -> TypeResourceChart:

@@ -1,3 +1,4 @@
+# mypy: disable-error-code=union-attr
 import datetime
 import uuid
 from typing import Any, List, Optional, Union
@@ -19,6 +20,7 @@ from api.models import (
 )
 from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata
+from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.types.type_dataset import DatasetFilter, DatasetOrder, TypeDataset
 from api.types.type_organization import TypeOrganization
 from api.types.type_resource_chart import TypeResourceChart
@@ -502,6 +504,19 @@ class Mutation:
     @strawberry_django.mutation(
         handle_django_errors=True,
         permission_classes=[UpdateDatasetPermission],  # type: ignore[list-item]
+        extensions=[
+            TrackModelActivity(
+                verb="updated",
+                get_data=lambda result, **kwargs: {
+                    "dataset_id": str(result.id),
+                    "dataset_title": result.title,
+                    "organization": (
+                        str(result.organization.id) if result.organization else None
+                    ),
+                    "updated_fields": {"metadata": True, "description": True},
+                },
+            )
+        ],
     )
     @trace_resolver(
         name="add_update_dataset_metadata",
@@ -533,6 +548,28 @@ class Mutation:
     @strawberry_django.mutation(
         handle_django_errors=True,
         permission_classes=[UpdateDatasetPermission],  # type: ignore[list-item]
+        extensions=[
+            TrackModelActivity(
+                verb="updated",
+                get_data=lambda result, **kwargs: {
+                    "dataset_id": str(result.id),
+                    "dataset_title": result.title,
+                    "organization": (
+                        str(result.organization.id) if result.organization else None
+                    ),
+                    "updated_fields": {
+                        "title": kwargs.get("update_dataset_input").title is not None,
+                        "description": kwargs.get("update_dataset_input").description
+                        is not None,
+                        "access_type": kwargs.get("update_dataset_input").access_type
+                        is not None,
+                        "license": kwargs.get("update_dataset_input").license
+                        is not None,
+                        "tags": kwargs.get("update_dataset_input").tags is not None,
+                    },
+                },
+            )
+        ],
     )
     @trace_resolver(
         name="update_dataset",
@@ -562,6 +599,18 @@ class Mutation:
     @strawberry_django.mutation(
         handle_django_errors=True,
         permission_classes=[PublishDatasetPermission],  # type: ignore[list-item]
+        extensions=[
+            TrackModelActivity(
+                verb="published",
+                get_data=lambda result, **kwargs: {
+                    "dataset_id": str(result.id),
+                    "dataset_title": result.title,
+                    "organization": (
+                        str(result.organization.id) if result.organization else None
+                    ),
+                },
+            )
+        ],
     )
     @trace_resolver(
         name="publish_dataset",
@@ -581,6 +630,19 @@ class Mutation:
     @strawberry_django.mutation(
         handle_django_errors=True,
         permission_classes=[PublishDatasetPermission],  # type: ignore[list-item]
+        extensions=[
+            TrackModelActivity(
+                verb="updated",
+                get_data=lambda result, **kwargs: {
+                    "dataset_id": str(result.id),
+                    "dataset_title": result.title,
+                    "organization": (
+                        str(result.organization.id) if result.organization else None
+                    ),
+                    "updated_fields": {"status": "DRAFT", "action": "unpublished"},
+                },
+            )
+        ],
     )
     @trace_resolver(
         name="un_publish_dataset",
@@ -600,6 +662,15 @@ class Mutation:
     @strawberry_django.mutation(
         handle_django_errors=False,
         permission_classes=[IsAuthenticated, DeleteDatasetPermission],  # type: ignore[list-item]
+        extensions=[
+            TrackActivity(
+                verb="deleted dataset",
+                get_data=lambda result, **kwargs: {
+                    "dataset_id": str(kwargs.get("dataset_id")),
+                    "success": result,
+                },
+            )
+        ],
     )
     @trace_resolver(
         name="delete_dataset",

@@ -1,9 +1,32 @@
-from typing import Any, Callable, Dict, Optional, TypedDict
+# mypy: disable-error-code=valid-type
+import threading
+from typing import Any, Callable, Dict, Optional, TypedDict, TypeVar, cast
 
+from django.contrib.auth import get_user_model
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 
 from api.models import DataSpace, Organization
+
+User = get_user_model()
+
+# Thread-local storage for the current user
+_thread_locals = threading.local()
+
+
+def get_current_user() -> Optional[User]:
+    """
+    Get the current user from thread-local storage.
+    This is useful for tracking who performed an action when signals are triggered.
+    """
+    return getattr(_thread_locals, "user", None)
+
+
+def set_current_user(user: Optional[User]) -> None:
+    """
+    Set the current user in thread-local storage.
+    """
+    _thread_locals.user = user
 
 
 class RequestContext(TypedDict):
@@ -23,6 +46,12 @@ class ContextMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: CustomHttpRequest) -> HttpResponse:
+        # Set the current user in thread-local storage
+        if hasattr(request, "user") and request.user.is_authenticated:
+            set_current_user(request.user)
+        else:
+            set_current_user(None)
+
         # Get token from Authorization header (Bearer token) or x-keycloak-token header
         auth_header: Optional[str] = request.headers.get("authorization", None)
         keycloak_token: Optional[str] = request.headers.get("x-keycloak-token", None)
@@ -60,5 +89,8 @@ class ContextMiddleware:
         }
 
         response: HttpResponse = self.get_response(request)
+
+        # Clean up thread-local storage after request processing
+        set_current_user(None)
 
         return response

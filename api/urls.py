@@ -13,6 +13,14 @@ from api.views import (
     search_dataset,
     trending_datasets,
 )
+from api.views.activity import (
+    DatasetActivityView,
+    GlobalActivityView,
+    OrganizationActivityView,
+    ResourceActivityView,
+    UseCaseActivityView,
+    UserActivityView,
+)
 
 urlpatterns = [
     # Authentication endpoints
@@ -49,5 +57,28 @@ urlpatterns = [
         r"generate-dynamic-chart/(?P<resource_id>[0-9a-f]{8}\-[0-9a-f]{4}\-4[0-9a-f]{3}\-[89ab][0-9a-f]{3}\-[0-9a-f]{12})",
         generate_dynamic_chart,
         name="generate_dynamic_chart",
+    ),
+    # Activity Stream endpoints
+    path("activities/user/", UserActivityView.as_view(), name="user_activities"),
+    path("activities/global/", GlobalActivityView.as_view(), name="global_activities"),
+    path(
+        "activities/dataset/<uuid:dataset_id>/",
+        DatasetActivityView.as_view(),
+        name="dataset_activities",
+    ),
+    path(
+        "activities/organization/<str:organization_id>/",
+        OrganizationActivityView.as_view(),
+        name="organization_activities",
+    ),
+    path(
+        "activities/resource/<uuid:resource_id>/",
+        ResourceActivityView.as_view(),
+        name="resource_activities",
+    ),
+    path(
+        "activities/usecase/<int:usecase_id>/",
+        UseCaseActivityView.as_view(),
+        name="usecase_activities",
     ),
 ]

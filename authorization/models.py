@@ -3,6 +3,7 @@ from django.db import models
 from django.utils.text import slugify
 
 from api.utils.file_paths import _user_profile_image_directory_path
+from authorization.consent import UserConsent
 
 
 class Role(models.Model):

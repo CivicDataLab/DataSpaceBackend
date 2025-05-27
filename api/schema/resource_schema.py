@@ -2,7 +2,9 @@ import copy
 import typing
 import uuid
 from enum import Enum
-from typing import Any, Dict, List, Optional, cast
+
+# mypy: disable-error-code=operator
+from typing import Any, Dict, List, Optional, Set, cast
 
 import pandas as pd
 import strawberry
@@ -22,6 +24,7 @@ from api.models import (
     ResourceVersion,
 )
 from api.models.Resource import _increment_version
+from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.types.type_resource import TypeResource
 from api.utils.constants import FORMAT_MAPPING
 from api.utils.data_indexing import index_resource_data
@@ -241,6 +244,15 @@ class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=False)
     @trace_resolver(name="create_file_resources", attributes={"component": "resource"})
+    @TrackModelActivity(
+        verb="created",
+        get_data=lambda result, file_resource_input, **kwargs: {
+            "resource_id": str(result[0].id) if result else "",
+            "resource_name": result[0].name if result else "",
+            "dataset_id": str(file_resource_input.dataset),
+            "file_count": len(file_resource_input.files),
+        },
+    )
     def create_file_resources(
         self, info: Info, file_resource_input: CreateFileResourceInput
     ) -> List[TypeResource]:
@@ -263,6 +275,14 @@ class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=True)
     @trace_resolver(name="create_file_resource", attributes={"component": "resource"})
+    @TrackModelActivity(
+        verb="created",
+        get_data=lambda result, file_resource_input, **kwargs: {
+            "resource_id": str(result.id),
+            "dataset_id": str(file_resource_input.dataset),
+            "empty_resource": True,
+        },
+    )
     def create_file_resource(
         self, info: Info, file_resource_input: CreateEmptyFileResourceInput
     ) -> TypeResource:
@@ -278,6 +298,25 @@ class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=True)
     @trace_resolver(name="update_file_resource", attributes={"component": "resource"})
+    @TrackModelActivity(
+        verb="updated",
+        get_data=lambda result, file_resource_input, **kwargs: {
+            "resource_id": str(result.id),
+            "resource_name": result.name,
+            "updated_fields": {
+                "name": file_resource_input.name if file_resource_input.name else None,
+                "description": (
+                    file_resource_input.description
+                    if file_resource_input.description is not None
+                    else None
+                ),
+                "preview_enabled": file_resource_input.preview_enabled,
+                "file_updated": file_resource_input.file is not None,
+                "preview_details_updated": file_resource_input.preview_details
+                is not None,
+            },
+        },
+    )
     def update_file_resource(
         self, info: Info, file_resource_input: UpdateFileResourceInput
     ) -> TypeResource:
@@ -351,6 +390,12 @@ class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=False)
     @trace_resolver(name="delete_file_resource", attributes={"component": "resource"})
+    @TrackActivity(
+        verb="deleted",
+        get_data=lambda info, resource_id, **kwargs: {
+            "resource_id": str(resource_id),
+        },
+    )
     def delete_file_resource(self, info: Info, resource_id: uuid.UUID) -> bool:
         """Delete a file resource."""
         try:
@@ -362,6 +407,15 @@ class Mutation:
 
     @strawberry_django.mutation(handle_django_errors=True)
     @trace_resolver(name="create_major_version", attributes={"component": "resource"})
+    @TrackModelActivity(
+        verb="versioned",
+        get_data=lambda result, input, **kwargs: {
+            "resource_id": str(result.id),
+            "resource_name": result.name,
+            "version": result.version,
+            "description": input.description,
+        },
+    )
     def create_major_version(
         self, info: Info, input: CreateMajorVersionInput
     ) -> TypeResource:

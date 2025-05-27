@@ -131,6 +131,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "django_elasticsearch_dsl",
     "django_elasticsearch_dsl_drf",
+    "actstream",
 ]
 
 MIDDLEWARE = [
@@ -154,6 +155,7 @@ if DEBUG:
 MIDDLEWARE += [
     "api.middleware.rate_limit.rate_limit_middleware",
     "authorization.middleware.KeycloakAuthenticationMiddleware",
+    "authorization.middleware.activity_consent.ActivityConsentMiddleware",
 ]
 
 ROOT_URLCONF = "DataSpace.urls"
@@ -461,3 +463,25 @@ WHITENOISE_USE_FINDERS = True
 
 # Don't use the root directory feature which can cause conflicts
 # WHITENOISE_ROOT = os.path.join(BASE_DIR, "static")
+
+# Django Activity Stream settings
+ACTSTREAM_SETTINGS = {
+    "MANAGER": "actstream.managers.ActionManager",
+    "FETCH_RELATIONS": True,
+    "USE_PREFETCH": True,
+    "USE_JSONFIELD": True,
+    "GFK_FETCH_DEPTH": 1,
+}
+
+# Activity Stream Consent Settings
+ACTIVITY_CONSENT = {
+    # If True, user consent is required for activity tracking
+    # If False, consent is assumed and all activities are tracked
+    "REQUIRE_CONSENT": env.bool("ACTIVITY_REQUIRE_CONSENT", default=True),
+    # Default consent setting for new users
+    "DEFAULT_CONSENT": env.bool("ACTIVITY_DEFAULT_CONSENT", default=False),
+    # If True, anonymous activities are tracked (when consent is not required)
+    "TRACK_ANONYMOUS": env.bool("ACTIVITY_TRACK_ANONYMOUS", default=False),
+    # Maximum age of activities to keep (in days, 0 means keep forever)
+    "MAX_AGE_DAYS": env.int("ACTIVITY_MAX_AGE_DAYS", default=0),
+}

@@ -5,9 +5,11 @@ from typing import List, Optional
 
 import strawberry
 import strawberry_django
+from strawberry.permission import BasePermission
 from strawberry.types import Info
 
 from api.models import Organization
+from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.types.type_organization import TypeOrganization
 from api.utils.graphql_utils import is_superuser
 from authorization.models import OrganizationMembership, Role
@@ -59,7 +61,6 @@ class Query:
         self, info: Info, slug: Optional[str] = None, id: Optional[str] = None
     ) -> List[TypeOrganization]:
         """Get all organizations the user has access to."""
-        # Now info.context is the request object
         user = info.context.user
         if not user or getattr(user, "is_anonymous", True):
             logging.warning("Anonymous user or no user found in context")
@@ -92,7 +93,6 @@ class Query:
         try:
             organization = Organization.objects.get(id=id)
 
-            # Now info.context is the request object
             user = info.context.user
             if not user or getattr(user, "is_anonymous", True):
                 logging.warning("Anonymous user or no user found in context")
@@ -116,7 +116,18 @@ class Mutation:
     """Mutations for organizations."""
 
     @strawberry_django.mutation(
-        handle_django_errors=True, permission_classes=[IsAuthenticated]
+        handle_django_errors=True,
+        permission_classes=[IsAuthenticated],
+        extensions=[
+            TrackModelActivity(
+                verb="created",
+                get_data=lambda result, **kwargs: {
+                    "organization_name": result.name,
+                    "organization_id": str(result.id),
+                    "organization_type": result.organization_types,
+                },
+            )
+        ],
     )
     def create_organization(
         self, info: Info, input: OrganizationInput
@@ -155,6 +166,22 @@ class Mutation:
     @strawberry_django.mutation(
         handle_django_errors=True,
         permission_classes=[IsAuthenticated, ChangeOrganizationPermission],  # type: ignore[list-item]
+        extensions=[
+            TrackModelActivity(
+                verb="updated",
+                get_data=lambda result, **kwargs: {
+                    "organization_name": result.name,
+                    "organization_id": str(result.id),
+                    "updated_fields": {
+                        k: v
+                        for k, v in vars(kwargs.get("input")).items()
+                        if not k.startswith("_")
+                        and v is not strawberry.UNSET
+                        and k not in ["created", "modified", "id"]
+                    },
+                },
+            )
+        ],
     )
     def update_organization(
         self, info: Info, input: OrganizationInputPartial
@@ -200,8 +227,16 @@ class Mutation:
             raise ValueError(f"Organization with ID {input.id} does not exist.")
 
     @strawberry_django.mutation(
-        handle_django_errors=False,
+        handle_django_errors=True,
         permission_classes=[IsAuthenticated, DeleteOrganizationPermission],  # type: ignore[list-item]
+        extensions=[
+            TrackActivity(
+                verb="deleted",
+                get_data=lambda info, organization_id, **kwargs: {
+                    "organization_id": organization_id,
+                },
+            )
+        ],
     )
     def delete_organization(self, info: Info, organization_id: str) -> bool:
         """Delete an organization."""

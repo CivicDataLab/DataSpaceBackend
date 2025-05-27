@@ -57,6 +57,7 @@ repos:
           - uvicorn
           - djangorestframework-simplejwt
           - python-keycloak
+          - django-activity-stream
 
         args: [--config-file=mypy.ini]
         exclude: ^tests/
