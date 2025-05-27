@@ -105,6 +105,9 @@ class Query:
         if order is not strawberry.UNSET:
             queryset = strawberry_django.ordering.apply(order, queryset, info)
 
+        # Materialize the queryset before pagination
+        queryset = list(queryset)  # type: ignore
+
         if pagination is not strawberry.UNSET:
             queryset = strawberry_django.pagination.apply(pagination, queryset)
 
