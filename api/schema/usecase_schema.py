@@ -23,7 +23,7 @@ from api.models import (
 )
 from api.types.type_dataset import TypeDataset
 from api.types.type_organization import TypeOrganization
-from api.types.type_usecase import TypeUseCase
+from api.types.type_usecase import TypeUseCase, UseCaseFilter, UseCaseOrder
 from api.types.type_usecase_organization import (
     TypeUseCaseOrganizationRelationship,
     relationship_type,
@@ -70,21 +70,21 @@ class Query:
 
     use_case: TypeUseCase = strawberry_django.field()
 
-    @strawberry_django.field
+    @strawberry_django.field(pagination=True, filters=UseCaseFilter, order=UseCaseOrder)
     @trace_resolver(name="get_use_cases", attributes={"component": "usecase"})
     def use_cases(self, info: Info) -> list[TypeUseCase]:
         """Get all use cases."""
         user = info.context.user
         organization = info.context.context.get("organization")
         if organization:
-            queryset = UseCase.objects.filter(datasets__organization=organization)
+            queryset = UseCase.objects.filter(organization=organization)
         elif user.is_superuser:
             queryset = UseCase.objects.all()
         elif user.is_authenticated:
             queryset = UseCase.objects.filter(user=user)
         else:
             queryset = UseCase.objects.none()
-        return TypeUseCase.from_django_list(queryset)
+        return queryset  # type: ignore
 
     @strawberry_django.field
     @trace_resolver(

@@ -52,6 +52,9 @@ class TypeUseCase(BaseType):
     """GraphQL type for UseCase model."""
 
     user: TypeUser = strawberry.field(description="User who created this use case")
+    organization: Optional[TypeOrganization] = strawberry.field(
+        description="Organization associated with this use case"
+    )
 
     @strawberry.field
     def datasets(self) -> Optional[List["TypeDataset"]]:
