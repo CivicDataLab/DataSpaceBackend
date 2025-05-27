@@ -203,11 +203,11 @@ class HasOrganizationRoleGraphQL(BasePermission):  # type: ignore[misc]
             # Check if organization_id is provided in the arguments
             organization_id = kwargs.get("organization_id")
             # Also check if organization is in the context
-            organization = (
-                info.context.context.get("organization")
-                if hasattr(info.context, "context")
-                else None
-            )
+            organization = None
+            if hasattr(info.context, "context") and isinstance(
+                info.context.context, dict
+            ):
+                organization = info.context.context.get("organization")
 
             if organization_id:
                 try:
@@ -345,8 +345,6 @@ class UserDatasetPermission(BasePermission):
         if source is None:
             dataset_id = kwargs.get("dataset_id")
             if dataset_id:
-                from api.models import Dataset
-
                 try:
                     dataset = Dataset.objects.get(id=dataset_id)
                     # Allow access if user owns the dataset
