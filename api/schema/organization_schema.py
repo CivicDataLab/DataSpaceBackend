@@ -85,27 +85,11 @@ class Query:
 
         return [TypeOrganization.from_django(org) for org in queryset]
 
-    @strawberry_django.field(
-        permission_classes=[IsAuthenticated, IsOrganizationMember]  # type: ignore[list-item]
-    )
+    @strawberry_django.field
     def organization(self, info: Info, id: str) -> Optional[TypeOrganization]:
         """Get organization by ID."""
         try:
             organization = Organization.objects.get(id=id)
-
-            user = info.context.user
-            if not user or getattr(user, "is_anonymous", True):
-                logging.warning("Anonymous user or no user found in context")
-                raise ValueError("Authentication required")
-
-            if (
-                not is_superuser(info)
-                and not OrganizationMembership.objects.filter(
-                    user=user, organization=organization  # type: ignore[misc]
-                ).exists()
-            ):
-                raise ValueError("You don't have permission to view this organization")
-
             return TypeOrganization.from_django(organization)
         except Organization.DoesNotExist:
             raise ValueError(f"Organization with ID {id} does not exist.")
