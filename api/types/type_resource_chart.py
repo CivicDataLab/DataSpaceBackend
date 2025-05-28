@@ -155,7 +155,7 @@ class TypeResourceChart(BaseType):
     @strawberry.field
     def dataset(self: Any) -> Optional[TypeDataset]:
         """Get dataset for this chart."""
-        return TypeDataset.from_django(self.dataset)
+        return TypeDataset.from_django(self.resource.dataset)
 
     @strawberry.field
     def resource(self: Any) -> Optional[TypeResource]:
