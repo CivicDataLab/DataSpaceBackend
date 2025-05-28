@@ -22,9 +22,7 @@ from authorization.types import TypeUser
 class Query:
     """Queries for organization-related data."""
 
-    @strawberry_django.field(
-        permission_classes=[IsAuthenticated, IsOrganizationMemberGraphQL]
-    )
+    @strawberry_django.field
     @trace_resolver(
         name="get_organization_published_datasets",
         attributes={"component": "organization"},
@@ -45,9 +43,7 @@ class Query:
         except Exception:
             return []
 
-    @strawberry_django.field(
-        permission_classes=[IsAuthenticated, IsOrganizationMemberGraphQL]
-    )
+    @strawberry_django.field
     @trace_resolver(
         name="get_organization_published_use_cases",
         attributes={"component": "organization"},
@@ -69,9 +65,7 @@ class Query:
         except Exception:
             return []
 
-    @strawberry_django.field(
-        permission_classes=[IsAuthenticated, IsOrganizationMemberGraphQL]
-    )
+    @strawberry_django.field
     @trace_resolver(
         name="get_organization_contributed_sectors",
         attributes={"component": "organization"},
@@ -109,9 +103,7 @@ class Query:
         except Exception:
             return []
 
-    @strawberry_django.field(
-        permission_classes=[IsAuthenticated, IsOrganizationMemberGraphQL]
-    )
+    @strawberry_django.field
     @trace_resolver(
         name="get_organization_members", attributes={"component": "organization"}
     )
