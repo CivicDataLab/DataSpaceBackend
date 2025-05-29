@@ -7,6 +7,7 @@ from pyecharts.charts import Bar, Line, Map, TreeMap
 from pyecharts.charts.chart import Chart
 
 from api.models import ResourceChartDetails
+from api.types.charts.combined_bar_chart import CombinedChart
 from api.utils.data_indexing import query_resource_data
 from api.utils.enums import AggregateType
 
@@ -44,6 +45,8 @@ CHART_TYPE_MAP = {
     "ASSAM_RC": Map,
     "MULTILINE": Line,
     "TREEMAP": TreeMap,
+    "BAR": CombinedChart,
+    "LINE": CombinedChart,
 }
 
 

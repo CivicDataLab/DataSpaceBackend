@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Type, TypedDict, TypeVar, Union, c
 
 import strawberry
 import strawberry_django
+import structlog
 from pyecharts.charts.chart import Chart
 from strawberry.scalars import JSON
 from strawberry.types import Info
@@ -17,6 +18,7 @@ from api.types.type_resource import TypeResource, TypeResourceSchema
 from api.utils.enums import ChartTypes
 from api.utils.file_utils import load_csv
 
+logger = structlog.get_logger(__name__)
 T = TypeVar("T", bound="TypeResourceChart")
 
 
@@ -32,6 +34,7 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
     try:
         file_details = getattr(chart_details.resource, "resourcefiledetails", None)
         if not file_details or file_details.format.lower() != "csv":
+            logger.error("invalid resource format")
             return None
 
         data = load_csv(file_details.file.path)
