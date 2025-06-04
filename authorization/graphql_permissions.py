@@ -1,11 +1,16 @@
 from typing import Any, List, Optional, cast
 
 import strawberry
+import structlog
+from django.conf import settings
 from strawberry.permission import BasePermission
 from strawberry.types import Info
 
+from api.utils.debug_utils import debug_context
 from authorization.models import DatasetPermission, OrganizationMembership, User
 from authorization.services import AuthorizationService
+
+logger = structlog.getLogger(__name__)
 
 
 class AllowAny(BasePermission):
@@ -29,12 +34,6 @@ class IsAuthenticated(BasePermission):
     message = "User is not authenticated"
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        import structlog
-        from django.conf import settings
-
-        from api.utils.debug_utils import debug_context
-
-        logger = structlog.getLogger(__name__)
 
         # Debug the context to understand its structure
         debug_context(info, "Auth")

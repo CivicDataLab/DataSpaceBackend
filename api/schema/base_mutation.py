@@ -100,9 +100,11 @@ class BaseMutation:
                     # Check permissions if provided
                     if permission_classes:
                         for permission_class in permission_classes:
-                            if not permission_class.has_permission(info.context):
+                            permission = permission_class()
+                            if not permission.has_permission(None, info, **kwargs):
                                 raise PermissionDenied(
-                                    f"Permission denied: {permission_class.__name__}"
+                                    permission.message
+                                    or f"Permission denied: {permission_class.__name__}"
                                 )
 
                     # Get the return type annotation which should be MutationResponse[T]
