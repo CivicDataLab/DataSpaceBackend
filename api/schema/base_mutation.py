@@ -18,7 +18,11 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
 from strawberry.types import Info
 
-from api.utils.error_handlers import ErrorDictType, handle_django_errors
+from api.utils.error_handlers import (
+    ErrorDictType,
+    format_integrity_error,
+    handle_django_errors,
+)
 
 ActivityData = Dict[str, Any]
 ActivityDataGetter = Callable[[Any, Dict[str, Any]], ActivityData]
@@ -126,14 +130,26 @@ class BaseMutation:
                     # Otherwise, wrap the result in a MutationResponse
                     return MutationResponse.success_response(result)
 
-                except (DjangoValidationError, IntegrityError, PermissionDenied) as e:
+                except (DjangoValidationError, PermissionDenied) as e:
                     # Get validation errors from context if available
                     validation_errors = getattr(info.context, "validation_errors", None)
                     if validation_errors:
                         errors = BaseMutation.format_errors(validation_errors)
                     else:
                         errors = GraphQLValidationError.from_message(str(e))
+                    return MutationResponse.error_response(errors)
 
+                except IntegrityError as e:
+                    # Format integrity errors into validation errors
+                    error_data = format_integrity_error(e)
+                    if "field_errors" in error_data:
+                        errors = BaseMutation.format_errors(
+                            {"field_errors": error_data["field_errors"]}
+                        )
+                    else:
+                        errors = BaseMutation.format_errors(
+                            {"non_field_errors": error_data["non_field_errors"]}
+                        )
                     return MutationResponse.error_response(errors)
 
             return wrapper
