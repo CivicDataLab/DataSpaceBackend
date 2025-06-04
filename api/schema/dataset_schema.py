@@ -67,11 +67,8 @@ class AddOrganizationPermission(HasOrganizationRoleGraphQL):
         super().__init__(operation="add")
 
 
-from authorization.permissions import (
-    CreateDatasetPermission,
-    IsAuthenticated,
-    UserDatasetPermission,
-)
+from authorization.graphql_permissions import IsAuthenticated
+from authorization.permissions import CreateDatasetPermission, UserDatasetPermission
 
 
 class AllowPublishedDatasets(BasePermission):
@@ -519,6 +516,11 @@ class Mutation:
 
         return MutationResponse.success_response(TypeDataset.from_django(dataset))
 
+    @strawberry.mutation
+    @trace_resolver(
+        name="add_update_dataset_metadata",
+        attributes={"component": "dataset", "operation": "mutation"},
+    )
     @BaseMutation.mutation(
         permission_classes=[UpdateDatasetPermission],
         track_activity={
