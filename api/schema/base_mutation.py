@@ -18,11 +18,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
 from strawberry.types import Info
 
-from api.utils.error_handlers import (
-    ErrorDictType,
-    format_integrity_error,
-    handle_django_errors,
-)
+from api.utils.error_handlers import ErrorDictType, format_integrity_error
 
 ActivityData = Dict[str, Any]
 ActivityDataGetter = Callable[[Any, Dict[str, Any]], ActivityData]
@@ -98,7 +94,6 @@ class BaseMutation:
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
             @wraps(func)
-            @handle_django_errors
             def wrapper(cls: Any, info: Info, *args: Any, **kwargs: Any) -> Any:
                 try:
                     # Check permissions if provided
