@@ -2,6 +2,7 @@ from typing import Any, Optional
 
 import structlog
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 
@@ -10,6 +11,9 @@ from api.models.Dataset import Dataset
 from api.models.Resource import Resource, ResourceVersion, _increment_version
 from api.utils.enums import DatasetStatus
 from search.documents.dataset_document import DatasetDocument
+
+# Cache version key for search results
+SEARCH_CACHE_VERSION_KEY = "search_results_version"
 
 logger = structlog.getLogger(__name__)
 
@@ -39,8 +43,15 @@ def handle_dataset_publication(sender: Any, instance: Dataset, **kwargs: Any) ->
                 and instance.status != DatasetStatus.PUBLISHED
             )
 
-            # Handle Elasticsearch document updates
-            # if status_changing_to_published or status_changing_from_published:
+            # Invalidate search results cache by incrementing version
+            try:
+                version = cache.get(SEARCH_CACHE_VERSION_KEY, 0)
+                cache.set(SEARCH_CACHE_VERSION_KEY, version + 1)
+                logger.info(f"Invalidated search cache for dataset {instance.title}")
+            except Exception as e:
+                logger.error(f"Failed to invalidate search cache: {str(e)}")
+
+            # Update Elasticsearch index
             if status_changing_from_published:
                 try:
                     document = DatasetDocument.get(id=instance.id, ignore=404)
