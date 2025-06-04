@@ -9,8 +9,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 from rest_framework.views import APIView
 
-from api.models import Metadata
-from search.documents.dataset_document import SEARCH_CACHE_VERSION_KEY
+from api.signals.dataset_signals import SEARCH_CACHE_VERSION_KEY
 
 T = TypeVar("T")
 SearchType = TypeVar("SearchType", bound=Search)
