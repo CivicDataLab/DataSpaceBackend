@@ -5,6 +5,7 @@ from typing import Any, List, Optional, Union
 
 import strawberry
 import strawberry_django
+from django.core.exceptions import ValidationError as DjangoValidationError
 from strawberry.permission import BasePermission
 from strawberry.types import Info
 from strawberry_django.pagination import OffsetPaginationInput
@@ -20,6 +21,11 @@ from api.models import (
 )
 from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata
+from api.schema.base_mutation import (
+    BaseMutation,
+    GraphQLValidationError,
+    MutationResponse,
+)
 from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.types.type_dataset import DatasetFilter, DatasetOrder, TypeDataset
 from api.types.type_organization import TypeOrganization
@@ -473,18 +479,18 @@ class Query:
 
 @strawberry.type
 class Mutation:
-    @strawberry_django.mutation(
-        handle_django_errors=True,
-        permission_classes=[IsAuthenticated, CreateDatasetPermission],  # type: ignore[list-item]
-    )
     @trace_resolver(
         name="add_dataset", attributes={"component": "dataset", "operation": "mutation"}
     )
-    def add_dataset(self, info: Info) -> TypeDataset:
+    @BaseMutation.mutation(
+        permission_classes=[IsAuthenticated, CreateDatasetPermission]
+    )
+    def add_dataset(self, info: Info) -> MutationResponse[TypeDataset]:
         # Get organization from context
         organization = info.context.context.get("organization")
         dataspace = info.context.context.get("dataspace")
         user = info.context.user
+
         dataset = Dataset.objects.create(
             organization=organization,
             dataspace=dataspace,
@@ -499,38 +505,41 @@ class Mutation:
         DatasetPermission.objects.create(
             user=user, dataset=dataset, role=Role.objects.get(name="owner")
         )
-        return TypeDataset.from_django(dataset)
 
-    @strawberry_django.mutation(
-        handle_django_errors=True,
-        permission_classes=[UpdateDatasetPermission],  # type: ignore[list-item]
-        extensions=[
-            TrackModelActivity(
-                verb="updated",
-                get_data=lambda result, **kwargs: {
-                    "dataset_id": str(result.id),
-                    "dataset_title": result.title,
-                    "organization": (
-                        str(result.organization.id) if result.organization else None
-                    ),
-                    "updated_fields": {"metadata": True, "description": True},
-                },
-            )
-        ],
-    )
+        return MutationResponse.success_response(TypeDataset.from_django(dataset))
+
     @trace_resolver(
         name="add_update_dataset_metadata",
         attributes={"component": "dataset", "operation": "mutation"},
     )
+    @BaseMutation.mutation(
+        permission_classes=[UpdateDatasetPermission],
+        track_activity={
+            "verb": "updated",
+            "get_data": lambda result, update_metadata_input=None, **kwargs: {
+                "dataset_id": str(result.id),
+                "dataset_title": result.title,
+                "organization": (
+                    str(result.organization.id) if result.organization else None
+                ),
+                "updated_fields": {
+                    "metadata": True,
+                    "description": bool(
+                        update_metadata_input and update_metadata_input.description
+                    ),
+                },
+            },
+        },
+    )
     def add_update_dataset_metadata(
         self, info: Info, update_metadata_input: UpdateMetadataInput
-    ) -> TypeDataset:
+    ) -> MutationResponse[TypeDataset]:
         dataset_id = update_metadata_input.dataset
         metadata_input = update_metadata_input.metadata
         try:
             dataset = Dataset.objects.get(id=dataset_id)
         except Dataset.DoesNotExist as e:
-            raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
+            raise DjangoValidationError(f"Dataset with ID {dataset_id} does not exist.")
 
         if update_metadata_input.description:
             dataset.description = update_metadata_input.description
@@ -543,7 +552,7 @@ class Mutation:
             _update_dataset_tags(dataset, update_metadata_input.tags)
         _add_update_dataset_metadata(dataset, metadata_input)
         _add_update_dataset_sectors(dataset, update_metadata_input.sectors)
-        return TypeDataset.from_django(dataset)
+        return MutationResponse.success_response(TypeDataset.from_django(dataset))
 
     @strawberry_django.mutation(
         handle_django_errors=True,
