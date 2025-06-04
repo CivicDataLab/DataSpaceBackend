@@ -40,17 +40,17 @@ def handle_dataset_publication(sender: Any, instance: Dataset, **kwargs: Any) ->
             )
 
             # Handle Elasticsearch document updates
-            if status_changing_to_published or status_changing_from_published:
-                try:
-                    document = DatasetDocument.get(id=instance.id, ignore=404)
-                    if document:
-                        document.update(instance)
-                    else:
-                        DatasetDocument().update(instance)
-                except Exception as e:
-                    logger.error(
-                        f"Failed to update Elasticsearch document for dataset {instance.title}: {str(e)}"
-                    )
+            # if status_changing_to_published or status_changing_from_published:
+            try:
+                document = DatasetDocument.get(id=instance.id, ignore=404)
+                if document:
+                    document.update(instance)
+                else:
+                    DatasetDocument().update(instance)
+            except Exception as e:
+                logger.error(
+                    f"Failed to update Elasticsearch document for dataset {instance.title}: {str(e)}"
+                )
 
             # Handle resource version increments for publication
             if status_changing_to_published:
