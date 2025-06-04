@@ -15,7 +15,7 @@ from api.types.base_type import BaseType
 from api.types.charts.chart_registry import CHART_REGISTRY
 from api.types.type_dataset import TypeDataset
 from api.types.type_resource import TypeResource, TypeResourceSchema
-from api.utils.enums import ChartTypes
+from api.utils.enums import ChartStatus, ChartTypes
 from api.utils.file_utils import load_csv
 
 logger = structlog.get_logger(__name__)
@@ -142,6 +142,7 @@ def ensure_type(
 
 
 ChartTypeEnum = strawberry.enum(ChartTypes)  # type: ignore
+ChartStatusEnum = strawberry.enum(ChartStatus)  # type: ignore
 
 
 @strawberry_django.type(ResourceChartDetails)
@@ -154,6 +155,7 @@ class TypeResourceChart(BaseType):
     created: datetime
     modified: datetime
     description: Optional[str] = ""
+    status: ChartStatusEnum = ChartStatusEnum.DRAFT
 
     @strawberry.field
     def dataset(self: Any) -> Optional[TypeDataset]:
