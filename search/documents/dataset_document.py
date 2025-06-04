@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional, Union
 
+from django.core.cache import cache
 from django_elasticsearch_dsl import Document, Index, KeywordField, fields
 
 from api.models import Dataset, DatasetMetadata, Metadata, Resource, Sector
@@ -9,6 +10,9 @@ from search.documents.analysers import html_strip, ngram_analyser
 
 INDEX = Index(settings.ELASTICSEARCH_INDEX_NAMES[__name__])
 INDEX.settings(number_of_shards=1, number_of_replicas=0)
+
+# Cache version key for search results
+SEARCH_CACHE_VERSION_KEY = "search_results_version"
 
 
 @INDEX.doc_type
@@ -145,15 +149,21 @@ class DatasetDocument(Document):
         return obj.status == DatasetStatus.PUBLISHED
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        """Save the document to Elasticsearch index."""
+        """Save the document to Elasticsearch index and invalidate cache."""
         if self.status == "PUBLISHED":
             super().save(*args, **kwargs)
+            # Increment cache version to invalidate all search results
+            version = cache.get(SEARCH_CACHE_VERSION_KEY, 0)
+            cache.set(SEARCH_CACHE_VERSION_KEY, version + 1)
         else:
             self.delete(ignore=404)
 
     def delete(self, *args: Any, **kwargs: Any) -> None:
-        """Remove the document from Elasticsearch index."""
+        """Remove the document from Elasticsearch index and invalidate cache."""
         super().delete(*args, **kwargs)
+        # Increment cache version to invalidate all search results
+        version = cache.get(SEARCH_CACHE_VERSION_KEY, 0)
+        cache.set(SEARCH_CACHE_VERSION_KEY, version + 1)
 
     def get_queryset(self) -> Any:
         """Get the queryset for indexing."""
