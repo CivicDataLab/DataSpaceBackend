@@ -9,6 +9,7 @@ from api.managers.dvc_manager import DVCManager
 from api.models.Dataset import Dataset
 from api.models.Resource import Resource, ResourceVersion, _increment_version
 from api.utils.enums import DatasetStatus
+from search.documents.dataset_document import DatasetDocument
 
 logger = structlog.getLogger(__name__)
 
@@ -16,10 +17,11 @@ logger = structlog.getLogger(__name__)
 @receiver(pre_save, sender=Dataset)
 def handle_dataset_publication(sender: Any, instance: Dataset, **kwargs: Any) -> None:
     """
-    Signal handler to increment resource versions when a dataset is published.
+    Signal handler for dataset publication state changes.
 
-    This will trigger a minor version increment for all resources in the dataset
-    when the dataset status changes from DRAFT to PUBLISHED.
+    This will:
+    1. Trigger a minor version increment for all resources when status changes from DRAFT to PUBLISHED
+    2. Update the Elasticsearch index when status changes to/from PUBLISHED
     """
     try:
         # Check if this is an existing dataset (not a new one)
@@ -27,11 +29,31 @@ def handle_dataset_publication(sender: Any, instance: Dataset, **kwargs: Any) ->
             # Get the original dataset from the database
             original = Dataset.objects.get(pk=instance.pk)
 
-            # Check if status is changing to PUBLISHED
-            if (
+            # Check if status is changing to/from PUBLISHED
+            status_changing_to_published = (
                 original.status != DatasetStatus.PUBLISHED
                 and instance.status == DatasetStatus.PUBLISHED
-            ):
+            )
+            status_changing_from_published = (
+                original.status == DatasetStatus.PUBLISHED
+                and instance.status != DatasetStatus.PUBLISHED
+            )
+
+            # Handle Elasticsearch document updates
+            if status_changing_to_published or status_changing_from_published:
+                try:
+                    document = DatasetDocument.get(id=instance.id, ignore=404)
+                    if document:
+                        document.update(instance)
+                    else:
+                        DatasetDocument().update(instance)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to update Elasticsearch document for dataset {instance.title}: {str(e)}"
+                    )
+
+            # Handle resource version increments for publication
+            if status_changing_to_published:
                 logger.info(
                     f"Dataset {instance.title} is being published, incrementing resource versions"
                 )
