@@ -32,16 +32,10 @@ from api.activities.usecase import (
 from authorization.models import User
 
 # Register Dataset handlers
+# Register Dataset handlers
 register_model_handler(
     "Dataset",
     "created",
-    lambda user, instance, data, request: track_dataset_created(
-        user, instance, request
-    ),
-)
-register_model_handler(
-    "Dataset",
-    "created dataset",
     lambda user, instance, data, request: track_dataset_created(
         user, instance, request
     ),
@@ -54,20 +48,6 @@ register_model_handler(
         user, instance, data, request
     ),
 )
-register_model_handler(
-    "Dataset",
-    "updated dataset",
-    lambda user, instance, data, request: track_dataset_updated(
-        user, instance, data, request
-    ),
-)
-register_model_handler(
-    "Dataset",
-    "updated dataset metadata",
-    lambda user, instance, data, request: track_dataset_updated(
-        user, instance, data, request
-    ),
-)
 
 register_model_handler(
     "Dataset",
@@ -76,24 +56,10 @@ register_model_handler(
         user, instance, request
     ),
 )
-register_model_handler(
-    "Dataset",
-    "published dataset",
-    lambda user, instance, data, request: track_dataset_published(
-        user, instance, request
-    ),
-)
 
 register_model_handler(
     "Dataset",
     "unpublished",
-    lambda user, instance, data, request: track_dataset_updated(
-        user, instance, {"status": "DRAFT", "action": "unpublished"}, request
-    ),
-)
-register_model_handler(
-    "Dataset",
-    "unpublished dataset",
     lambda user, instance, data, request: track_dataset_updated(
         user, instance, {"status": "DRAFT", "action": "unpublished"}, request
     ),
@@ -107,13 +73,6 @@ register_model_handler(
         user, instance, request
     ),
 )
-register_model_handler(
-    "Organization",
-    "created organization",
-    lambda user, instance, data, request: track_organization_created(
-        user, instance, request
-    ),
-)
 
 register_model_handler(
     "Organization",
@@ -122,27 +81,10 @@ register_model_handler(
         user, instance, data, request
     ),
 )
-register_model_handler(
-    "Organization",
-    "updated organization",
-    lambda user, instance, data, request: track_organization_updated(
-        user, instance, data, request
-    ),
-)
 
 register_model_handler(
     "Organization",
     "deleted",
-    lambda user, instance, data, request: track_organization_updated(
-        user,
-        instance,
-        {"action": "deleted", "organization_id": data.get("organization_id")},
-        request,
-    ),
-)
-register_model_handler(
-    "Organization",
-    "deleted organization",
     lambda user, instance, data, request: track_organization_updated(
         user,
         instance,
@@ -159,24 +101,10 @@ register_model_handler(
         user, instance, request
     ),
 )
-register_model_handler(
-    "Resource",
-    "created resource",
-    lambda user, instance, data, request: track_resource_created(
-        user, instance, request
-    ),
-)
 
 register_model_handler(
     "Resource",
     "updated",
-    lambda user, instance, data, request: track_resource_updated(
-        user, instance, data, request
-    ),
-)
-register_model_handler(
-    "Resource",
-    "updated resource",
     lambda user, instance, data, request: track_resource_updated(
         user, instance, data, request
     ),
@@ -189,24 +117,10 @@ register_model_handler(
         user, instance, request
     ),
 )
-register_model_handler(
-    "Resource",
-    "downloaded resource",
-    lambda user, instance, data, request: track_resource_downloaded(
-        user, instance, request
-    ),
-)
 
 register_model_handler(
     "Resource",
     "previewed",
-    lambda user, instance, data, request: track_resource_previewed(
-        user, instance, request
-    ),
-)
-register_model_handler(
-    "Resource",
-    "previewed resource",
     lambda user, instance, data, request: track_resource_previewed(
         user, instance, request
     ),
@@ -226,6 +140,7 @@ register_model_handler(
         request,
     ),
 )
+
 register_model_handler(
     "Resource",
     "deleted",
@@ -245,24 +160,10 @@ register_model_handler(
         user, instance, request
     ),
 )
-register_model_handler(
-    "UseCase",
-    "created usecase",
-    lambda user, instance, data, request: track_usecase_created(
-        user, instance, request
-    ),
-)
 
 register_model_handler(
     "UseCase",
     "updated",
-    lambda user, instance, data, request: track_usecase_updated(
-        user, instance, data, request
-    ),
-)
-register_model_handler(
-    "UseCase",
-    "updated usecase",
     lambda user, instance, data, request: track_usecase_updated(
         user, instance, data, request
     ),
@@ -275,13 +176,6 @@ register_model_handler(
         user, instance, request
     ),
 )
-register_model_handler(
-    "UseCase",
-    "published usecase",
-    lambda user, instance, data, request: track_usecase_published(
-        user, instance, request
-    ),
-)
 
 register_model_handler(
     "UseCase",
@@ -290,27 +184,10 @@ register_model_handler(
         user, instance, {"status": "DRAFT", "action": "unpublished"}, request
     ),
 )
-register_model_handler(
-    "UseCase",
-    "unpublished usecase",
-    lambda user, instance, data, request: track_usecase_updated(
-        user, instance, {"status": "DRAFT", "action": "unpublished"}, request
-    ),
-)
 
 register_model_handler(
     "UseCase",
     "deleted",
-    lambda user, instance, data, request: track_usecase_updated(
-        user,
-        instance,
-        {"action": "deleted", "usecase_id": data.get("usecase_id")},
-        request,
-    ),
-)
-register_model_handler(
-    "UseCase",
-    "deleted usecase",
     lambda user, instance, data, request: track_usecase_updated(
         user,
         instance,
