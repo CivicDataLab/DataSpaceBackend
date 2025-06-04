@@ -280,12 +280,13 @@ class TrackModelActivity(TrackActivity):
                 # Use the registry to handle the activity
                 from api.activities.registry import handle_activity
 
-                if handle_activity(
+                # Always use handle_activity for model instances, even if no specialized handler exists
+                # This prevents double recording by not falling back to parent implementation
+                handle_activity(
                     model_name, self.verb, user, django_instance, data, request
-                ):
-                    return result
-
-            # If we didn't use a specialized function, fall back to the parent implementation
-            return super().resolve(next_, root, info, **kwargs)
+                )
+            else:
+                # Only use parent implementation for non-model operations
+                super().resolve(next_, root, info, **kwargs)
 
         return result
