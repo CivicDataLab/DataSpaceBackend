@@ -25,6 +25,7 @@ from api.models import Resource, Tag
 from api.types.type_dataset import TypeTag
 from api.types.type_metadata import TypeMetadata
 from api.types.type_resource import TypeResource
+from api.utils.graphql_error_extension import ErrorFormatterExtension
 from api.utils.graphql_telemetry import TelemetryExtension, trace_resolver
 from authorization.graphql import Mutation as AuthMutation
 from authorization.graphql import Query as AuthQuery
@@ -105,5 +106,6 @@ schema = strawberry.Schema(
     extensions=[
         DjangoOptimizerExtension,
         TelemetryExtension,
+        ErrorFormatterExtension,
     ],
 )
