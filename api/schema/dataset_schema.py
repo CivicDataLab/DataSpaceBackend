@@ -479,11 +479,22 @@ class Query:
 
 @strawberry.type
 class Mutation:
+    @strawberry.mutation
     @trace_resolver(
         name="add_dataset", attributes={"component": "dataset", "operation": "mutation"}
     )
     @BaseMutation.mutation(
-        permission_classes=[IsAuthenticated, CreateDatasetPermission]
+        permission_classes=[IsAuthenticated, CreateDatasetPermission],
+        track_activity={
+            "verb": "created",
+            "get_data": lambda result, **kwargs: {
+                "dataset_id": str(result.id),
+                "dataset_title": result.title,
+                "organization": (
+                    str(result.organization.id) if result.organization else None
+                ),
+            },
+        },
     )
     def add_dataset(self, info: Info) -> MutationResponse[TypeDataset]:
         # Get organization from context
@@ -508,6 +519,7 @@ class Mutation:
 
         return MutationResponse.success_response(TypeDataset.from_django(dataset))
 
+    @strawberry.mutation
     @trace_resolver(
         name="add_update_dataset_metadata",
         attributes={"component": "dataset", "operation": "mutation"},
