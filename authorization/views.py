@@ -1,3 +1,4 @@
+import structlog
 from rest_framework import status, views
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
@@ -11,6 +12,8 @@ from authorization.models import User
 from authorization.serializers import UserConsentSerializer
 from authorization.services import AuthorizationService
 
+logger = structlog.getLogger(__name__)
+
 
 class KeycloakLoginView(views.APIView):
     """
@@ -21,9 +24,6 @@ class KeycloakLoginView(views.APIView):
     permission_classes = [AllowAny]
 
     def post(self, request: Request) -> Response:
-        import structlog
-
-        logger = structlog.getLogger(__name__)
 
         # Get the Keycloak token from the request
         keycloak_token = request.data.get("token")
