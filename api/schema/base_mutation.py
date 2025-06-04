@@ -16,6 +16,7 @@ import strawberry
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
+from strawberry.field import StrawberryField  # type: ignore
 from strawberry.types import Info
 
 from api.utils.error_handlers import ErrorDictType, format_integrity_error
@@ -58,7 +59,7 @@ class MutationResponse(Generic[T]):
         return cls(success=False, errors=error)
 
 
-class BaseMutation:
+class BaseMutation(Generic[T]):
     @staticmethod
     def format_errors(
         validation_errors: Optional[Dict[str, Union[Dict[str, List[str]], List[str]]]],
@@ -86,15 +87,20 @@ class BaseMutation:
             ),
         )
 
-    @staticmethod
+    @classmethod
     def mutation(
+        cls,
         *,
         permission_classes: Optional[List[Type]] = None,
         track_activity: Optional[Dict[str, Union[str, ActivityDataGetter]]] = None,
-    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-        def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    ) -> Callable[[Union[Callable[..., Any], "StrawberryField"]], Callable[..., Any]]:
+        def decorator(
+            func: Union[Callable[..., Any], "StrawberryField"]
+        ) -> Callable[..., Any]:
             @wraps(func)
-            def wrapper(cls: Any, info: Info, *args: Any, **kwargs: Any) -> Any:
+            def wrapper(
+                cls: Any, info: Info, *args: Any, **kwargs: Any
+            ) -> MutationResponse[T]:
                 try:
                     # Check permissions if provided
                     if permission_classes:
@@ -136,7 +142,9 @@ class BaseMutation:
 
                 except IntegrityError as e:
                     # Format integrity errors into validation errors
+                    print("Caught IntegrityError:", str(e))
                     error_data = format_integrity_error(e)
+                    print("Formatted error data:", error_data)
                     if "field_errors" in error_data:
                         errors = BaseMutation.format_errors(
                             {"field_errors": error_data["field_errors"]}
@@ -145,7 +153,11 @@ class BaseMutation:
                         errors = BaseMutation.format_errors(
                             {"non_field_errors": error_data["non_field_errors"]}
                         )
-                    return MutationResponse.error_response(errors)
+                    response: MutationResponse[T] = MutationResponse.error_response(
+                        errors
+                    )
+                    print("Final response:", response)
+                    return response
 
             return wrapper
 

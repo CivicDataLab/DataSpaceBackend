@@ -519,11 +519,6 @@ class Mutation:
 
         return MutationResponse.success_response(TypeDataset.from_django(dataset))
 
-    @strawberry.mutation
-    @trace_resolver(
-        name="add_update_dataset_metadata",
-        attributes={"component": "dataset", "operation": "mutation"},
-    )
     @BaseMutation.mutation(
         permission_classes=[UpdateDatasetPermission],
         track_activity={
@@ -543,6 +538,11 @@ class Mutation:
             },
         },
     )
+    @trace_resolver(
+        name="add_update_dataset_metadata",
+        attributes={"component": "dataset", "operation": "mutation"},
+    )
+    @strawberry.mutation
     def add_update_dataset_metadata(
         self, info: Info, update_metadata_input: UpdateMetadataInput
     ) -> MutationResponse[TypeDataset]:
