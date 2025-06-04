@@ -93,7 +93,11 @@ class BaseMutation(Generic[T]):
         *,
         permission_classes: Optional[List[Type]] = None,
         track_activity: Optional[Dict[str, Union[str, ActivityDataGetter]]] = None,
-    ) -> Callable[[Union[Callable[..., Any], "StrawberryField"]], Callable[..., Any]]:
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        """Decorator to handle permissions, error handling, and activity tracking.
+        This should be applied AFTER @strawberry.mutation to properly handle errors.
+        """
+
         def decorator(
             func: Union[Callable[..., Any], "StrawberryField"]
         ) -> Callable[..., Any]:
@@ -112,8 +116,23 @@ class BaseMutation(Generic[T]):
                                     or f"Permission denied: {permission_class.__name__}"
                                 )
 
-                    # Execute the mutation
-                    result = func(cls, info, *args, **kwargs)
+                    # Create an error handler for the database operations
+                    def execute_with_error_handling(f: Callable[[], Any]) -> Any:
+                        try:
+                            return f()
+                        except IntegrityError as e:
+                            error_data = format_integrity_error(e)
+                            if "field_errors" in error_data:
+                                raise DjangoValidationError(error_data["field_errors"])
+                            else:
+                                raise DjangoValidationError(
+                                    error_data["non_field_errors"]
+                                )
+
+                    # Execute the mutation with error handling
+                    result = execute_with_error_handling(
+                        lambda: func(cls, info, *args, **kwargs)
+                    )
 
                     # Handle activity tracking if configured
                     if track_activity and hasattr(info.context, "track_activity"):
@@ -139,25 +158,6 @@ class BaseMutation(Generic[T]):
                     else:
                         errors = GraphQLValidationError.from_message(str(e))
                     return MutationResponse.error_response(errors)
-
-                except IntegrityError as e:
-                    # Format integrity errors into validation errors
-                    print("Caught IntegrityError:", str(e))
-                    error_data = format_integrity_error(e)
-                    print("Formatted error data:", error_data)
-                    if "field_errors" in error_data:
-                        errors = BaseMutation.format_errors(
-                            {"field_errors": error_data["field_errors"]}
-                        )
-                    else:
-                        errors = BaseMutation.format_errors(
-                            {"non_field_errors": error_data["non_field_errors"]}
-                        )
-                    response: MutationResponse[T] = MutationResponse.error_response(
-                        errors
-                    )
-                    print("Final response:", response)
-                    return response
 
             return wrapper
 
