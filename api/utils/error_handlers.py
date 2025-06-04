@@ -30,11 +30,38 @@ def format_validation_error(
         return {"non_field_errors": [str(error)]}
 
 
-def format_integrity_error(error: IntegrityError) -> Dict[str, List[str]]:
+def format_integrity_error(
+    error: IntegrityError,
+) -> Dict[str, Union[Dict[str, List[str]], List[str]]]:
     """
-    Formats Django IntegrityError into a consistent GraphQL error format
+    Formats Django IntegrityError into a consistent GraphQL error format with field-specific messages
     """
-    return {"non_field_errors": [str(error)]}
+    error_str = str(error)
+
+    # Handle value too long errors
+    if "value too long for type character varying" in error_str:
+        # Try to extract field name from the error message
+        # Error format: 'value too long for type character varying(1000) for column "description"'
+        import re
+
+        field_match = re.search(r'column "([^"]+)"', error_str)
+        length_match = re.search(r"varying\(([0-9]+)\)", error_str)
+
+        field = field_match.group(1) if field_match else "field"
+        max_length = length_match.group(1) if length_match else "N"
+
+        return {
+            "field_errors": {
+                field: [f"This field cannot be longer than {max_length} characters."]
+            }
+        }
+
+    # Handle other integrity errors with a more user-friendly message
+    return {
+        "non_field_errors": [
+            "A database constraint was violated. Please check your input."
+        ]
+    }
 
 
 F = TypeVar("F", bound=Callable[..., Any])
