@@ -25,8 +25,14 @@ ActivityDataGetter = Callable[[Any, Dict[str, Any]], ActivityData]
 
 
 @strawberry.type
+class FieldError:
+    field: str
+    messages: List[str]
+
+
+@strawberry.type
 class GraphQLValidationError:
-    field_errors: Optional[Dict[str, List[str]]] = None
+    field_errors: Optional[List[FieldError]] = None
     non_field_errors: Optional[List[str]] = None
 
     @classmethod
@@ -63,18 +69,21 @@ class BaseMutation:
         field_errors = validation_errors.get("field_errors", {})
         non_field_errors = validation_errors.get("non_field_errors", [])
 
-        # Ensure correct types
-        if isinstance(field_errors, dict):
-            return GraphQLValidationError(
-                field_errors=field_errors,
-                non_field_errors=(
-                    non_field_errors if isinstance(non_field_errors, list) else []
-                ),
-            )
+        # Convert dict field errors to list of FieldError objects
+        formatted_field_errors = (
+            [
+                FieldError(field=field, messages=messages)
+                for field, messages in field_errors.items()
+            ]
+            if isinstance(field_errors, dict)
+            else []
+        )
+
         return GraphQLValidationError(
+            field_errors=formatted_field_errors or None,
             non_field_errors=(
-                non_field_errors if isinstance(non_field_errors, list) else []
-            )
+                non_field_errors if isinstance(non_field_errors, list) else None
+            ),
         )
 
     @staticmethod
