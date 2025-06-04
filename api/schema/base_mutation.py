@@ -107,10 +107,6 @@ class BaseMutation:
                                     or f"Permission denied: {permission_class.__name__}"
                                 )
 
-                    # Get the return type annotation which should be MutationResponse[T]
-                    return_type = func.__annotations__.get("return")
-                    response_type = get_args(return_type)[0] if return_type else None
-
                     # Execute the mutation
                     result = func(cls, info, *args, **kwargs)
 
@@ -128,8 +124,7 @@ class BaseMutation:
                         return result
 
                     # Otherwise, wrap the result in a MutationResponse
-                    if return_type and issubclass(return_type, MutationResponse):
-                        return return_type.success_response(result)  # type: ignore[call-arg]
+                    return MutationResponse.success_response(result)
 
                 except (DjangoValidationError, IntegrityError, PermissionDenied) as e:
                     # Get validation errors from context if available
@@ -139,10 +134,7 @@ class BaseMutation:
                     else:
                         errors = GraphQLValidationError.from_message(str(e))
 
-                    # Get the return type annotation
-                    return_type = func.__annotations__.get("return")
-                    if return_type and issubclass(return_type, MutationResponse):
-                        return return_type.error_response(errors)  # type: ignore[call-arg]
+                    return MutationResponse.error_response(errors)
 
             return wrapper
 
