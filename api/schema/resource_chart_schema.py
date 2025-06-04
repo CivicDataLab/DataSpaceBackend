@@ -189,7 +189,8 @@ class Mutation:
 
         now = datetime.datetime.now()
         chart = ResourceChartDetails.objects.create(
-            name=f"New chart {now.strftime('%d %b %Y - %H:%M')}", resource=resource_obj
+            name=f"New chart {now.strftime('%d %b %Y - %H:%M:%S')}",
+            resource=resource_obj,
         )
         return TypeResourceChart.from_django(chart)
 
@@ -221,7 +222,7 @@ class Mutation:
 
         chart = ResourceChartDetails.objects.create(
             name=chart_input.name
-            or f"New chart {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}",
+            or f"New chart {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}",
             resource=resource_obj,
             description=chart_input.description or "",
             chart_type=chart_input.type or ChartTypeEnum.BAR,

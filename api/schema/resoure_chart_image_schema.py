@@ -69,7 +69,7 @@ class Mutation:
         now = datetime.datetime.now()
         image = ResourceChartImage.objects.create(
             name=input.name
-            or f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M')}",
+            or f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M:%S')}",
             dataset=dataset_obj,
             image=input.image,
         )
@@ -108,7 +108,7 @@ class Mutation:
 
         now = datetime.datetime.now()
         image = ResourceChartImage.objects.create(
-            name=f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M')}",
+            name=f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M:%S')}",
             dataset=dataset_obj,
         )
         return TypeResourceChartImage.from_django(image)

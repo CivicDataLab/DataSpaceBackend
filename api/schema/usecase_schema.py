@@ -235,7 +235,7 @@ class Mutation:
         organization = info.context.context.get("organization")
         if organization:
             use_case = UseCase.objects.create(
-                title=f"New use_case {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}",
+                title=f"New use_case {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}",
                 summary="",
                 organization=organization,
                 status=UseCaseStatus.DRAFT,
@@ -243,7 +243,7 @@ class Mutation:
             )
         else:
             use_case = UseCase.objects.create(
-                title=f"New use_case {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}",
+                title=f"New use_case {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}",
                 summary="",
                 user=user,
                 status=UseCaseStatus.DRAFT,

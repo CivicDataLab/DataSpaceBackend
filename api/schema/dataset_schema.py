@@ -488,7 +488,7 @@ class Mutation:
         dataset = Dataset.objects.create(
             organization=organization,
             dataspace=dataspace,
-            title=f"New dataset {datetime.datetime.now().strftime('%d %b %Y - %H:%M')}",
+            title=f"New dataset {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}",
             description="",
             access_type=DatasetAccessType.PUBLIC,
             license=DatasetLicense.CC_BY_4_0_ATTRIBUTION,
