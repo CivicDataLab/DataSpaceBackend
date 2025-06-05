@@ -76,20 +76,40 @@ class BaseMutation(Generic[T]):
         non_field_errors = validation_errors.get("non_field_errors", [])
 
         # Convert dict field errors to list of FieldError objects
-        formatted_field_errors = (
-            [
-                FieldError(field=field, messages=messages)
-                for field, messages in field_errors.items()
-            ]
-            if isinstance(field_errors, dict)
-            else []
-        )
+        formatted_field_errors = []
+        if isinstance(field_errors, dict):
+            for field, messages in field_errors.items():
+                # Handle case where messages might be a string or already a list
+                if isinstance(messages, str):
+                    message_list = [messages]
+                elif isinstance(messages, list):
+                    # Handle potential string representation of list
+                    message_list = (
+                        [msg.strip("[]\"' ") for msg in messages]
+                        if len(messages) == 1 and messages[0].startswith("[")
+                        else messages
+                    )
+                else:
+                    message_list = [str(messages)]
+
+                formatted_field_errors.append(
+                    FieldError(field=field, messages=message_list)
+                )
+
+        # Handle non-field errors
+        if isinstance(non_field_errors, list):
+            # Clean up any string representation of lists
+            cleaned_errors = (
+                [err.strip("[]\"' ") for err in non_field_errors]
+                if len(non_field_errors) == 1 and non_field_errors[0].startswith("[")
+                else non_field_errors
+            )
+        else:
+            cleaned_errors = [str(non_field_errors)]
 
         return GraphQLValidationError(
             field_errors=formatted_field_errors or None,
-            non_field_errors=(
-                non_field_errors if isinstance(non_field_errors, list) else None
-            ),
+            non_field_errors=cleaned_errors or None,
         )
 
     @classmethod
