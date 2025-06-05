@@ -89,11 +89,11 @@ class BaseMetadata(models.Model):
             try:
                 validate_method(metadata, value)
             except ValidationError as e:
-                if metadata_type is MetadataTypes.REQUIRED:
-                    raise e
-                else:
-                    # Set empty value for non-required fields with validation errors
-                    self.value = ""
+                # if metadata_type is MetadataTypes.REQUIRED:
+                raise e
+                # else:
+                #     # Set empty value for non-required fields with validation errors
+                #     self.value = ""
         else:
             raise ValidationError(f"Unknown data type: {data_type}")
 
