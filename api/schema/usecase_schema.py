@@ -120,6 +120,11 @@ class Query:
 
         return [TypeUseCase.from_django(instance) for instance in use_case_instances]
 
+    @strawberry_django.field(
+        filters=UseCaseFilter,
+        pagination=True,
+        order=UseCaseOrder,
+    )
     @trace_resolver(name="get_published_use_cases", attributes={"component": "usecase"})
     def published_use_cases(
         self,
