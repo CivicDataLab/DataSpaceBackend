@@ -145,14 +145,14 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
                             format_value = "STRING"
 
                         # For description, preserve existing if available, otherwise auto-generate
-                        description = f"Auto-generated from CSV column {col}"
+                        description = f"Description of column {col}"
                         if col in existing_schemas:
                             existing_description = existing_schemas[col]["description"]
                             # Check for None and non-auto-generated descriptions
                             if (
                                 existing_description is not None
                                 and not existing_description.startswith(
-                                    "Auto-generated"
+                                    "Description of column"
                                 )
                             ):
                                 description = existing_description
