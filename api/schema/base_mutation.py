@@ -179,10 +179,17 @@ class BaseMutation(Generic[T]):
                         if verb:
                             # Get data from getter if provided
                             data_getter = get_data if get_data else lambda x, **k: {}
-                            action_data = data_getter(result.data, **kwargs)
+                            try:
+                                action_data = (
+                                    data_getter(result.data, **kwargs)
+                                    if result.data
+                                    else {}
+                                )
+                            except Exception:
+                                action_data = {}
 
                             # Record activity with data
-                            if isinstance(result.data, Model):
+                            if result.data and isinstance(result.data, Model):
                                 record_activity(
                                     actor=info.context.user,
                                     verb=verb,
@@ -191,12 +198,13 @@ class BaseMutation(Generic[T]):
                                     **action_data,
                                 )
 
-                    # If the result is already a MutationResponse, return it
-                    if isinstance(result, MutationResponse):
+                    # Handle the mutation result
+                    if result is None:
+                        return MutationResponse.success_response(None)  # type: ignore
+                    elif isinstance(result, MutationResponse):
                         return result
-
-                    # Otherwise, wrap the result in a MutationResponse
-                    return MutationResponse.success_response(result)
+                    else:
+                        return MutationResponse.success_response(result)  # type: ignore
 
                 except (DataError, IntegrityError) as e:
                     error_data = (
@@ -221,8 +229,10 @@ class BaseMutation(Generic[T]):
                         errors = GraphQLValidationError.from_message(str(e))
                     return MutationResponse.error_response(errors)
                 except Exception as e:
-                    errors = GraphQLValidationError.from_message(str(e))
-                    return MutationResponse.error_response(errors)
+                    # Log the error but don't expose internal details
+                    error_message = "An unexpected error occurred"
+                    errors = GraphQLValidationError.from_message(error_message)
+                    return MutationResponse.error_response(errors)  # type: ignore
 
             return cast(Any, wrapper)  # type: ignore
 
