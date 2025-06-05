@@ -6,9 +6,12 @@ from typing import (
     Generic,
     List,
     Optional,
+    Protocol,
     Type,
+    TypedDict,
     TypeVar,
     Union,
+    cast,
     get_args,
 )
 
@@ -16,7 +19,7 @@ import strawberry
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import DataError, IntegrityError
-from strawberry.field import StrawberryField  # type: ignore
+from django.db.models import Model
 from strawberry.types import Info
 
 from api.utils.error_handlers import (
@@ -25,9 +28,15 @@ from api.utils.error_handlers import (
     format_integrity_error,
     format_validation_error,
 )
+from api.utils.graphql_telemetry import trace_resolver
+from authorization.activity import record_activity
 
+# Type aliases
 ActivityData = Dict[str, Any]
-ActivityDataGetter = Callable[[Any, Dict[str, Any]], ActivityData]
+ActivityDataGetter = Callable[[Any, Dict[str, Any]], ActivityData]  # type: ignore
+
+# Generic type for mutation responses
+T = TypeVar("T")
 
 
 @strawberry.type
@@ -46,21 +55,20 @@ class GraphQLValidationError:
         return cls(non_field_errors=[message])
 
 
-T = TypeVar("T")
-
-
 @strawberry.type
-class MutationResponse(Generic[T]):
+class MutationResponse(Generic[T]):  # type: ignore
     success: bool = True
     errors: Optional[GraphQLValidationError] = None
     data: Optional[T] = None
 
     @classmethod
-    def success_response(cls, data: T) -> "MutationResponse[T]":
+    def success_response(cls, data: Any) -> "MutationResponse[T]":  # type: ignore
         return cls(success=True, data=data)
 
     @classmethod
-    def error_response(cls, error: GraphQLValidationError) -> "MutationResponse[T]":
+    def error_response(
+        cls, error: GraphQLValidationError
+    ) -> "MutationResponse[T]":  # type: ignore
         return cls(success=False, errors=error)
 
 
@@ -117,41 +125,71 @@ class BaseMutation(Generic[T]):
         cls,
         *,
         permission_classes: Optional[List[Type]] = None,
-        track_activity: Optional[Dict[str, Union[str, ActivityDataGetter]]] = None,
-    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-        """Decorator to handle permissions, error handling, and activity tracking.
+        track_activity: Optional[Dict[str, Any]] = None,
+        trace_name: Optional[str] = None,
+        trace_attributes: Optional[Dict[str, str]] = None,
+    ) -> Callable[[Any], Any]:  # type: ignore
+        """Decorator to handle permissions, error handling, activity tracking, and tracing.
         This should be applied AFTER @strawberry.mutation to properly handle errors.
+
+        Args:
+            permission_classes: List of permission classes to check
+            track_activity: Activity tracking configuration
+            trace_name: Optional name for the trace span
+            trace_attributes: Optional attributes to add to the trace span
         """
 
-        def decorator(
-            func: Union[Callable[..., Any], "StrawberryField"]
-        ) -> Callable[..., Any]:
+        def decorator(func: Any) -> Any:  # type: ignore
             @wraps(func)
+            @trace_resolver(
+                name=trace_name or func.__name__,
+                attributes={
+                    "component": "mutation",
+                    "operation": "mutation",
+                    **(trace_attributes or {}),
+                },
+            )
             def wrapper(
                 cls: Any, info: Info, *args: Any, **kwargs: Any
-            ) -> MutationResponse[T]:
+            ) -> MutationResponse[T]:  # type: ignore
                 try:
                     # Check permissions if provided
                     if permission_classes:
                         for permission_class in permission_classes:
                             permission = permission_class()
-                            if not permission.has_permission(None, info, **kwargs):
+                            if not permission.has_permission(
+                                info.context.user, info, **kwargs
+                            ):
                                 raise PermissionDenied(
                                     permission.message
                                     or f"Permission denied: {permission_class.__name__}"
                                 )
 
                     # Execute the mutation
-                    result = func(cls, info, *args, **kwargs)
+                    result = func(cls, info, *args, **kwargs)  # type: ignore
 
-                    # Handle activity tracking if configured
-                    if track_activity and hasattr(info.context, "track_activity"):
-                        data_getter = track_activity.get("get_data")
-                        verb = track_activity.get("verb", "")
+                    # Track activity if configured
+                    if (
+                        track_activity
+                        and isinstance(track_activity, dict)
+                        and "verb" in track_activity
+                    ):
+                        verb: str = track_activity["verb"]
+                        get_data = track_activity.get("get_data")
+                        if verb:
+                            # Get data from getter if provided
+                            data_getter = get_data if get_data else lambda x, **k: {}
+                            action_data = data_getter(result.data, **kwargs)
 
-                        if data_getter and callable(data_getter):
-                            activity_data = data_getter(result, **kwargs)  # type: ignore[call-arg]
-                            info.context.track_activity(verb=verb, data=activity_data)  # type: ignore[call-arg]
+                            # Record activity with data
+                            if isinstance(result.data, Model):
+                                record_activity(
+                                    actor=info.context.user,
+                                    verb=verb,
+                                    action_object=result.data,  # type: ignore
+                                    request=info.context,
+                                    **action_data,
+                                )
 
                     # If the result is already a MutationResponse, return it
                     if isinstance(result, MutationResponse):
@@ -186,6 +224,6 @@ class BaseMutation(Generic[T]):
                     errors = GraphQLValidationError.from_message(str(e))
                     return MutationResponse.error_response(errors)
 
-            return wrapper
+            return cast(Any, wrapper)  # type: ignore
 
-        return decorator
+        return cast(Any, decorator)  # type: ignore

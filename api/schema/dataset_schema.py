@@ -479,11 +479,10 @@ class Query:
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    @trace_resolver(
-        name="add_dataset", attributes={"component": "dataset", "operation": "mutation"}
-    )
     @BaseMutation.mutation(
         permission_classes=[IsAuthenticated, CreateDatasetPermission],
+        trace_name="add_dataset",
+        trace_attributes={"component": "dataset"},
         track_activity={
             "verb": "created",
             "get_data": lambda result, **kwargs: {
@@ -519,10 +518,6 @@ class Mutation:
         return MutationResponse.success_response(TypeDataset.from_django(dataset))
 
     @strawberry.mutation
-    @trace_resolver(
-        name="add_update_dataset_metadata",
-        attributes={"component": "dataset", "operation": "mutation"},
-    )
     @BaseMutation.mutation(
         permission_classes=[UpdateDatasetPermission],
         track_activity={
@@ -541,6 +536,8 @@ class Mutation:
                 },
             },
         },
+        trace_name="add_update_dataset_metadata",
+        trace_attributes={"component": "dataset"},
     )
     def add_update_dataset_metadata(
         self, info: Info, update_metadata_input: UpdateMetadataInput
@@ -554,11 +551,11 @@ class Mutation:
 
         if update_metadata_input.description:
             dataset.description = update_metadata_input.description
-            dataset.save()
         if update_metadata_input.access_type:
             dataset.access_type = update_metadata_input.access_type
         if update_metadata_input.license:
             dataset.license = update_metadata_input.license
+        dataset.save()
         if update_metadata_input.tags is not None:
             _update_dataset_tags(dataset, update_metadata_input.tags)
         _add_update_dataset_metadata(dataset, metadata_input)
