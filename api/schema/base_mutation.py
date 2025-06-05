@@ -21,6 +21,7 @@ from strawberry.types import Info
 
 from api.utils.error_handlers import (
     ErrorDictType,
+    convert_error_dict,
     format_data_error,
     format_integrity_error,
 )
@@ -146,12 +147,12 @@ class BaseMutation(Generic[T]):
                         else format_integrity_error(e)
                     )
                     return MutationResponse.error_response(
-                        cls.format_errors(error_data)
+                        BaseMutation.format_errors(convert_error_dict(error_data))
                     )
                 except (DjangoValidationError, PermissionDenied) as e:
                     validation_errors = getattr(info.context, "validation_errors", None)
                     if validation_errors:
-                        errors = cls.format_errors(validation_errors)
+                        errors = BaseMutation.format_errors(validation_errors)
                     else:
                         errors = GraphQLValidationError.from_message(str(e))
                     return MutationResponse.error_response(errors)

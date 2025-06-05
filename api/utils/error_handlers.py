@@ -42,6 +42,17 @@ def is_non_field_errors(error_data: ErrorDictType) -> TypeGuard[NonFieldErrors]:
     return "non_field_errors" in error_data
 
 
+def convert_error_dict(
+    error_data: ErrorDictType,
+) -> Dict[str, Union[Dict[str, List[str]], List[str]]]:
+    """Convert TypedDict error format to format expected by format_errors"""
+    if is_field_errors(error_data):
+        return {"field_errors": error_data["field_errors"]}
+    elif is_non_field_errors(error_data):
+        return {"non_field_errors": error_data["non_field_errors"]}
+    return {}
+
+
 def format_validation_error(
     error: DjangoValidationError,
 ) -> ErrorDictType:
