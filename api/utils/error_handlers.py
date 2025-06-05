@@ -56,14 +56,31 @@ def convert_error_dict(
 def format_validation_error(
     error: DjangoValidationError,
 ) -> ErrorDictType:
-    """
-    Formats Django ValidationError into a consistent GraphQL error format
-    """
-    if hasattr(error, "error_dict"):
-        return FieldErrors(field_errors=error.message_dict)  # type: ignore
-    else:
-        # Handle non-field validation errors
-        return NonFieldErrors(non_field_errors=[str(error)])
+    """Formats Django ValidationError into a consistent GraphQL error format with field-specific messages"""
+    error_str = str(error)
+
+    # Try to extract field name from validation error message
+    import re
+
+    patterns = [
+        # Pattern for "Value for 'Field Name' must be..."
+        r"Value for '([^']+)' must be",
+        # Pattern for "Invalid value: '...' for 'Field Name'. Must be one of..."
+        r"Invalid value: '[^']+' for '([^']+)'. Must be one of",
+        # Pattern for "Invalid values: ... for 'Field Name'. Must be one of..."
+        r"Invalid values: [^']+ for '([^']+)'. Must be one of",
+        # Pattern for "Required value not sent for: Field Name"
+        r"Required value not sent for: ([^']+)",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, error_str)
+        if match:
+            field_name = match.group(1).lower().replace(" ", "_")
+            return FieldErrors(field_errors={field_name: [error_str]})
+
+    # If no specific format matched, return as non-field error
+    return NonFieldErrors(non_field_errors=[error_str])
 
 
 def format_integrity_error(e: IntegrityError) -> ErrorDictType:

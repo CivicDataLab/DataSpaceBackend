@@ -20,10 +20,10 @@ from strawberry.field import StrawberryField  # type: ignore
 from strawberry.types import Info
 
 from api.utils.error_handlers import (
-    ErrorDictType,
     convert_error_dict,
     format_data_error,
     format_integrity_error,
+    format_validation_error,
 )
 
 ActivityData = Dict[str, Any]
@@ -153,6 +153,12 @@ class BaseMutation(Generic[T]):
                     validation_errors = getattr(info.context, "validation_errors", None)
                     if validation_errors:
                         errors = BaseMutation.format_errors(validation_errors)
+                    elif isinstance(e, DjangoValidationError):
+                        # Format validation errors with field names
+                        error_data = format_validation_error(e)
+                        errors = BaseMutation.format_errors(
+                            convert_error_dict(error_data)
+                        )
                     else:
                         errors = GraphQLValidationError.from_message(str(e))
                     return MutationResponse.error_response(errors)
