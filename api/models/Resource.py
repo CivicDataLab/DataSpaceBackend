@@ -56,8 +56,7 @@ class Resource(models.Model):
     version = models.CharField(max_length=50, default="v1.0")
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        if not self.slug:
-            self.slug = slugify(self.name)
+        self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
