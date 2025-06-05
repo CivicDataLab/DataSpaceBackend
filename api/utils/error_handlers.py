@@ -1,70 +1,121 @@
 from functools import wraps
-from typing import Any, Callable, Dict, List, Mapping, Optional, TypeVar, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    TypedDict,
+    TypeGuard,
+    TypeVar,
+    Union,
+    cast,
+)
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
+from django.db.utils import DataError
 from strawberry.types import ExecutionContext
+
+
+class FieldErrors(TypedDict):
+    field_errors: Dict[str, List[str]]
+
+
+class NonFieldErrors(TypedDict):
+    non_field_errors: List[str]
+
+
+ErrorDictType = Union[FieldErrors, NonFieldErrors]
 
 # Custom type for field errors
 FieldErrorType = Dict[str, Union[str, List[str]]]
-ErrorDictType = Dict[str, List[FieldErrorType]]
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def is_field_errors(error_data: ErrorDictType) -> TypeGuard[FieldErrors]:
+    return "field_errors" in error_data
+
+
+def is_non_field_errors(error_data: ErrorDictType) -> TypeGuard[NonFieldErrors]:
+    return "non_field_errors" in error_data
 
 
 def format_validation_error(
-    error: ValidationError,
-) -> Mapping[str, Union[Dict[str, List[str]], List[str]]]:
+    error: DjangoValidationError,
+) -> ErrorDictType:
     """
     Formats Django ValidationError into a consistent GraphQL error format
     """
-    if hasattr(error, "message_dict"):
-        # Handle model validation errors
-        field_errors: Dict[str, List[str]] = {}
-        for field, messages in error.message_dict.items():
-            if isinstance(messages, (list, tuple)):
-                field_errors[field] = list(map(str, messages))
-            else:
-                field_errors[field] = [str(messages)]
-        return {"field_errors": field_errors}
+    if hasattr(error, "error_dict"):
+        return FieldErrors(field_errors=error.message_dict)  # type: ignore
     else:
         # Handle non-field validation errors
-        return {"non_field_errors": [str(error)]}
+        return NonFieldErrors(non_field_errors=[str(error)])
 
 
-def format_integrity_error(
-    error: IntegrityError,
-) -> Dict[str, Union[Dict[str, List[str]], List[str]]]:
+def format_integrity_error(e: IntegrityError) -> ErrorDictType:
+    """Format a Django IntegrityError into a dictionary of field errors."""
+    error_str = str(e)
+
+    # Check if field name is provided in the error
+    if ":" in error_str:
+        field_name, error_msg = error_str.split(":", 1)
+        # Try to extract max length from error message
+        import re
+
+        match = re.search(
+            r"value too long for type character varying\((\d+)\)", error_msg
+        )
+        if match:
+            max_length = match.group(1)
+            return FieldErrors(
+                field_errors={
+                    field_name: [
+                        f"This field cannot be longer than {max_length} characters."
+                    ]
+                }
+            )
+        # Other field-specific errors
+        return FieldErrors(field_errors={field_name: [error_msg.strip()]})
+
+    # Try to extract field name and max length from error message
+    match = re.search(r"value too long for type character varying\((\d+)\)", error_str)
+    if match:
+        max_length = match.group(1)
+        return FieldErrors(
+            field_errors={
+                "value": [f"This field cannot be longer than {max_length} characters."]
+            }
+        )
+
+    # If no specific format matched, return as non-field error
+    return NonFieldErrors(non_field_errors=[error_str])
+
+
+def format_data_error(
+    error: DataError,
+) -> ErrorDictType:
     """
-    Formats Django IntegrityError into a consistent GraphQL error format with field-specific messages
+    Formats Django DataError into a consistent GraphQL error format with field-specific messages
     """
     error_str = str(error)
 
-    # Handle value too long errors
-    if "value too long for type character varying" in error_str:
-        # Try to extract field name from the error message
-        # Error format: 'value too long for type character varying(1000) for column "description"'
-        import re
+    # Try to extract field name and max length from error message
+    import re
 
-        field_match = re.search(r'column "([^"]+)"', error_str)
-        length_match = re.search(r"varying\(([0-9]+)\)", error_str)
-
-        field = field_match.group(1) if field_match else "field"
-        max_length = length_match.group(1) if length_match else "N"
-
-        return {
-            "field_errors": {
-                field: [f"This field cannot be longer than {max_length} characters."]
+    match = re.search(r"value too long for type character varying\((\d+)\)", error_str)
+    if match:
+        max_length = match.group(1)
+        return FieldErrors(
+            field_errors={
+                "value": [f"This field cannot be longer than {max_length} characters."]
             }
-        }
+        )
 
-    # Handle other integrity errors with a more user-friendly message
-    return {
-        "non_field_errors": [
-            "A database constraint was violated. Please check your input."
-        ]
-    }
-
-
-F = TypeVar("F", bound=Callable[..., Any])
+    # If no specific format matched, return as non-field error
+    return NonFieldErrors(non_field_errors=[error_str])
 
 
 def handle_django_errors(func: F) -> F:
@@ -76,7 +127,7 @@ def handle_django_errors(func: F) -> F:
     def wrapper(*args: Any, **kwargs: Any) -> Optional[Any]:
         try:
             return func(*args, **kwargs)
-        except ValidationError as e:
+        except DjangoValidationError as e:
             error_data = format_validation_error(e)
             # Get the info object from args (usually the second argument in mutations)
             info = next(
@@ -85,8 +136,12 @@ def handle_django_errors(func: F) -> F:
             if info:
                 info.context.validation_errors = error_data
             return None
-        except IntegrityError as e:
-            error_data = format_integrity_error(e)
+        except (DataError, IntegrityError) as e:
+            error_data = (
+                format_data_error(e)
+                if isinstance(e, DataError)
+                else format_integrity_error(e)
+            )
             info = next(
                 (arg for arg in args if isinstance(arg, ExecutionContext)), None
             )

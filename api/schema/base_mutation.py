@@ -15,11 +15,15 @@ from typing import (
 import strawberry
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import IntegrityError
+from django.db import DataError, IntegrityError
 from strawberry.field import StrawberryField  # type: ignore
 from strawberry.types import Info
 
-from api.utils.error_handlers import ErrorDictType, format_integrity_error
+from api.utils.error_handlers import (
+    ErrorDictType,
+    format_data_error,
+    format_integrity_error,
+)
 
 ActivityData = Dict[str, Any]
 ActivityDataGetter = Callable[[Any, Dict[str, Any]], ActivityData]
@@ -135,28 +139,24 @@ class BaseMutation(Generic[T]):
                     # Otherwise, wrap the result in a MutationResponse
                     return MutationResponse.success_response(result)
 
-                except IntegrityError as e:
-                    error_data = format_integrity_error(e)
-                    if "field_errors" in error_data:
-                        return MutationResponse.error_response(
-                            BaseMutation.format_errors(
-                                {"field_errors": error_data["field_errors"]}
-                            )
-                        )
-                    else:
-                        return MutationResponse.error_response(
-                            BaseMutation.format_errors(
-                                {"non_field_errors": error_data["non_field_errors"]}
-                            )
-                        )
-
+                except (DataError, IntegrityError) as e:
+                    error_data = (
+                        format_data_error(e)
+                        if isinstance(e, DataError)
+                        else format_integrity_error(e)
+                    )
+                    return MutationResponse.error_response(
+                        cls.format_errors(error_data)
+                    )
                 except (DjangoValidationError, PermissionDenied) as e:
-                    # Get validation errors from context if available
                     validation_errors = getattr(info.context, "validation_errors", None)
                     if validation_errors:
-                        errors = BaseMutation.format_errors(validation_errors)
+                        errors = cls.format_errors(validation_errors)
                     else:
                         errors = GraphQLValidationError.from_message(str(e))
+                    return MutationResponse.error_response(errors)
+                except Exception as e:
+                    errors = GraphQLValidationError.from_message(str(e))
                     return MutationResponse.error_response(errors)
 
             return wrapper

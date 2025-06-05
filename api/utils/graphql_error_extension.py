@@ -1,11 +1,19 @@
 from typing import Any, Dict, List, Optional, Union, cast
 
-from django.db import IntegrityError
+from django.db import DataError, IntegrityError
 from graphql import GraphQLError
 from strawberry.extensions import Extension
 from strawberry.types import ExecutionContext
 
-from api.utils.error_handlers import ErrorDictType, format_integrity_error
+from api.utils.error_handlers import (
+    ErrorDictType,
+    FieldErrors,
+    NonFieldErrors,
+    format_data_error,
+    format_integrity_error,
+    is_field_errors,
+    is_non_field_errors,
+)
 
 
 class ErrorFormatterExtension(Extension):  # type: ignore[misc,valid-type]
@@ -16,12 +24,14 @@ class ErrorFormatterExtension(Extension):  # type: ignore[misc,valid-type]
         for error in errors:
             original = getattr(error, "original_error", error)
 
-            if isinstance(original, IntegrityError):
-                error_data = format_integrity_error(original)
-                if "field_errors" in error_data:
-                    field_errors = cast(
-                        Dict[str, List[str]], error_data["field_errors"]
-                    )
+            if isinstance(original, (DataError, IntegrityError)):
+                error_data = (
+                    format_data_error(original)
+                    if isinstance(original, DataError)
+                    else format_integrity_error(original)
+                )
+                if is_field_errors(error_data):
+                    field_errors = error_data["field_errors"]
                     formatted_errors.append(
                         GraphQLError(
                             message=next(iter(field_errors.values()))[0],
@@ -29,8 +39,8 @@ class ErrorFormatterExtension(Extension):  # type: ignore[misc,valid-type]
                             extensions={"field_errors": field_errors},
                         )
                     )
-                else:
-                    non_field_errors = cast(List[str], error_data["non_field_errors"])
+                elif is_non_field_errors(error_data):
+                    non_field_errors = error_data["non_field_errors"]
                     formatted_errors.append(
                         GraphQLError(
                             message=non_field_errors[0],
