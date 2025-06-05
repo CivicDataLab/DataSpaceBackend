@@ -118,8 +118,36 @@ class Query:
             else:
                 use_case_instances = use_case_instances[offset:]
 
-        # Manually convert each Django model instance to a TypeUseCase
-        # This is necessary because BaseType.from_django_list just does a cast without conversion
+        return [TypeUseCase.from_django(instance) for instance in use_case_instances]
+
+    @trace_resolver(name="get_published_use_cases", attributes={"component": "usecase"})
+    def published_use_cases(
+        self,
+        info: Info,
+        filters: Optional[UseCaseFilter] = strawberry.UNSET,
+        pagination: Optional[OffsetPaginationInput] = strawberry.UNSET,
+        order: Optional[UseCaseOrder] = strawberry.UNSET,
+    ) -> list[TypeUseCase]:
+        """Get published use cases."""
+        queryset = UseCase.objects.filter(status=UseCaseStatus.PUBLISHED)
+
+        if filters is not strawberry.UNSET:
+            queryset = strawberry_django.filters.apply(filters, queryset, info)
+
+        if order is not strawberry.UNSET:
+            queryset = strawberry_django.ordering.apply(order, queryset, info)
+
+        use_case_instances = list(queryset)  # type: ignore
+
+        if pagination is not strawberry.UNSET:
+            offset = pagination.offset if pagination.offset is not None else 0  # type: ignore
+            limit = pagination.limit  # type: ignore
+
+            if limit is not None:
+                use_case_instances = use_case_instances[offset : offset + limit]
+            else:
+                use_case_instances = use_case_instances[offset:]
+
         return [TypeUseCase.from_django(instance) for instance in use_case_instances]
 
     @strawberry_django.field
