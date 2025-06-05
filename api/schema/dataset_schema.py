@@ -292,7 +292,9 @@ def _add_update_dataset_metadata(
 
 
 @trace_resolver(name="update_dataset_tags", attributes={"component": "dataset"})
-def _update_dataset_tags(dataset: Dataset, tags: List[str]) -> None:
+def _update_dataset_tags(dataset: Dataset, tags: Optional[List[str]]) -> None:
+    if not tags:
+        return
     dataset.tags.clear()
     for tag in tags:
         dataset.tags.add(
@@ -610,8 +612,8 @@ class Mutation:
             dataset.access_type = update_dataset_input.access_type
         if update_dataset_input.license:
             dataset.license = update_dataset_input.license
-        _update_dataset_tags(dataset, update_dataset_input.tags or [])
         dataset.save()
+        _update_dataset_tags(dataset, update_dataset_input.tags)
         return TypeDataset.from_django(dataset)
 
     @strawberry_django.mutation(
