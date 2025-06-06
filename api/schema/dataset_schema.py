@@ -157,7 +157,9 @@ class ChartDataPermission(BasePermission):
             # For  all datasets' charts, require authentication
             if not user or not user.is_authenticated:
                 return False
-
+            # If no organization is provided, allow access to authenticated users for individual charts
+            if not organization:
+                return bool(user.is_authenticated)
             # Check if user is a member of the dataset's organization
             org_member = OrganizationMembership.objects.filter(
                 user=user, organization=organization
