@@ -395,6 +395,8 @@ class Query:
     def get_chart_data(
         self, info: Info, dataset_id: Optional[uuid.UUID] = None
     ) -> List[Union[TypeResourceChartImage, TypeResourceChart]]:
+        organization = info.context.context.get("organization")
+        user = info.context.user
         # Check if the dataset exists
         if dataset_id:
             try:
@@ -412,14 +414,26 @@ class Query:
                 raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
         else:
             organization = info.context.context.get("organization")
-            chart_images = list(
-                ResourceChartImage.objects.filter(
+            if organization:
+                chart_images = list(
+                    ResourceChartImage.objects.filter(
+                        dataset__organization=organization
+                    ).order_by("modified")
+                )
+            else:
+                chart_images = list(
+                    ResourceChartImage.objects.filter(dataset__user=user).order_by(
+                        "modified"
+                    )
+                )
+            if organization:
+                resource_ids = Resource.objects.filter(
                     dataset__organization=organization
-                ).order_by("modified")
-            )
-            resource_ids = Resource.objects.filter(
-                dataset__organization=organization
-            ).values_list("id", flat=True)
+                ).values_list("id", flat=True)
+            else:
+                resource_ids = Resource.objects.filter(dataset__user=user).values_list(
+                    "id", flat=True
+                )
 
         # Fetch ResourceChartDetails based on the related Resources
         chart_details = list(
