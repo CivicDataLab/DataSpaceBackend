@@ -9,6 +9,8 @@ FORMAT_MAPPING = {
     # "application/ms-doc": "DOC",
     "application/pdf": "PDF",
     # "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
+    "application/vnd.ms-excel": "XLS",
     "application/xml": "XML",
     "xml": "XML",
     "text/xml": "XML",

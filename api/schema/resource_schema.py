@@ -144,18 +144,6 @@ def _validate_file_details_and_update_format(resource: Resource) -> None:
     if not file_format:
         raise ValueError("Unsupported file format")
 
-    supported_format = [file_format]
-    if file_format.lower() == "csv":
-        data = pd.read_csv(file.path, keep_default_na=False, encoding="utf8")
-        cols = data.columns
-        for vals in cols:
-            if vals == " " or vals == "Unnamed: 1":
-                supported_format = []
-                break
-            elif not vals.isalnum():
-                supported_format.pop()
-                break
-
     file_details.format = file_format
     file_details.save()
 
