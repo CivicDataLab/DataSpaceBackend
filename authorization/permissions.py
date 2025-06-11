@@ -408,7 +408,7 @@ class PublishDatasetPermission(BasePermission):
     Checks if the user has permission to publish the dataset.
     """
 
-    message = "You don't have permission to publish this dataset"
+    message = "You don't have permission to publish/unpublish this dataset"
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
         request = info.context

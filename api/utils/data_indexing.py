@@ -8,7 +8,7 @@ from django.db.utils import ProgrammingError
 from api.models.Resource import Resource, ResourceDataTable
 from api.models.ResourceSchema import ResourceSchema
 from api.types.type_preview_data import PreviewData
-from api.utils.file_utils import load_csv
+from api.utils.file_utils import load_tabular_data
 
 logger = structlog.get_logger("dataspace.data_indexing")
 
@@ -86,13 +86,27 @@ def create_table_for_resource(
 def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
     """Index a resource's CSV data into a database table."""
     try:
-        # Check if resource is a CSV file
+        # Check if resource is a supported tabular file
         file_details = resource.resourcefiledetails
-        if not file_details or not file_details.format.lower() == "csv":
+        if not file_details:
             return None
 
-        # Load CSV data
-        df = load_csv(file_details.file.path)
+        format = file_details.format.lower()
+        supported_formats = [
+            "csv",
+            "xls",
+            "xlsx",
+            "ods",
+            "parquet",
+            "feather",
+            "json",
+            "tsv",
+        ]
+        if format not in supported_formats:
+            return None
+
+        # Load tabular data
+        df = load_tabular_data(file_details.file.path, format)
         if df is None or df.empty:
             return None
 

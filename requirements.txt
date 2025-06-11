@@ -40,6 +40,9 @@ opentelemetry-semantic-conventions==0.44b0
 opentelemetry-util-http==0.44b0
 packaging==24.0
 pandas==2.2.2
+openpyxl==3.1.2  # For Excel file support
+odfpy==1.4.1  # For ODS file support
+pyarrow==15.0.0  # For Parquet and Feather file support
 pillow==10.4.0
 protobuf==4.25.3
 pydantic==2.6.1  # Slightly downgraded for compatibility
