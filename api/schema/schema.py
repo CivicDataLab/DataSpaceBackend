@@ -19,6 +19,7 @@ import api.schema.resoure_chart_image_schema
 import api.schema.sector_schema
 import api.schema.stats_schema
 import api.schema.tags_schema
+import api.schema.usecase_dashboard_schema
 import api.schema.usecase_schema
 import api.schema.user_schema
 from api.models import Resource, Tag
@@ -53,6 +54,7 @@ Query = merge_types(
     "Query",
     (
         DefaultQuery,
+        api.schema.usecase_dashboard_schema.Query,
         api.schema.dataset_schema.Query,
         api.schema.resource_schema.Query,
         api.schema.access_model_schema.Query,
@@ -72,6 +74,7 @@ Query = merge_types(
 Mutation = merge_types(
     "Mutation",
     (
+        api.schema.usecase_dashboard_schema.Mutation,
         api.schema.dataset_schema.Mutation,
         api.schema.resource_schema.Mutation,
         api.schema.access_model_schema.Mutation,
