@@ -8,7 +8,7 @@ from strawberry.types import Info
 from strawberry_django.pagination import OffsetPaginationInput
 
 from api.models import UseCase, UseCaseDashboard
-from api.schema.base_mutation import BaseMutation
+from api.schema.base_mutation import BaseMutation, MutationResponse
 from api.types.type_usecase_dashboard import (
     TypeUseCaseDashboard,
     UseCaseDashboardFilter,
@@ -62,7 +62,7 @@ class Mutation:
     )
     def add_usecase_dashboards(
         self, info: Info, input: AddUseCaseDashboardsInput
-    ) -> List[TypeUseCaseDashboard]:
+    ) -> MutationResponse[List[TypeUseCaseDashboard]]:
         """Add multiple dashboards to a usecase."""
         try:
             # Check if usecase exists
@@ -78,7 +78,9 @@ class Mutation:
                 )
                 created_dashboards.append(dashboard)
 
-            return TypeUseCaseDashboard.from_django_list(created_dashboards)
+            return MutationResponse.success_response(
+                TypeUseCaseDashboard.from_django_list(created_dashboards)
+            )
         except UseCase.DoesNotExist:
             raise Exception(f"Usecase with ID {input.usecase_id} does not exist")
         except Exception as e:
@@ -103,7 +105,7 @@ class Mutation:
         usecase_id: int,
         name: Optional[str] = "",
         link: Optional[str] = "",
-    ) -> TypeUseCaseDashboard:
+    ) -> MutationResponse[TypeUseCaseDashboard]:
         """Add a usecase dashboard."""
         try:
             # Check if usecase exists
@@ -116,7 +118,9 @@ class Mutation:
                 usecase=usecase,
             )
 
-            return TypeUseCaseDashboard.from_django(dashboard)
+            return MutationResponse.success_response(
+                TypeUseCaseDashboard.from_django(dashboard)
+            )
         except UseCase.DoesNotExist:
             raise Exception(f"Usecase with ID {usecase_id} does not exist")
         except Exception as e:
@@ -136,14 +140,16 @@ class Mutation:
     )
     def update_usecase_dashboard(
         self, info: Info, id: str, name: Optional[str] = "", link: Optional[str] = ""
-    ) -> TypeUseCaseDashboard:
+    ) -> MutationResponse[TypeUseCaseDashboard]:
         """Update a usecase dashboard."""
         try:
             dashboard = UseCaseDashboard.objects.get(id=id)
             dashboard.name = name or dashboard.name
             dashboard.link = link or dashboard.link
             dashboard.save()
-            return TypeUseCaseDashboard.from_django(dashboard)
+            return MutationResponse.success_response(
+                TypeUseCaseDashboard.from_django(dashboard)
+            )
         except UseCaseDashboard.DoesNotExist:
             raise Exception(f"Dashboard with ID {id} does not exist")
         except Exception as e:
@@ -161,12 +167,12 @@ class Mutation:
             },
         },
     )
-    def delete_usecase_dashboard(self, info: Info, id: int) -> bool:
+    def delete_usecase_dashboard(self, info: Info, id: int) -> MutationResponse[bool]:
         """Delete a usecase dashboard."""
         try:
             dashboard = UseCaseDashboard.objects.get(id=id)
             dashboard.delete()
-            return True
+            return MutationResponse.success_response(True)
         except UseCaseDashboard.DoesNotExist:
             raise Exception(f"Dashboard with ID {id} does not exist")
         except Exception as e:
