@@ -43,6 +43,7 @@ class UseCaseDashboardMutationResponse:
     message: str = ""
 
 
+@strawberry.type
 class Mutation:
     """UseCaseDashboard mutations."""
 
@@ -118,6 +119,7 @@ class Mutation:
             raise Exception(f"Failed to delete dashboard: {str(e)}")
 
 
+@strawberry.type
 class Query:
     """UseCaseDashboard queries."""
 
