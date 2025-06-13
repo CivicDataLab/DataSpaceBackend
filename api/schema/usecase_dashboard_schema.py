@@ -46,6 +46,7 @@ class UseCaseDashboardMutationResponse:
 class Mutation:
     """UseCaseDashboard mutations."""
 
+    @strawberry.mutation
     @BaseMutation.mutation(
         permission_classes=[IsAuthenticated],
         trace_name="add_usecase_dashboards",
@@ -88,6 +89,7 @@ class Mutation:
         except Exception as e:
             raise Exception(f"Failed to add dashboards: {str(e)}")
 
+    @strawberry.mutation
     @BaseMutation.mutation(
         permission_classes=[IsAuthenticated],
         trace_name="delete_usecase_dashboard",
