@@ -62,7 +62,7 @@ class Mutation:
     )
     def add_usecase_dashboards(
         self, info: Info, input: AddUseCaseDashboardsInput
-    ) -> UseCaseDashboardMutationResponse:
+    ) -> List[TypeUseCaseDashboard]:
         """Add multiple dashboards to a usecase."""
         try:
             # Check if usecase exists
@@ -78,17 +78,76 @@ class Mutation:
                 )
                 created_dashboards.append(dashboard)
 
-            return UseCaseDashboardMutationResponse(
-                dashboards=[
-                    TypeUseCaseDashboard.from_django(d) for d in created_dashboards
-                ],
-                success=True,
-                message=f"Added {len(created_dashboards)} dashboards to usecase",
-            )
+            return TypeUseCaseDashboard.from_django_list(created_dashboards)
         except UseCase.DoesNotExist:
             raise Exception(f"Usecase with ID {input.usecase_id} does not exist")
         except Exception as e:
             raise Exception(f"Failed to add dashboards: {str(e)}")
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[IsAuthenticated],
+        trace_name="add_usecase_dashboard",
+        trace_attributes={"component": "usecase_dashboard"},
+        track_activity={
+            "verb": "created",
+            "get_data": lambda result, **kwargs: {
+                "usecase_id": str(kwargs.get("usecase_id")),
+                "dashboard_id": str(kwargs.get("id")),
+            },
+        },
+    )
+    def add_usecase_dashboard(
+        self,
+        info: Info,
+        usecase_id: int,
+        name: Optional[str] = "",
+        link: Optional[str] = "",
+    ) -> TypeUseCaseDashboard:
+        """Add a usecase dashboard."""
+        try:
+            # Check if usecase exists
+            usecase = UseCase.objects.get(id=usecase_id)
+
+            # Create dashboard
+            dashboard = UseCaseDashboard.objects.create(
+                name=name or "",
+                link=link or "",
+                usecase=usecase,
+            )
+
+            return TypeUseCaseDashboard.from_django(dashboard)
+        except UseCase.DoesNotExist:
+            raise Exception(f"Usecase with ID {usecase_id} does not exist")
+        except Exception as e:
+            raise Exception(f"Failed to add dashboard: {str(e)}")
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[IsAuthenticated],
+        trace_name="update_usecase_dashboard",
+        trace_attributes={"component": "usecase_dashboard"},
+        track_activity={
+            "verb": "updated",
+            "get_data": lambda result, **kwargs: {
+                "dashboard_id": str(kwargs.get("id")),
+            },
+        },
+    )
+    def update_usecase_dashboard(
+        self, info: Info, id: str, name: Optional[str] = "", link: Optional[str] = ""
+    ) -> TypeUseCaseDashboard:
+        """Update a usecase dashboard."""
+        try:
+            dashboard = UseCaseDashboard.objects.get(id=id)
+            dashboard.name = name or dashboard.name
+            dashboard.link = link or dashboard.link
+            dashboard.save()
+            return TypeUseCaseDashboard.from_django(dashboard)
+        except UseCaseDashboard.DoesNotExist:
+            raise Exception(f"Dashboard with ID {id} does not exist")
+        except Exception as e:
+            raise Exception(f"Failed to update dashboard: {str(e)}")
 
     @strawberry.mutation
     @BaseMutation.mutation(
@@ -102,17 +161,12 @@ class Mutation:
             },
         },
     )
-    def delete_usecase_dashboard(
-        self, info: Info, id: int
-    ) -> UseCaseDashboardMutationResponse:
+    def delete_usecase_dashboard(self, info: Info, id: int) -> bool:
         """Delete a usecase dashboard."""
         try:
             dashboard = UseCaseDashboard.objects.get(id=id)
             dashboard.delete()
-            return UseCaseDashboardMutationResponse(
-                success=True,
-                message=f"Dashboard with ID {id} deleted successfully",
-            )
+            return True
         except UseCaseDashboard.DoesNotExist:
             raise Exception(f"Dashboard with ID {id} does not exist")
         except Exception as e:
