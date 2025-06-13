@@ -3,7 +3,7 @@ import strawberry_django
 from strawberry.types import Info
 
 from api.models import Tag
-from api.schema.base_mutation import BaseMutation
+from api.schema.base_mutation import BaseMutation, MutationResponse
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.permissions import IsAuthenticated
 
@@ -31,11 +31,11 @@ class Mutation:
         trace_name="delete_tags",
         trace_attributes={"component": "tag"},
     )
-    def delete_tags(self, info: Info, tag_ids: list[str]) -> bool:
+    def delete_tags(self, info: Info, tag_ids: list[str]) -> MutationResponse[bool]:
         """Delete multiple tags."""
         try:
             tags = Tag.objects.filter(id__in=tag_ids)
         except Tag.DoesNotExist:
             raise ValueError(f"Tags with IDs {tag_ids} do not exist.")
         tags.delete()
-        return True
+        return MutationResponse.success_response(True)
