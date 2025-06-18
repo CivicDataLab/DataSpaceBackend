@@ -5,9 +5,11 @@ import strawberry_django
 from strawberry import Info, auto, field
 from strawberry.enum import EnumType
 
+from api.activities import usecase
 from api.models import (
     Organization,
     UseCase,
+    UseCaseDashboard,
     UseCaseMetadata,
     UseCaseOrganizationRelationship,
 )
@@ -15,6 +17,7 @@ from api.types.base_type import BaseType
 from api.types.type_dataset import TypeDataset, TypeTag
 from api.types.type_organization import TypeOrganization
 from api.types.type_sector import TypeSector
+from api.types.type_usecase_dashboard import TypeUseCaseDashboard
 from api.types.type_usecase_metadata import TypeUseCaseMetadata
 from api.types.type_usecase_organization import TypeUseCaseOrganizationRelationship
 from api.utils.enums import OrganizationRelationshipType, UseCaseStatus
@@ -75,7 +78,9 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field
+    @strawberry.field(
+        description="Get the count of datasets associated with this use case."
+    )
     def dataset_count(self: "TypeUseCase", info: Info) -> int:
         """Get the count of datasets associated with this use case."""
         try:
@@ -83,7 +88,7 @@ class TypeUseCase(BaseType):
         except Exception:
             return 0
 
-    @strawberry.field
+    @strawberry.field(description="Get publishers associated with this use case.")
     def publishers(self) -> Optional[List["TypeOrganization"]]:
         """Get publishers associated with this use case."""
         try:
@@ -94,7 +99,7 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field
+    @strawberry.field(description="Get sectors associated with this use case.")
     def sectors(self) -> Optional[List["TypeSector"]]:
         """Get sectors associated with this use case."""
         try:
@@ -105,7 +110,7 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field
+    @strawberry.field(description="Get tags associated with this use case.")
     def tags(self) -> Optional[List["TypeTag"]]:
         """Get tags associated with this use case."""
         try:
@@ -116,7 +121,7 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field
+    @strawberry.field(description="Get metadata associated with this use case.")
     def metadata(self) -> Optional[List["TypeUseCaseMetadata"]]:
         """Get metadata associated with this use case."""
         try:
@@ -127,7 +132,7 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field
+    @strawberry.field(description="Get contributors associated with this use case.")
     def contributors(self) -> Optional[List["TypeUser"]]:
         """Get contributors associated with this use case."""
         try:
@@ -138,7 +143,9 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field
+    @strawberry.field(
+        description="Get organization relationships associated with this use case."
+    )
     def organization_relationships(
         self,
     ) -> Optional[List["TypeUseCaseOrganizationRelationship"]]:
@@ -151,7 +158,7 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field
+    @strawberry.field(description="Get supporting organizations for this use case.")
     def supporting_organizations(self) -> Optional[List["TypeOrganization"]]:
         """Get supporting organizations for this use case."""
         try:
@@ -168,7 +175,7 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field
+    @strawberry.field(description="Get partner organizations for this use case.")
     def partner_organizations(self) -> Optional[List["TypeOrganization"]]:
         """Get partner organizations for this use case."""
         try:
@@ -182,5 +189,18 @@ class TypeUseCase(BaseType):
 
             organizations = [rel.organization for rel in relationships]  # type: ignore
             return TypeOrganization.from_django_list(organizations)
+        except Exception:
+            return []
+
+    @strawberry.field(
+        description="Get Usecase dashboard associated with this use case."
+    )
+    def usecase_dashboard(self) -> Optional[List["TypeUseCaseDashboard"]]:
+        """Get Usecase dashboard associated with this use case."""
+        try:
+            usecase_dashboards = UseCaseDashboard.objects.filter(usecase=self)  # type: ignore
+            if not usecase_dashboards.exists():
+                return []
+            return TypeUseCaseDashboard.from_django_list(usecase_dashboards)
         except Exception:
             return []
