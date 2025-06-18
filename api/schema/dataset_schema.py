@@ -295,7 +295,7 @@ def _add_update_dataset_metadata(
 
 @trace_resolver(name="update_dataset_tags", attributes={"component": "dataset"})
 def _update_dataset_tags(dataset: Dataset, tags: Optional[List[str]]) -> None:
-    if not tags:
+    if tags is None:
         return
     dataset.tags.clear()
     for tag in tags:
