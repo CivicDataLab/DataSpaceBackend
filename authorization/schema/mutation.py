@@ -7,7 +7,12 @@ import strawberry_django
 import structlog
 from strawberry.types import Info
 
-from api.models import Dataset, Organization
+from api.models import Dataset
+from api.schema.base_mutation import (
+    BaseMutation,
+    DjangoValidationError,
+    MutationResponse,
+)
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.models import OrganizationMembership, Role, User
 from authorization.permissions import IsAuthenticated
@@ -95,16 +100,23 @@ class Mutation:
 
         return TypeUser.from_django(user)
 
-    @strawberry_django.mutation(
+    @strawberry.mutation
+    @BaseMutation.mutation(
         permission_classes=[IsAuthenticated, HasOrganizationAdminRole],
-    )
-    @trace_resolver(
-        name="add_user_to_organization",
-        attributes={"component": "user", "operation": "mutation"},
+        trace_name="add_user_to_organization",
+        trace_attributes={"component": "user", "operation": "mutation"},
+        track_activity={
+            "verb": "added",
+            "get_data": lambda result, **kwargs: {
+                "user_id": str(result.user.id),
+                "organization_id": str(result.organization.id),
+                "role_id": str(result.role.id),
+            },
+        },
     )
     def add_user_to_organization(
         self, info: Info, input: AddRemoveUserToOrganizationInput
-    ) -> TypeOrganizationMembership:
+    ) -> MutationResponse[TypeOrganizationMembership]:
         """Add a user to an organization with a specific role."""
         try:
             user = User.objects.get(id=input.user_id)
@@ -113,7 +125,7 @@ class Mutation:
 
             # If user trying to change self role, should raise error
             if user.id == info.context.user.id:
-                raise ValueError("You cannot change your own role.")
+                raise DjangoValidationError("You cannot change your own role.")
 
             # Check if the membership already exists
             membership, created = OrganizationMembership.objects.get_or_create(
@@ -122,13 +134,17 @@ class Mutation:
 
             # If the membership exists, raise error
             if not created:
-                raise ValueError("User is already a member of this organization.")
+                raise DjangoValidationError(
+                    "User is already a member of this organization."
+                )
 
-            return TypeOrganizationMembership.from_django(membership)
+            return MutationResponse.success_response(
+                TypeOrganizationMembership.from_django(membership)
+            )
         except User.DoesNotExist:
-            raise ValueError(f"User with ID {input.user_id} does not exist.")
+            raise DjangoValidationError(f"User with ID {input.user_id} does not exist.")
         except Role.DoesNotExist:
-            raise ValueError(f"Role with ID {input.role_id} does not exist.")
+            raise DjangoValidationError(f"Role with ID {input.role_id} does not exist.")
 
     @strawberry.mutation
     def assign_organization_role(
