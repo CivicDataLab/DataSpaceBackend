@@ -59,7 +59,7 @@ class TypeOrganization(BaseType):
             use_cases = UseCase.objects.filter(
                 usecaseorganizationrelationship__organization_id=org_id,  # type: ignore
                 status=UseCaseStatus.PUBLISHED.value,
-            )
+            ).distinct()
             return use_cases.count()
         except Exception:
             return 0
