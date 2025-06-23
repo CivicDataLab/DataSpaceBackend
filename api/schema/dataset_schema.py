@@ -564,6 +564,10 @@ class Mutation:
             dataset = Dataset.objects.get(id=dataset_id)
         except Dataset.DoesNotExist as e:
             raise DjangoValidationError(f"Dataset with ID {dataset_id} does not exist.")
+        if dataset.status != DatasetStatus.DRAFT.value:
+            raise DjangoValidationError(
+                f"Dataset with ID {dataset_id} is not in draft status."
+            )
 
         if update_metadata_input.description:
             dataset.description = update_metadata_input.description
