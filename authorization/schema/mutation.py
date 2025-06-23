@@ -111,15 +111,18 @@ class Mutation:
             organization = info.context.context.get("organization")
             role = Role.objects.get(id=input.role_id)
 
+            # If user trying to change self role, should raise error
+            if user.id == info.context.user.id:
+                raise ValueError("You cannot change your own role.")
+
             # Check if the membership already exists
             membership, created = OrganizationMembership.objects.get_or_create(
                 user=user, organization=organization, defaults={"role": role}
             )
 
-            # If the membership exists but the role is different, update it
-            if not created and membership.role != role:
-                membership.role = role
-                membership.save()
+            # If the membership exists, raise error
+            if not created:
+                raise ValueError("User is already a member of this organization.")
 
             return TypeOrganizationMembership.from_django(membership)
         except User.DoesNotExist:
