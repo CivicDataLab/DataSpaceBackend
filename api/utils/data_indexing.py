@@ -8,7 +8,7 @@ from django.db.utils import ProgrammingError
 from api.models.Resource import Resource, ResourceDataTable
 from api.models.ResourceSchema import ResourceSchema
 from api.types.type_preview_data import PreviewData
-from api.utils.file_utils import load_csv
+from api.utils.file_utils import load_tabular_data
 
 logger = structlog.get_logger("dataspace.data_indexing")
 
@@ -86,13 +86,27 @@ def create_table_for_resource(
 def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
     """Index a resource's CSV data into a database table."""
     try:
-        # Check if resource is a CSV file
+        # Check if resource is a supported tabular file
         file_details = resource.resourcefiledetails
-        if not file_details or not file_details.format.lower() == "csv":
+        if not file_details:
             return None
 
-        # Load CSV data
-        df = load_csv(file_details.file.path)
+        format = file_details.format.lower()
+        supported_formats = [
+            "csv",
+            "xls",
+            "xlsx",
+            "ods",
+            "parquet",
+            "feather",
+            "json",
+            "tsv",
+        ]
+        if format not in supported_formats:
+            return None
+
+        # Load tabular data
+        df = load_tabular_data(file_details.file.path, format)
         if df is None or df.empty:
             return None
 
@@ -145,14 +159,14 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
                             format_value = "STRING"
 
                         # For description, preserve existing if available, otherwise auto-generate
-                        description = f"Auto-generated from CSV column {col}"
+                        description = f"Description of column {col}"
                         if col in existing_schemas:
                             existing_description = existing_schemas[col]["description"]
                             # Check for None and non-auto-generated descriptions
                             if (
                                 existing_description is not None
                                 and not existing_description.startswith(
-                                    "Auto-generated"
+                                    "Description of column"
                                 )
                             ):
                                 description = existing_description
@@ -228,8 +242,9 @@ def get_row_count(resource: Resource) -> int:
     except Exception as e:
         import traceback
 
+        error_tb = traceback.format_exc()
         logger.error(
-            f"Error getting row count for resource {resource.id}: {str(e)}, traceback: {traceback.format_exc()}"
+            f"Error getting row count for resource {resource.id}:\n{str(e)}\n{error_tb}"
         )
         return 0
 
@@ -278,7 +293,9 @@ def get_preview_data(resource: Resource) -> Optional[PreviewData]:
 
                 columns = [desc[0] for desc in cursor.description]
                 data = cursor.fetchall()
-                return PreviewData(columns=columns, rows=data)
+                # Convert tuples to lists
+                rows = [list(row) for row in data]
+                return PreviewData(columns=columns, rows=rows)
             except Exception as query_error:
                 logger.error(
                     f"Query timeout or error for resource {resource.id}: {str(query_error)}"

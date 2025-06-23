@@ -153,13 +153,10 @@ class TypeResource(BaseType):
             if not file_details or not getattr(self, "preview_details", None):
                 return None
 
-            preview_details = getattr(self, "preview_details", None)
-
             # Check if preview is enabled and if it's a CSV file
-            if (
-                not getattr(self, "preview_enabled", False)
-                or not file_details.format.lower() == "csv"
-            ):
+            if not getattr(
+                self, "preview_enabled", False
+            ) or not file_details.format.lower() in ["csv", "xls", "xlsx"]:
                 return None
 
             # Use a try-except with a timeout to prevent GraphQL query timeouts

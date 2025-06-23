@@ -8,8 +8,9 @@ from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
 from api.models import Resource, ResourceChartDetails, ResourceSchema
+from api.schema.extensions import TrackModelActivity
 from api.types.type_resource_chart import TypeResourceChart
-from api.utils.enums import AggregateType, ChartTypes
+from api.utils.enums import AggregateType, ChartStatus, ChartTypes
 
 ChartTypeEnum = strawberry.enum(ChartTypes)
 AggregateTypeEnum = strawberry.enum(AggregateType)
@@ -70,6 +71,9 @@ class ChartOptions:
     time_column: Optional[str] = None
     show_legend: bool = False
     aggregate_type: str = "none"
+    orientation: str = "vertical"
+    allow_multi_series: bool = True
+    stacked: bool = False
 
 
 @strawberry.input
@@ -185,11 +189,67 @@ class Mutation:
 
         now = datetime.datetime.now()
         chart = ResourceChartDetails.objects.create(
-            name=f"New chart {now.strftime('%d %b %Y - %H:%M')}", resource=resource_obj
+            name=f"New chart {now.strftime('%d %b %Y - %H:%M:%S')}",
+            resource=resource_obj,
         )
         return TypeResourceChart.from_django(chart)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        extensions=[
+            # Use TrackModelActivity to automatically track the activity
+            # The extension will use the returned chart as the action object
+            # and the resource as the target
+            TrackModelActivity(
+                verb="created chart",
+                target_attr="resource",
+                get_data=lambda result, **kwargs: {
+                    "chart_name": result.name,
+                    "chart_type": result.chart_type,
+                    "resource_id": str(result.resource.id),
+                    "resource_name": result.resource.name,
+                },
+            )
+        ],
+    )
+    def create_resource_chart(
+        self, info: Info, chart_input: ResourceChartInput
+    ) -> TypeResourceChart:
+        try:
+            resource_obj = Resource.objects.get(id=chart_input.resource)
+        except Resource.DoesNotExist as e:
+            raise ValueError(f"Resource with ID {chart_input.resource} does not exist.")
+
+        chart = ResourceChartDetails.objects.create(
+            name=chart_input.name
+            or f"New chart {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}",
+            resource=resource_obj,
+            description=chart_input.description or "",
+            chart_type=chart_input.type or ChartTypeEnum.BAR,
+            options=chart_input.options or {},
+            filters=chart_input.filters or [],
+        )
+
+        _update_chart_fields(chart, chart_input, resource_obj)
+        return TypeResourceChart.from_django(chart)
+
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        extensions=[
+            # Track updates to charts
+            TrackModelActivity(
+                verb="updated chart",
+                target_attr="resource",
+                get_data=lambda result, **kwargs: {
+                    "chart_id": str(result.id),
+                    "chart_name": result.name,
+                    "chart_type": result.chart_type,
+                    "resource_id": str(result.resource.id),
+                    "resource_name": result.resource.name,
+                },
+            )
+        ],
+    )
     def edit_resource_chart(
         self, info: Info, chart_input: ResourceChartInput
     ) -> TypeResourceChart:
@@ -216,6 +276,26 @@ class Mutation:
         try:
             chart = ResourceChartDetails.objects.get(id=chart_id)
             chart.delete()
+            return True
+        except ResourceChartDetails.DoesNotExist as e:
+            raise ValueError(f"Resource Chart with ID {chart_id} does not exist.")
+
+    @strawberry_django.mutation(handle_django_errors=False)
+    def publish_resource_chart(self, info: Info, chart_id: uuid.UUID) -> bool:
+        try:
+            chart = ResourceChartDetails.objects.get(id=chart_id)
+            chart.status = ChartStatus.PUBLISHED
+            chart.save()
+            return True
+        except ResourceChartDetails.DoesNotExist as e:
+            raise ValueError(f"Resource Chart with ID {chart_id} does not exist.")
+
+    @strawberry_django.mutation(handle_django_errors=False)
+    def unpublish_resource_chart(self, info: Info, chart_id: uuid.UUID) -> bool:
+        try:
+            chart = ResourceChartDetails.objects.get(id=chart_id)
+            chart.status = ChartStatus.DRAFT
+            chart.save()
             return True
         except ResourceChartDetails.DoesNotExist as e:
             raise ValueError(f"Resource Chart with ID {chart_id} does not exist.")

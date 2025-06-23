@@ -5,12 +5,13 @@ from django.db import models
 from django.db.models import Sum
 from django.utils.text import slugify
 
-from api.utils.enums import DatasetStatus
+from api.utils.enums import DatasetAccessType, DatasetLicense, DatasetStatus
 
 if TYPE_CHECKING:
     from api.models.DataSpace import DataSpace
     from api.models.Organization import Organization
     from api.models.Sector import Sector
+    from authorization.models import User
 
 
 class Tag(models.Model):
@@ -37,6 +38,13 @@ class Dataset(models.Model):
         blank=True,
         related_name="datasets",
     )
+    user = models.ForeignKey(
+        "authorization.User",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="datasets",
+    )
     dataspace = models.ForeignKey(
         "api.DataSpace",
         on_delete=models.SET_NULL,
@@ -51,6 +59,16 @@ class Dataset(models.Model):
         max_length=50, default=DatasetStatus.DRAFT, choices=DatasetStatus.choices
     )
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="datasets")
+    access_type = models.CharField(
+        max_length=50,
+        default=DatasetAccessType.PUBLIC,
+        choices=DatasetAccessType.choices,
+    )
+    license = models.CharField(
+        max_length=50,
+        default=DatasetLicense.CC_BY_4_0_ATTRIBUTION,
+        choices=DatasetLicense.choices,
+    )
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
@@ -104,6 +122,11 @@ class Dataset(models.Model):
             ]
             or 0
         )
+
+    @property
+    def is_individual_dataset(self) -> bool:
+        """Check if the dataset is an created by an individual."""
+        return self.organization is None and self.user is not None
 
     @property
     def trending_score(self) -> float:

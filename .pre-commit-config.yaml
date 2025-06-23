@@ -55,6 +55,9 @@ repos:
           - psycopg2-binary
           - python-dotenv
           - uvicorn
+          - djangorestframework-simplejwt
+          - python-keycloak
+          - django-activity-stream
 
         args: [--config-file=mypy.ini]
         exclude: ^tests/

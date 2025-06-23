@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 from rest_framework.views import APIView
 
-from api.models import Metadata
+from api.signals.dataset_signals import SEARCH_CACHE_VERSION_KEY
 
 T = TypeVar("T")
 SearchType = TypeVar("SearchType", bound=Search)
@@ -128,12 +128,13 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
             return Response(str(e), status=500)
 
     def _generate_cache_key(self, request: HttpRequest) -> str:
-        """Generate a unique cache key based on request parameters."""
+        """Generate a unique cache key based on request parameters and cache version."""
         params: Dict[str, str] = {
             "query": request.GET.get("query", ""),
             "page": request.GET.get("page", "1"),
             "size": request.GET.get("size", "10"),
             "sort": request.GET.get("sort", "alphabetical"),
             "filters": str(sorted(request.GET.dict().items())),
+            "version": str(cache.get(SEARCH_CACHE_VERSION_KEY, 0)),
         }
         return f"search_results:{hash(frozenset(params.items()))}"

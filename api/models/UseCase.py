@@ -6,8 +6,14 @@ from django.utils.text import slugify
 
 if TYPE_CHECKING:
     from api.models.Dataset import Dataset
+    from api.models.Organization import Organization
+    from authorization.models import User
 
-from api.utils.enums import UseCaseRunningStatus, UseCaseStatus
+from api.utils.enums import (
+    OrganizationRelationshipType,
+    UseCaseRunningStatus,
+    UseCaseStatus,
+)
 from api.utils.file_paths import _use_case_directory_path
 
 
@@ -21,6 +27,10 @@ class UseCase(models.Model):
     website = models.URLField(blank=True)
     contact_email = models.EmailField(blank=True, null=True)
     slug = models.SlugField(max_length=75, null=True, blank=True, unique=True)
+    user = models.ForeignKey("authorization.User", on_delete=models.CASCADE)
+    organization = models.ForeignKey(
+        "api.Organization", on_delete=models.CASCADE, null=True, blank=True
+    )
     status = models.CharField(
         max_length=50, default=UseCaseStatus.DRAFT, choices=UseCaseStatus.choices
     )
@@ -32,11 +42,27 @@ class UseCase(models.Model):
         choices=UseCaseRunningStatus.choices,
     )
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="usecases")
+    contributors = models.ManyToManyField(
+        "authorization.User", blank=True, related_name="contributed_usecases"
+    )
+    # Organizations can be added as supporters or partners through the intermediate model
+    organizations = models.ManyToManyField(
+        "api.Organization",
+        through="api.UseCaseOrganizationRelationship",
+        related_name="related_usecases",
+        blank=True,
+    )
+    started_on = models.DateField(blank=True, null=True)
+    completed_on = models.DateField(blank=True, null=True)
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if self.title and not self.slug:
             self.slug = slugify(cast(str, self.title))
         super().save(*args, **kwargs)
+
+    @property
+    def is_individual_usecase(self):
+        return self.organization is None
 
     class Meta:
         db_table = "use_case"

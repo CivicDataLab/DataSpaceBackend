@@ -18,7 +18,7 @@ class Organization(models.Model):
     homepage = models.URLField(blank=True)
     contact_email = models.EmailField(blank=True, null=True)
     organization_types = models.CharField(
-        max_length=50, choices=OrganizationTypes.choices
+        max_length=100, choices=OrganizationTypes.choices
     )
     parent = models.ForeignKey(
         "api.Organization",
@@ -29,6 +29,10 @@ class Organization(models.Model):
         related_name="parent_field",
     )
     slug = models.SlugField(max_length=75, null=True, blank=False, unique=True)
+    github_profile = models.URLField(blank=True, null=True)
+    linkedin_profile = models.URLField(blank=True, null=True)
+    twitter_profile = models.URLField(blank=True, null=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         self.slug = slugify(self.name)

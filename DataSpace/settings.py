@@ -17,12 +17,13 @@ import environ
 import structlog
 from decouple import config
 
+# Import authorization settings
+from authorization.keycloak_settings import *
+
 from .cache_settings import *
 
 env = environ.Env(DEBUG=(bool, False))
 DEBUG = env.bool("DEBUG", default=True)
-
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
@@ -43,10 +44,10 @@ DB_PORT = env("DB_PORT", default="DB_PORT")
 
 # Data indexing database
 DATA_DB_NAME = env("DATA_DB_NAME", default=str(BASE_DIR / "data.sqlite3"))
-DATA_DB_USER = env("DB_USER", default=DB_USER)
-DATA_DB_PASSWORD = env("DB_PASSWORD", default=DB_PASSWORD)
-DATA_DB_HOST = env("DB_HOST", default=DB_HOST)
-DATA_DB_PORT = env("DB_PORT", default=DB_PORT)
+DATA_DB_USER = env("DATA_DB_USER", default=DB_USER)
+DATA_DB_PASSWORD = env("DATA_DB_PASSWORD", default=DB_PASSWORD)
+DATA_DB_HOST = env("DATA_DB_HOST", default=DB_HOST)
+DATA_DB_PORT = env("DATA_DB_PORT", default=DB_PORT)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
@@ -64,42 +65,55 @@ ALLOWED_HOSTS = [
 
 CSRF_TRUSTED_ORIGINS = whitelisted_urls
 
-# CORS settings
-if DEBUG:
-    # In development, allow all origins
-    CORS_ORIGIN_ALLOW_ALL = True
-else:
-    # In production, only allow whitelisted origins
-    CORS_ORIGIN_ALLOW_ALL = False
-    CORS_ALLOWED_ORIGINS = whitelisted_urls
+# Explicitly disable automatic URL normalization to prevent redirects
+APPEND_SLASH = False
 
+# Disable trailing slash redirects for GraphQL
+STRICT_URL_HANDLING = True
+
+# Disable HTTPS redirects - this is critical
+SECURE_SSL_REDIRECT = False
+SECURITY_MIDDLEWARE_REDIRECT_HTTPS = False
+SECURE_PROXY_SSL_HEADER = None
+# Maximally permissive CORS settings to fix issues
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = ["*"]
+CORS_ALLOW_HEADERS = ["*"]
+CORS_EXPOSE_HEADERS = ["*"]
+
+# Apply CORS to all URLs including redirects
+CORS_URLS_REGEX = r".*"
+
+# CORS preflight settings
+CORS_PREFLIGHT_MAX_AGE = 86400
 # Common CORS settings
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_METHODS = [
-    "DELETE",
-    "GET",
-    "OPTIONS",
-    "PATCH",
-    "POST",
-    "PUT",
-]
+# CORS_ALLOW_METHODS = [
+#     "DELETE",
+#     "GET",
+#     "OPTIONS",
+#     "PATCH",
+#     "POST",
+#     "PUT",
+# ]
 
-CORS_ALLOW_HEADERS = [
-    "accept",
-    "accept-encoding",
-    "authorization",
-    "content-type",
-    "dnt",
-    "origin",
-    "user-agent",
-    "x-csrftoken",
-    "x-requested-with",
-    "referer",
-    "organization",
-    "dataspace",
-    "token",
-]
-
+# CORS_ALLOW_HEADERS = [
+#     "accept",
+#     "accept-encoding",
+#     "authorization",
+#     "content-type",
+#     "dnt",
+#     "origin",
+#     "user-agent",
+#     "x-csrftoken",
+#     "x-requested-with",
+#     "referer",
+#     "organization",
+#     "dataspace",
+#     "token",
+#     "x-keycloak-token",  # Add Keycloak token header
+# ]
 # Application definition
 
 INSTALLED_APPS = [
@@ -109,35 +123,39 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "corsheaders",  # django-cors-headers package
+    "corsheaders",
+    "authorization.apps.AuthorizationConfig",
     "api.apps.ApiConfig",
     "strawberry_django",
     "rest_framework",
+    "rest_framework_simplejwt",
     "django_elasticsearch_dsl",
     "django_elasticsearch_dsl_drf",
+    "actstream",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",  # CORS middleware must be first
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "api.utils.middleware.ContextMiddleware",
-]
-
-# Add debug toolbar middleware first if in debug mode
-if DEBUG:
-    MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
-
-# Add our custom middleware
-MIDDLEWARE += [
-    "api.middleware.rate_limit.rate_limit_middleware",
     "api.middleware.request_validator.RequestValidationMiddleware",
     "api.middleware.logging.StructuredLoggingMiddleware",
+]
+
+# Add debug toolbar middleware if in debug mode
+if DEBUG:
+    MIDDLEWARE.insert(1, "debug_toolbar.middleware.DebugToolbarMiddleware")
+
+MIDDLEWARE += [
+    "api.middleware.rate_limit.rate_limit_middleware",
+    "authorization.middleware.KeycloakAuthenticationMiddleware",
+    "authorization.middleware.activity_consent.ActivityConsentMiddleware",
 ]
 
 ROOT_URLCONF = "DataSpace.urls"
@@ -164,6 +182,7 @@ STRAWBERRY_DJANGO = {
     "FIELD_DESCRIPTION_FROM_HELP_TEXT": True,
     "TYPE_DESCRIPTION_FROM_MODEL_DOCSTRING": True,
     "GENERATE_ENUMS_FROM_CHOICES": True,
+    "DEFAULT_PERMISSION_CLASSES": ["authorization.graphql_permissions.AllowAny"],
 }
 
 # Database
@@ -220,7 +239,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
-STATIC_URL = "static/"
+# This STATIC_URL setting is overridden below
 MEDIA_URL = "public/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "files", "public")
 
@@ -229,6 +248,15 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "files", "public")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DJANGO_ALLOW_ASYNC_UNSAFE = True
+
+# Custom User model
+AUTH_USER_MODEL = "authorization.User"
+
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    "authorization.backends.KeycloakAuthenticationBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
 ELASTICSEARCH_DSL = {
     "default": {
         "hosts": f"http://{os.getenv('ELASTICSEARCH_USERNAME', 'elastic')}:{os.getenv('ELASTICSEARCH_PASSWORD', 'changeme')}@elasticsearch:9200",
@@ -252,9 +280,11 @@ DVC_REMOTE_URL = os.getenv("DVC_REMOTE_URL", None)
 # Django REST Framework settings
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",  # Allow unauthenticated access by default
+        "rest_framework.permissions.AllowAny",  # Allow public access by default
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "authorization.authentication.KeycloakAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
     ],
@@ -381,13 +411,77 @@ RATELIMIT_VIEW = "api.views.rate_limit_exceeded_view"
 
 # Security settings
 SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_TYPE_NOSNIFF = True
+# Disable content type sniffing to fix MIME type issues
+SECURE_CONTENT_TYPE_NOSNIFF = False
 X_FRAME_OPTIONS = "DENY"
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    #     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+
+# Static files configuration
+# Make sure this is an absolute path
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
+# Make sure the URL starts and ends with a slash
+STATIC_URL = "/static/"
+
+# Additional locations of static files - where Django will look for static files
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),
+]
+
+# Make sure Django can find admin static files
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+]
+
+# Always use WhiteNoise for static files in both development and production
+# Insert WhiteNoise middleware after security middleware
+MIDDLEWARE.insert(
+    MIDDLEWARE.index("django.middleware.security.SecurityMiddleware") + 1,
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+)
+
+# Use the simplest WhiteNoise storage configuration to avoid MIME type issues
+STATICFILES_STORAGE = "whitenoise.storage.StaticFilesStorage"
+
+# Disable compression to avoid MIME type issues
+WHITENOISE_ENABLE_COMPRESSION = False
+
+# Don't add content-type headers (let the browser determine them)
+WHITENOISE_ADD_HEADERS = False
+
+# Don't use the manifest feature which can cause issues with file references
+WHITENOISE_USE_FINDERS = True
+
+# Don't use the root directory feature which can cause conflicts
+# WHITENOISE_ROOT = os.path.join(BASE_DIR, "static")
+
+# Django Activity Stream settings
+ACTSTREAM_SETTINGS = {
+    "MANAGER": "actstream.managers.ActionManager",
+    "FETCH_RELATIONS": True,
+    "USE_PREFETCH": True,
+    "USE_JSONFIELD": True,
+    "GFK_FETCH_DEPTH": 1,
+}
+
+# Activity Stream Consent Settings
+ACTIVITY_CONSENT = {
+    # If True, user consent is required for activity tracking
+    # If False, consent is assumed and all activities are tracked
+    "REQUIRE_CONSENT": env.bool("ACTIVITY_REQUIRE_CONSENT", default=True),
+    # Default consent setting for new users
+    "DEFAULT_CONSENT": env.bool("ACTIVITY_DEFAULT_CONSENT", default=False),
+    # If True, anonymous activities are tracked (when consent is not required)
+    "TRACK_ANONYMOUS": env.bool("ACTIVITY_TRACK_ANONYMOUS", default=False),
+    # Maximum age of activities to keep (in days, 0 means keep forever)
+    "MAX_AGE_DAYS": env.int("ACTIVITY_MAX_AGE_DAYS", default=0),
+}

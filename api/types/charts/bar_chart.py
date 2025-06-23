@@ -14,7 +14,7 @@ from api.utils.enums import AggregateType
 
 @register_chart("BAR_HORIZONTAL")
 @register_chart("BAR_VERTICAL")
-@register_chart("LINE")
+# @register_chart("LINE")
 class BarChart(BaseChart):
     def configure_chart(
         self, chart: Chart, filtered_data: Optional[pd.DataFrame] = None

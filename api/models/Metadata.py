@@ -89,11 +89,11 @@ class BaseMetadata(models.Model):
             try:
                 validate_method(metadata, value)
             except ValidationError as e:
-                if metadata_type is MetadataTypes.REQUIRED:
-                    raise e
-                else:
-                    # Set empty value for non-required fields with validation errors
-                    self.value = ""
+                # if metadata_type is MetadataTypes.REQUIRED:
+                raise e
+                # else:
+                #     # Set empty value for non-required fields with validation errors
+                #     self.value = ""
         else:
             raise ValidationError(f"Unknown data type: {data_type}")
 
@@ -128,7 +128,7 @@ class BaseMetadata(models.Model):
         invalid_values = [v for v in selected_values if v not in options]
         if invalid_values:
             raise ValidationError(
-                f"Invalid values: {', '.join(invalid_values)}. Must be one of {options}."
+                f"Invalid values: {', '.join(invalid_values)} for '{getattr(metadata, 'label', '')}'. Must be one of {options}."
             )
 
     def _validate_date(self, metadata: MetadataType, value: str) -> None:
@@ -136,7 +136,9 @@ class BaseMetadata(models.Model):
         try:
             datetime.strptime(value, "%Y-%m-%d")
         except ValueError:
-            raise ValidationError("Value must be a valid date in YYYY-MM-DD format")
+            raise ValidationError(
+                f"Value for '{getattr(metadata, 'label', '')}' must be a valid date in YYYY-MM-DD format."
+            )
 
     def _validate_url(self, metadata: MetadataType, value: str) -> None:
         """Validate URL type."""

@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Type, TypedDict, TypeVar, Union, c
 
 import strawberry
 import strawberry_django
+import structlog
 from pyecharts.charts.chart import Chart
 from strawberry.scalars import JSON
 from strawberry.types import Info
@@ -12,9 +13,12 @@ from strawberry.types import Info
 from api.models import ResourceChartDetails
 from api.types.base_type import BaseType
 from api.types.charts.chart_registry import CHART_REGISTRY
+from api.types.type_dataset import TypeDataset
 from api.types.type_resource import TypeResource, TypeResourceSchema
+from api.utils.enums import ChartStatus, ChartTypes
 from api.utils.file_utils import load_csv
 
+logger = structlog.get_logger(__name__)
 T = TypeVar("T", bound="TypeResourceChart")
 
 
@@ -30,6 +34,7 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
     try:
         file_details = getattr(chart_details.resource, "resourcefiledetails", None)
         if not file_details or file_details.format.lower() != "csv":
+            logger.error("invalid resource format")
             return None
 
         data = load_csv(file_details.file.path)
@@ -94,6 +99,9 @@ class ChartOptionsType(BaseType):
     time_column: Optional[TypeResourceSchema]
     show_legend: Optional[bool]
     aggregate_type: Optional[str]
+    orientation: Optional[str]
+    allow_multi_series: Optional[bool]
+    stacked: Optional[bool]
 
 
 class ChartOptionsTypeDict(TypedDict, total=False):
@@ -133,16 +141,26 @@ def ensure_type(
     return value
 
 
+ChartTypeEnum = strawberry.enum(ChartTypes)  # type: ignore
+ChartStatusEnum = strawberry.enum(ChartStatus)  # type: ignore
+
+
 @strawberry_django.type(ResourceChartDetails)
 class TypeResourceChart(BaseType):
     """Type for resource chart."""
 
     id: uuid.UUID
     name: str
-    chart_type: str
+    chart_type: ChartTypeEnum
     created: datetime
     modified: datetime
     description: Optional[str] = ""
+    status: ChartStatusEnum = ChartStatusEnum.DRAFT
+
+    @strawberry.field
+    def dataset(self: Any) -> Optional[TypeDataset]:
+        """Get dataset for this chart."""
+        return TypeDataset.from_django(self.resource.dataset)
 
     @strawberry.field
     def resource(self: Any) -> Optional[TypeResource]:
@@ -202,6 +220,9 @@ class TypeResourceChart(BaseType):
                 ),
                 show_legend=options_dict.get("show_legend"),
                 aggregate_type=options_dict.get("aggregate_type"),
+                orientation=options_dict.get("orientation", "vertical"),
+                allow_multi_series=options_dict.get("allow_multi_series", True),
+                stacked=options_dict.get("stacked", False),
             )
         except (AttributeError, KeyError):
             return None

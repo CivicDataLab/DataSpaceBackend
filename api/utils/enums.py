@@ -84,6 +84,20 @@ class DatasetStatus(models.TextChoices):
     ARCHIVED = "ARCHIVED"
 
 
+class DatasetAccessType(models.TextChoices):
+    PUBLIC = "PUBLIC"
+    PRIVATE = "PRIVATE"
+    RESTRICTED = "RESTRICTED"
+
+
+class DatasetLicense(models.TextChoices):
+    GOVERNMENT_OPEN_DATA_LICENSE = "GOVERNMENT_OPEN_DATA_LICENSE"
+    CC_BY_4_0_ATTRIBUTION = "CC_BY_4_0_ATTRIBUTION"
+    CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE = "CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE"
+    OPEN_DATA_COMMONS_BY_ATTRIBUTION = "OPEN_DATA_COMMONS_BY_ATTRIBUTION"
+    OPEN_DATABASE_LICENSE = "OPEN_DATABASE_LICENSE"
+
+
 class UseCaseStatus(models.TextChoices):
     DRAFT = "DRAFT"
     PUBLISHED = "PUBLISHED"
@@ -99,15 +113,27 @@ class UseCaseRunningStatus(models.TextChoices):
 
 
 class ChartTypes(models.TextChoices):
+    # New simplified chart types
+    BAR = "BAR"
+    LINE = "LINE"
+
+    # Legacy chart types (kept for backward compatibility)
     BAR_VERTICAL = "BAR_VERTICAL"
     BAR_HORIZONTAL = "BAR_HORIZONTAL"
     GROUPED_BAR_VERTICAL = "GROUPED_BAR_VERTICAL"
     GROUPED_BAR_HORIZONTAL = "GROUPED_BAR_HORIZONTAL"
-    LINE = "LINE"
     MULTILINE = "MULTILINE"
+
+    # Map and other specialized charts
     ASSAM_DISTRICT = "ASSAM_DISTRICT"
     ASSAM_RC = "ASSAM_RC"
     TREEMAP = "TREEMAP"
+
+
+class ChartStatus(models.TextChoices):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"
 
 
 class AggregateType(models.TextChoices):
@@ -115,3 +141,8 @@ class AggregateType(models.TextChoices):
     SUM = "SUM"
     AVERAGE = "AVG"
     COUNT = "COUNT"
+
+
+class OrganizationRelationshipType(models.TextChoices):
+    SUPPORTER = "SUPPORTER"
+    PARTNER = "PARTNER"

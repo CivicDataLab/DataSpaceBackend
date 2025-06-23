@@ -15,6 +15,7 @@ from api.types.type_organization import TypeOrganization
 from api.types.type_resource import TypeResource
 from api.types.type_sector import TypeSector
 from api.utils.enums import DatasetStatus
+from authorization.types import TypeUser
 
 logger = structlog.get_logger("dataspace.type_dataset")
 
@@ -53,11 +54,12 @@ class TypeDataset(BaseType):
     description: Optional[str]
     slug: str
     status: dataset_status
-    organization: "TypeOrganization"
+    organization: Optional["TypeOrganization"]
     created: datetime
     modified: datetime
     tags: List["TypeTag"]
     download_count: int
+    user: Optional["TypeUser"]
 
     @strawberry.field
     def sectors(self, info: Info) -> List["TypeSector"]:
@@ -228,6 +230,11 @@ class TypeDataset(BaseType):
         except Exception as e:
             logger.error(f"Error fetching similar datasets: {str(e)}")
             return []
+
+    @strawberry.field
+    def is_individual_dataset(self) -> bool:
+        """Check if this dataset is published by a individual publisher instead of organization."""
+        return self.organization is None
 
 
 @strawberry_django.type(Tag, fields="__all__")

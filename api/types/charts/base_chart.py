@@ -44,6 +44,8 @@ CHART_TYPE_MAP = {
     "ASSAM_RC": Map,
     "MULTILINE": Line,
     "TREEMAP": TreeMap,
+    "BAR": Bar,
+    "LINE": Line,
 }
 
 

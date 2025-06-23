@@ -19,4 +19,6 @@ from api.models.ResourceSchema import ResourceSchema
 from api.models.Sector import Sector
 from api.models.SerializableJSONField import SerializableJSONField
 from api.models.UseCase import UseCase
+from api.models.UseCaseDashboard import UseCaseDashboard
 from api.models.UseCaseMetadata import UseCaseMetadata
+from api.models.UseCaseOrganizationRelationship import UseCaseOrganizationRelationship

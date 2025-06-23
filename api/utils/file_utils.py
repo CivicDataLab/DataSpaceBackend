@@ -6,6 +6,9 @@ from typing import Any, Dict, Optional, Union
 
 import magic
 import pandas as pd
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 def check_ext(file_object: Any) -> Optional[str]:
@@ -84,3 +87,114 @@ def load_csv(filepath: str) -> pd.DataFrame:
         pd.DataFrame: Loaded DataFrame
     """
     return pd.read_csv(filepath)
+
+
+@lru_cache()
+def load_excel(filepath: str) -> pd.DataFrame:
+    """Load Excel file into a pandas DataFrame.
+
+    Args:
+        filepath: Path to the Excel file
+
+    Returns:
+        pd.DataFrame: Loaded DataFrame
+    """
+    return pd.read_excel(filepath)
+
+
+@lru_cache()
+def load_ods(filepath: str) -> pd.DataFrame:
+    """Load ODS file into a pandas DataFrame.
+
+    Args:
+        filepath: Path to the ODS file
+
+    Returns:
+        pd.DataFrame: Loaded DataFrame
+    """
+    return pd.read_excel(filepath, engine="odf")
+
+
+@lru_cache()
+def load_parquet(filepath: str) -> pd.DataFrame:
+    """Load Parquet file into a pandas DataFrame.
+
+    Args:
+        filepath: Path to the Parquet file
+
+    Returns:
+        pd.DataFrame: Loaded DataFrame
+    """
+    return pd.read_parquet(filepath)
+
+
+@lru_cache()
+def load_feather(filepath: str) -> pd.DataFrame:
+    """Load Feather file into a pandas DataFrame.
+
+    Args:
+        filepath: Path to the Feather file
+
+    Returns:
+        pd.DataFrame: Loaded DataFrame
+    """
+    return pd.read_feather(filepath)
+
+
+@lru_cache()
+def load_json(filepath: str) -> pd.DataFrame:
+    """Load JSON file into a pandas DataFrame.
+
+    Args:
+        filepath: Path to the JSON file
+
+    Returns:
+        pd.DataFrame: Loaded DataFrame
+    """
+    return pd.read_json(filepath)
+
+
+@lru_cache()
+def load_tsv(filepath: str) -> pd.DataFrame:
+    """Load TSV file into a pandas DataFrame.
+
+    Args:
+        filepath: Path to the TSV file
+
+    Returns:
+        pd.DataFrame: Loaded DataFrame
+    """
+    return pd.read_csv(filepath, sep="\t")
+
+
+@lru_cache()
+def load_tabular_data(filepath: str, format: str) -> Optional[pd.DataFrame]:
+    """Load tabular data from various file formats into a pandas DataFrame.
+
+    Args:
+        filepath: Path to the file
+        format: File format (csv, xls, xlsx, ods, parquet, feather, json, tsv)
+
+    Returns:
+        Optional[pd.DataFrame]: Loaded DataFrame or None if format not supported
+    """
+    format = format.lower()
+    format_handlers = {
+        "csv": load_csv,
+        "xls": load_excel,
+        "xlsx": load_excel,
+        "ods": load_ods,
+        "parquet": load_parquet,
+        "feather": load_feather,
+        "json": load_json,
+        "tsv": load_tsv,
+    }
+
+    handler = format_handlers.get(format)
+    if handler:
+        try:
+            return handler(filepath)
+        except Exception as e:
+            logger.error(f"Error loading {format} file: {str(e)}")
+            return None
+    return None

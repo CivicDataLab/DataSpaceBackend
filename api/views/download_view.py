@@ -43,7 +43,9 @@ def get_chart_image(id: uuid.UUID) -> ResourceChartImage:
 
 
 @sync_to_async
-def get_resource_response(resource: Resource) -> HttpResponse:
+def get_resource_response(
+    resource: Resource, request: Optional[HttpRequest] = None
+) -> HttpResponse:
     """Get file response for a resource."""
     file_details = resource.resourcefiledetails
     if not file_details or not file_details.file:
@@ -66,6 +68,17 @@ def get_resource_response(resource: Resource) -> HttpResponse:
     # Increment download count
     resource.download_count += 1
     resource.save()
+
+    # Track the download activity if the user is authenticated
+    if request and hasattr(request, "user") and request.user.is_authenticated:
+        # Import here to avoid circular imports
+        import asyncio
+
+        from api.activities.resource import track_resource_downloaded
+
+        asyncio.create_task(
+            sync_to_async(track_resource_downloaded)(request.user, resource, request)
+        )
 
     response["Content-Disposition"] = f'attachment; filename="{basename}"'
     return response
@@ -100,7 +113,7 @@ async def download(request: HttpRequest, type: str, id: uuid.UUID) -> HttpRespon
     if type == "resource":
         try:
             resource = await get_resource(id)
-            return await get_resource_response(resource)
+            return await get_resource_response(resource, request)
         except Resource.DoesNotExist:
             return JsonResponse({"error": "Resource not found"}, status=404)
         except Exception as e:

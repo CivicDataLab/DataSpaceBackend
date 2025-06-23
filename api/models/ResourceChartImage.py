@@ -1,12 +1,11 @@
 import uuid
-from typing import TYPE_CHECKING
 
 from django.db import models
 
-from api.utils.file_paths import _chart_image_directory_path
+from api.utils.enums import ChartStatus
 
-if TYPE_CHECKING:
-    from api.models import Dataset
+# Import the Dataset model indirectly to avoid duplicate import error
+from api.utils.file_paths import _chart_image_directory_path
 
 
 class ResourceChartImage(models.Model):
@@ -24,6 +23,13 @@ class ResourceChartImage(models.Model):
         related_name="chart_images",
     )
     modified = models.DateTimeField(auto_now=True)
+    status = models.CharField(
+        max_length=50,
+        choices=ChartStatus.choices,
+        default=ChartStatus.DRAFT,
+        blank=False,
+        unique=False,
+    )
 
     def __str__(self) -> str:
         return self.name
