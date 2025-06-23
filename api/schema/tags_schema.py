@@ -12,7 +12,9 @@ from authorization.permissions import IsAuthenticated
 class Mutation:
     """Mutations for tags."""
 
-    @strawberry_django.mutation(handle_django_errors=False)
+    @strawberry_django.mutation(
+        handle_django_errors=False, permission_classes=[IsAuthenticated]
+    )
     @trace_resolver(
         name="delete_tag", attributes={"component": "tag", "operation": "mutation"}
     )
