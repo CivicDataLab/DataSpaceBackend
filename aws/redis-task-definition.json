@@ -1,0 +1,53 @@
+{
+  "family": "${APP_NAME}-redis",
+  "executionRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
+  "networkMode": "awsvpc",
+  "containerDefinitions": [
+    {
+      "name": "${APP_NAME}-redis",
+      "image": "redis:alpine",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 6379,
+          "hostPort": 6379,
+          "protocol": "tcp"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/${APP_NAME}-redis",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "redis-cli ping | grep -q 'PONG'"],
+        "interval": 10,
+        "timeout": 5,
+        "retries": 5,
+        "startPeriod": 10
+      },
+      "mountPoints": [
+        {
+          "sourceVolume": "redis-data",
+          "containerPath": "/data"
+        }
+      ]
+    }
+  ],
+  "volumes": [
+    {
+      "name": "redis-data",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "${EFS_ID}",
+        "rootDirectory": "/redis-data",
+        "transitEncryption": "ENABLED"
+      }
+    }
+  ],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024"
+}

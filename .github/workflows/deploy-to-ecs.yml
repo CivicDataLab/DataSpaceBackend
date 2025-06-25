@@ -1,0 +1,138 @@
+name: Deploy to Amazon ECS
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+  ECS_EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
+  APP_NAME: dataspace
+  APP_PORT: 8000
+  DB_ENGINE: django.db.backends.postgresql
+  DB_PORT: 5432
+  DEBUG_MODE: "False"
+  TELEMETRY_URL: http://otel-collector:4317
+  CPU_UNITS: 256
+  MEMORY_UNITS: 512
+  SSM_PATH_PREFIX: /dataspace
+  ENVIRONMENT: ${{ secrets.ENVIRONMENT || 'dev' }}
+
+jobs:
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    environment: development
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.modified, 'aws/cloudformation')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy CloudFormation stack
+        run: |
+          aws cloudformation deploy \
+            --template-file aws/cloudformation/dataspace-infrastructure.yml \
+            --stack-name dataspace-${{ env.ENVIRONMENT }}-infrastructure \
+            --parameter-overrides \
+              Environment=${{ env.ENVIRONMENT }} \
+              VpcId=${{ secrets.VPC_ID }} \
+              SubnetIds=${{ secrets.SUBNET_IDS }} \
+              DBUsername=${{ secrets.DB_USERNAME }} \
+              DBPassword=${{ secrets.DB_PASSWORD }} \
+              DBName=${{ secrets.DB_NAME }} \
+              ElasticsearchPassword=${{ secrets.ELASTICSEARCH_PASSWORD }} \
+              DjangoSecretKey=${{ secrets.DJANGO_SECRET_KEY }} \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset
+
+  deploy-app:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    environment: development
+    needs: deploy-infrastructure
+    if: always() # Run even if infrastructure deployment is skipped
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Process main task definition template
+        id: task-def-app
+        env:
+          ECR_REPOSITORY_URI: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          envsubst < aws/task-definition.json > aws/task-definition-processed.json
+          cat aws/task-definition-processed.json
+
+      - name: Deploy main application ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: aws/task-definition-processed.json
+          service: ${{ secrets.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+  deploy-otel:
+    name: Deploy OpenTelemetry Collector
+    runs-on: ubuntu-latest
+    environment: development
+    needs: deploy-app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Process OpenTelemetry task definition template
+        id: task-def-otel
+        run: |
+          envsubst < aws/otel-collector-task-definition.json > aws/otel-collector-task-definition-processed.json
+          cat aws/otel-collector-task-definition-processed.json
+
+      - name: Deploy OpenTelemetry ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: aws/otel-collector-task-definition-processed.json
+          service: ${{ secrets.ECS_OTEL_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true

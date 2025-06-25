@@ -1,0 +1,61 @@
+{
+  "family": "${APP_NAME}",
+  "executionRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
+  "networkMode": "awsvpc",
+  "containerDefinitions": [
+    {
+      "name": "${APP_NAME}",
+      "image": "${ECR_REPOSITORY_URI}:${IMAGE_TAG}",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": "${APP_PORT}",
+          "hostPort": "${APP_PORT}",
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "DB_ENGINE", "value": "${DB_ENGINE}" },
+        { "name": "DB_PORT", "value": "${DB_PORT}" },
+        { "name": "DEBUG", "value": "${DEBUG_MODE}" },
+        { "name": "TELEMETRY_URL", "value": "${TELEMETRY_URL}" },
+        { "name": "REDIS_PORT", "value": "6379" }
+      ],
+      "secrets": [
+        { "name": "DB_HOST", "valueFrom": "${SSM_PATH_PREFIX}/DB_HOST" },
+        { "name": "DB_NAME", "valueFrom": "${SSM_PATH_PREFIX}/DB_NAME" },
+        { "name": "DB_USER", "valueFrom": "${SSM_PATH_PREFIX}/DB_USER" },
+        { "name": "DB_PASSWORD", "valueFrom": "${SSM_PATH_PREFIX}/DB_PASSWORD" },
+        { "name": "SECRET_KEY", "valueFrom": "${SSM_PATH_PREFIX}/SECRET_KEY" },
+        { "name": "ELASTICSEARCH_INDEX", "valueFrom": "${SSM_PATH_PREFIX}/ELASTICSEARCH_INDEX" },
+        { "name": "ELASTICSEARCH_USERNAME", "valueFrom": "${SSM_PATH_PREFIX}/ELASTICSEARCH_USERNAME" },
+        { "name": "ELASTICSEARCH_PASS", "valueFrom": "${SSM_PATH_PREFIX}/ELASTICSEARCH_PASS" },
+        { "name": "URL_WHITELIST", "valueFrom": "${SSM_PATH_PREFIX}/URL_WHITELIST" },
+        { "name": "REDIS_HOST", "valueFrom": "${SSM_PATH_PREFIX}/REDIS_HOST" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/${APP_NAME}",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:${APP_PORT}/health/ || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "${CPU_UNITS}",
+  "memory": "${MEMORY_UNITS}",
+  "tags": [
+    { "key": "Environment", "value": "${ENVIRONMENT}" },
+    { "key": "Application", "value": "${APP_NAME}" },
+    { "key": "ManagedBy", "value": "GitHub-Actions" }
+  ]
+}

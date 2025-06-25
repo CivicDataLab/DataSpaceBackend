@@ -1,0 +1,81 @@
+{
+  "family": "${APP_NAME}-otel-collector",
+  "executionRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
+  "networkMode": "awsvpc",
+  "containerDefinitions": [
+    {
+      "name": "${APP_NAME}-otel-collector",
+      "image": "otel/opentelemetry-collector:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 4317,
+          "hostPort": 4317,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 4318,
+          "hostPort": 4318,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 55680,
+          "hostPort": 55680,
+          "protocol": "tcp"
+        },
+        {
+          "containerPort": 55681,
+          "hostPort": 55681,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "ENVIRONMENT", "value": "${ENVIRONMENT}" }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "otel-config",
+          "containerPath": "/etc/otel-collector-config.yml",
+          "readOnly": true
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/${APP_NAME}-otel-collector",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:13133/ || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ],
+  "volumes": [
+    {
+      "name": "otel-config",
+      "dockerVolumeConfiguration": {
+        "scope": "task",
+        "driver": "local",
+        "labels": {
+          "app": "${APP_NAME}",
+          "component": "otel-collector"
+        }
+      }
+    }
+  ],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "tags": [
+    { "key": "Environment", "value": "${ENVIRONMENT}" },
+    { "key": "Application", "value": "${APP_NAME}" },
+    { "key": "Component", "value": "otel-collector" },
+    { "key": "ManagedBy", "value": "GitHub-Actions" }
+  ]
+}
