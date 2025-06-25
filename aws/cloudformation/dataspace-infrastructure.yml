@@ -116,10 +116,10 @@ Resources:
   Database:
     Type: AWS::RDS::DBInstance
     Properties:
-      AllocatedStorage: 20
+      AllocatedStorage: 30
       DBInstanceClass: !Ref DBInstanceClass
       Engine: postgres
-      EngineVersion: '14.4'
+      EngineVersion: '17.4'
       MasterUsername: !Ref DBUsername
       MasterUserPassword: !Ref DBPassword
       DBName: !Ref DBName
@@ -261,9 +261,10 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Name: /dataspace/DB_PASSWORD
-      Type: SecureString
+      Type: String
       Value: !Ref DBPassword
       Description: Database password
+      Tier: Standard
 
   ElasticsearchIndexParameter:
     Type: AWS::SSM::Parameter
@@ -285,9 +286,10 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Name: /dataspace/ELASTICSEARCH_PASS
-      Type: SecureString
+      Type: String
       Value: !Ref ElasticsearchPassword
       Description: Elasticsearch password
+      Tier: Standard
 
   RedisHostParameter:
     Type: AWS::SSM::Parameter
@@ -301,9 +303,10 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Name: /dataspace/SECRET_KEY
-      Type: SecureString
+      Type: String
       Value: !Ref DjangoSecretKey
       Description: Django secret key
+      Tier: Standard
 
   URLWhitelistParameter:
     Type: AWS::SSM::Parameter
