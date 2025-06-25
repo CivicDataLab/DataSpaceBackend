@@ -89,19 +89,26 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Process main task definition template
-        id: task-def-app
-        env:
-          ECR_REPOSITORY_URI: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
-          IMAGE_TAG: ${{ github.sha }}
+      - name: Download current task definition
+        id: download-taskdef
         run: |
-          envsubst < aws/task-definition.json > aws/task-definition-processed.json
-          cat aws/task-definition-processed.json
+          aws ecs describe-task-definition \
+            --task-definition dataspace \
+            --query taskDefinition > aws/current-task-definition.json
+          cat aws/current-task-definition.json
+
+      - name: Update container image only
+        id: task-def-app
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: aws/current-task-definition.json
+          container-name: dataspace
+          image: ${{ steps.build-image.outputs.image }}
 
       - name: Deploy main application ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
-          task-definition: aws/task-definition-processed.json
+          task-definition: ${{ steps.task-def-app.outputs.task-definition }}
           service: ${{ secrets.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
@@ -123,16 +130,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Process OpenTelemetry task definition template
-        id: task-def-otel
+      - name: Download current OpenTelemetry task definition
+        id: download-otel-taskdef
         run: |
-          envsubst < aws/otel-collector-task-definition.json > aws/otel-collector-task-definition-processed.json
-          cat aws/otel-collector-task-definition-processed.json
+          aws ecs describe-task-definition \
+            --task-definition dataspace-otel-collector \
+            --query taskDefinition > aws/current-otel-task-definition.json
+          cat aws/current-otel-task-definition.json
 
       - name: Deploy OpenTelemetry ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
-          task-definition: aws/otel-collector-task-definition-processed.json
+          task-definition: aws/current-otel-task-definition.json
           service: ${{ secrets.ECS_OTEL_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
