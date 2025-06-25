@@ -159,6 +159,11 @@ def _create_file_resource_schema(resource: Resource) -> None:
         return
 
 
+def _reset_file_resource_schema(resource: Resource) -> None:
+    ResourceSchema.objects.filter(resource=resource).delete()
+    data_table = index_resource_data(resource)
+
+
 def _update_file_resource_schema(
     resource: Resource, updated_schema: List[SchemaUpdate]
 ) -> None:
@@ -262,6 +267,7 @@ class Mutation:
                 file=file, size=file.size, resource=resource
             )
             _validate_file_details_and_update_format(resource)
+            _create_file_resource_schema(resource)
             resources.append(TypeResource.from_django(resource))
         return resources
 
@@ -351,6 +357,8 @@ class Mutation:
                     size=file_resource_input.file.size,
                     resource=resource,
                 )
+            _validate_file_details_and_update_format(resource)
+            _create_file_resource_schema(resource)
 
         if file_resource_input.preview_details:
             _update_resource_preview_details(file_resource_input, resource)
