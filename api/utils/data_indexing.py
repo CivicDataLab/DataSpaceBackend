@@ -163,12 +163,7 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
                         if col in existing_schemas:
                             existing_description = existing_schemas[col]["description"]
                             # Check for None and non-auto-generated descriptions
-                            if (
-                                existing_description is not None
-                                and not existing_description.startswith(
-                                    "Description of column"
-                                )
-                            ):
+                            if existing_description is not None:
                                 description = existing_description
                                 logger.info(
                                     f"Preserved custom description for column {col}"
