@@ -336,7 +336,7 @@ class Mutation:
         _update_usecase_sectors(usecase, update_metadata_input.sectors)
         return TypeUseCase.from_django(usecase)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(handle_django_errors=False)
     @trace_resolver(
         name="update_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
