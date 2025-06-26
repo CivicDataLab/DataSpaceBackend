@@ -341,10 +341,8 @@ class Mutation:
         name="update_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
     )
-    def update_use_case(
-        self, info: Info, use_case_input_partial: UseCaseInputPartial
-    ) -> TypeUseCase:
-        usecase_id = use_case_input_partial.id
+    def update_use_case(self, info: Info, data: UseCaseInputPartial) -> TypeUseCase:
+        usecase_id = data.id
         try:
             usecase = UseCase.objects.get(id=usecase_id)
         except UseCase.DoesNotExist:
@@ -353,12 +351,12 @@ class Mutation:
         if usecase.status != UseCaseStatus.DRAFT:
             raise ValueError(f"UseCase with ID {usecase_id} is not in draft status.")
 
-        if use_case_input_partial.title == "":
+        if data.title == "":
             raise ValueError("Title cannot be empty.")
-        if use_case_input_partial.title is not None:
-            usecase.title = use_case_input_partial.title
-        if use_case_input_partial.summary is not None:
-            usecase.summary = use_case_input_partial.summary
+        if data.title is not None:
+            usecase.title = data.title
+        if data.summary is not None:
+            usecase.summary = data.summary
         usecase.save()
         return TypeUseCase.from_django(usecase)
 
