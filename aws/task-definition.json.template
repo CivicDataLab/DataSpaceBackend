@@ -8,12 +8,7 @@
   "memory": "${MEMORY_UNITS}",
   "volumes": [
     {
-      "name": "migrations-volume",
-      "efsVolumeConfiguration": {
-        "fileSystemId": "${EFS_ID}",
-        "rootDirectory": "/migrations",
-        "transitEncryption": "DISABLED"
-      }
+      "name": "migrations-volume"
     }
   ],
   "containerDefinitions": [
