@@ -12,10 +12,7 @@
       "efsVolumeConfiguration": {
         "fileSystemId": "${EFS_ID}",
         "rootDirectory": "/migrations",
-        "transitEncryption": "ENABLED",
-        "authorizationConfig": {
-          "iam": "ENABLED"
-        }
+        "transitEncryption": "DISABLED"
       }
     }
   ],

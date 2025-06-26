@@ -339,15 +339,14 @@ Resources:
           OwnerGid: "1000"
           Permissions: "755"
 
+  # Create EFS mount targets in the first subnet
   MigrationsFileSystemMountTarget:
     Type: AWS::EFS::MountTarget
     Properties:
-      FileSystemId:
-        Ref: MigrationsFileSystem
-      SubnetId:
-        "Fn::Select": [0, {"Ref": "SubnetIds"}]
+      FileSystemId: !Ref MigrationsFileSystem
+      SubnetId: !Select [0, !Ref SubnetIds]
       SecurityGroups:
-        - {"Ref": "ECSSecurityGroup"}
+        - !Ref ECSSecurityGroup
 
 Outputs:
   ClusterName:
