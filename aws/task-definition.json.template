@@ -1,10 +1,24 @@
 {
   "family": "dataspace",
   "executionRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "${CPU_UNITS}",
   "memory": "${MEMORY_UNITS}",
+  "volumes": [
+    {
+      "name": "migrations-volume",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "${EFS_ID}",
+        "rootDirectory": "/migrations",
+        "transitEncryption": "ENABLED",
+        "authorizationConfig": {
+          "iam": "ENABLED"
+        }
+      }
+    }
+  ],
   "containerDefinitions": [
     {
       "name": "dataspace",
@@ -15,6 +29,13 @@
           "containerPort": ${APP_PORT},
           "hostPort": ${APP_PORT},
           "protocol": "tcp"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "migrations-volume",
+          "containerPath": "/code/api/migrations",
+          "readOnly": false
         }
       ],
       "environment": [
@@ -46,7 +67,7 @@
         }
       },
       "healthCheck": {
-        "command": ["CMD-SHELL", "curl -f http://localhost:${APP_PORT}/health/ || exit 1"],
+        "command": ["CMD-SHELL", "/code/healthcheck.sh && curl -f http://localhost:${APP_PORT}/health/ || exit 1"],
         "interval": 30,
         "timeout": 5,
         "retries": 3,

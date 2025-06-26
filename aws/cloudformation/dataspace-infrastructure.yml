@@ -316,6 +316,39 @@ Resources:
       Value: !Sub 'https://dataspace-${Environment}.yourdomain.com'
       Description: URL whitelist
 
+  MigrationsFileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      PerformanceMode: generalPurpose
+      Encrypted: true
+      FileSystemTags:
+        - Key: Name
+          Value: {"Fn::Sub": "${AWS::StackName}-migrations"}
+
+  MigrationsAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: {"Ref": "MigrationsFileSystem"}
+      PosixUser:
+        Uid: "1000"
+        Gid: "1000"
+      RootDirectory:
+        Path: "/migrations"
+        CreationInfo:
+          OwnerUid: "1000"
+          OwnerGid: "1000"
+          Permissions: "755"
+
+  MigrationsFileSystemMountTarget:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId:
+        Ref: MigrationsFileSystem
+      SubnetId:
+        "Fn::Select": [0, {"Ref": "SubnetIds"}]
+      SecurityGroups:
+        - {"Ref": "ECSSecurityGroup"}
+
 Outputs:
   ClusterName:
     Description: ECS Cluster Name
@@ -331,8 +364,16 @@ Outputs:
 
   RedisEndpoint:
     Description: Redis endpoint
-    Value: !GetAtt RedisCluster.RedisEndpoint.Address
+    Value: {"Fn::GetAtt": ["RedisCluster", "RedisEndpoint.Address"]}
 
   TaskExecutionRoleArn:
     Description: ECS Task Execution Role ARN
-    Value: !GetAtt ECSTaskExecutionRole.Arn
+    Value: {"Fn::GetAtt": ["ECSTaskExecutionRole", "Arn"]}
+    Export:
+      Name: {"Fn::Sub": "${AWS::StackName}-ECSTaskExecutionRoleArn"}
+
+  MigrationsFileSystemId:
+    Description: EFS File System ID for migrations
+    Value: {"Ref": "MigrationsFileSystem"}
+    Export:
+      Name: {"Fn::Sub": "${AWS::StackName}-MigrationsFileSystemId"}
