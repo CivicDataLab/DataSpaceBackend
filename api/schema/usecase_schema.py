@@ -65,8 +65,14 @@ class UseCaseInputPartial:
 
     id: str
     title: auto
-    slug: auto
     summary: auto
+    platform_url: auto
+    tags: auto
+    sectors: auto
+    started_on: auto
+    completed_on: auto
+    logo: auto
+    running_status: auto
 
 
 @strawberry.type(name="Query")
@@ -357,6 +363,20 @@ class Mutation:
             usecase.title = data.title.strip()
         if data.summary is not None:
             usecase.summary = data.summary.strip()
+        if data.platform_url is not None:
+            usecase.platform_url = data.platform_url.strip()
+        if data.tags is not None:
+            _update_usecase_tags(usecase, data.tags)
+        if data.sectors is not None:
+            _update_usecase_sectors(usecase, data.sectors)
+        if data.started_on is not None:
+            usecase.started_on = data.started_on
+        if data.completed_on is not None:
+            usecase.completed_on = data.completed_on
+        if data.running_status is not None:
+            usecase.running_status = data.running_status
+        if data.logo is not None:
+            usecase.logo = data.logo
         usecase.save()
         return TypeUseCase.from_django(usecase)
 
