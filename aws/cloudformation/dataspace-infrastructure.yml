@@ -374,5 +374,9 @@ Outputs:
   MigrationsFileSystemId:
     Description: EFS File System ID for migrations
     Value: {"Ref": "MigrationsFileSystem"}
+
+  MigrationsAccessPointId:
+    Description: EFS Access Point ID for migrations
+    Value: {"Ref": "MigrationsAccessPoint"}
     Export:
       Name: {"Fn::Sub": "${AWS::StackName}-MigrationsFileSystemId"}
