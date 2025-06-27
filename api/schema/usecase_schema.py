@@ -370,7 +370,7 @@ class Mutation:
         if data.completed_on is not None:
             usecase.completed_on = data.completed_on
         if data.running_status is not None:
-            usecase.running_status = data.running_status
+            usecase.running_status = data.running_status.value
         if data.logo is not None:
             usecase.logo = data.logo
         usecase.save()
