@@ -365,10 +365,6 @@ class Mutation:
             usecase.summary = data.summary.strip()
         if data.platform_url is not None:
             usecase.platform_url = data.platform_url.strip()
-        if data.tags is not None:
-            _update_usecase_tags(usecase, data.tags)
-        if data.sectors is not None:
-            _update_usecase_sectors(usecase, data.sectors)
         if data.started_on is not None:
             usecase.started_on = data.started_on
         if data.completed_on is not None:
