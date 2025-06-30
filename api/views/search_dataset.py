@@ -169,7 +169,12 @@ class SearchDataset(PaginatedElasticSearchAPIView):
 
             metadata_bucket = search.aggs.bucket("metadata", "nested", path="metadata")
             composite_sources = [
-                {"metadata": {"terms": {"field": "metadata.label.keyword"}}}
+                {
+                    "metadata_label": {
+                        "terms": {"field": "metadata.metadata_item.label"}
+                    }
+                },
+                {"metadata_value": {"terms": {"field": "metadata.value"}}},
             ]
             composite_agg = A(
                 "composite",
