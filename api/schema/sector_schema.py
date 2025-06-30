@@ -9,6 +9,7 @@ from strawberry_django.mutations import mutations
 
 from api.models import Sector
 from api.types.type_sector import TypeSector
+from api.utils.enums import DatasetStatus
 
 
 @strawberry.input
@@ -39,6 +40,12 @@ class Query:
             return TypeSector.from_django(sector)
         except Sector.DoesNotExist:
             raise ValueError(f"Sector with ID {id} does not exist.")
+
+    @strawberry_django.field
+    def active_sectors(self, info: Info) -> list[TypeSector]:
+        """Get sectors with published datasets."""
+        queryset = Sector.objects.filter(datasets__status=DatasetStatus.PUBLISHED)
+        return TypeSector.from_django_list(queryset)
 
 
 @strawberry.type
