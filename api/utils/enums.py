@@ -116,6 +116,7 @@ class ChartTypes(models.TextChoices):
     # New simplified chart types
     BAR = "BAR"
     LINE = "LINE"
+    BIG_NUMBER = "BIG_NUMBER"
 
     # Legacy chart types (kept for backward compatibility)
     BAR_VERTICAL = "BAR_VERTICAL"

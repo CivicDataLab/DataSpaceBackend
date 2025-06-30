@@ -62,6 +62,7 @@ class YAxisColumnConfig:
 
 @strawberry.input
 class ChartOptions:
+    # Standard chart options
     x_axis_label: str = "X-Axis"
     y_axis_label: str = "Y-Axis"
     x_axis_column: Optional[str] = None
@@ -74,6 +75,22 @@ class ChartOptions:
     orientation: str = "vertical"
     allow_multi_series: bool = True
     stacked: bool = False
+
+    # Big Number Chart specific options
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    label: Optional[str] = None
+    value_prefix: Optional[str] = None
+    value_suffix: Optional[str] = None
+    title_color: Optional[str] = None
+    subtitle_color: Optional[str] = None
+    value_color: Optional[str] = None
+    label_color: Optional[str] = None
+    title_font_size: Optional[int] = None
+    subtitle_font_size: Optional[int] = None
+    value_font_size: Optional[int] = None
+    label_font_size: Optional[int] = None
+    background_color: Optional[str] = None
 
 
 @strawberry.input
