@@ -108,11 +108,13 @@ class Dataset(models.Model):
 
     @property
     def has_charts(self) -> bool:
-        """Has charts.
+        """Has charts or chart images.
 
         Used in Elasticsearch indexing.
         """
-        return bool(self.resources.filter(resourcechartdetails__isnull=False).exists())
+        has_charts = self.resources.filter(resourcechartdetails__isnull=False).exists()
+        has_chart_images = self.chart_images.exists()
+        return has_charts or has_chart_images
 
     @property
     def download_count(self) -> int:
