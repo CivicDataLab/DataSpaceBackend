@@ -10,6 +10,7 @@ import strawberry
 import strawberry_django
 from django.db import models
 from strawberry import auto
+from strawberry.file_uploads import Upload
 from strawberry.types import Info
 from strawberry_django.mutations import mutations
 from strawberry_django.pagination import OffsetPaginationInput
@@ -59,13 +60,16 @@ class UpdateUseCaseMetadataInput:
     sectors: List[uuid.UUID]
 
 
+use_case_running_status = strawberry.enum(UseCaseStatus)  # type: ignore
+
+
 @strawberry_django.partial(UseCase, fields="__all__", exclude=["datasets"])
 class UseCaseInputPartial:
     """Input type for use case updates."""
 
     id: str
-    logo: auto
-    running_status: auto
+    logo: Optional[Upload] = strawberry.field(default=None)
+    running_status: Optional[use_case_running_status] = UseCaseStatus.DRAFT
     title: Optional[str] = None
     summary: Optional[str] = None
     platform_url: Optional[str] = None
@@ -367,11 +371,14 @@ class Mutation:
             usecase.platform_url = data.platform_url.strip()
         if data.started_on is not None:
             usecase.started_on = data.started_on
-        if data.completed_on is not None:
+        if data.completed_on is not None and data.completed_on is not strawberry.UNSET:
             usecase.completed_on = data.completed_on
-        if data.running_status is not None:
-            usecase.running_status = data.running_status.value
-        if data.logo is not None:
+        if (
+            data.running_status is not None
+            and data.running_status is not strawberry.UNSET
+        ):
+            usecase.running_status = data.running_status
+        if data.logo is not None and data.logo is not strawberry.UNSET:
             usecase.logo = data.logo
         usecase.save()
         return TypeUseCase.from_django(usecase)
