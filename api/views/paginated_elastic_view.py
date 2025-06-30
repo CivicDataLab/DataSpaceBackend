@@ -91,7 +91,7 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
             aggregations.pop("metadata")
             for agg in metadata_aggregations:
                 label: str = agg["key"]["metadata_label"]
-                value: str = agg["key"]["metadata_value"]
+                value: str = agg["key"].get("metadata_value", "")
                 if label not in aggregations:
                     aggregations[label] = {}
                 aggregations[label][value] = agg["doc_count"]

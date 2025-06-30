@@ -54,6 +54,7 @@ class UseCase(models.Model):
     )
     started_on = models.DateField(blank=True, null=True)
     completed_on = models.DateField(blank=True, null=True)
+    platform_url = models.URLField(blank=True, null=True)
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if self.title and not self.slug:

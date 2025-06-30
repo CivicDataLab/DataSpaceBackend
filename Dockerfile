@@ -12,10 +12,18 @@ RUN echo 'deb http://archive.debian.org/debian stretch main contrib non-free' >>
 WORKDIR /code
 COPY . /code/
 
-RUN pip install psycopg2-binary
+RUN pip install psycopg2-binary uvicorn
 RUN pip install -r requirements.txt
-#RUN python manage.py migrate
+
+# Create healthcheck script
+RUN echo '#!/bin/bash\nset -e\npython -c "import sys; import django; django.setup(); sys.exit(0)"' > /code/healthcheck.sh \
+    && chmod +x /code/healthcheck.sh
 
 
 EXPOSE 8000
-#CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+
+# Make entrypoint script executable
+RUN chmod +x /code/docker-entrypoint.sh
+
+ENTRYPOINT ["/code/docker-entrypoint.sh"]
+CMD ["uvicorn", "DataSpace.asgi:application", "--host", "0.0.0.0", "--port", "8000"]

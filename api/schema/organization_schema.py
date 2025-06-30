@@ -85,6 +85,15 @@ class Query:
 
         return [TypeOrganization.from_django(org) for org in queryset]
 
+    @strawberry_django.field(permission_classes=[IsAuthenticated])
+    def all_organizations(self, info: Info) -> List[TypeOrganization]:
+        """Get all organizations."""
+        user = info.context.user
+        if not user or getattr(user, "is_anonymous", True):
+            logging.warning("Anonymous user or no user found in context")
+            return []
+        return [TypeOrganization.from_django(org) for org in Organization.objects.all()]
+
     @strawberry_django.field
     def organization(self, info: Info, id: str) -> Optional[TypeOrganization]:
         """Get organization by ID."""

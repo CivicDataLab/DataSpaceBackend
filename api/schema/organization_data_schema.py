@@ -4,6 +4,7 @@ from typing import List, Optional
 
 import strawberry
 import strawberry_django
+from django.db.models import Q
 from strawberry.types import Info
 
 from api.models import Dataset, Organization, Sector, UseCase
@@ -58,7 +59,12 @@ class Query:
         try:
             # Get published use cases for this organization
             queryset = UseCase.objects.filter(
-                usecaseorganizationrelationship__organization_id=organization_id,
+                (
+                    Q(organization__id=organization_id)
+                    | Q(
+                        usecaseorganizationrelationship__organization_id=organization_id
+                    )
+                ),
                 status=UseCaseStatus.PUBLISHED.value,
             ).distinct()
             return TypeUseCase.from_django_list(queryset)

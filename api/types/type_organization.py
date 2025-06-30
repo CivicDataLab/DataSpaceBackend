@@ -2,6 +2,7 @@ from typing import Any, List, Optional
 
 import strawberry
 import strawberry_django
+from django.db.models import Q
 from strawberry import Info, auto
 
 from api.models import Organization
@@ -57,9 +58,9 @@ class TypeOrganization(BaseType):
                 return 0
 
             use_cases = UseCase.objects.filter(
-                usecaseorganizationrelationship__organization_id=org_id,  # type: ignore
+                (Q(organization__id=org_id) | Q(usecaseorganizationrelationship__organization_id=org_id)),  # type: ignore
                 status=UseCaseStatus.PUBLISHED.value,
-            )
+            ).distinct()
             return use_cases.count()
         except Exception:
             return 0

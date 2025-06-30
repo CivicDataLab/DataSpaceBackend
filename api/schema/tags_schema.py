@@ -3,7 +3,11 @@ import strawberry_django
 from strawberry.types import Info
 
 from api.models import Tag
-from api.schema.base_mutation import BaseMutation, MutationResponse
+from api.schema.base_mutation import (
+    BaseMutation,
+    DjangoValidationError,
+    MutationResponse,
+)
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.permissions import IsAuthenticated
 
@@ -12,7 +16,9 @@ from authorization.permissions import IsAuthenticated
 class Mutation:
     """Mutations for tags."""
 
-    @strawberry_django.mutation(handle_django_errors=False)
+    @strawberry_django.mutation(
+        handle_django_errors=False, permission_classes=[IsAuthenticated]
+    )
     @trace_resolver(
         name="delete_tag", attributes={"component": "tag", "operation": "mutation"}
     )
@@ -36,6 +42,6 @@ class Mutation:
         try:
             tags = Tag.objects.filter(id__in=tag_ids)
         except Tag.DoesNotExist:
-            raise ValueError(f"Tags with IDs {tag_ids} do not exist.")
+            raise DjangoValidationError(f"Tags with IDs {tag_ids} do not exist.")
         tags.delete()
         return MutationResponse.success_response(True)

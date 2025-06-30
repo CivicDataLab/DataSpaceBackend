@@ -1,14 +1,16 @@
 import uuid
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import strawberry
 import strawberry_django
 from strawberry import auto
 from strawberry.types import Info
 from strawberry_django.mutations import mutations
+from strawberry_django.pagination import OffsetPaginationInput
 
 from api.models import Sector
-from api.types.type_sector import TypeSector
+from api.types.type_sector import SectorFilter, SectorOrder, TypeSector
+from api.utils.enums import DatasetStatus
 
 
 @strawberry.input
@@ -39,6 +41,39 @@ class Query:
             return TypeSector.from_django(sector)
         except Sector.DoesNotExist:
             raise ValueError(f"Sector with ID {id} does not exist.")
+
+    @strawberry_django.field(
+        filters=SectorFilter,
+        pagination=True,
+        order=SectorOrder,
+    )
+    def active_sectors(
+        self,
+        info: Info,
+        filters: Optional[SectorFilter] = strawberry.UNSET,
+        pagination: Optional[OffsetPaginationInput] = strawberry.UNSET,
+        order: Optional[SectorOrder] = strawberry.UNSET,
+    ) -> list[TypeSector]:
+        """Get sectors with published datasets."""
+        # Start with base queryset filtering for active sectors
+        queryset = Sector.objects.filter(
+            datasets__status=DatasetStatus.PUBLISHED
+        ).distinct()
+
+        # Apply filters if provided
+        if filters is not strawberry.UNSET:
+            queryset = strawberry_django.filters.apply(filters, queryset, info)
+
+        # Apply ordering if provided
+        if order is not strawberry.UNSET:
+            queryset = strawberry_django.ordering.apply(order, queryset, info)
+
+        # Apply pagination if provided
+        if pagination is not strawberry.UNSET:
+            # Apply pagination to the list
+            queryset = strawberry_django.pagination.apply(pagination, queryset)
+
+        return [TypeSector.from_django(instance) for instance in queryset]
 
 
 @strawberry.type

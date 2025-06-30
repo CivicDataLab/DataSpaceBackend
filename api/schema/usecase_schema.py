@@ -10,6 +10,7 @@ import strawberry
 import strawberry_django
 from django.db import models
 from strawberry import auto
+from strawberry.file_uploads import Upload
 from strawberry.types import Info
 from strawberry_django.mutations import mutations
 from strawberry_django.pagination import OffsetPaginationInput
@@ -32,7 +33,11 @@ from api.types.type_usecase_organization import (
     TypeUseCaseOrganizationRelationship,
     relationship_type,
 )
-from api.utils.enums import OrganizationRelationshipType, UseCaseStatus
+from api.utils.enums import (
+    OrganizationRelationshipType,
+    UseCaseRunningStatus,
+    UseCaseStatus,
+)
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.models import User
 from authorization.types import TypeUser
@@ -59,13 +64,23 @@ class UpdateUseCaseMetadataInput:
     sectors: List[uuid.UUID]
 
 
+use_case_running_status = strawberry.enum(UseCaseRunningStatus)  # type: ignore
+
+
 @strawberry_django.partial(UseCase, fields="__all__", exclude=["datasets"])
 class UseCaseInputPartial:
     """Input type for use case updates."""
 
     id: str
-    slug: auto
-    summary: auto
+    logo: Optional[Upload] = strawberry.field(default=None)
+    running_status: Optional[use_case_running_status] = UseCaseRunningStatus.INITIATED
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    platform_url: Optional[str] = None
+    tags: Optional[List[str]] = None
+    sectors: Optional[List[uuid.UUID]] = None
+    started_on: Optional[datetime.date] = None
+    completed_on: Optional[datetime.date] = None
 
 
 @strawberry.type(name="Query")
@@ -241,7 +256,7 @@ class Mutation:
     """Mutations for use cases."""
 
     create_use_case: TypeUseCase = mutations.create(UseCaseInput)
-    update_use_case: TypeUseCase = mutations.update(UseCaseInputPartial, key_attr="id")
+    # update_use_case: TypeUseCase = mutations.update(UseCaseInputPartial, key_attr="id")
 
     @strawberry_django.mutation(
         handle_django_errors=True,
@@ -326,10 +341,50 @@ class Mutation:
         except UseCase.DoesNotExist:
             raise ValueError(f"UseCase with ID {usecase_id} does not exist.")
 
+        if usecase.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {usecase_id} is not in draft status.")
+
         if update_metadata_input.tags is not None:
             _update_usecase_tags(usecase, update_metadata_input.tags)
         _add_update_usecase_metadata(usecase, metadata_input)
         _update_usecase_sectors(usecase, update_metadata_input.sectors)
+        return TypeUseCase.from_django(usecase)
+
+    @strawberry_django.mutation(handle_django_errors=False)
+    @trace_resolver(
+        name="update_use_case",
+        attributes={"component": "usecase", "operation": "mutation"},
+    )
+    def update_use_case(self, info: Info, data: UseCaseInputPartial) -> TypeUseCase:
+        usecase_id = data.id
+        try:
+            usecase = UseCase.objects.get(id=usecase_id)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"UseCase with ID {usecase_id} does not exist.")
+
+        if usecase.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {usecase_id} is not in draft status.")
+
+        if data.title is not None:
+            if data.title.strip() == "":
+                raise ValueError("Title cannot be empty.")
+            usecase.title = data.title.strip()
+        if data.summary is not None:
+            usecase.summary = data.summary.strip()
+        if data.platform_url is not None:
+            usecase.platform_url = data.platform_url.strip()
+        if data.started_on is not None:
+            usecase.started_on = data.started_on
+        if data.completed_on is not None and data.completed_on is not strawberry.UNSET:
+            usecase.completed_on = data.completed_on
+        if (
+            data.running_status is not None
+            and data.running_status is not strawberry.UNSET
+        ):
+            usecase.running_status = data.running_status
+        if data.logo is not None and data.logo is not strawberry.UNSET:
+            usecase.logo = data.logo
+        usecase.save()
         return TypeUseCase.from_django(usecase)
 
     @strawberry_django.mutation(
@@ -371,6 +426,9 @@ class Mutation:
         except UseCase.DoesNotExist:
             raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
 
+        if use_case.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
+
         use_case.datasets.add(dataset)
         use_case.save()
         return TypeUseCase.from_django(use_case)
@@ -384,12 +442,13 @@ class Mutation:
             dataset = Dataset.objects.get(id=dataset_id)
         except Dataset.DoesNotExist:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
-
         try:
             use_case = UseCase.objects.get(id=use_case_id)
         except UseCase.DoesNotExist:
             raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
 
+        if use_case.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
         use_case.datasets.remove(dataset)
         use_case.save()
         return TypeUseCase.from_django(use_case)
@@ -408,6 +467,9 @@ class Mutation:
             use_case = UseCase.objects.get(id=use_case_id)
         except UseCase.DoesNotExist:
             raise ValueError(f"Use Case with ID {use_case_id} doesn't exist")
+
+        if use_case.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
 
         use_case.datasets.set(datasets)
         use_case.save()
@@ -487,6 +549,9 @@ class Mutation:
         except UseCase.DoesNotExist:
             raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
 
+        if use_case.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
+
         use_case.contributors.add(user)
         use_case.save()
         return TypeUseCase.from_django(use_case)
@@ -510,6 +575,9 @@ class Mutation:
             use_case = UseCase.objects.get(id=use_case_id)
         except UseCase.DoesNotExist:
             raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+
+        if use_case.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
 
         use_case.contributors.remove(user)
         use_case.save()
@@ -545,6 +613,9 @@ class Mutation:
         except UseCase.DoesNotExist:
             raise ValueError(f"Use Case with ID {use_case_id} doesn't exist")
 
+        if use_case.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
+
         use_case.contributors.set(users)
         use_case.save()
         return TypeUseCase.from_django(use_case)
@@ -568,6 +639,9 @@ class Mutation:
             use_case = UseCase.objects.get(id=use_case_id)
         except UseCase.DoesNotExist:
             raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+
+        if use_case.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
 
         # Create or get the relationship
         relationship, created = UseCaseOrganizationRelationship.objects.get_or_create(
@@ -620,6 +694,9 @@ class Mutation:
             use_case = UseCase.objects.get(id=use_case_id)
         except UseCase.DoesNotExist:
             raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+
+        if use_case.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
 
         # Create or get the relationship
         relationship, created = UseCaseOrganizationRelationship.objects.get_or_create(
@@ -690,6 +767,9 @@ class Mutation:
             use_case = UseCase.objects.get(id=use_case_id)
         except UseCase.DoesNotExist:
             raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+
+        if use_case.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
 
         # Clear existing relationships
         UseCaseOrganizationRelationship.objects.filter(usecase=use_case).delete()

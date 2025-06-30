@@ -155,3 +155,7 @@ resources/
 .env
 api/migrations/*
 authorization/migrations/*
+
+
+# AWS files
+aws/.env.*

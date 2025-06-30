@@ -1,0 +1,382 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'DataSpace Application Infrastructure'
+
+Parameters:
+  Environment:
+    Description: Environment name (dev, staging, prod)
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+  VpcId:
+    Description: ID of the VPC
+    Type: AWS::EC2::VPC::Id
+
+  SubnetIds:
+    Description: List of subnet IDs for the application
+    Type: List<AWS::EC2::Subnet::Id>
+
+  DBUsername:
+    Description: Database username
+    Type: String
+    NoEcho: true
+
+  DBPassword:
+    Description: Database password
+    Type: String
+    NoEcho: true
+
+  DBName:
+    Description: Database name
+    Type: String
+    Default: dataspace
+
+  DBInstanceClass:
+    Description: Database instance class
+    Type: String
+    Default: db.t3.small
+
+  ElasticsearchInstanceType:
+    Description: Elasticsearch instance type
+    Type: String
+    Default: t3.small.elasticsearch
+
+  ElasticsearchPassword:
+    Description: Elasticsearch password
+    Type: String
+    NoEcho: true
+    Default: changeme
+
+  RedisNodeType:
+    Description: Redis node type
+    Type: String
+    Default: cache.t3.small
+
+  DjangoSecretKey:
+    Description: Django secret key
+    Type: String
+    NoEcho: true
+
+Resources:
+  # Security Groups
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS database
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref ECSSecurityGroup
+
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ECS tasks
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          CidrIp: 0.0.0.0/0
+
+  ElasticsearchSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Elasticsearch
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref ECSSecurityGroup
+
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Redis
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref ECSSecurityGroup
+
+  # Database
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for DataSpace database
+      SubnetIds: !Ref SubnetIds
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: 30
+      DBInstanceClass: !Ref DBInstanceClass
+      Engine: postgres
+      EngineVersion: '17.4'
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBName: !Ref DBName
+      VPCSecurityGroups:
+        - !GetAtt DatabaseSecurityGroup.GroupId
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      MultiAZ: false
+      StorageType: gp2
+      Tags:
+        - Key: Name
+          Value: !Sub dataspace-${Environment}-db
+    DeletionPolicy: Snapshot
+
+  # Elasticsearch Domain
+  ElasticsearchDomain:
+    Type: AWS::Elasticsearch::Domain
+    Properties:
+      DomainName: !Sub dataspace-${Environment}
+      ElasticsearchVersion: '7.10'
+      ElasticsearchClusterConfig:
+        InstanceType: !Ref ElasticsearchInstanceType
+        InstanceCount: 1
+      EBSOptions:
+        EBSEnabled: true
+        VolumeType: gp2
+        VolumeSize: 10
+      AccessPolicies:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'es:*'
+            Resource: !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/dataspace-${Environment}/*'
+      AdvancedSecurityOptions:
+        Enabled: true
+        InternalUserDatabaseEnabled: true
+        MasterUserOptions:
+          MasterUserName: elastic
+          MasterUserPassword: !Ref ElasticsearchPassword
+      EncryptionAtRestOptions:
+        Enabled: true
+      NodeToNodeEncryptionOptions:
+        Enabled: true
+      DomainEndpointOptions:
+        EnforceHTTPS: true
+      VPCOptions:
+        SecurityGroupIds:
+          - !GetAtt ElasticsearchSecurityGroup.GroupId
+        SubnetIds:
+          - !Select [0, !Ref SubnetIds]
+    # Note: AWS::Elasticsearch::Domain does not support DeletionPolicy: Snapshot
+
+  # Redis Cache
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Subnet group for DataSpace Redis
+      SubnetIds: !Ref SubnetIds
+
+  RedisCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      CacheNodeType: !Ref RedisNodeType
+      Engine: redis
+      NumCacheNodes: 1
+      VpcSecurityGroupIds:
+        - !GetAtt RedisSecurityGroup.GroupId
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      Tags:
+        - Key: Name
+          Value: !Sub dataspace-${Environment}-redis
+
+  # ECS Cluster
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub dataspace-${Environment}-cluster
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+      Tags:
+        - Key: Name
+          Value: !Sub dataspace-${Environment}-cluster
+
+  # IAM Roles
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: SSMParameterAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dataspace/*'
+
+  # SSM Parameters
+  DBHostParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /dataspace/DB_HOST
+      Type: String
+      Value: !GetAtt Database.Endpoint.Address
+      Description: Database host
+
+  DBNameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /dataspace/DB_NAME
+      Type: String
+      Value: !Ref DBName
+      Description: Database name
+
+  DBUserParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /dataspace/DB_USER
+      Type: String
+      Value: !Ref DBUsername
+      Description: Database username
+
+  DBPasswordParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /dataspace/DB_PASSWORD
+      Type: String
+      Value: !Ref DBPassword
+      Description: Database password
+      Tier: Standard
+
+  ElasticsearchIndexParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /dataspace/ELASTICSEARCH_INDEX
+      Type: String
+      Value: !GetAtt ElasticsearchDomain.DomainEndpoint
+      Description: Elasticsearch endpoint
+
+  ElasticsearchUsernameParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /dataspace/ELASTICSEARCH_USERNAME
+      Type: String
+      Value: elastic
+      Description: Elasticsearch username
+
+  ElasticsearchPasswordParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /dataspace/ELASTICSEARCH_PASS
+      Type: String
+      Value: !Ref ElasticsearchPassword
+      Description: Elasticsearch password
+      Tier: Standard
+
+  RedisHostParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /dataspace/REDIS_HOST
+      Type: String
+      Value: !GetAtt RedisCluster.RedisEndpoint.Address
+      Description: Redis host
+
+  SecretKeyParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /dataspace/SECRET_KEY
+      Type: String
+      Value: !Ref DjangoSecretKey
+      Description: Django secret key
+      Tier: Standard
+
+  URLWhitelistParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /dataspace/URL_WHITELIST
+      Type: String
+      Value: !Sub 'https://dataspace-${Environment}.yourdomain.com'
+      Description: URL whitelist
+
+  MigrationsFileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      PerformanceMode: generalPurpose
+      Encrypted: true
+      FileSystemTags:
+        - Key: Name
+          Value: {"Fn::Sub": "${AWS::StackName}-migrations"}
+
+  MigrationsAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: {"Ref": "MigrationsFileSystem"}
+      PosixUser:
+        Uid: "1000"
+        Gid: "1000"
+      RootDirectory:
+        Path: "/migrations"
+        CreationInfo:
+          OwnerUid: "1000"
+          OwnerGid: "1000"
+          Permissions: "755"
+
+  # Create EFS mount targets in the first subnet
+  MigrationsFileSystemMountTarget:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref MigrationsFileSystem
+      SubnetId: !Select [0, !Ref SubnetIds]
+      SecurityGroups:
+        - !Ref ECSSecurityGroup
+
+Outputs:
+  ClusterName:
+    Description: ECS Cluster Name
+    Value: !Ref ECSCluster
+
+  DatabaseEndpoint:
+    Description: Database endpoint
+    Value: !GetAtt Database.Endpoint.Address
+
+  ElasticsearchEndpoint:
+    Description: Elasticsearch endpoint
+    Value: !GetAtt ElasticsearchDomain.DomainEndpoint
+
+  RedisEndpoint:
+    Description: Redis endpoint
+    Value: {"Fn::GetAtt": ["RedisCluster", "RedisEndpoint.Address"]}
+
+  TaskExecutionRoleArn:
+    Description: ECS Task Execution Role ARN
+    Value: {"Fn::GetAtt": ["ECSTaskExecutionRole", "Arn"]}
+    Export:
+      Name: {"Fn::Sub": "${AWS::StackName}-ECSTaskExecutionRoleArn"}
+
+  MigrationsFileSystemId:
+    Description: EFS File System ID for migrations
+    Value: {"Ref": "MigrationsFileSystem"}
+
+  MigrationsAccessPointId:
+    Description: EFS Access Point ID for migrations
+    Value: {"Ref": "MigrationsAccessPoint"}
+    Export:
+      Name: {"Fn::Sub": "${AWS::StackName}-MigrationsFileSystemId"}

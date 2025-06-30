@@ -18,6 +18,7 @@ from api.models import (
     ResourceChartDetails,
     ResourceChartImage,
     Sector,
+    UseCase,
 )
 from api.models.Dataset import Tag
 from api.models.DatasetMetadata import DatasetMetadata
@@ -31,7 +32,12 @@ from api.types.type_dataset import DatasetFilter, DatasetOrder, TypeDataset
 from api.types.type_organization import TypeOrganization
 from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
-from api.utils.enums import DatasetAccessType, DatasetLicense, DatasetStatus
+from api.utils.enums import (
+    DatasetAccessType,
+    DatasetLicense,
+    DatasetStatus,
+    UseCaseStatus,
+)
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.models import DatasetPermission, OrganizationMembership, Role, User
 from authorization.permissions import (
@@ -469,20 +475,30 @@ class Query:
         published_datasets = Dataset.objects.filter(
             status=DatasetStatus.PUBLISHED.value
         )
+        published_ds_organizations = published_datasets.values_list(
+            "organization_id", flat=True
+        )
+        published_usecases = UseCase.objects.filter(
+            status=UseCaseStatus.PUBLISHED.value
+        )
+        published_uc_organizations = published_usecases.values_list(
+            "organization_id", flat=True
+        )
+        published_organizations = set(published_ds_organizations) | set(
+            published_uc_organizations
+        )
 
         # Get unique organizations that have published datasets
         org_publishers = Organization.objects.filter(
-            id__in=published_datasets.filter(organization__isnull=False).values_list(
-                "organization_id", flat=True
-            )
+            id__in=published_organizations
         ).distinct()
 
+        published_ds_users = published_datasets.values_list("user_id", flat=True)
+        published_uc_users = published_usecases.values_list("user_id", flat=True)
+        published_users = set(published_ds_users) | set(published_uc_users)
+
         # Get unique individual users who have published datasets without an organization
-        individual_publishers = User.objects.filter(
-            id__in=published_datasets.filter(organization__isnull=True).values_list(
-                "user_id", flat=True
-            )
-        ).distinct()
+        individual_publishers = User.objects.filter(id__in=published_users).distinct()
 
         # Convert to GraphQL types
         org_types = [TypeOrganization.from_django(org) for org in org_publishers]
@@ -564,6 +580,10 @@ class Mutation:
             dataset = Dataset.objects.get(id=dataset_id)
         except Dataset.DoesNotExist as e:
             raise DjangoValidationError(f"Dataset with ID {dataset_id} does not exist.")
+        if dataset.status != DatasetStatus.DRAFT.value:
+            raise DjangoValidationError(
+                f"Dataset with ID {dataset_id} is not in draft status."
+            )
 
         if update_metadata_input.description:
             dataset.description = update_metadata_input.description
@@ -616,11 +636,14 @@ class Mutation:
             dataset = Dataset.objects.get(id=dataset_id)
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
-
+        if dataset.status != DatasetStatus.DRAFT.value:
+            raise ValueError(f"Dataset with ID {dataset_id} is not in draft status.")
+        if update_dataset_input.title.strip() == "":
+            raise ValueError("Title cannot be empty.")
         if update_dataset_input.title:
-            dataset.title = update_dataset_input.title
+            dataset.title = update_dataset_input.title.strip()
         if update_dataset_input.description:
-            dataset.description = update_dataset_input.description
+            dataset.description = update_dataset_input.description.strip()
         if update_dataset_input.access_type:
             dataset.access_type = update_dataset_input.access_type
         if update_dataset_input.license:

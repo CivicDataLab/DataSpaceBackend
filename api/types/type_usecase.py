@@ -58,6 +58,9 @@ class TypeUseCase(BaseType):
     organization: Optional[TypeOrganization] = strawberry.field(
         description="Organization associated with this use case"
     )
+    platform_url: Optional[str] = strawberry.field(
+        description="URL of the platform where this use case is published"
+    )
 
     @strawberry.field(
         description="Check if this use case is created by an individual user."

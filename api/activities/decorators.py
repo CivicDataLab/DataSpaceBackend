@@ -39,7 +39,7 @@ def track_activity(
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Extract request from args (typically the first or second argument in view functions)
             request = None
-            for arg in args:
+            for arg in list(args) + list(kwargs.values()):
                 if isinstance(arg, HttpRequest):
                     request = arg
                     break

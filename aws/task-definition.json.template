@@ -1,0 +1,75 @@
+{
+  "family": "dataspace",
+  "executionRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${ECS_EXECUTION_ROLE_ARN}",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "${CPU_UNITS}",
+  "memory": "${MEMORY_UNITS}",
+  "volumes": [
+    {
+      "name": "migrations-volume"
+    }
+  ],
+  "containerDefinitions": [
+    {
+      "name": "dataspace",
+      "image": "${ECR_REPOSITORY}:${IMAGE_TAG}",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": ${APP_PORT},
+          "hostPort": ${APP_PORT},
+          "protocol": "tcp"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "migrations-volume",
+          "containerPath": "/code/api/migrations",
+          "readOnly": false
+        }
+      ],
+      "environment": [
+        { "name": "DEBUG", "value": "${DEBUG_MODE}" },
+        { "name": "APP_PORT", "value": "${APP_PORT}" },
+        { "name": "DB_ENGINE", "value": "${DB_ENGINE}" },
+        { "name": "DB_PORT", "value": "${DB_PORT}" },
+        { "name": "TELEMETRY_URL", "value": "${TELEMETRY_URL}" }
+      ],
+      "secrets": [
+        { "name": "DB_HOST", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/DB_HOST" },
+        { "name": "DB_NAME", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/DB_NAME" },
+        { "name": "DB_USER", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/DB_USER" },
+        { "name": "DB_PASSWORD", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/DB_PASSWORD" },
+        { "name": "ELASTICSEARCH_INDEX", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/ELASTICSEARCH_INDEX" },
+        { "name": "ELASTICSEARCH_USERNAME", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/ELASTICSEARCH_USERNAME" },
+        { "name": "ELASTICSEARCH_PASS", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/ELASTICSEARCH_PASS" },
+        { "name": "REDIS_HOST", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/REDIS_HOST" },
+        { "name": "SECRET_KEY", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/SECRET_KEY" },
+        { "name": "URL_WHITELIST", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/URL_WHITELIST" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/dataspace",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "ecs",
+          "awslogs-create-group": "true"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "/code/healthcheck.sh && curl -f http://localhost:${APP_PORT}/health/ || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ],
+  "tags": [
+    { "key": "Environment", "value": "${ENVIRONMENT}" },
+    { "key": "Application", "value": "dataspace" },
+    { "key": "ManagedBy", "value": "CloudFormation" }
+  ]
+}
