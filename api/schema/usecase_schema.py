@@ -33,7 +33,11 @@ from api.types.type_usecase_organization import (
     TypeUseCaseOrganizationRelationship,
     relationship_type,
 )
-from api.utils.enums import OrganizationRelationshipType, UseCaseStatus
+from api.utils.enums import (
+    OrganizationRelationshipType,
+    UseCaseRunningStatus,
+    UseCaseStatus,
+)
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.models import User
 from authorization.types import TypeUser
@@ -60,7 +64,7 @@ class UpdateUseCaseMetadataInput:
     sectors: List[uuid.UUID]
 
 
-use_case_running_status = strawberry.enum(UseCaseStatus)  # type: ignore
+use_case_running_status = strawberry.enum(UseCaseRunningStatus)  # type: ignore
 
 
 @strawberry_django.partial(UseCase, fields="__all__", exclude=["datasets"])
@@ -69,7 +73,7 @@ class UseCaseInputPartial:
 
     id: str
     logo: Optional[Upload] = strawberry.field(default=None)
-    running_status: Optional[use_case_running_status] = UseCaseStatus.DRAFT
+    running_status: Optional[use_case_running_status] = UseCaseRunningStatus.INITIATED
     title: Optional[str] = None
     summary: Optional[str] = None
     platform_url: Optional[str] = None
