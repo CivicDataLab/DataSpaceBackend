@@ -38,5 +38,8 @@ class Organization(models.Model):
         self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         db_table = "organization"
