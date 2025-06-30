@@ -64,15 +64,15 @@ class UseCaseInputPartial:
     """Input type for use case updates."""
 
     id: str
-    title: auto
-    summary: auto
-    platform_url: auto
-    tags: auto
-    sectors: auto
-    started_on: auto
-    completed_on: auto
     logo: auto
     running_status: auto
+    title: Optional[str] = None
+    summary: Optional[str] = None
+    platform_url: Optional[str] = None
+    tags: Optional[List[str]] = None
+    sectors: Optional[List[uuid.UUID]] = None
+    started_on: Optional[datetime.date] = None
+    completed_on: Optional[datetime.date] = None
 
 
 @strawberry.type(name="Query")
@@ -357,9 +357,9 @@ class Mutation:
         if usecase.status != UseCaseStatus.DRAFT:
             raise ValueError(f"UseCase with ID {usecase_id} is not in draft status.")
 
-        if data.title.strip() == "":
-            raise ValueError("Title cannot be empty.")
         if data.title is not None:
+            if data.title.strip() == "":
+                raise ValueError("Title cannot be empty.")
             usecase.title = data.title.strip()
         if data.summary is not None:
             usecase.summary = data.summary.strip()
