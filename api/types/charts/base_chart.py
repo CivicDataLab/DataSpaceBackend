@@ -45,7 +45,6 @@ CHART_TYPE_MAP = {
     "MULTILINE": Line,
     "TREEMAP": TreeMap,
     "BAR": Bar,
-    "LINE": Line,
 }
 
 

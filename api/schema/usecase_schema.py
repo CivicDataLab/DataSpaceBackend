@@ -120,20 +120,11 @@ class Query:
         if order is not strawberry.UNSET:
             queryset = strawberry_django.ordering.apply(order, queryset, info)
 
-        # First, evaluate the queryset to a list of Django model instances
-        use_case_instances = list(queryset)  # type: ignore
-
-        # Then apply pagination to the list
+        # Apply pagination
         if pagination is not strawberry.UNSET:
-            offset = pagination.offset if pagination.offset is not None else 0  # type: ignore
-            limit = pagination.limit  # type: ignore
+            queryset = strawberry_django.pagination.apply(pagination, queryset)
 
-            if limit is not None:
-                use_case_instances = use_case_instances[offset : offset + limit]
-            else:
-                use_case_instances = use_case_instances[offset:]
-
-        return [TypeUseCase.from_django(instance) for instance in use_case_instances]
+        return TypeUseCase.from_django_list(queryset)
 
     @strawberry_django.field(
         filters=UseCaseFilter,
@@ -157,18 +148,11 @@ class Query:
         if order is not strawberry.UNSET:
             queryset = strawberry_django.ordering.apply(order, queryset, info)
 
-        use_case_instances = list(queryset)  # type: ignore
-
+        # Apply pagination
         if pagination is not strawberry.UNSET:
-            offset = pagination.offset if pagination.offset is not None else 0  # type: ignore
-            limit = pagination.limit  # type: ignore
+            queryset = strawberry_django.pagination.apply(pagination, queryset)
 
-            if limit is not None:
-                use_case_instances = use_case_instances[offset : offset + limit]
-            else:
-                use_case_instances = use_case_instances[offset:]
-
-        return [TypeUseCase.from_django(instance) for instance in use_case_instances]
+        return TypeUseCase.from_django_list(queryset)
 
     @strawberry_django.field
     @trace_resolver(

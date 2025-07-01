@@ -105,8 +105,8 @@ def track_activity(
                     # Default is no consent, just call the function without tracking
                     return func(*args, **kwargs)
                 # Create a consent record with the default setting
-                UserConsent.objects.create(
-                    user=actor, activity_tracking_enabled=default_consent
+                UserConsent.objects.get_or_create(
+                    user=actor, defaults={"activity_tracking_enabled": default_consent}
                 )
 
             # Get the action object and target

@@ -54,12 +54,7 @@ class ActivityConsentMiddleware:
         if not request.user or not request.user.is_authenticated:
             return False
 
-        try:
-            consent = UserConsent.objects.get(user=request.user)
-            return consent.activity_tracking_enabled
-        except UserConsent.DoesNotExist:
-            # Create a default consent object with the default setting from settings
-            UserConsent.objects.create(
-                user=request.user, activity_tracking_enabled=default_consent
-            )
-            return bool(default_consent)
+        consent, created = UserConsent.objects.get_or_create(
+            user=request.user, defaults={"activity_tracking_enabled": default_consent}
+        )
+        return consent.activity_tracking_enabled

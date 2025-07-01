@@ -63,7 +63,7 @@ class KeycloakLoginView(views.APIView):
                         {
                             "id": org.organization.id,  # type: ignore[attr-defined]
                             "name": org.organization.name,  # type: ignore[attr-defined]
-                            "role": org.role,  # type: ignore[attr-defined]
+                            "role": org.role.name,  # type: ignore[attr-defined]
                         }
                         for org in user.organizationmembership_set.all()  # type: ignore[union-attr, arg-type]
                     ],

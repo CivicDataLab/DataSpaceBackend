@@ -182,7 +182,7 @@ class AuthorizationService:
 
         Args:
             user_id: The ID of the user
-            organization_id: The ID of the organization
+            organization: The organization to assign the user to
             role_id: The ID of the role to assign
 
         Returns:

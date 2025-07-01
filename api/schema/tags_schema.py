@@ -39,9 +39,9 @@ class Mutation:
     )
     def delete_tags(self, info: Info, tag_ids: list[str]) -> MutationResponse[bool]:
         """Delete multiple tags."""
-        try:
-            tags = Tag.objects.filter(id__in=tag_ids)
-        except Tag.DoesNotExist:
+
+        tags = Tag.objects.filter(id__in=tag_ids)
+        if not tags.exists():
             raise DjangoValidationError(f"Tags with IDs {tag_ids} do not exist.")
         tags.delete()
         return MutationResponse.success_response(True)

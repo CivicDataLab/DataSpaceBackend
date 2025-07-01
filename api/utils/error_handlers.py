@@ -1,3 +1,4 @@
+import re
 from functools import wraps
 from typing import (
     Any,
@@ -60,7 +61,6 @@ def format_validation_error(
     error_str = str(error)
 
     # Try to extract field name from validation error message
-    import re
 
     patterns = [
         # Pattern for "Value for 'Field Name' must be..."
@@ -149,6 +149,19 @@ def format_data_error(
 def handle_django_errors(func: F) -> F:
     """
     Decorator to handle Django errors in GraphQL mutations
+
+    Args:
+        func: The function to decorate
+
+    Returns:
+        The decorated function
+
+    Raises:
+        None
+
+    Notes:
+        When a Django error is caught, the error is stored in the context
+        and the function returns None. Callers should check for None returns.
     """
 
     @wraps(func)

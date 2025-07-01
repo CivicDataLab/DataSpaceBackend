@@ -357,10 +357,10 @@ class Query:
                     queryset = Dataset.objects.all()
                 elif organization:
                     # Check id user has access to organization
-                    org_member = OrganizationMembership.objects.filter(
+                    org_member = OrganizationMembership.objects.get(
                         user=user, organization=organization
-                    ).exists()
-                    if org_member and org_member.role.can_view:  # type: ignore
+                    )
+                    if org_member.exists() and org_member.role.can_view:  # type: ignore
                         # Show only datasets from current organization
                         queryset = Dataset.objects.filter(organization=organization)
                     else:
@@ -711,7 +711,7 @@ class Mutation:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
         # TODO: validate dataset
-        dataset.status = DatasetStatus.DRAFT
+        dataset.status = DatasetStatus.DRAFT.value
         dataset.save()
         return TypeDataset.from_django(dataset)
 

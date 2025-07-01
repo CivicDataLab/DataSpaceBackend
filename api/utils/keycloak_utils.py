@@ -35,12 +35,7 @@ class KeycloakManager:
         """
         Get a Keycloak client instance.
         """
-        return KeycloakOpenID(
-            server_url=settings.KEYCLOAK_SERVER_URL,
-            client_id=settings.KEYCLOAK_CLIENT_ID,
-            realm_name=settings.KEYCLOAK_REALM,
-            client_secret_key=settings.KEYCLOAK_CLIENT_SECRET,
-        )
+        return self.keycloak_openid
 
     def get_token(self, username: str, password: str) -> Dict[str, Any]:
         """

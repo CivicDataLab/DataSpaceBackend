@@ -5,6 +5,7 @@ from typing import Any, cast
 import strawberry
 import strawberry_django
 import structlog
+from django.core.exceptions import ValidationError
 from strawberry.types import Info
 
 from api.models import Dataset
@@ -77,6 +78,12 @@ class Mutation:
         if input.profile_picture is not None:
             user.profile_picture = input.profile_picture
 
+        # Validate the user data
+        try:
+            user.full_clean()
+        except ValidationError as e:
+            raise DjangoValidationError(str(e))
+
         # Save the user to the database
         user.save()
 
@@ -127,15 +134,20 @@ class Mutation:
             if user.id == info.context.user.id:
                 raise DjangoValidationError("You cannot change your own role.")
 
-            # Check if the membership already exists
-            membership, created = OrganizationMembership.objects.get_or_create(
-                user=user, organization=organization, defaults={"role": role}
-            )
-
-            # If the membership exists, raise error
-            if not created:
+            try:
+                membership = OrganizationMembership.objects.get(
+                    user=user, organization=organization
+                )
+                # If we get here, the membership exists
                 raise DjangoValidationError(
                     "User is already a member of this organization."
+                )
+            except OrganizationMembership.DoesNotExist:
+                # Membership doesn't exist, so create it
+                membership = OrganizationMembership.objects.create(
+                    user=user,
+                    organization=organization,
+                    role=role,
                 )
 
             return MutationResponse.success_response(
@@ -197,22 +209,21 @@ class Mutation:
         try:
             user = User.objects.get(id=input.user_id)
             organization = info.context.context.get("organization")
-            role = Role.objects.get(id=input.role_id)
 
             # Check if the membership already exists
             membership = OrganizationMembership.objects.get(
-                user=user, organization=organization, role=role
+                user=user, organization=organization
             )
             membership.delete()
             return SuccessResponse(
                 success=True, message="User removed from organization"
             )
         except User.DoesNotExist:
-            raise ValueError(f"User with ID {input.user_id} does not exist.")
+            raise DjangoValidationError(f"User with ID {input.user_id} does not exist.")
         except Role.DoesNotExist:
-            raise ValueError(f"Role with ID {input.role_id} does not exist.")
+            raise DjangoValidationError(f"Role with ID {input.role_id} does not exist.")
         except OrganizationMembership.DoesNotExist:
-            raise ValueError(
+            raise DjangoValidationError(
                 f"User {input.user_id} is not a member of organization {organization.id}"
             )
 
