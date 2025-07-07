@@ -2,8 +2,16 @@ from typing import Any, Dict, List, Optional, Union
 
 from django_elasticsearch_dsl import Document, Index, KeywordField, fields
 
-from api.models import Dataset, DatasetMetadata, Metadata, Resource, Sector
+from api.models import (
+    Dataset,
+    DatasetMetadata,
+    Metadata,
+    Organization,
+    Resource,
+    Sector,
+)
 from api.utils.enums import DatasetStatus
+from authorization.models import User
 from DataSpace import settings
 from search.documents.analysers import html_strip, ngram_analyser
 
@@ -164,7 +172,10 @@ class DatasetDocument(Document):
         )
 
     def get_instances_from_related(
-        self, related_instance: Union[Resource, Metadata, DatasetMetadata, Sector]
+        self,
+        related_instance: Union[
+            Resource, Metadata, DatasetMetadata, Sector, Organization, User
+        ],
     ) -> Optional[Union[Dataset, List[Dataset]]]:
         """Get Dataset instances from related models."""
         if isinstance(related_instance, Resource):
@@ -175,6 +186,10 @@ class DatasetDocument(Document):
         elif isinstance(related_instance, DatasetMetadata):
             return related_instance.dataset
         elif isinstance(related_instance, Sector):
+            return list(related_instance.datasets.all())
+        elif isinstance(related_instance, Organization):
+            return list(related_instance.datasets.all())
+        elif isinstance(related_instance, User):
             return list(related_instance.datasets.all())
         return None
 
@@ -189,4 +204,11 @@ class DatasetDocument(Document):
             "modified",
         ]
 
-        related_models = [Resource, Metadata, DatasetMetadata, Sector]
+        related_models = [
+            Resource,
+            Metadata,
+            DatasetMetadata,
+            Sector,
+            Organization,
+            User,
+        ]
