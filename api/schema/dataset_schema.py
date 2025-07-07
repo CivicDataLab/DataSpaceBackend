@@ -638,9 +638,9 @@ class Mutation:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
         if dataset.status != DatasetStatus.DRAFT.value:
             raise ValueError(f"Dataset with ID {dataset_id} is not in draft status.")
-        if update_dataset_input.title.strip() == "":
-            raise ValueError("Title cannot be empty.")
         if update_dataset_input.title:
+            if update_dataset_input.title.strip() == "":
+                raise ValueError("Title cannot be empty.")
             dataset.title = update_dataset_input.title.strip()
         if update_dataset_input.description:
             dataset.description = update_dataset_input.description.strip()

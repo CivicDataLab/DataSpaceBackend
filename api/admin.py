@@ -22,4 +22,4 @@ class DatasetAdmin(admin.ModelAdmin):
 class UseCaseAdmin(admin.ModelAdmin):
     list_display = ("title", "slug", "created")
     search_fields = ("title", "slug")
-    search_fields = ("title", "summary")
+    list_filter = ("organization",)
