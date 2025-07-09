@@ -11,7 +11,7 @@ class Organization(models.Model):
     name = models.CharField(max_length=200)
     description = models.CharField(max_length=1000)
     logo = models.ImageField(
-        upload_to=_organization_directory_path, blank=True, null=True
+        upload_to=_organization_directory_path, blank=True, null=True, max_length=300
     )
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
