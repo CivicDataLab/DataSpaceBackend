@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Any, Dict, Generator, Optional
 
 import pandas as pd
 import structlog
@@ -84,108 +84,263 @@ def create_table_for_resource(
 
 
 def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
-    """Index a resource's CSV data into a database table."""
+    """Index a resource's CSV data into a database table.
+
+    This function handles the indexing process gracefully, catching and logging
+    specific errors at each stage of the process without crashing.
+
+    Args:
+        resource: The Resource object to index
+
+    Returns:
+        Optional[ResourceDataTable]: The created data table or None if indexing failed
+    """
+    resource_id = getattr(resource, "id", "unknown")
+
     try:
         # Check if resource is a supported tabular file
-        file_details = resource.resourcefiledetails
-        if not file_details:
+        try:
+            file_details = resource.resourcefiledetails
+            if not file_details:
+                logger.info(
+                    f"Resource {resource_id} has no file details, skipping indexing"
+                )
+                return None
+        except Exception as e:
+            logger.error(
+                f"Failed to access file details for resource {resource_id}: {str(e)}"
+            )
             return None
 
-        format = file_details.format.lower()
-        supported_formats = [
-            "csv",
-            "xls",
-            "xlsx",
-            "ods",
-            "parquet",
-            "feather",
-            "json",
-            "tsv",
-        ]
-        if format not in supported_formats:
+        # Check file format
+        try:
+            format = file_details.format.lower()
+            supported_formats = [
+                "csv",
+                "xls",
+                "xlsx",
+                "ods",
+                "parquet",
+                "feather",
+                "json",
+                "tsv",
+            ]
+            if format not in supported_formats:
+                logger.info(
+                    f"Resource {resource_id} has unsupported format: {format}, skipping indexing"
+                )
+                return None
+        except Exception as e:
+            logger.error(
+                f"Failed to determine format for resource {resource_id}: {str(e)}"
+            )
             return None
 
-        # Load tabular data
-        df = load_tabular_data(file_details.file.path, format)
-        if df is None or df.empty:
-            return None
+        # Load tabular data with timeout protection
+        try:
+            import signal
+            from contextlib import contextmanager
 
-        # Create and index table
-        with transaction.atomic():
-            # Delete existing table if any
-            try:
-                existing_table = ResourceDataTable.objects.get(resource=resource)
-                with connections[DATA_DB].cursor() as cursor:
-                    cursor.execute(
-                        f'DROP TABLE IF EXISTS "{existing_table.table_name}"'
+            @contextmanager
+            def timeout(seconds: int) -> Generator[None, None, None]:
+                def handler(signum: int, frame: Any) -> None:
+                    raise TimeoutError(
+                        f"Loading data timed out after {seconds} seconds"
                     )
-                existing_table.delete()
-            except ResourceDataTable.DoesNotExist:
-                pass
 
-            # Create new table
-            data_table = create_table_for_resource(resource, df)
-            if data_table:
-                # Update resource schema
-                # Store existing schema descriptions to preserve them during re-indexing
-                existing_schemas: Dict[str, Dict[str, Optional[str]]] = {}
-                for schema in ResourceSchema.objects.filter(
-                    resource=resource
-                ):  # type: ResourceSchema
-                    existing_schemas[schema.field_name] = {
-                        "description": schema.description,
-                        "format": schema.format,
-                    }
+                # Set the timeout handler
+                original_handler = signal.getsignal(signal.SIGALRM)
+                signal.signal(signal.SIGALRM, handler)
+                signal.alarm(seconds)
+                try:
+                    yield
+                finally:
+                    signal.alarm(0)
+                    signal.signal(signal.SIGALRM, original_handler)
 
-                # Clear existing schema for this resource
-                ResourceSchema.objects.filter(resource=resource).delete()
+            # Apply timeout only on Unix-based systems where signal.SIGALRM is available
+            try:
+                with timeout(60):  # 60 second timeout for loading data
+                    df = load_tabular_data(file_details.file.path, format)
+            except TimeoutError as te:
+                logger.error(
+                    f"Timeout while loading data for resource {resource_id}: {str(te)}"
+                )
+                return None
+            except Exception:
+                # Fallback without timeout if signal.SIGALRM is not available (e.g., on Windows)
+                df = load_tabular_data(file_details.file.path, format)
 
-                # Then create new schema entries for each column, preserving descriptions where possible
-                for col in df.columns:
+            if df is None:
+                logger.error(
+                    f"Failed to load data for resource {resource_id}: Data loading returned None"
+                )
+                return None
+            if df.empty:
+                logger.info(f"Resource {resource_id} has empty data, skipping indexing")
+                return None
+
+            # Check for problematic column names and sanitize them
+            try:
+                # Replace problematic characters in column names
+                # Create a new list of sanitized column names
+                sanitized_columns = [
+                    str(col).replace('"', "").replace("\n", " ").replace("\t", " ")
+                    for col in df.columns
+                ]
+                # Assign to df.columns using pandas Index constructor
+                df.columns = pd.Index(sanitized_columns)
+
+                # Check for duplicate column names after sanitization
+                if len(df.columns) != len(set(df.columns)):
+                    # Handle duplicate columns by adding suffixes
+                    from collections import Counter
+
+                    col_counter = Counter(df.columns)
+                    for col, count in col_counter.items():
+                        if count > 1:
+                            # Find all occurrences of this column name
+                            indices = [i for i, x in enumerate(df.columns) if x == col]
+                            # Rename all but the first occurrence
+                            for i, idx in enumerate(indices[1:], 1):
+                                df.columns.values[idx] = f"{col}_{i}"
+                    logger.warning(
+                        f"Renamed duplicate columns in resource {resource_id}"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Failed to sanitize column names for resource {resource_id}: {str(e)}"
+                )
+                return None
+
+        except Exception as e:
+            import traceback
+
+            logger.error(
+                f"Failed to load data for resource {resource_id}: {str(e)}\n{traceback.format_exc()}"
+            )
+            return None
+
+        # Create and index table within transaction
+        try:
+            with transaction.atomic():
+                # Delete existing table if any
+                try:
+                    existing_table = ResourceDataTable.objects.get(resource=resource)
                     try:
-                        # Determine format - always use the detected format from the data
-                        sql_type = get_sql_type(str(df[col].dtype))
-
-                        # Map SQL types to FieldTypes enum values
-                        if sql_type == "BIGINT":
-                            format_value = "INTEGER"
-                        elif sql_type == "DOUBLE PRECISION":
-                            format_value = "NUMBER"
-                        elif sql_type == "TIMESTAMP":
-                            format_value = "DATE"
-                        elif sql_type == "BOOLEAN":
-                            format_value = "BOOLEAN"
-                        else:  # TEXT or any other type
-                            format_value = "STRING"
-
-                        # For description, preserve existing if available, otherwise auto-generate
-                        description = f"Description of column {col}"
-                        if col in existing_schemas:
-                            existing_description = existing_schemas[col]["description"]
-                            # Check for None and non-auto-generated descriptions
-                            if existing_description is not None:
-                                description = existing_description
-                                logger.info(
-                                    f"Preserved custom description for column {col}"
-                                )
-
-                        # Create the schema entry
-                        ResourceSchema.objects.create(
-                            resource=resource,
-                            field_name=col,
-                            format=format_value,
-                            description=description,
-                        )
-                    except Exception as schema_error:
+                        with connections[DATA_DB].cursor() as cursor:
+                            cursor.execute(
+                                f'DROP TABLE IF EXISTS "{existing_table.table_name}"'
+                            )
+                    except Exception as drop_error:
                         logger.error(
-                            f"Error creating schema for column {col}: {str(schema_error)}"
+                            f"Failed to drop existing table for resource {resource_id}: {str(drop_error)}"
                         )
-                        # Continue with other columns even if one fails
+                        # Continue anyway as we'll try to recreate the table
 
-            return data_table
+                    existing_table.delete()
+                except ResourceDataTable.DoesNotExist:
+                    pass
+                except Exception as e:
+                    logger.error(
+                        f"Error handling existing table for resource {resource_id}: {str(e)}"
+                    )
+                    # Continue with table creation
+
+                # Create new table
+                data_table = create_table_for_resource(resource, df)
+                if not data_table:
+                    logger.error(f"Failed to create table for resource {resource_id}")
+                    return None
+
+                # Update resource schema
+                try:
+                    # Store existing schema descriptions to preserve them during re-indexing
+                    existing_schemas: Dict[str, Dict[str, Optional[str]]] = {}
+                    for schema in ResourceSchema.objects.filter(
+                        resource=resource
+                    ):  # type: ResourceSchema
+                        existing_schemas[schema.field_name] = {
+                            "description": schema.description,
+                            "format": schema.format,
+                        }
+
+                    # Clear existing schema for this resource
+                    ResourceSchema.objects.filter(resource=resource).delete()
+
+                    # Then create new schema entries for each column, preserving descriptions where possible
+                    schema_success_count = 0
+                    schema_error_count = 0
+
+                    for col in df.columns:
+                        try:
+                            # Determine format - always use the detected format from the data
+                            sql_type = get_sql_type(str(df[col].dtype))
+
+                            # Map SQL types to FieldTypes enum values
+                            if sql_type == "BIGINT":
+                                format_value = "INTEGER"
+                            elif sql_type == "DOUBLE PRECISION":
+                                format_value = "NUMBER"
+                            elif sql_type == "TIMESTAMP":
+                                format_value = "DATE"
+                            elif sql_type == "BOOLEAN":
+                                format_value = "BOOLEAN"
+                            else:  # TEXT or any other type
+                                format_value = "STRING"
+
+                            # For description, preserve existing if available, otherwise auto-generate
+                            description = f"Description of column {col}"
+                            if col in existing_schemas:
+                                existing_description = existing_schemas[col][
+                                    "description"
+                                ]
+                                # Check for None and non-auto-generated descriptions
+                                if existing_description is not None:
+                                    description = existing_description
+                                    logger.debug(
+                                        f"Preserved custom description for column {col}"
+                                    )
+
+                            # Create the schema entry
+                            ResourceSchema.objects.create(
+                                resource=resource,
+                                field_name=col,
+                                format=format_value,
+                                description=description,
+                            )
+                            schema_success_count += 1
+                        except Exception as schema_error:
+                            schema_error_count += 1
+                            logger.error(
+                                f"Error creating schema for column {col} in resource {resource_id}: {str(schema_error)}"
+                            )
+                            # Continue with other columns even if one fails
+
+                    logger.info(
+                        f"Resource {resource_id} schema creation: {schema_success_count} columns succeeded, {schema_error_count} failed"
+                    )
+                except Exception as schema_error:
+                    logger.error(
+                        f"Failed to update schema for resource {resource_id}: {str(schema_error)}"
+                    )
+                    # Continue and return the data_table even if schema update fails
+
+                return data_table
+        except Exception as tx_error:
+            import traceback
+
+            logger.error(
+                f"Transaction error for resource {resource_id}: {str(tx_error)}\n{traceback.format_exc()}"
+            )
+            return None
 
     except Exception as e:
-        logger.error(f"Error indexing resource {resource.id}: {str(e)}")
+        import traceback
+
+        logger.error(
+            f"Unexpected error indexing resource {resource_id}: {str(e)}\n{traceback.format_exc()}"
+        )
         return None
 
 
