@@ -56,7 +56,7 @@ def get_resource_response(
     )
 
     # Handle filename and basename explicitly
-    default_name = f"resource_{resource.id}.csv"
+    default_name = f"resource_{resource.name}.csv"
     if file_details.file.name:
         filename = str(file_details.file.name)
         # Get last part of path, fallback to default if empty
