@@ -390,7 +390,7 @@ class BaseChart:
                 pos_right="10%",
                 pos_bottom="25%",
                 pos_left="10%",
-                containLabel=True,
+                contain_label=True,
             ),
             "datazoom_opts": [
                 opts.DataZoomOpts(range_start=0, range_end=100),
