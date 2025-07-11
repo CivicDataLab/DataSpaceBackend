@@ -252,7 +252,7 @@ class UpdateMetadataInput:
     metadata: List[DSMetadataItemType]
     description: Optional[str] = None
     tags: Optional[List[str]] = None
-    sectors: List[uuid.UUID]
+    sectors: Optional[List[uuid.UUID]] = None
     access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
     license: Optional[DatasetLicenseENUM] = (
         DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
@@ -595,7 +595,8 @@ class Mutation:
         if update_metadata_input.tags is not None:
             _update_dataset_tags(dataset, update_metadata_input.tags)
         _add_update_dataset_metadata(dataset, metadata_input)
-        _add_update_dataset_sectors(dataset, update_metadata_input.sectors)
+        if update_metadata_input.sectors is not None:
+            _add_update_dataset_sectors(dataset, update_metadata_input.sectors)
         return MutationResponse.success_response(TypeDataset.from_django(dataset))
 
     @strawberry_django.mutation(
