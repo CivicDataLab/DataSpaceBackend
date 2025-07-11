@@ -156,7 +156,7 @@ class BarChart(BaseChart):
                 # Add label configuration
                 "label": {
                     "show": True,
-                    "position": "bottom",  # Position labels at the bottom
+                    "position": "top",
                     "fontSize": 12,
                     "fontWeight": "normal",
                 },

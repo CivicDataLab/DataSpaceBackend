@@ -385,12 +385,7 @@ class BaseChart:
                 max_=y_max,
                 axislabel_opts=opts.LabelOpts(font_size=12, is_show=True),
             ),
-            "datazoom_opts": [
-                opts.DataZoomOpts(
-                    is_show=True, range_start=0, range_end=100, pos_bottom="10%"
-                ),
-                opts.DataZoomOpts(type_="inside"),
-            ],
+            # DataZoom is handled directly in chart.options.update() below
         }
 
     def initialize_chart(self, filtered_data: Optional[pd.DataFrame] = None) -> Chart:
@@ -436,6 +431,19 @@ class BaseChart:
                     "left": "10%",
                     "containLabel": True,
                 },
+                "dataZoom": [
+                    {
+                        "type": "slider",
+                        "show": True,
+                        "realtime": True,
+                        "start": 0,
+                        "end": 100,
+                        "bottom": "10%",
+                        "xAxisIndex": [0],
+                        "height": 20,
+                    },
+                    {"type": "inside", "xAxisIndex": [0], "start": 0, "end": 100},
+                ],
             }
         )
 
