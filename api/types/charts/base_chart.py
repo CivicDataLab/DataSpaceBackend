@@ -96,9 +96,9 @@ class BaseChart:
                 ),
                 toolbox_opts=opts.ToolboxOpts(
                     is_show=True,
-                    orient="horizontal",
-                    pos_top="top",
-                    pos_right="right",
+                    orient="vertical",
+                    pos_top="5%",
+                    pos_right="1%",
                     feature={
                         "saveAsImage": {"show": True, "title": "Save as Image"},
                         "dataView": {"show": True, "title": "Data View"},
@@ -406,7 +406,7 @@ class BaseChart:
                 type_="value",
                 min_=y_min,
                 max_=y_max,
-                axislabel_opts=opts.LabelOpts(font_size=12, is_show=True),
+                axislabel_opts=opts.LabelOpts(font_size=12, is_show=False),
             ),
         }
 
