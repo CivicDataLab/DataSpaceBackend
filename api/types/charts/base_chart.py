@@ -373,22 +373,8 @@ class BaseChart:
                 type_="value",
                 min_=y_min,
                 max_=y_max,
-                axislabel_opts=opts.LabelOpts(
-                    font_size=12,
-                    is_show=True,
-                ),
+                axislabel_opts=opts.LabelOpts(font_size=12, is_show=True),
             ),
-            "legend_opts": opts.LegendOpts(
-                is_show=self.options.get("show_legend", True),
-                pos_bottom="10%",
-                pos_top="auto",
-                orient="horizontal",
-                textstyle_opts=opts.TextStyleOpts(font_size=12),
-            ),
-            "datazoom_opts": [
-                opts.DataZoomOpts(range_start=0, range_end=100),
-                opts.DataZoomOpts(type_="inside"),
-            ],
         }
 
     def initialize_chart(self, filtered_data: Optional[pd.DataFrame] = None) -> Chart:
@@ -430,9 +416,24 @@ class BaseChart:
                 "grid": {
                     "top": "10%",
                     "right": "10%",
-                    "bottom": "25%",
+                    "bottom": "15%",
                     "left": "10%",
                     "containLabel": True,
+                },
+                "dataZoom": [
+                    {
+                        "show": True,
+                        "realtime": True,
+                        "start": 0,
+                        "end": 100,
+                        "bottom": "10%",
+                    }
+                ],
+                "legend": {
+                    "show": self.options.get("show_legend", True),
+                    "bottom": "0%",
+                    "left": "center",
+                    "orient": "horizontal",
                 },
             }
         )
