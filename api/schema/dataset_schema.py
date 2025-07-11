@@ -275,7 +275,7 @@ class UpdateDatasetInput:
 def _add_update_dataset_metadata(
     dataset: Dataset, metadata_input: List[DSMetadataItemType]
 ) -> None:
-    if not metadata_input or len(metadata_input) == 0:
+    if not metadata_input:
         return
     _delete_existing_metadata(dataset)
     for metadata_input_item in metadata_input:

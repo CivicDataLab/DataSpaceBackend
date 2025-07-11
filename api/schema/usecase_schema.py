@@ -202,7 +202,7 @@ def _update_usecase_sectors(usecase: UseCase, sectors: List[uuid.UUID]) -> None:
 def _add_update_usecase_metadata(
     usecase: UseCase, metadata_input: List[UCMetadataItemType]
 ) -> None:
-    if not metadata_input or len(metadata_input) == 0:
+    if not metadata_input:
         return
     _delete_existing_metadata(usecase)
     for metadata_input_item in metadata_input:
