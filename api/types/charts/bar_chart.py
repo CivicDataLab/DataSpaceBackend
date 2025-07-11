@@ -153,14 +153,12 @@ class BarChart(BaseChart):
             {
                 "barGap": "30%",
                 "barCategoryGap": "20%",
-                # Add label configuration
                 "label": {
-                    "show": True,
+                    "show": False,
                     "position": "top",
                     "fontSize": 12,
                     "fontWeight": "normal",
                 },
-                # Make bars responsive
                 "emphasis": {"focus": "series"},
             }
         )

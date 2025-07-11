@@ -98,11 +98,14 @@ class BaseChart:
                     is_show=True,
                     orient="vertical",
                     pos_top="5%",
-                    pos_right="1%",
+                    pos_right="5%",  # Increased right margin to avoid overlap
                     feature={
-                        "saveAsImage": {"show": True, "title": "Save as Image"},
-                        "dataView": {"show": True, "title": "Data View"},
-                        "restore": {"show": True, "title": "Restore"},
+                        "saveAsImage": {
+                            "show": True,
+                            "title": "Save",
+                        },  # Shortened title
+                        "dataView": {"show": True, "title": "Data"},  # Shortened title
+                        "restore": {"show": True, "title": "Reset"},  # Shortened title
                         "dataZoom": {"show": True, "title": "Zoom"},
                     },
                 ),
@@ -406,7 +409,7 @@ class BaseChart:
                 type_="value",
                 min_=y_min,
                 max_=y_max,
-                axislabel_opts=opts.LabelOpts(font_size=12, is_show=False),
+                axislabel_opts=opts.LabelOpts(font_size=12, is_show=True),
             ),
         }
 
