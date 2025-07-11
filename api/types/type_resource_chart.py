@@ -90,6 +90,7 @@ class YAxisColumnConfigType(BaseType):
 class ChartOptionsType(BaseType):
     """Type for chart options."""
 
+    # Standard chart options
     x_axis_label: Optional[str]
     y_axis_label: Optional[str]
     x_axis_column: Optional[TypeResourceSchema]
@@ -102,6 +103,22 @@ class ChartOptionsType(BaseType):
     orientation: Optional[str]
     allow_multi_series: Optional[bool]
     stacked: Optional[bool]
+
+    # Big Number Chart specific options
+    title: Optional[str]
+    subtitle: Optional[str]
+    label: Optional[str]
+    value_prefix: Optional[str]
+    value_suffix: Optional[str]
+    title_color: Optional[str]
+    subtitle_color: Optional[str]
+    value_color: Optional[str]
+    label_color: Optional[str]
+    title_font_size: Optional[int]
+    subtitle_font_size: Optional[int]
+    value_font_size: Optional[int]
+    label_font_size: Optional[int]
+    background_color: Optional[str]
 
 
 class ChartOptionsTypeDict(TypedDict, total=False):
@@ -176,6 +193,7 @@ class TypeResourceChart(BaseType):
                 return None
 
             return ChartOptionsType(
+                # Standard chart options
                 x_axis_label=options_dict.get("x_axis_label"),
                 y_axis_label=options_dict.get("y_axis_label"),
                 x_axis_column=(
@@ -223,6 +241,21 @@ class TypeResourceChart(BaseType):
                 orientation=options_dict.get("orientation", "vertical"),
                 allow_multi_series=options_dict.get("allow_multi_series", True),
                 stacked=options_dict.get("stacked", False),
+                # Big Number Chart specific options
+                title=options_dict.get("title"),
+                subtitle=options_dict.get("subtitle"),
+                label=options_dict.get("label"),
+                value_prefix=options_dict.get("value_prefix"),
+                value_suffix=options_dict.get("value_suffix"),
+                title_color=options_dict.get("title_color"),
+                subtitle_color=options_dict.get("subtitle_color"),
+                value_color=options_dict.get("value_color"),
+                label_color=options_dict.get("label_color"),
+                title_font_size=options_dict.get("title_font_size"),
+                subtitle_font_size=options_dict.get("subtitle_font_size"),
+                value_font_size=options_dict.get("value_font_size"),
+                label_font_size=options_dict.get("label_font_size"),
+                background_color=options_dict.get("background_color"),
             )
         except (AttributeError, KeyError):
             return None
