@@ -94,7 +94,19 @@ class BaseChart:
                     orient="horizontal",
                     textstyle_opts=opts.TextStyleOpts(font_size=12),
                 ),
-                toolbox_opts=opts.ToolboxOpts(is_show=False),
+                toolbox_opts=opts.ToolboxOpts(
+                    is_show=True,
+                    orient="vertical",
+                    pos_left=None,  # Explicitly set to None to override the default 80%
+                    pos_right="0%",
+                    pos_top="center",
+                    feature={
+                        "saveAsImage": {"show": True, "title": ""},
+                        "dataView": {"show": True, "title": ""},
+                        "restore": {"show": True, "title": ""},
+                        "dataZoom": {"show": True, "title": ""},
+                    },
+                ),
                 datazoom_opts=[
                     opts.DataZoomOpts(
                         is_show=True,
@@ -437,24 +449,10 @@ class BaseChart:
                 "animation": False,
                 "grid": {
                     "top": "10%",
-                    "right": "20%",
+                    "right": "15%",
                     "bottom": "15%",
                     "left": "10%",
                     "containLabel": True,
-                },
-                "toolbox": {
-                    "show": True,
-                    "orient": "vertical",
-                    "itemSize": 15,
-                    "itemGap": 10,
-                    "right": "1%",
-                    "top": "center",
-                    "feature": {
-                        "saveAsImage": {"show": True, "title": ""},
-                        "dataView": {"show": True, "title": ""},
-                        "restore": {"show": True, "title": ""},
-                        "dataZoom": {"show": True, "title": ""},
-                    },
                 },
                 "dataZoom": [
                     {
