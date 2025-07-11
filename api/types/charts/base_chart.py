@@ -344,8 +344,9 @@ class BaseChart:
             "tooltip_opts": opts.TooltipOpts(
                 trigger="axis",
                 axis_pointer_type="cross",
-                background_color="rgba(50,50,50,0.8)",
+                background_color="rgba(50,50,50,0.9)",
                 border_width=0,
+                textstyle_opts=opts.TextStyleOpts(color="#ffffff", font_size=12),
             ),
             "toolbox_opts": opts.ToolboxOpts(
                 is_show=True,
@@ -361,7 +362,7 @@ class BaseChart:
                 type_="category",
                 boundary_gap=True,
                 axislabel_opts=opts.LabelOpts(
-                    position="bottom",  # Position labels at the bottom
+                    position="bottom",
                     rotate=30,
                     margin=10,
                     font_size=12,
@@ -379,10 +380,17 @@ class BaseChart:
             ),
             "legend_opts": opts.LegendOpts(
                 is_show=self.options.get("show_legend", True),
-                pos_bottom="5%",  # Position at the bottom of the chart
+                pos_bottom="10%",
                 pos_top="auto",
                 orient="horizontal",
                 textstyle_opts=opts.TextStyleOpts(font_size=12),
+            ),
+            "grid_opts": opts.GridOpts(
+                pos_top="10%",
+                pos_right="10%",
+                pos_bottom="25%",
+                pos_left="10%",
+                containLabel=True,
             ),
             "datazoom_opts": [
                 opts.DataZoomOpts(range_start=0, range_end=100),
