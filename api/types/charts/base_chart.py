@@ -98,15 +98,28 @@ class BaseChart:
                     is_show=True,
                     orient="vertical",
                     pos_top="5%",
-                    pos_right="5%",  # Increased right margin to avoid overlap
+                    pos_right="10%",  # Significantly increased right margin to avoid overlap
                     feature={
                         "saveAsImage": {
                             "show": True,
                             "title": "Save",
-                        },  # Shortened title
-                        "dataView": {"show": True, "title": "Data"},  # Shortened title
-                        "restore": {"show": True, "title": "Reset"},  # Shortened title
-                        "dataZoom": {"show": True, "title": "Zoom"},
+                            "icon": "path://M19,13H5V8H19M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3Z",  # Simplified icon
+                        },
+                        "dataView": {
+                            "show": True,
+                            "title": "Data",
+                            "icon": "path://M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z",  # Simplified icon
+                        },
+                        "restore": {
+                            "show": True,
+                            "title": "Reset",
+                            "icon": "path://M13,3A9,9 0 0,0 4,12H1L4.89,15.89L8.78,12H5A7,7 0 0,1 12,5A7,7 0 0,1 19,12A7,7 0 0,1 12,19C10.5,19 9.09,18.5 7.94,17.7L6.5,19.14C8.04,20.3 9.94,21 12,21A9,9 0 0,0 21,12A9,9 0 0,0 12,3M14,12A2,2 0 0,0 12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12Z",  # Simplified icon
+                        },
+                        "dataZoom": {
+                            "show": True,
+                            "title": "Zoom",
+                            "icon": "path://M15.5,14L20.5,19L19,20.5L14,15.5V14.71L13.73,14.43C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.43,13.73L14.71,14H15.5M9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14M12,10H10V12H9V10H7V9H9V7H10V9H12V10Z",  # Simplified icon
+                        },
                     },
                 ),
                 datazoom_opts=[

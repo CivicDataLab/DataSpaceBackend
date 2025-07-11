@@ -155,13 +155,17 @@ class BarChart(BaseChart):
                 "barCategoryGap": "20%",
                 "label": {
                     "show": False,
-                    "position": "top",
-                    "fontSize": 12,
-                    "fontWeight": "normal",
+                },
+                "itemStyle": {
+                    "opacity": 0.8,  # Slightly transparent bars
                 },
                 "emphasis": {"focus": "series"},
             }
         )
+
+        # Ensure no labels are shown
+        if "label" in chart.options["series"][-1]:
+            chart.options["series"][-1]["label"]["show"] = False
 
         # Set chart renderer for better responsiveness
         chart.renderer = "canvas"

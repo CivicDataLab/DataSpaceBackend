@@ -113,7 +113,16 @@ class CombinedChart(BaseChart):
                 chart, series_name, y_values, color, value_mapping
             )
             # Add bar-specific options
-            bar_options = {"barGap": "30%", "barCategoryGap": "20%"}
+            bar_options = {
+                "barGap": "30%",
+                "barCategoryGap": "20%",
+                "label": {
+                    "show": False,  # Hide bar value labels
+                },
+                "itemStyle": {
+                    "opacity": 0.8,  # Slightly transparent bars
+                },
+            }
 
             # Add stack option if stacked bar is enabled
             is_stacked = self.options.get("stacked", False)
