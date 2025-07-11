@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional, Protocol, Union, cast
 
+import numpy as np
 import pandas as pd
 import structlog
 from pyecharts import options as opts
@@ -101,8 +102,27 @@ class BaseChart:
                     pos_right="0%",
                     pos_top="center",
                     feature={
-                        "saveAsImage": {"show": True, "title": ""},
-                        "dataView": {"show": True, "title": ""},
+                        "saveAsImage": {
+                            "show": True,
+                            "title": "",
+                            "type": [
+                                "png",
+                                "jpeg",
+                                "svg",
+                            ],  # Support multiple export formats
+                            "pixelRatio": 2,  # Higher quality export
+                            "backgroundColor": "#fff",
+                        },
+                        "dataView": {
+                            "show": True,
+                            "title": "",
+                            "readOnly": False,  # Allow editing in data view
+                            "lang": [
+                                "Data View",
+                                "Close",
+                                "Refresh",
+                            ],  # Customize buttons
+                        },
                         "restore": {"show": True, "title": ""},
                         "dataZoom": {"show": True, "title": ""},
                     },
@@ -417,10 +437,49 @@ class BaseChart:
         if not chart_class:
             raise ValueError(f"Unknown chart type: {self.chart_details.chart_type}")
 
-        # Get chart options
-        width = cast(str, self.options.get("width", "800px"))
+        # Store chart ID for cross-chart interactions
+        self.chart_id = f"chart_{self.chart_details.id}"
+        # Store for potential linked charts
+        self._linked_charts: List[Chart] = []
+
+        # Get chart options with responsive sizing
+        width = cast(str, self.options.get("width", "auto"))
         height = cast(str, self.options.get("height", "600px"))
         theme = cast(str, self.options.get("theme", "white"))
+
+        # Determine font size based on container width for responsiveness
+        base_font_size = 12
+        if width == "auto" or width == "100%":
+            # Auto-responsive font size
+            label_font_size = base_font_size
+            title_font_size = base_font_size + 2
+        elif isinstance(width, str) and width.endswith("px"):
+            # Try to extract pixel width and adjust font size accordingly
+            try:
+                pixel_width = int(width.rstrip("px"))
+                if pixel_width < 400:
+                    label_font_size = (
+                        base_font_size - 2
+                    )  # Smaller font for small containers
+                    title_font_size = base_font_size
+                elif pixel_width > 1200:
+                    label_font_size = (
+                        base_font_size + 2
+                    )  # Larger font for large containers
+                    title_font_size = base_font_size + 4
+                else:
+                    label_font_size = base_font_size
+                    title_font_size = base_font_size + 2
+            except ValueError:
+                label_font_size = base_font_size
+                title_font_size = base_font_size + 2
+        else:
+            label_font_size = base_font_size
+            title_font_size = base_font_size + 2
+
+        # Store font sizes for use in other methods
+        self._responsive_label_font_size = label_font_size
+        self._responsive_title_font_size = title_font_size
 
         # Create chart instance with responsive options
         chart = chart_class(
@@ -433,8 +492,23 @@ class BaseChart:
             )
         )
 
-        # Set chart options
+        # Get chart options
         chart_opts = self.get_chart_specific_opts()
+
+        # Enhance tooltip styling for better readability
+        if "tooltip_opts" not in chart_opts:
+            chart_opts["tooltip_opts"] = opts.TooltipOpts(
+                trigger="axis",
+                axis_pointer_type="cross",
+                background_color="rgba(50,50,50,0.9)",  # Darker background
+                border_color="#ccc",
+                border_width=0,
+                textstyle_opts=opts.TextStyleOpts(
+                    color="#fff",  # White text for contrast
+                    font_size=14,
+                ),
+            )
+
         chart.set_global_opts(**chart_opts)
 
         # Add responsive configuration
@@ -453,6 +527,19 @@ class BaseChart:
                     "bottom": "15%",
                     "left": "10%",
                     "containLabel": True,
+                },
+                # Accessibility options
+                "aria": {
+                    "show": True,
+                    "description": getattr(self.chart_details, "title", None)
+                    or "Chart",
+                    "general": {
+                        "withTitle": True,
+                        "withDesc": True,
+                    },
+                    "label": {
+                        "enabled": True,
+                    },
                 },
                 "dataZoom": [
                     {
@@ -574,12 +661,53 @@ class BaseChart:
             "itemstyle_opts": opts.ItemStyleOpts(color=color) if color else None,
         }
 
+    def add_series(self, chart: Chart, filtered_data: pd.DataFrame) -> Chart:
+        """Add series data to the chart."""
+        raise NotImplementedError("Subclasses must implement add_series")
+
+    def _optimize_dataset(
+        self, data: pd.DataFrame, max_points: int = 1000
+    ) -> pd.DataFrame:
+        """Optimize large datasets by sampling to improve performance.
+
+        For large datasets, this method will sample the data to reduce the number of points
+        while preserving the overall shape of the data.
+
+        Args:
+            data: The input DataFrame
+            max_points: Maximum number of data points to display
+
+        Returns:
+            Optimized DataFrame with reduced number of points if necessary
+        """
+        if data is None or len(data) <= max_points:
+            return data
+
+        # Calculate sampling rate
+        sample_rate = max_points / len(data)
+
+        # Use systematic sampling to preserve data shape
+        if "date" in data.columns or "time" in data.columns:
+            # For time series data, preserve time distribution
+            time_col = "date" if "date" in data.columns else "time"
+            # Sort by time column
+            data = data.sort_values(by=time_col)
+            # Sample evenly across time
+            indices = np.linspace(0, len(data) - 1, max_points).astype(int)
+            return data.iloc[indices].copy()  # Return explicit DataFrame
+        else:
+            # For non-time series data, use random sampling
+            return data.sample(n=max_points)
+
     def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
         """Handle non-time-based data."""
+        # Optimize large datasets for performance
+        optimized_data = self._optimize_dataset(filtered_data)
+
         # Get x-axis field name
         x_axis_field = cast(DjangoFieldLike, self.options["x_axis_column"])
         x_field = x_axis_field.field_name
-        x_axis_data = filtered_data[x_field].tolist()
+        x_axis_data = optimized_data[x_field].tolist()
 
         # Sort values if needed
         sort_order = self.options.get("sort_order", "asc")
