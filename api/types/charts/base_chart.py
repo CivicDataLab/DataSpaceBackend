@@ -86,6 +86,16 @@ class BaseChart:
             # Configure chart
             self.configure_chart(chart, filtered_data)
 
+            chart.set_global_opts(
+                legend_opts=opts.LegendOpts(
+                    is_show=self.options.get("show_legend", True),
+                    pos_bottom="0%",  # Position at the very bottom
+                    pos_top="auto",
+                    orient="horizontal",
+                    textstyle_opts=opts.TextStyleOpts(font_size=12),
+                )
+            )
+
             return chart
         except Exception as e:
             import traceback
@@ -429,12 +439,6 @@ class BaseChart:
                         "bottom": "10%",
                     }
                 ],
-                "legend": {
-                    "show": self.options.get("show_legend", True),
-                    "bottom": "0%",
-                    "left": "center",
-                    "orient": "horizontal",
-                },
             }
         )
 
