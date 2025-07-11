@@ -106,7 +106,7 @@ class MultiLineChart(BaseChart):
             y_axis=data,
             label_opts=opts.LabelOpts(
                 is_show=True,
-                position="bottom",  # Position labels at the bottom
+                position="top",
                 font_size=12,
                 font_weight="normal",
                 color="#333",
