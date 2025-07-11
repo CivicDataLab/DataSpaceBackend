@@ -385,13 +385,6 @@ class BaseChart:
                 orient="horizontal",
                 textstyle_opts=opts.TextStyleOpts(font_size=12),
             ),
-            "grid_opts": opts.GridOpts(
-                pos_top="10%",
-                pos_right="10%",
-                pos_bottom="25%",
-                pos_left="10%",
-                contain_label=True,
-            ),
             "datazoom_opts": [
                 opts.DataZoomOpts(range_start=0, range_end=100),
                 opts.DataZoomOpts(type_="inside"),
@@ -415,10 +408,8 @@ class BaseChart:
                 width=width,
                 height=height,
                 theme=theme,
-                renderer="canvas",  # Use canvas renderer for better performance and responsiveness
-                animation_opts=opts.AnimationOpts(
-                    animation=False
-                ),  # Disable animation for better performance
+                renderer="canvas",
+                animation_opts=opts.AnimationOpts(animation=False),
             )
         )
 
@@ -435,7 +426,14 @@ class BaseChart:
 
         chart.options.update(
             {
-                "animation": False,  # Disable animation for better performance
+                "animation": False,
+                "grid": {
+                    "top": "10%",
+                    "right": "10%",
+                    "bottom": "25%",
+                    "left": "10%",
+                    "containLabel": True,
+                },
             }
         )
 
