@@ -250,8 +250,8 @@ class DSMetadataItemType:
 class UpdateMetadataInput:
     dataset: uuid.UUID
     metadata: List[DSMetadataItemType]
-    description: Optional[str]
-    tags: Optional[List[str]]
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
     sectors: List[uuid.UUID]
     access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
     license: Optional[DatasetLicenseENUM] = (
