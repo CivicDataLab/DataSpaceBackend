@@ -21,7 +21,12 @@ class MultiLineChart(BaseChart):
 
         # Configure x-axis labels
         base_opts["xaxis_opts"].axislabel_opts = opts.LabelOpts(
-            rotate=45, interval=0, margin=8
+            position="bottom",  # Position labels at the bottom
+            rotate=45,
+            interval=0,
+            margin=10,
+            font_size=12,
+            is_show=True,  # Ensure labels are shown
         )
 
         # Add line chart specific options
@@ -54,6 +59,10 @@ class MultiLineChart(BaseChart):
             width=self.options.get("width", "100%"),
             height=self.options.get("height", "400px"),
             theme=self.options.get("theme", "white"),
+            renderer="canvas",  # Use canvas renderer for better performance and responsiveness
+            animation_opts=opts.AnimationOpts(
+                animation=False
+            ),  # Disable animation for better performance
         )
 
     def add_series_to_chart(
@@ -91,13 +100,35 @@ class MultiLineChart(BaseChart):
                     )
                 )
 
-        # Add the series to the chart
+        # Add the series to the chart with improved label positioning
         chart.add_yaxis(
             series_name=series_name,
             y_axis=data,
-            label_opts=opts.LabelOpts(is_show=False),
+            label_opts=opts.LabelOpts(
+                is_show=True,
+                position="bottom",  # Position labels at the bottom
+                font_size=12,
+                font_weight="normal",
+                color="#333",
+            ),
             itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None,
             linestyle_opts=opts.LineStyleOpts(width=2, type_="solid"),
             is_smooth=True,
             is_symbol_show=True,
+        )
+
+        # Set chart renderer for better responsiveness
+        chart.renderer = "canvas"
+
+        # Add responsive configuration
+        chart.js_host = ""
+
+        # Add additional initialization options for responsiveness
+        if not hasattr(chart, "options") or not chart.options:
+            chart.options = {}
+
+        chart.options.update(
+            {
+                "animation": False,  # Disable animation for better performance
+            }
         )

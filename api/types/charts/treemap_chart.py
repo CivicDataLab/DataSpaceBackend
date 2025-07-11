@@ -74,25 +74,46 @@ class TreeMapChart(BaseChart):
             filtered_data, x_axis_column, y_axis_columns
         )
 
-        # Configure the chart
+        # Configure the chart with improved label options
         chart.add(
             series_name=title,
             data=treemap_data,
             visual_min=0,
             leaf_depth=1,
-            # You can customize these options based on your requirements
-            label_opts=opts.LabelOpts(position="inside"),
+            # Improved label configuration
+            label_opts=opts.LabelOpts(
+                position="bottom",  # Position labels at the bottom
+                font_size=12,
+                font_weight="bold",
+                formatter="{b}: {c}",  # Show both name and value
+                is_show=True,  # Ensure labels are shown
+            ),
         )
 
         # Set global options
         chart.set_global_opts(
             title_opts=opts.TitleOpts(title=title),
             tooltip_opts=opts.TooltipOpts(formatter="{b}: {c}"),
+            # Add layout options for better responsiveness
+            legend_opts=opts.LegendOpts(is_show=False),  # Hide legend for more space
         )
 
-        # Set chart size
+        # Set chart size with responsive configuration
         chart.width = width
         chart.height = height
+
+        # Set renderer to canvas for better performance
+        chart.renderer = "canvas"
+
+        # Add responsive configuration
+        chart.js_host = ""
+
+        # Add additional initialization options for responsiveness
+        chart.options.update(
+            {
+                "animation": False,  # Disable animation for better performance
+            }
+        )
 
     def _prepare_treemap_data(
         self,
