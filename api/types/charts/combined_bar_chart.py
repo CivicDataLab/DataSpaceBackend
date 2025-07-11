@@ -121,6 +121,9 @@ class CombinedChart(BaseChart):
                 },
                 "itemStyle": {
                     "opacity": 0.8,  # Slightly transparent bars
+                    "color": (
+                        color if color else None
+                    ),  # Explicitly set color in itemStyle
                 },
             }
 
@@ -167,7 +170,7 @@ class CombinedChart(BaseChart):
                 series_name=series_name,
                 y_axis=data,
                 label_opts=opts.LabelOpts(is_show=False),
-                itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None,
+                color=color if color else None,
                 linestyle_opts=opts.LineStyleOpts(width=2, type_="solid"),
                 is_smooth=True,
                 is_symbol_show=True,
