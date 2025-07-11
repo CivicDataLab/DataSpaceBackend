@@ -159,7 +159,6 @@ class BarChart(BaseChart):
                     "position": "bottom",  # Position labels at the bottom
                     "fontSize": 12,
                     "fontWeight": "normal",
-                    "color": "#333",
                 },
                 # Make bars responsive
                 "emphasis": {"focus": "series"},

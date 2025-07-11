@@ -379,7 +379,8 @@ class BaseChart:
             ),
             "legend_opts": opts.LegendOpts(
                 is_show=self.options.get("show_legend", True),
-                pos_top="5%",
+                pos_bottom="5%",  # Position at the bottom of the chart
+                pos_top="auto",
                 orient="horizontal",
                 textstyle_opts=opts.TextStyleOpts(font_size=12),
             ),
