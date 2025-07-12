@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pandas as pd
 
-from api.types.charts.combined_bar_chart import CombinedChart
+from api.types.charts.unified_chart import UnifiedChart
 
 
 class MockResourceChartDetails:
@@ -59,7 +59,7 @@ class TestMultiLineChart(unittest.TestCase):
             ],
         }
         chart_details = MockResourceChartDetails(options=options)
-        chart = CombinedChart(chart_details, self.test_data)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         self.assertIsNotNone(result)
@@ -78,7 +78,7 @@ class TestMultiLineChart(unittest.TestCase):
             ],
         }
         chart_details = MockResourceChartDetails(options=options)
-        chart = CombinedChart(chart_details, self.test_data)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         series = result.options.get("series")
@@ -98,7 +98,7 @@ class TestMultiLineChart(unittest.TestCase):
             "y_axis_column": [{"field": self.y_field1, "label": "Metric 1"}],
         }
         chart_details = MockResourceChartDetails(options=options)
-        chart = CombinedChart(chart_details, self.test_data)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         # Check data zoom options
@@ -116,7 +116,7 @@ class TestMultiLineChart(unittest.TestCase):
             "time_column": self.x_field,
         }
         chart_details = MockResourceChartDetails(options=options)
-        chart = CombinedChart(chart_details, self.test_data)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         # Check x-axis data
@@ -151,7 +151,7 @@ class TestMultiLineChart(unittest.TestCase):
             ],
         }
         chart_details = MockResourceChartDetails(options=options)
-        chart = CombinedChart(chart_details, test_data)
+        chart = UnifiedChart(chart_details, test_data)
         result = chart.create_chart()
 
         series = result.options.get("series")[0]
@@ -170,7 +170,7 @@ class TestMultiLineChart(unittest.TestCase):
             ],
         }
         chart_details = MockResourceChartDetails(options=options)
-        chart = CombinedChart(chart_details, self.test_data)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         tooltip = result.options.get("tooltip")

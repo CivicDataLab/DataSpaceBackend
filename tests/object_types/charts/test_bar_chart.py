@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pandas as pd
 
-from api.types.charts.combined_bar_chart import CombinedChart
+from api.types.charts.unified_chart import UnifiedChart
 
 
 class MockResourceChartDetails:
@@ -11,7 +11,7 @@ class MockResourceChartDetails:
 
     def __init__(
         self,
-        chart_type="BAR_VERTICAL",
+        chart_type="BAR",
         title="Test Chart",
         description="Test Description",
         options=None,
@@ -51,10 +51,8 @@ class TestBarChart(unittest.TestCase):
             "x_axis_column": self.x_field,
             "y_axis_column": [{"field": self.y_field, "label": "Value"}],
         }
-        chart_details = MockResourceChartDetails(
-            chart_type="BAR_VERTICAL", options=options
-        )
-        chart = CombinedChart(chart_details, self.test_data)
+        chart_details = MockResourceChartDetails(chart_type="BAR", options=options)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         self.assertIsNotNone(result)
@@ -67,10 +65,11 @@ class TestBarChart(unittest.TestCase):
             "x_axis_column": self.x_field,
             "y_axis_column": [{"field": self.y_field, "label": "Value"}],
         }
+        options_with_orientation = {**options, "orientation": "horizontal"}
         chart_details = MockResourceChartDetails(
-            chart_type="BAR_HORIZONTAL", options=options
+            chart_type="BAR", options=options_with_orientation
         )
-        chart = CombinedChart(chart_details, self.test_data)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         self.assertIsNotNone(result)
@@ -85,10 +84,8 @@ class TestBarChart(unittest.TestCase):
                 {"field": self.y_field, "label": "Value", "color": "#FF0000"}
             ],
         }
-        chart_details = MockResourceChartDetails(
-            chart_type="BAR_VERTICAL", options=options
-        )
-        chart = CombinedChart(chart_details, self.test_data)
+        chart_details = MockResourceChartDetails(chart_type="BAR", options=options)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         series = result.options.get("series")[0]
@@ -103,10 +100,8 @@ class TestBarChart(unittest.TestCase):
                 {"field": self.y_field, "label": "Value", "aggregate_type": "SUM"}
             ],
         }
-        chart_details = MockResourceChartDetails(
-            chart_type="BAR_VERTICAL", options=options
-        )
-        chart = CombinedChart(chart_details, self.test_data)
+        chart_details = MockResourceChartDetails(chart_type="BAR", options=options)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         series = result.options.get("series")[0]
@@ -121,11 +116,9 @@ class TestBarChart(unittest.TestCase):
             "y_axis_column": [{"field": self.y_field, "label": "Custom Value Label"}],
             "x_axis_label": "Custom Category Label",
         }
-        chart_details = MockResourceChartDetails(
-            chart_type="BAR_VERTICAL", options=options
-        )
+        chart_details = MockResourceChartDetails(chart_type="BAR", options=options)
         print(chart_details)
-        chart = CombinedChart(chart_details, self.test_data)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         x_axis = result.options.get("xAxis")[0]

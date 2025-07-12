@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pandas as pd
 
-from api.types.charts.combined_bar_chart import CombinedChart
+from api.types.charts.unified_chart import UnifiedChart
 
 
 class MockResourceChartDetails:
@@ -11,7 +11,7 @@ class MockResourceChartDetails:
 
     def __init__(
         self,
-        chart_type="GROUPED_BAR_VERTICAL",
+        chart_type="BAR",
         title="Test Chart",
         description="Test Description",
         options=None,
@@ -64,9 +64,11 @@ class TestGroupedBarChart(unittest.TestCase):
             "group_column": self.group_field,
         }
         chart_details = MockResourceChartDetails(
-            chart_type="GROUPED_BAR_VERTICAL", options=options
+            chart_type="BAR",
+            options={**options, "allow_multi_series": true},
+            options=options,
         )
-        chart = CombinedChart(chart_details, self.test_data)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         self.assertIsNotNone(result)
@@ -84,7 +86,7 @@ class TestGroupedBarChart(unittest.TestCase):
         chart_details = MockResourceChartDetails(
             chart_type="GROUPED_BAR_HORIZONTAL", options=options
         )
-        chart = CombinedChart(chart_details, self.test_data)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         self.assertIsNotNone(result)
@@ -101,9 +103,11 @@ class TestGroupedBarChart(unittest.TestCase):
             "colors": ["#FF0000", "#00FF00"],
         }
         chart_details = MockResourceChartDetails(
-            chart_type="GROUPED_BAR_VERTICAL", options=options
+            chart_type="BAR",
+            options={**options, "allow_multi_series": true},
+            options=options,
         )
-        chart = CombinedChart(chart_details, self.test_data)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         series = result.options.get("series")
@@ -131,9 +135,11 @@ class TestGroupedBarChart(unittest.TestCase):
             "group_column": self.group_field,
         }
         chart_details = MockResourceChartDetails(
-            chart_type="GROUPED_BAR_VERTICAL", options=options
+            chart_type="BAR",
+            options={**options, "allow_multi_series": true},
+            options=options,
         )
-        chart = CombinedChart(chart_details, test_data)
+        chart = UnifiedChart(chart_details, test_data)
         result = chart.create_chart()
 
         series = result.options.get("series")
@@ -149,9 +155,11 @@ class TestGroupedBarChart(unittest.TestCase):
             "group_column": self.group_field,
         }
         chart_details = MockResourceChartDetails(
-            chart_type="GROUPED_BAR_VERTICAL", options=options
+            chart_type="BAR",
+            options={**options, "allow_multi_series": true},
+            options=options,
         )
-        chart = CombinedChart(chart_details, self.test_data)
+        chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
 
         x_axis = result.options.get("xAxis")[0]
@@ -181,9 +189,11 @@ class TestGroupedBarChart(unittest.TestCase):
             "group_column": self.group_field,
         }
         chart_details = MockResourceChartDetails(
-            chart_type="GROUPED_BAR_VERTICAL", options=options
+            chart_type="BAR",
+            options={**options, "allow_multi_series": true},
+            options=options,
         )
-        chart = CombinedChart(chart_details, test_data)
+        chart = UnifiedChart(chart_details, test_data)
         result = chart.create_chart()
 
         series = result.options.get("series")

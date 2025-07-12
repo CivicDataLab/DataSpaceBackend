@@ -18,7 +18,7 @@ logger = structlog.get_logger("dataspace.charts")
 
 @register_chart("BAR")
 @register_chart("LINE")
-class CombinedChart(BaseChart):
+class UnifiedChart(BaseChart):
     """
     Chart class for creating bar and line visualizations.
     This class automatically handles all bar and line chart types including:
