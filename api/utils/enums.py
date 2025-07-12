@@ -118,13 +118,6 @@ class ChartTypes(models.TextChoices):
     LINE = "LINE"
     BIG_NUMBER = "BIG_NUMBER"
 
-    # Legacy chart types (kept for backward compatibility)
-    BAR_VERTICAL = "BAR_VERTICAL"
-    BAR_HORIZONTAL = "BAR_HORIZONTAL"
-    GROUPED_BAR_VERTICAL = "GROUPED_BAR_VERTICAL"
-    GROUPED_BAR_HORIZONTAL = "GROUPED_BAR_HORIZONTAL"
-    MULTILINE = "MULTILINE"
-
     # Map and other specialized charts
     ASSAM_DISTRICT = "ASSAM_DISTRICT"
     ASSAM_RC = "ASSAM_RC"

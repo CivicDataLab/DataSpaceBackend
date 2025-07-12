@@ -23,7 +23,7 @@ class ResourceChartDetails(models.Model):
     chart_type = models.CharField(
         max_length=50,
         choices=ChartTypes.choices,
-        default=ChartTypes.BAR_HORIZONTAL,
+        default=ChartTypes.BAR,
         blank=False,
         unique=False,
     )
