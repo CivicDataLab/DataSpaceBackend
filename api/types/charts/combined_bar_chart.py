@@ -20,8 +20,13 @@ logger = structlog.get_logger("dataspace.charts")
 @register_chart("LINE")
 class CombinedChart(BaseChart):
     """
-    Unified chart class for creating bar and line visualizations.
-    This class automatically handles grouped bars and multiline charts based on the number of y-axis columns.
+    Chart class for creating bar and line visualizations.
+    This class automatically handles all bar and line chart types including:
+    - Single bar charts (vertical/horizontal)
+    - Grouped bar charts (vertical/horizontal)
+    - Line charts (single/multi-series)
+
+    Chart behavior is determined by the chart_type and options like 'orientation', 'allow_multi_series', and 'stacked'.
     """
 
     def create_chart(self) -> Optional[Chart]:
