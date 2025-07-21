@@ -166,8 +166,8 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
         ]
 
         aggregations = {
-            "tags.raw": "tags.raw",
-            "sectors.raw": "sectors.raw",
+            "tags": "tags.raw",
+            "sectors": "sectors.raw",
             "status": "status",
             "running_status": "running_status",
             "is_individual_usecase": "is_individual_usecase",
