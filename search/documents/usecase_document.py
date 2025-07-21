@@ -76,14 +76,18 @@ class UseCaseDocument(Document):
 
     organization = fields.NestedField(
         properties={
-            "name": fields.TextField(analyzer=ngram_analyser),
+            "name": fields.TextField(
+                analyzer=ngram_analyser, fields={"raw": fields.KeywordField()}
+            ),
             "logo": fields.TextField(analyzer=ngram_analyser),
         }
     )
 
     user = fields.NestedField(
         properties={
-            "name": fields.TextField(analyzer=ngram_analyser),
+            "name": fields.TextField(
+                analyzer=ngram_analyser, fields={"raw": fields.KeywordField()}
+            ),
             "bio": fields.TextField(analyzer=html_strip),
             "profile_picture": fields.TextField(analyzer=ngram_analyser),
         }
@@ -91,7 +95,9 @@ class UseCaseDocument(Document):
 
     contributors = fields.NestedField(
         properties={
-            "name": fields.TextField(analyzer=ngram_analyser),
+            "name": fields.TextField(
+                analyzer=ngram_analyser, fields={"raw": fields.KeywordField()}
+            ),
             "bio": fields.TextField(analyzer=html_strip),
             "profile_picture": fields.TextField(analyzer=ngram_analyser),
         }
@@ -99,7 +105,9 @@ class UseCaseDocument(Document):
 
     organizations = fields.NestedField(
         properties={
-            "name": fields.TextField(analyzer=ngram_analyser),
+            "name": fields.TextField(
+                analyzer=ngram_analyser, fields={"raw": fields.KeywordField()}
+            ),
             "logo": fields.TextField(analyzer=ngram_analyser),
             "relationship_type": fields.KeywordField(),
         }
