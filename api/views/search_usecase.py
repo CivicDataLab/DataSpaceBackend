@@ -68,8 +68,8 @@ class UseCaseDocumentSerializer(serializers.ModelSerializer):
     website = serializers.CharField(required=False, allow_blank=True)
     contact_email = serializers.EmailField(required=False, allow_blank=True)
     platform_url = serializers.CharField(required=False, allow_blank=True)
-    started_on = serializers.DateField(required=False, allow_null=True)
-    completed_on = serializers.DateField(required=False, allow_null=True)
+    started_on = serializers.DateTimeField(required=False, allow_null=True)
+    completed_on = serializers.DateTimeField(required=False, allow_null=True)
 
     class OrganizationSerializer(serializers.Serializer):
         name = serializers.CharField()
