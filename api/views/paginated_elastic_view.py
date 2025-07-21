@@ -97,23 +97,49 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                     aggregations[label] = {}
                 aggregations[label][value] = agg["doc_count"]
 
-            sectors_agg = aggregations["sectors"]["buckets"]
-            aggregations.pop("sectors")
-            aggregations["sectors"] = {}
-            for agg in sectors_agg:
-                aggregations["sectors"][agg["key"]] = agg["doc_count"]
+            if "sectors" in aggregations:
+                sectors_agg = aggregations["sectors"]["buckets"]
+                aggregations.pop("sectors")
+                aggregations["sectors"] = {}
+                for agg in sectors_agg:
+                    aggregations["sectors"][agg["key"]] = agg["doc_count"]
 
-            tags_agg = aggregations["tags"]["buckets"]
-            aggregations.pop("tags")
-            aggregations["tags"] = {}
-            for agg in tags_agg:
-                aggregations["tags"][agg["key"]] = agg["doc_count"]
+            if "tags" in aggregations:
+                tags_agg = aggregations["tags"]["buckets"]
+                aggregations.pop("tags")
+                aggregations["tags"] = {}
+                for agg in tags_agg:
+                    aggregations["tags"][agg["key"]] = agg["doc_count"]
 
-            formats_agg = aggregations["formats"]["buckets"]
-            aggregations.pop("formats")
-            aggregations["formats"] = {}
-            for agg in formats_agg:
-                aggregations["formats"][agg["key"]] = agg["doc_count"]
+            if "formats" in aggregations:
+                formats_agg = aggregations["formats"]["buckets"]
+                aggregations.pop("formats")
+                aggregations["formats"] = {}
+                for agg in formats_agg:
+                    aggregations["formats"][agg["key"]] = agg["doc_count"]
+
+            if "status" in aggregations:
+                status_agg = aggregations["status"]["buckets"]
+                aggregations.pop("status")
+                aggregations["status"] = {}
+                for agg in status_agg:
+                    aggregations["status"][agg["key"]] = agg["doc_count"]
+
+            if "running_status" in aggregations:
+                running_status_agg = aggregations["running_status"]["buckets"]
+                aggregations.pop("running_status")
+                aggregations["running_status"] = {}
+                for agg in running_status_agg:
+                    aggregations["running_status"][agg["key"]] = agg["doc_count"]
+
+            if "is_individual_usecase" in aggregations:
+                is_individual_usecase_agg = aggregations["is_individual_usecase"][
+                    "buckets"
+                ]
+                aggregations.pop("is_individual_usecase")
+                aggregations["is_individual_usecase"] = {}
+                for agg in is_individual_usecase_agg:
+                    aggregations["is_individual_usecase"][agg["key"]] = agg["doc_count"]
 
             result: Dict[str, Any] = {
                 "results": serializer.data,
