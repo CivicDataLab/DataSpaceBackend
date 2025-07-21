@@ -61,7 +61,8 @@ class UseCaseDocumentSerializer(serializers.ModelSerializer):
 
     metadata = UseCaseMetadataSerializer(many=True)
     tags = serializers.ListField()
-    sectors = serializers.ListField()
+    logo = serializers.CharField()
+    sectors = serializers.ListField(default=[])
     slug = serializers.CharField()
     is_individual_usecase = serializers.BooleanField()
     running_status = serializers.CharField()
@@ -114,6 +115,7 @@ class UseCaseDocumentSerializer(serializers.ModelSerializer):
             "running_status",
             "metadata",
             "tags",
+            "logo",
             "sectors",
             "is_individual_usecase",
             "organization",
@@ -171,8 +173,8 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
             "status": "status",
             "running_status": "running_status",
             "is_individual_usecase": "is_individual_usecase",
-            "user.name": "user.name.raw",
-            "organization.name": "organization.name.raw",
+            "user": "user.name.raw",
+            "organization": "organization.name.raw",
         }
 
         # Add filterable metadata to aggregations

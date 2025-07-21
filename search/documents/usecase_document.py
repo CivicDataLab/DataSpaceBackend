@@ -48,6 +48,8 @@ class UseCaseDocument(Document):
         },
     )
 
+    logo = fields.TextField(analyzer=ngram_analyser)
+
     status = fields.KeywordField()
 
     running_status = fields.KeywordField()
