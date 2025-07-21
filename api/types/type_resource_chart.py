@@ -120,6 +120,29 @@ class ChartOptionsType(BaseType):
     label_font_size: Optional[int]
     background_color: Optional[str]
 
+    # Enhanced Map Chart specific options
+    # Common map options
+    base_map: Optional[str]
+    series_name: Optional[str]
+    name_field: Optional[TypeResourceSchema]
+    width: Optional[str]
+    height: Optional[str]
+    roam: Optional[bool]
+    zoom: Optional[float]
+    center: Optional[List[float]]
+    show_toolbox: Optional[bool]
+
+    # Polygon Map Chart options
+    polygon_field: Optional[TypeResourceSchema]
+
+    # Point Map Chart options
+    lat_field: Optional[TypeResourceSchema]
+    lng_field: Optional[TypeResourceSchema]
+    point_size: Optional[int]
+
+    # Geospatial Map Chart options
+    geospatial_field: Optional[TypeResourceSchema]
+
 
 class ChartOptionsTypeDict(TypedDict, total=False):
     """Type for chart options dictionary."""
@@ -256,6 +279,47 @@ class TypeResourceChart(BaseType):
                 value_font_size=options_dict.get("value_font_size"),
                 label_font_size=options_dict.get("label_font_size"),
                 background_color=options_dict.get("background_color"),
+                # Enhanced Map Chart specific options
+                # Common map options
+                base_map=options_dict.get("base_map"),
+                series_name=options_dict.get("series_name"),
+                name_field=(
+                    ensure_type(options_dict.get("name_field"), TypeResourceSchema)
+                    if options_dict.get("name_field")
+                    else None
+                ),
+                width=options_dict.get("width"),
+                height=options_dict.get("height"),
+                roam=options_dict.get("roam"),
+                zoom=options_dict.get("zoom"),
+                center=options_dict.get("center"),
+                show_toolbox=options_dict.get("show_toolbox"),
+                # Polygon Map Chart options
+                polygon_field=(
+                    ensure_type(options_dict.get("polygon_field"), TypeResourceSchema)
+                    if options_dict.get("polygon_field")
+                    else None
+                ),
+                # Point Map Chart options
+                lat_field=(
+                    ensure_type(options_dict.get("lat_field"), TypeResourceSchema)
+                    if options_dict.get("lat_field")
+                    else None
+                ),
+                lng_field=(
+                    ensure_type(options_dict.get("lng_field"), TypeResourceSchema)
+                    if options_dict.get("lng_field")
+                    else None
+                ),
+                point_size=options_dict.get("point_size"),
+                # Geospatial Map Chart options
+                geospatial_field=(
+                    ensure_type(
+                        options_dict.get("geospatial_field"), TypeResourceSchema
+                    )
+                    if options_dict.get("geospatial_field")
+                    else None
+                ),
             )
         except (AttributeError, KeyError):
             return None

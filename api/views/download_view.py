@@ -134,7 +134,6 @@ async def download(request: HttpRequest, type: str, id: uuid.UUID) -> HttpRespon
                 # Fetch the chart asynchronously
                 resource_chart = await get_resource_chart(id)
 
-                # Assuming generate_chart is an async function
                 response = await generate_chart(resource_chart)
                 response["Content-Disposition"] = 'attachment; filename="chart.png"'
                 return response

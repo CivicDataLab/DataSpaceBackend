@@ -123,6 +123,11 @@ class ChartTypes(models.TextChoices):
     ASSAM_RC = "ASSAM_RC"
     TREEMAP = "TREEMAP"
 
+    # Enhanced map chart types
+    POLYGON_MAP = "POLYGON_MAP"
+    POINT_MAP = "POINT_MAP"
+    GEOSPATIAL_MAP = "GEOSPATIAL_MAP"
+
 
 class ChartStatus(models.TextChoices):
     DRAFT = "DRAFT"

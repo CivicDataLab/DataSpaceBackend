@@ -39,6 +39,9 @@ CHART_TYPE_MAP = {
     "LINE": Line,
     "ASSAM_DISTRICT": Map,
     "ASSAM_RC": Map,
+    "POLYGON_MAP": Map,
+    "POINT_MAP": Map,
+    "GEOSPATIAL_MAP": Map,
     "TREEMAP": TreeMap,
     "BAR": Bar,
 }

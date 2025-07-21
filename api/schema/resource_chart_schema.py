@@ -92,6 +92,29 @@ class ChartOptions:
     label_font_size: Optional[int] = None
     background_color: Optional[str] = None
 
+    # Enhanced Map Chart specific options
+    # Common map options
+    base_map: Optional[str] = None
+    series_name: Optional[str] = None
+    name_field: Optional[str] = None
+    width: Optional[str] = None
+    height: Optional[str] = None
+    roam: Optional[bool] = None
+    zoom: Optional[float] = None
+    center: Optional[List[float]] = None
+    show_toolbox: Optional[bool] = None
+
+    # Polygon Map Chart options
+    polygon_field: Optional[str] = None
+
+    # Point Map Chart options
+    lat_field: Optional[str] = None
+    lng_field: Optional[str] = None
+    point_size: Optional[int] = None
+
+    # Geospatial Map Chart options
+    geospatial_field: Optional[str] = None
+
 
 @strawberry.input
 class YAxisColumnInput:
@@ -152,6 +175,11 @@ def _update_chart_fields(
                     "region_column",
                     "value_column",
                     "time_column",
+                    "name_field",
+                    "polygon_field",
+                    "lat_field",
+                    "lng_field",
+                    "geospatial_field",
                 ]:
                     if value:  # Only process if value is not empty
                         field = ResourceSchema.objects.get(id=value)
