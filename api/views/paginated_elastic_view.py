@@ -141,20 +141,6 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                 for agg in is_individual_usecase_agg:
                     aggregations["is_individual_usecase"][agg["key"]] = agg["doc_count"]
 
-            if "organization" in aggregations:
-                organization_agg = aggregations["organization"]["buckets"]
-                aggregations.pop("organization")
-                aggregations["organization"] = {}
-                for agg in organization_agg:
-                    aggregations["organization"][agg["key"]] = agg["doc_count"]
-
-            if "user" in aggregations:
-                user_agg = aggregations["user"]["buckets"]
-                aggregations.pop("user")
-                aggregations["user"] = {}
-                for agg in user_agg:
-                    aggregations["user"][agg["key"]] = agg["doc_count"]
-
             result: Dict[str, Any] = {
                 "results": serializer.data,
                 "total": response.hits.total.value,  # type: ignore

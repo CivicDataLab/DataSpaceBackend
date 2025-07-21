@@ -161,7 +161,6 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
             "user.name",
             "organization.name",
             "contributors.name",
-            "organizations.name",
             "datasets.title",
             "datasets.description",
             "metadata.value",
@@ -172,9 +171,6 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
             "sectors": "sectors.raw",
             "status": "status",
             "running_status": "running_status",
-            "is_individual_usecase": "is_individual_usecase",
-            "user": "user.name.raw",
-            "organization": "organization.name.raw",
         }
 
         # Add filterable metadata to aggregations
