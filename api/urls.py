@@ -11,6 +11,7 @@ from api.views import (
     download,
     generate_dynamic_chart,
     search_dataset,
+    search_usecase,
     trending_datasets,
 )
 from api.views.activity import (
@@ -32,6 +33,9 @@ urlpatterns = [
     # API endpoints
     path(
         "search/dataset/", search_dataset.SearchDataset.as_view(), name="search_dataset"
+    ),
+    path(
+        "search/usecase/", search_usecase.SearchUseCase.as_view(), name="search_usecase"
     ),
     path(
         "trending/datasets/",
