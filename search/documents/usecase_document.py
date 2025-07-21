@@ -48,7 +48,7 @@ class UseCaseDocument(Document):
         },
     )
 
-    logo_url = fields.TextField(analyzer=ngram_analyser)
+    logo = fields.TextField(analyzer=ngram_analyser)
 
     status = fields.KeywordField()
 
@@ -207,10 +207,10 @@ class UseCaseDocument(Document):
             )
         return organizations_data
 
-    def prepare_logo_url(self, instance: UseCase) -> str:
+    def prepare_logo(self, instance: UseCase) -> str:
         """Prepare logo URL for indexing."""
         if instance.logo:
-            return str(instance.logo.path)
+            return str(instance.logo.path.replace("/code/files/", ""))
         return ""
 
     def should_index_object(self, obj: UseCase) -> bool:
