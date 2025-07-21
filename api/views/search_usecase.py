@@ -223,8 +223,12 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
             composite_agg = A(
                 "composite",
                 sources=[
-                    {"label": {"terms": {"field": "metadata.metadata_item.label"}}},
-                    {"value": {"terms": {"field": "metadata.value"}}},
+                    {
+                        "metadata_label": {
+                            "terms": {"field": "metadata.metadata_item.label"}
+                        }
+                    },
+                    {"metadata_value": {"terms": {"field": "metadata.value"}}},
                 ],
                 size=10000,
             )
