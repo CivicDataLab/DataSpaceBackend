@@ -73,7 +73,7 @@ class UseCase(models.Model):
 
     @property
     def tags_indexing(self):
-        return self.tags.values_list("name", flat=True)
+        return self.tags.values_list("value", flat=True)
 
     class Meta:
         db_table = "use_case"
