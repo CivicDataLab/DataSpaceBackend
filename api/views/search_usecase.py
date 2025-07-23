@@ -307,9 +307,8 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
             elif filter in ["tags", "sectors"]:
                 raw_filter = filter + ".raw"
                 if raw_filter in self.aggregations:
-                    search = search.filter(
-                        "terms", **{raw_filter: filters[filter].split(",")}
-                    )
+                    filter_values = filters[filter].split(",")
+                    search = search.filter("terms", **{raw_filter: filter_values})
                 else:
                     search = search.filter("term", **{filter: filters[filter]})
             elif filter in ["status", "running_status", "is_individual_usecase"]:

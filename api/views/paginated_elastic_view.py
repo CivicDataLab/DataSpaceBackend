@@ -76,8 +76,9 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                         # Multiple values: join with comma for OR filtering
                         filters[key] = ",".join(values)
                     else:
-                        # Single value
-                        filters[key] = values[0]
+                        # Single value - but check if it's already comma-separated
+                        single_value = values[0]
+                        filters[key] = single_value
 
             q = self.generate_q_expression(query)
             search = self.get_search().query(q)
