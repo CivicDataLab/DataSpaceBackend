@@ -68,12 +68,16 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
             size: int = int(request.GET.get("size", 10))
             sort: str = request.GET.get("sort", "alphabetical")
             order: str = request.GET.get("order", "asc")
-            filters: Dict[str, Any] = request.GET.dict()
-            filters.pop("query", None)
-            filters.pop("page", None)
-            filters.pop("size", None)
-            filters.pop("sort", None)
-            filters.pop("order", None)
+            # Handle multiple values for the same filter parameter
+            filters: Dict[str, Any] = {}
+            for key, values in request.GET.lists():
+                if key not in ["query", "page", "size", "sort", "order"]:
+                    if len(values) > 1:
+                        # Multiple values: join with comma for OR filtering
+                        filters[key] = ",".join(values)
+                    else:
+                        # Single value
+                        filters[key] = values[0]
 
             q = self.generate_q_expression(query)
             search = self.get_search().query(q)
