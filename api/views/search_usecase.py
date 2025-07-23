@@ -183,41 +183,23 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
     @trace_method(name="add_aggregations", attributes={"component": "search_usecase"})
     def add_aggregations(self, search: Search) -> Search:
         """Add aggregations to the search query for metadata value and label using composite aggregation."""
-        filterable_metadata = Metadata.objects.filter(filterable=True).all()
-        filterable_metadata_labels: List[str] = [
-            metadata.label for metadata in filterable_metadata  # type: ignore
-        ]
+        aggregate_fields: List[str] = []
+        for aggregation_field in self.aggregations:
+            if aggregation_field.startswith("metadata."):
+                field_name = aggregation_field.split(".")[1]
+                aggregate_fields.append(field_name)
+            else:
+                search.aggs.bucket(
+                    aggregation_field.replace(".raw", ""),
+                    self.aggregations[aggregation_field],
+                    field=aggregation_field,
+                )
 
-        for field, aggregation_field in self.aggregations.items():
-            if field not in filterable_metadata_labels:
-                if (
-                    field.startswith("user.")
-                    or field.startswith("organization.")
-                    or field.startswith("contributors.")
-                    or field.startswith("organizations.")
-                ):
-                    search.aggs.bucket(
-                        field,
-                        A(
-                            "nested",
-                            path=field.split(".")[0],
-                            aggs={
-                                "nested_agg": A(
-                                    "terms", field=aggregation_field, size=100
-                                )
-                            },
-                        ),
-                    )
-                else:
-                    search.aggs.bucket(
-                        field, A("terms", field=aggregation_field, size=100)
-                    )
+        if aggregate_fields:
+            metadata_qs = Metadata.objects.filter(filterable=True)
+            filterable_metadata = [str(meta.label) for meta in metadata_qs]  # type: ignore
 
-        # Add metadata aggregations using composite aggregation
-        if filterable_metadata_labels:
-            metadata_bucket = search.aggs.bucket(
-                "metadata", A("nested", path="metadata")
-            )
+            metadata_bucket = search.aggs.bucket("metadata", "nested", path="metadata")
             composite_agg = A(
                 "composite",
                 sources=[
@@ -237,7 +219,7 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
                         "must": [
                             {
                                 "terms": {
-                                    "metadata.metadata_item.label": filterable_metadata_labels
+                                    "metadata.metadata_item.label": filterable_metadata
                                 }
                             }
                         ]
