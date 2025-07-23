@@ -67,5 +67,13 @@ class UseCase(models.Model):
     def is_individual_usecase(self):
         return self.organization is None
 
+    @property
+    def sectors_indexing(self):
+        return self.sectors.values_list("name", flat=True)
+
+    @property
+    def tags_indexing(self):
+        return self.tags.values_list("name", flat=True)
+
     class Meta:
         db_table = "use_case"
