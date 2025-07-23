@@ -69,11 +69,11 @@ class UseCase(models.Model):
 
     @property
     def sectors_indexing(self):
-        return self.sectors.values_list("name", flat=True)
+        return [sector.name for sector in self.sectors.all()]  # type: ignore
 
     @property
     def tags_indexing(self):
-        return self.tags.values_list("value", flat=True)
+        return [tag.value for tag in self.tags.all()]  # type: ignore
 
     class Meta:
         db_table = "use_case"
