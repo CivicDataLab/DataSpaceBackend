@@ -97,14 +97,28 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                     aggregations[label] = {}
                 aggregations[label][value] = agg["doc_count"]
 
-            if "sectors" in aggregations:
+            # Handle sectors aggregation (now comes as "sectors.raw")
+            if "sectors.raw" in aggregations:
+                sectors_agg = aggregations["sectors.raw"]["buckets"]
+                aggregations.pop("sectors.raw")
+                aggregations["sectors"] = {}
+                for agg in sectors_agg:
+                    aggregations["sectors"][agg["key"]] = agg["doc_count"]
+            elif "sectors" in aggregations:
                 sectors_agg = aggregations["sectors"]["buckets"]
                 aggregations.pop("sectors")
                 aggregations["sectors"] = {}
                 for agg in sectors_agg:
                     aggregations["sectors"][agg["key"]] = agg["doc_count"]
 
-            if "tags" in aggregations:
+            # Handle tags aggregation (now comes as "tags.raw")
+            if "tags.raw" in aggregations:
+                tags_agg = aggregations["tags.raw"]["buckets"]
+                aggregations.pop("tags.raw")
+                aggregations["tags"] = {}
+                for agg in tags_agg:
+                    aggregations["tags"][agg["key"]] = agg["doc_count"]
+            elif "tags" in aggregations:
                 tags_agg = aggregations["tags"]["buckets"]
                 aggregations.pop("tags")
                 aggregations["tags"] = {}

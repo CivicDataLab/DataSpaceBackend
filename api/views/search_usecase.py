@@ -166,17 +166,17 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
             "metadata.value",
         ]
 
-        aggregations = {
-            "tags": "tags.raw",
-            "sectors": "sectors.raw",
-            "status": "status",
-            "running_status": "running_status",
+        aggregations: Dict[str, str] = {
+            "tags.raw": "terms",
+            "sectors.raw": "terms",
+            "status": "terms",
+            "running_status": "terms",
         }
 
         # Add filterable metadata to aggregations
         filterable_metadata = Metadata.objects.filter(filterable=True).all()
         for metadata in filterable_metadata:
-            aggregations[metadata.label] = "metadata.value"  # type: ignore
+            aggregations[f"metadata.{metadata.label}"] = "terms"  # type: ignore
 
         return searchable_fields, aggregations
 
