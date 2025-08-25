@@ -78,9 +78,9 @@ class Mutation:
         if input.profile_picture is not None:
             user.profile_picture = input.profile_picture
 
-        # Validate the user data
+        # Validate the user data (exclude password field for profile updates)
         try:
-            user.full_clean()
+            user.full_clean(exclude=["password"])
         except ValidationError as e:
             raise DjangoValidationError(str(e))
 
