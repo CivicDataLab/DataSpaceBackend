@@ -66,3 +66,12 @@ def _organization_file_directory_path(org: Any, filename: str) -> str:
     org_name = org.name
     _, extension = os.path.splitext(filename)
     return f"files/resources/{org_name}/sample_data/{extension[1:]}/{filename}"
+
+
+def _catalog_directory_path(catalog: Any, filename: str) -> str:
+    """
+    Create a directory path to upload the catalog logo
+    """
+    catalog_name = catalog.name
+    _, extension = os.path.splitext(filename)
+    return f"files/catalog/{catalog_name}/{extension[1:]}/{filename}"
