@@ -44,6 +44,7 @@ CHART_TYPE_MAP = {
     "GEOSPATIAL_MAP": Map,
     "TREEMAP": TreeMap,
     "BAR": Bar,
+    "BIG_NUMBER": Bar,
 }
 
 
