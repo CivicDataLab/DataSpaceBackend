@@ -21,6 +21,8 @@ class StatsType:
     total_published_datasets: int
     total_publishers: int
     total_published_usecases: int
+    total_organizations: int
+    total_individuals: int
 
 
 @strawberry.type
@@ -67,5 +69,7 @@ class Query:
             total_users=total_users,
             total_published_datasets=total_published_datasets,
             total_publishers=total_publishers,
+            total_organizations=org_publishers,
+            total_individuals=individual_publishers,
             total_published_usecases=total_published_usecases,
         )
