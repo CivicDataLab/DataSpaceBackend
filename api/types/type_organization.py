@@ -7,6 +7,7 @@ from strawberry import Info, auto
 
 from api.models import Organization
 from api.types.base_type import BaseType
+from authorization.types import TypeOrganizationMembership
 
 
 @strawberry_django.filter(Organization)
@@ -119,3 +120,18 @@ class TypeOrganization(BaseType):
             return OrganizationMembership.objects.filter(organization_id=org_id).count()  # type: ignore
         except Exception:
             return 0
+
+    @strawberry.field(description="Members in this organization")
+    def members(self, info: Info) -> List[TypeOrganizationMembership]:
+        """Get members in this organization."""
+        try:
+            from authorization.models import OrganizationMembership
+
+            org_id = getattr(self, "id", None)
+            if not org_id:
+                return []
+
+            queryset = OrganizationMembership.objects.filter(organization_id=org_id)
+            return TypeOrganizationMembership.from_django_list(queryset)
+        except Exception:
+            return []
