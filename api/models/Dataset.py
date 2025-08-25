@@ -107,6 +107,14 @@ class Dataset(models.Model):
         )
 
     @property
+    def catalogs_indexing(self) -> list[str]:
+        """Catalogs for indexing.
+
+        Used in Elasticsearch indexing.
+        """
+        return [catalog.name for catalog in self.catalogs.all()]  # type: ignore
+
+    @property
     def has_charts(self) -> bool:
         """Has charts or chart images.
 

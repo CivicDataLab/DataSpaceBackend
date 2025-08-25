@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 from django_elasticsearch_dsl import Document, Index, KeywordField, fields
 
 from api.models import (
+    Catalog,
     Dataset,
     DatasetMetadata,
     Metadata,
@@ -103,6 +104,16 @@ class DatasetDocument(Document):
         multi=True,
     )
 
+    catalogs = fields.TextField(
+        attr="catalogs_indexing",
+        analyzer=ngram_analyser,
+        fields={
+            "raw": fields.KeywordField(multi=True),
+            "suggest": fields.CompletionField(multi=True),
+        },
+        multi=True,
+    )
+
     is_individual_dataset = fields.BooleanField(attr="is_individual_dataset")
 
     has_charts = fields.BooleanField(attr="has_charts")
@@ -174,7 +185,7 @@ class DatasetDocument(Document):
     def get_instances_from_related(
         self,
         related_instance: Union[
-            Resource, Metadata, DatasetMetadata, Sector, Organization, User
+            Resource, Metadata, DatasetMetadata, Sector, Organization, User, Catalog
         ],
     ) -> Optional[Union[Dataset, List[Dataset]]]:
         """Get Dataset instances from related models."""
@@ -190,6 +201,8 @@ class DatasetDocument(Document):
         elif isinstance(related_instance, Organization):
             return list(related_instance.datasets.all())
         elif isinstance(related_instance, User):
+            return list(related_instance.datasets.all())
+        elif isinstance(related_instance, Catalog):
             return list(related_instance.datasets.all())
         return None
 
@@ -211,4 +224,5 @@ class DatasetDocument(Document):
             Sector,
             Organization,
             User,
+            Catalog,
         ]
