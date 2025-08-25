@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
 import strawberry
 import strawberry_django
@@ -7,7 +7,9 @@ from strawberry import Info, auto
 
 from api.models import Organization
 from api.types.base_type import BaseType
-from authorization.types import TypeOrganizationMembership
+
+if TYPE_CHECKING:
+    from authorization.types import TypeOrganizationMembership
 
 
 @strawberry_django.filter(Organization)
@@ -122,10 +124,11 @@ class TypeOrganization(BaseType):
             return 0
 
     @strawberry.field(description="Members in this organization")
-    def members(self, info: Info) -> List[TypeOrganizationMembership]:
+    def members(self, info: Info) -> List["TypeOrganizationMembership"]:
         """Get members in this organization."""
         try:
             from authorization.models import OrganizationMembership
+            from authorization.types import TypeOrganizationMembership
 
             org_id = getattr(self, "id", None)
             if not org_id:

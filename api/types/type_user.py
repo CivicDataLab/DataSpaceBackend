@@ -1,31 +1,14 @@
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import strawberry
 import strawberry_django
 from strawberry import auto
 
 from api.types.base_type import BaseType
-from api.types.type_organization import TypeOrganization
 from authorization.models import OrganizationMembership, Role, User
 
-
-@strawberry_django.type(Role, fields="__all__")
-class TypeRole(BaseType):
-    """Type for user role."""
-
-    id: auto
-    name: auto
-    description: auto
-
-
-@strawberry_django.type(OrganizationMembership)
-class TypeOrganizationMembership(BaseType):
-    """Type for organization membership."""
-
-    organization: TypeOrganization
-    role: TypeRole
-    created_at: auto
-    updated_at: auto
+if TYPE_CHECKING:
+    from authorization.types import TypeOrganizationMembership
 
 
 @strawberry_django.filter(User)
@@ -68,9 +51,11 @@ class TypeUser(BaseType):
     """Type for user."""
 
     @strawberry.field
-    def organization_memberships(self) -> List[TypeOrganizationMembership]:
+    def organization_memberships(self) -> List["TypeOrganizationMembership"]:
         """Get organization memberships for this user."""
         try:
+            from authorization.types import TypeOrganizationMembership
+
             user_id = str(getattr(self, "id", ""))
             queryset = OrganizationMembership.objects.filter(user_id=user_id)
             return TypeOrganizationMembership.from_django_list(queryset)
