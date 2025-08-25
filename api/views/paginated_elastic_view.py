@@ -95,6 +95,7 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                 "composite_agg"
             ]["buckets"]
             aggregations.pop("metadata")
+            aggregations.pop("catalogs")
             for agg in metadata_aggregations:
                 label: str = agg["key"]["metadata_label"]
                 value: str = agg["key"].get("metadata_value", "")
