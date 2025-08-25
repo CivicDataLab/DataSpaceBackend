@@ -1,4 +1,6 @@
-from typing import TYPE_CHECKING, List, Optional
+from __future__ import annotations
+
+from typing import List, Optional
 
 import strawberry
 import strawberry_django
@@ -6,9 +8,6 @@ from strawberry import auto
 
 from api.types.base_type import BaseType
 from authorization.models import OrganizationMembership, Role, User
-
-if TYPE_CHECKING:
-    from authorization.types import TypeOrganizationMembership
 
 
 @strawberry_django.filter(User)
@@ -75,3 +74,7 @@ class TypeUser(BaseType):
             return last_name
         else:
             return getattr(self, "username", "")
+
+
+# Import at the end to avoid circular imports but make it available for string resolution
+from authorization.types import TypeOrganizationMembership  # noqa: E402

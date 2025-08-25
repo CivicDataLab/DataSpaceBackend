@@ -1,4 +1,6 @@
-from typing import TYPE_CHECKING, Any, List, Optional
+from __future__ import annotations
+
+from typing import Any, List, Optional
 
 import strawberry
 import strawberry_django
@@ -7,9 +9,6 @@ from strawberry import Info, auto
 
 from api.models import Organization
 from api.types.base_type import BaseType
-
-if TYPE_CHECKING:
-    from authorization.types import TypeOrganizationMembership
 
 
 @strawberry_django.filter(Organization)
@@ -138,3 +137,7 @@ class TypeOrganization(BaseType):
             return TypeOrganizationMembership.from_django_list(queryset)
         except Exception:
             return []
+
+
+# Import at the end to avoid circular imports but make it available for string resolution
+from authorization.types import TypeOrganizationMembership  # noqa: E402
