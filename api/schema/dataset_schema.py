@@ -537,12 +537,10 @@ class Mutation:
             dataspace=dataspace,
             title=f"New dataset {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}",
             description="",
+            user=user,
             access_type=DatasetAccessType.PUBLIC,
             license=DatasetLicense.CC_BY_4_0_ATTRIBUTION,
         )
-        if not organization:
-            dataset.user = user
-            dataset.save()
         DatasetPermission.objects.create(
             user=user, dataset=dataset, role=Role.objects.get(name="owner")
         )
