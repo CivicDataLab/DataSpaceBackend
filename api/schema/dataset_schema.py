@@ -368,7 +368,7 @@ class Query:
                         queryset = Dataset.objects.none()
                 else:
                     # For non-organization authenticated users, only owned datasets
-                    queryset = Dataset.objects.filter(user=user)
+                    queryset = Dataset.objects.filter(user=user, organization=None)
             else:
                 # For non-authenticated users, return empty queryset
                 queryset = Dataset.objects.none()
