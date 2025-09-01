@@ -1,8 +1,8 @@
-# DataExchange Backend
+# DataSpace Backend
 
 ## Overview
 
-DataExchange is a platform for sharing and managing datasets. This repository contains the backend code for the DataExchange platform, built with Django and GraphQL.
+DataSpace is a platform for sharing and managing datasets. This repository contains the backend code for the DataSpace platform, built with Django and GraphQL.
 
 ## Key Features
 
@@ -35,8 +35,8 @@ For detailed information about the Keycloak integration, see the [Keycloak Integ
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/CivicDataLab/DataExBackend.git
-   cd DataExBackend
+   git clone https://github.com/CivicDataLab/DataSpaceBackend.git
+   cd DataSpaceBackend
    ```
 
 2. Create a virtual environment and install dependencies:
@@ -51,7 +51,7 @@ For detailed information about the Keycloak integration, see the [Keycloak Integ
    DEBUG=True
    SECRET_KEY=your-secret-key
    DB_ENGINE=django.db.backends.postgresql
-   DB_NAME=dataexchange
+   DB_NAME=dataspace
    DB_USER=postgres
    DB_PASSWORD=postgres
    DB_HOST=localhost
