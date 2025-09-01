@@ -1,5 +1,12 @@
 # DataSpace Backend
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Django](https://img.shields.io/badge/django-5.0+-green.svg)](https://djangoproject.com/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Issues](https://img.shields.io/github/issues/CivicDataLab/DataSpaceBackend)](https://github.com/CivicDataLab/DataSpaceBackend/issues)
+[![Contributors](https://img.shields.io/github/contributors/CivicDataLab/DataSpaceBackend)](https://github.com/CivicDataLab/DataSpaceBackend/graphs/contributors)
+
 ## Overview
 
 DataSpace is a platform for sharing and managing datasets. This repository contains the backend code for the DataSpace platform, built with Django and GraphQL.
