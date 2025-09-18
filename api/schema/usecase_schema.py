@@ -128,7 +128,6 @@ class Query:
 
     @strawberry_django.field(
         filters=UseCaseFilter,
-        pagination=True,
         order=UseCaseOrder,
     )
     @trace_resolver(name="get_published_use_cases", attributes={"component": "usecase"})
@@ -150,7 +149,6 @@ class Query:
 
         # Apply pagination
         if pagination is not strawberry.UNSET:
-            # Get the offset and limit from pagination
             offset = getattr(pagination, "offset", 0) or 0
             limit = getattr(pagination, "limit", None)
 
