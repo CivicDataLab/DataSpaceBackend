@@ -126,10 +126,7 @@ class Query:
 
         return TypeUseCase.from_django_list(queryset)
 
-    @strawberry_django.field(
-        filters=UseCaseFilter,
-        order=UseCaseOrder,
-    )
+    @strawberry_django.field
     @trace_resolver(name="get_published_use_cases", attributes={"component": "usecase"})
     def published_use_cases(
         self,
@@ -141,23 +138,28 @@ class Query:
         """Get published use cases."""
         queryset = UseCase.objects.filter(status=UseCaseStatus.PUBLISHED)
 
+        # Apply filters first
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
 
+        # Apply ordering
         if order is not strawberry.UNSET:
             queryset = strawberry_django.ordering.apply(order, queryset, info)
 
-        # Apply pagination
+        # Convert to list to avoid any slicing conflicts
+        results = list(queryset)
+
+        # Apply pagination on the list
         if pagination is not strawberry.UNSET:
             offset = getattr(pagination, "offset", 0) or 0
             limit = getattr(pagination, "limit", None)
 
             if limit is not None:
-                queryset = queryset[offset : offset + limit]
+                results = results[offset : offset + limit]
             elif offset > 0:
-                queryset = queryset[offset:]
+                results = results[offset:]
 
-        return TypeUseCase.from_django_list(queryset)
+        return TypeUseCase.from_django_list(results)
 
     @strawberry_django.field
     @trace_resolver(
