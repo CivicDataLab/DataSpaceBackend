@@ -150,7 +150,14 @@ class Query:
 
         # Apply pagination
         if pagination is not strawberry.UNSET:
-            queryset = strawberry_django.pagination.apply(pagination, queryset)
+            # Get the offset and limit from pagination
+            offset = getattr(pagination, "offset", 0) or 0
+            limit = getattr(pagination, "limit", None)
+
+            if limit is not None:
+                queryset = queryset[offset : offset + limit]
+            elif offset > 0:
+                queryset = queryset[offset:]
 
         return TypeUseCase.from_django_list(queryset)
 
