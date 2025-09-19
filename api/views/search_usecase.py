@@ -9,10 +9,10 @@ from elasticsearch_dsl.query import Query as ESQuery
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 
-from api.models import Dataset, DatasetMetadata, Metadata
+from api.models import Metadata, UseCase, UseCaseMetadata
 from api.utils.telemetry_utils import trace_method, track_metrics
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
-from search.documents import DatasetDocument
+from search.documents import UseCaseDocument
 
 logger = structlog.get_logger(__name__)
 
@@ -23,16 +23,16 @@ class MetadataSerializer(serializers.Serializer):
     label = serializers.CharField(allow_blank=True)  # type: ignore
 
 
-class DatasetMetadataSerializer(serializers.ModelSerializer):
-    """Serializer for DatasetMetadata model."""
+class UseCaseMetadataSerializer(serializers.ModelSerializer):
+    """Serializer for UseCaseMetadata model."""
 
     metadata_item = MetadataSerializer()
 
     class Meta:
-        model = DatasetMetadata
+        model = UseCaseMetadata
         fields = ["metadata_item", "value"]
 
-    def to_representation(self, instance: DatasetMetadata) -> Dict[str, Any]:
+    def to_representation(self, instance: UseCaseMetadata) -> Dict[str, Any]:
         representation = super().to_representation(instance)
 
         if isinstance(representation["value"], str):
@@ -56,19 +56,21 @@ class DatasetMetadataSerializer(serializers.ModelSerializer):
         return cast(Dict[str, Any], super().to_internal_value(data))
 
 
-class DatasetDocumentSerializer(serializers.ModelSerializer):
-    """Serializer for Dataset document."""
+class UseCaseDocumentSerializer(serializers.ModelSerializer):
+    """Serializer for UseCase document."""
 
-    metadata = DatasetMetadataSerializer(many=True)
+    metadata = UseCaseMetadataSerializer(many=True)
     tags = serializers.ListField()
-    sectors = serializers.ListField()
-    formats = serializers.ListField()
-    catalogs = serializers.ListField()
-    has_charts = serializers.BooleanField()
+    logo = serializers.CharField()
+    sectors = serializers.ListField(default=[])
     slug = serializers.CharField()
-    download_count = serializers.IntegerField()
-    trending_score = serializers.FloatField(required=False)
-    is_individual_dataset = serializers.BooleanField()
+    is_individual_usecase = serializers.BooleanField()
+    running_status = serializers.CharField()
+    website = serializers.CharField(required=False, allow_blank=True)
+    contact_email = serializers.EmailField(required=False, allow_blank=True)
+    platform_url = serializers.CharField(required=False, allow_blank=True)
+    started_on = serializers.DateTimeField(required=False, allow_null=True)
+    completed_on = serializers.DateTimeField(required=False, allow_null=True)
 
     class OrganizationSerializer(serializers.Serializer):
         name = serializers.CharField()
@@ -79,38 +81,61 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
         bio = serializers.CharField()
         profile_picture = serializers.CharField()
 
+    class ContributorSerializer(serializers.Serializer):
+        name = serializers.CharField()
+        bio = serializers.CharField()
+        profile_picture = serializers.CharField()
+
+    class RelatedOrganizationSerializer(serializers.Serializer):
+        name = serializers.CharField()
+        logo = serializers.CharField()
+        relationship_type = serializers.CharField()
+
+    class DatasetSerializer(serializers.Serializer):
+        title = serializers.CharField()
+        description = serializers.CharField()
+        slug = serializers.CharField()
+
     organization = OrganizationSerializer()
     user = UserSerializer()
+    contributors = ContributorSerializer(many=True)
+    organizations = RelatedOrganizationSerializer(many=True)
+    datasets = DatasetSerializer(many=True)
 
     class Meta:
-        model = Dataset
+        model = UseCase
         fields = [
             "id",
             "title",
-            "description",
+            "summary",
             "slug",
             "created",
             "modified",
             "status",
+            "running_status",
             "metadata",
             "tags",
+            "logo",
             "sectors",
-            "formats",
-            "catalogs",
-            "has_charts",
-            "download_count",
-            "trending_score",
-            "is_individual_dataset",
+            "is_individual_usecase",
             "organization",
             "user",
+            "contributors",
+            "organizations",
+            "datasets",
+            "website",
+            "contact_email",
+            "platform_url",
+            "started_on",
+            "completed_on",
         ]
 
 
-class SearchDataset(PaginatedElasticSearchAPIView):
-    """View for searching datasets."""
+class SearchUseCase(PaginatedElasticSearchAPIView):
+    """View for searching usecases."""
 
-    serializer_class = DatasetDocumentSerializer
-    document_class = DatasetDocument
+    serializer_class = UseCaseDocumentSerializer
+    document_class = UseCaseDocument
     permission_classes = [AllowAny]
 
     def __init__(self, **kwargs: Any) -> None:
@@ -124,34 +149,38 @@ class SearchDataset(PaginatedElasticSearchAPIView):
 
     @trace_method(
         name="get_searchable_and_aggregations",
-        attributes={"component": "search_dataset"},
+        attributes={"component": "search_usecase"},
     )
     def get_searchable_and_aggregations(self) -> Tuple[List[str], Dict[str, str]]:
         """Get searchable fields and aggregations for the search."""
-        enabled_metadata = Metadata.objects.filter(enabled=True).all()
-        searchable_fields: List[str] = []
-        searchable_fields.extend(
-            [
-                "tags",
-                "description",
-                "resources.description",
-                "resources.name",
-                "title",
-                "metadata.value",
-            ]
-        )
+        searchable_fields = [
+            "title",
+            "summary",
+            "tags",
+            "sectors",
+            "user.name",
+            "organization.name",
+            "contributors.name",
+            "datasets.title",
+            "datasets.description",
+            "metadata.value",
+        ]
+
         aggregations: Dict[str, str] = {
             "tags.raw": "terms",
             "sectors.raw": "terms",
-            "formats.raw": "terms",
-            "catalogs.raw": "terms",
+            "status": "terms",
+            "running_status": "terms",
         }
-        for metadata in enabled_metadata:  # type: Metadata
-            if metadata.filterable:
-                aggregations[f"metadata.{metadata.label}"] = "terms"
+
+        # Add filterable metadata to aggregations
+        filterable_metadata = Metadata.objects.filter(filterable=True).all()
+        for metadata in filterable_metadata:
+            aggregations[f"metadata.{metadata.label}"] = "terms"  # type: ignore
+
         return searchable_fields, aggregations
 
-    @trace_method(name="add_aggregations", attributes={"component": "search_dataset"})
+    @trace_method(name="add_aggregations", attributes={"component": "search_usecase"})
     def add_aggregations(self, search: Search) -> Search:
         """Add aggregations to the search query for metadata value and label using composite aggregation."""
         aggregate_fields: List[str] = []
@@ -171,17 +200,16 @@ class SearchDataset(PaginatedElasticSearchAPIView):
             filterable_metadata = [str(meta.label) for meta in metadata_qs]  # type: ignore
 
             metadata_bucket = search.aggs.bucket("metadata", "nested", path="metadata")
-            composite_sources = [
-                {
-                    "metadata_label": {
-                        "terms": {"field": "metadata.metadata_item.label"}
-                    }
-                },
-                {"metadata_value": {"terms": {"field": "metadata.value"}}},
-            ]
             composite_agg = A(
                 "composite",
-                sources=composite_sources,  # type: ignore[arg-type]
+                sources=[
+                    {
+                        "metadata_label": {
+                            "terms": {"field": "metadata.metadata_item.label"}
+                        }
+                    },
+                    {"metadata_value": {"terms": {"field": "metadata.value"}}},
+                ],
                 size=10000,
             )
             metadata_filter = A(
@@ -205,7 +233,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         return search
 
     @trace_method(
-        name="generate_q_expression", attributes={"component": "search_dataset"}
+        name="generate_q_expression", attributes={"component": "search_usecase"}
     )
     def generate_q_expression(
         self, query: str
@@ -214,13 +242,36 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         if query:
             queries: List[ESQuery] = []
             for field in self.searchable_fields:
-                if field.startswith("resources.name") or field.startswith(
-                    "resources.description"
-                ):
+                if field.startswith("datasets."):
                     queries.append(
                         ESQ(
                             "nested",
-                            path="resources",
+                            path="datasets",
+                            query=ESQ(
+                                "bool",
+                                should=[
+                                    ESQ("wildcard", **{field: {"value": f"*{query}*"}}),
+                                    ESQ(
+                                        "fuzzy",
+                                        **{
+                                            field: {"value": query, "fuzziness": "AUTO"}
+                                        },
+                                    ),
+                                ],
+                            ),
+                        )
+                    )
+                elif (
+                    field.startswith("user.")
+                    or field.startswith("organization.")
+                    or field.startswith("contributors.")
+                    or field.startswith("organizations.")
+                ):
+                    path = field.split(".")[0]
+                    queries.append(
+                        ESQ(
+                            "nested",
+                            path=path,
                             query=ESQ(
                                 "bool",
                                 should=[
@@ -244,7 +295,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
 
         return ESQ("bool", should=queries, minimum_should_match=1)
 
-    @trace_method(name="add_filters", attributes={"component": "search_dataset"})
+    @trace_method(name="add_filters", attributes={"component": "search_usecase"})
     def add_filters(self, filters: Dict[str, str], search: Search) -> Search:
         """Add filters to the search query."""
         non_filter_metadata = Metadata.objects.filter(filterable=False).all()
@@ -253,14 +304,24 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         for filter in filters:
             if filter in excluded_labels:
                 continue
-            elif filter in ["tags", "sectors", "formats", "catalogs"]:
+            elif filter in ["tags", "sectors"]:
                 raw_filter = filter + ".raw"
                 if raw_filter in self.aggregations:
                     filter_values = filters[filter].split(",")
                     search = search.filter("terms", **{raw_filter: filter_values})
                 else:
                     search = search.filter("term", **{filter: filters[filter]})
+            elif filter in ["status", "running_status", "is_individual_usecase"]:
+                search = search.filter("term", **{filter: filters[filter]})
+            elif filter in ["user.name", "organization.name"]:
+                path = filter.split(".")[0]
+                search = search.filter(
+                    "nested",
+                    path=path,
+                    query={"bool": {"must": {"term": {filter: filters[filter]}}}},
+                )
             else:
+                # Handle metadata filters
                 search = search.filter(
                     "nested",
                     path="metadata",
@@ -270,15 +331,15 @@ class SearchDataset(PaginatedElasticSearchAPIView):
                 )
         return search
 
-    @trace_method(name="add_sort", attributes={"component": "search_dataset"})
+    @trace_method(name="add_sort", attributes={"component": "search_usecase"})
     def add_sort(self, sort: str, search: Search, order: str) -> Search:
         """Add sorting to the search query."""
         if sort == "alphabetical":
             search = search.sort({"title.raw": {"order": order}})
         elif sort == "recent":
             search = search.sort({"modified": {"order": order}})
-        elif sort == "trending":
-            search = search.sort({"trending_score": {"order": order}})
-        elif sort == "popular":
-            search = search.sort({"download_count": {"order": order}})
+        elif sort == "started":
+            search = search.sort({"started_on": {"order": order}})
+        elif sort == "completed":
+            search = search.sort({"completed_on": {"order": order}})
         return search

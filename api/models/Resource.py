@@ -67,7 +67,7 @@ class ResourceFileDetails(models.Model):
     resource = models.OneToOneField(
         Resource, on_delete=models.CASCADE, null=False, blank=False
     )
-    file = models.FileField(upload_to="resources/")
+    file = models.FileField(upload_to="resources/", max_length=300)
     size = models.FloatField(blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
@@ -101,7 +101,10 @@ class ResourceDataTable(models.Model):
     def save(self, *args, **kwargs):
         if not self.table_name:
             # Generate a unique table name based on resource ID
-            self.table_name = f"{self.resource.name}-{self.resource.dataset.title}-{self.resource.id.hex}"
+            safe_name = slugify(self.resource.name)[:50]
+            safe_title = slugify(self.resource.dataset.title)[:50]
+            resource_id = self.resource.id.hex[:8]  # Use shorter ID
+            self.table_name = f"{safe_name}_{safe_title}_{resource_id}"
         super().save(*args, **kwargs)
 
 

@@ -4,6 +4,7 @@ from typing import List, Optional
 
 import strawberry
 import strawberry_django
+import structlog
 from django.db.models import Q
 from strawberry.types import Info
 
@@ -17,6 +18,8 @@ from api.utils.graphql_telemetry import trace_resolver
 from authorization.models import OrganizationMembership, User
 from authorization.permissions import IsAuthenticated, IsOrganizationMemberGraphQL
 from authorization.types import TypeUser
+
+logger = structlog.get_logger(__name__)
 
 
 @strawberry.type
@@ -41,7 +44,13 @@ class Query:
                 organization_id=organization_id, status=DatasetStatus.PUBLISHED.value
             )
             return TypeDataset.from_django_list(queryset)
-        except Exception:
+        except Dataset.DoesNotExist:
+            logger.warning(f"No datasets found for organization {organization_id}")
+            return []
+        except Exception as e:
+            logger.error(
+                f"Error fetching datasets for organization {organization_id}: {str(e)}"
+            )
             return []
 
     @strawberry_django.field
@@ -68,7 +77,13 @@ class Query:
                 status=UseCaseStatus.PUBLISHED.value,
             ).distinct()
             return TypeUseCase.from_django_list(queryset)
-        except Exception:
+        except UseCase.DoesNotExist:
+            logger.warning(f"No use cases found for organization {organization_id}")
+            return []
+        except Exception as e:
+            logger.error(
+                f"Error fetching use cases for organization {organization_id}: {str(e)}"
+            )
             return []
 
     @strawberry_django.field
@@ -106,7 +121,13 @@ class Query:
             # Get all sectors by their IDs
             queryset = Sector.objects.filter(id__in=sector_ids)
             return TypeSector.from_django_list(queryset)
-        except Exception:
+        except Sector.DoesNotExist:
+            logger.warning(f"No sectors found for organization {organization_id}")
+            return []
+        except Exception as e:
+            logger.error(
+                f"Error fetching sectors for organization {organization_id}: {str(e)}"
+            )
             return []
 
     @strawberry_django.field
@@ -126,5 +147,11 @@ class Query:
             ).values_list("user_id", flat=True)
             users = User.objects.filter(id__in=user_ids)
             return TypeUser.from_django_list(users)
-        except Exception:
+        except OrganizationMembership.DoesNotExist:
+            logger.warning(f"No members found for organization {organization_id}")
+            return []
+        except Exception as e:
+            logger.error(
+                f"Error fetching members for organization {organization_id}: {str(e)}"
+            )
             return []

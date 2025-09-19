@@ -32,7 +32,10 @@ environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-af%#657wf@f-hclfimni96qy07fyhjbglc!@^98jpn9z%#9b6%"
+SECRET_KEY = env(
+    "SECRET_KEY",
+    default="django-insecure-af%#657wf@f-hclfimni96qy07fyhjbglc!@^98jpn9z%#9b6%",
+)
 
 # load env and variables
 DB_ENGINE = env("DB_ENGINE", default="django.db.backends.sqlite3")
@@ -269,6 +272,7 @@ ELASTICSEARCH_DSL = {
 
 ELASTICSEARCH_INDEX_NAMES = {
     "search.documents.dataset_document": "dataset",
+    "search.documents.usecase_document": "usecase",
 }
 
 

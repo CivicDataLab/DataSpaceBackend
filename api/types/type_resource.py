@@ -141,33 +141,32 @@ class TypeResource(BaseType):
     @trace_resolver(
         name="get_resource_preview_data", attributes={"component": "resource"}
     )
-    def preview_data(self) -> Optional[PreviewData]:
+    def preview_data(self) -> PreviewData:
         """Get preview data for the resource.
 
         Returns:
-            Optional[PreviewData]: Preview data with columns and rows if successful, None otherwise
+            PreviewData: Preview data with columns and rows if successful, or an empty PreviewData object if not available
         """
         try:
-            # First check if this is a file resource that would have preview data
             file_details = getattr(self, "resourcefiledetails", None)
             if not file_details or not getattr(self, "preview_details", None):
-                return None
-
-            # Check if preview is enabled and if it's a CSV file
+                return PreviewData(columns=[], rows=[])
             if not getattr(
                 self, "preview_enabled", False
             ) or not file_details.format.lower() in ["csv", "xls", "xlsx"]:
-                return None
+                return PreviewData(columns=[], rows=[])
 
-            # Use a try-except with a timeout to prevent GraphQL query timeouts
             try:
-                return get_preview_data(self)  # type: ignore
+                result = get_preview_data(self)  # type: ignore
+                if result is None:
+                    return PreviewData(columns=[], rows=[])
+                return result
             except Exception as preview_error:
                 logger.error(f"Error in get_preview_data: {str(preview_error)}")
-                return None
+                return PreviewData(columns=[], rows=[])
         except Exception as e:
             logger.error(f"Error loading preview data: {str(e)}")
-            return None
+            return PreviewData(columns=[], rows=[])
 
     @strawberry.field
     @trace_resolver(
@@ -180,14 +179,12 @@ class TypeResource(BaseType):
             if not file_details:
                 return 0
 
-            # Only try to get row count for CSV files
             if (
                 not hasattr(file_details, "format")
                 or file_details.format.lower() != "csv"
             ):
                 return 0
 
-            # Use a try-except with a timeout to prevent GraphQL query timeouts
             try:
                 return get_row_count(self)  # type: ignore
             except Exception as row_count_error:

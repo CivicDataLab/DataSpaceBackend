@@ -116,18 +116,17 @@ class ChartTypes(models.TextChoices):
     # New simplified chart types
     BAR = "BAR"
     LINE = "LINE"
-
-    # Legacy chart types (kept for backward compatibility)
-    BAR_VERTICAL = "BAR_VERTICAL"
-    BAR_HORIZONTAL = "BAR_HORIZONTAL"
-    GROUPED_BAR_VERTICAL = "GROUPED_BAR_VERTICAL"
-    GROUPED_BAR_HORIZONTAL = "GROUPED_BAR_HORIZONTAL"
-    MULTILINE = "MULTILINE"
+    BIG_NUMBER = "BIG_NUMBER"
 
     # Map and other specialized charts
     ASSAM_DISTRICT = "ASSAM_DISTRICT"
     ASSAM_RC = "ASSAM_RC"
     TREEMAP = "TREEMAP"
+
+    # Enhanced map chart types
+    POLYGON_MAP = "POLYGON_MAP"
+    POINT_MAP = "POINT_MAP"
+    GEOSPATIAL_MAP = "GEOSPATIAL_MAP"
 
 
 class ChartStatus(models.TextChoices):

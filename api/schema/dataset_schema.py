@@ -250,9 +250,9 @@ class DSMetadataItemType:
 class UpdateMetadataInput:
     dataset: uuid.UUID
     metadata: List[DSMetadataItemType]
-    description: Optional[str]
-    tags: Optional[List[str]]
-    sectors: List[uuid.UUID]
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+    sectors: Optional[List[uuid.UUID]] = None
     access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
     license: Optional[DatasetLicenseENUM] = (
         DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
@@ -275,7 +275,7 @@ class UpdateDatasetInput:
 def _add_update_dataset_metadata(
     dataset: Dataset, metadata_input: List[DSMetadataItemType]
 ) -> None:
-    if not metadata_input or len(metadata_input) == 0:
+    if not metadata_input:
         return
     _delete_existing_metadata(dataset)
     for metadata_input_item in metadata_input:
@@ -357,10 +357,10 @@ class Query:
                     queryset = Dataset.objects.all()
                 elif organization:
                     # Check id user has access to organization
-                    org_member = OrganizationMembership.objects.filter(
+                    org_member = OrganizationMembership.objects.get(
                         user=user, organization=organization
-                    ).exists()
-                    if org_member and org_member.role.can_view:  # type: ignore
+                    )
+                    if org_member.exists() and org_member.role.can_view:  # type: ignore
                         # Show only datasets from current organization
                         queryset = Dataset.objects.filter(organization=organization)
                     else:
@@ -368,7 +368,7 @@ class Query:
                         queryset = Dataset.objects.none()
                 else:
                     # For non-organization authenticated users, only owned datasets
-                    queryset = Dataset.objects.filter(user=user)
+                    queryset = Dataset.objects.filter(user=user, organization=None)
             else:
                 # For non-authenticated users, return empty queryset
                 queryset = Dataset.objects.none()
@@ -537,12 +537,10 @@ class Mutation:
             dataspace=dataspace,
             title=f"New dataset {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}",
             description="",
+            user=user,
             access_type=DatasetAccessType.PUBLIC,
             license=DatasetLicense.CC_BY_4_0_ATTRIBUTION,
         )
-        if not organization:
-            dataset.user = user
-            dataset.save()
         DatasetPermission.objects.create(
             user=user, dataset=dataset, role=Role.objects.get(name="owner")
         )
@@ -595,7 +593,8 @@ class Mutation:
         if update_metadata_input.tags is not None:
             _update_dataset_tags(dataset, update_metadata_input.tags)
         _add_update_dataset_metadata(dataset, metadata_input)
-        _add_update_dataset_sectors(dataset, update_metadata_input.sectors)
+        if update_metadata_input.sectors is not None:
+            _add_update_dataset_sectors(dataset, update_metadata_input.sectors)
         return MutationResponse.success_response(TypeDataset.from_django(dataset))
 
     @strawberry_django.mutation(
@@ -638,9 +637,9 @@ class Mutation:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
         if dataset.status != DatasetStatus.DRAFT.value:
             raise ValueError(f"Dataset with ID {dataset_id} is not in draft status.")
-        if update_dataset_input.title.strip() == "":
-            raise ValueError("Title cannot be empty.")
         if update_dataset_input.title:
+            if update_dataset_input.title.strip() == "":
+                raise ValueError("Title cannot be empty.")
             dataset.title = update_dataset_input.title.strip()
         if update_dataset_input.description:
             dataset.description = update_dataset_input.description.strip()
@@ -711,7 +710,7 @@ class Mutation:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
         # TODO: validate dataset
-        dataset.status = DatasetStatus.DRAFT
+        dataset.status = DatasetStatus.DRAFT.value
         dataset.save()
         return TypeDataset.from_django(dataset)
 

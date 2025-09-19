@@ -120,26 +120,13 @@ class Query:
         if order is not strawberry.UNSET:
             queryset = strawberry_django.ordering.apply(order, queryset, info)
 
-        # First, evaluate the queryset to a list of Django model instances
-        use_case_instances = list(queryset)  # type: ignore
-
-        # Then apply pagination to the list
+        # Apply pagination
         if pagination is not strawberry.UNSET:
-            offset = pagination.offset if pagination.offset is not None else 0  # type: ignore
-            limit = pagination.limit  # type: ignore
+            queryset = strawberry_django.pagination.apply(pagination, queryset)
 
-            if limit is not None:
-                use_case_instances = use_case_instances[offset : offset + limit]
-            else:
-                use_case_instances = use_case_instances[offset:]
+        return TypeUseCase.from_django_list(queryset)
 
-        return [TypeUseCase.from_django(instance) for instance in use_case_instances]
-
-    @strawberry_django.field(
-        filters=UseCaseFilter,
-        pagination=True,
-        order=UseCaseOrder,
-    )
+    @strawberry_django.field
     @trace_resolver(name="get_published_use_cases", attributes={"component": "usecase"})
     def published_use_cases(
         self,
@@ -151,24 +138,28 @@ class Query:
         """Get published use cases."""
         queryset = UseCase.objects.filter(status=UseCaseStatus.PUBLISHED)
 
+        # Apply filters first
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
 
+        # Apply ordering
         if order is not strawberry.UNSET:
             queryset = strawberry_django.ordering.apply(order, queryset, info)
 
-        use_case_instances = list(queryset)  # type: ignore
+        # Convert to list to avoid any slicing conflicts
+        results = list(queryset)
 
+        # Apply pagination on the list
         if pagination is not strawberry.UNSET:
-            offset = pagination.offset if pagination.offset is not None else 0  # type: ignore
-            limit = pagination.limit  # type: ignore
+            offset = getattr(pagination, "offset", 0) or 0
+            limit = getattr(pagination, "limit", None)
 
             if limit is not None:
-                use_case_instances = use_case_instances[offset : offset + limit]
-            else:
-                use_case_instances = use_case_instances[offset:]
+                results = results[offset : offset + limit]
+            elif offset > 0:
+                results = results[offset:]
 
-        return [TypeUseCase.from_django(instance) for instance in use_case_instances]
+        return TypeUseCase.from_django_list(results)
 
     @strawberry_django.field
     @trace_resolver(
@@ -218,7 +209,7 @@ def _update_usecase_sectors(usecase: UseCase, sectors: List[uuid.UUID]) -> None:
 def _add_update_usecase_metadata(
     usecase: UseCase, metadata_input: List[UCMetadataItemType]
 ) -> None:
-    if not metadata_input or len(metadata_input) == 0:
+    if not metadata_input:
         return
     _delete_existing_metadata(usecase)
     for metadata_input_item in metadata_input:

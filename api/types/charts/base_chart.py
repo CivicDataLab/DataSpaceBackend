@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional, Protocol, Union, cast
 
+import numpy as np
 import pandas as pd
 import structlog
 from pyecharts import options as opts
@@ -35,17 +36,15 @@ class ChartOptions(Protocol):
 
 
 CHART_TYPE_MAP = {
-    "BAR_VERTICAL": Bar,
-    "BAR_HORIZONTAL": Bar,
-    "GROUPED_BAR_VERTICAL": Bar,
-    "GROUPED_BAR_HORIZONTAL": Bar,
     "LINE": Line,
     "ASSAM_DISTRICT": Map,
     "ASSAM_RC": Map,
-    "MULTILINE": Line,
+    "POLYGON_MAP": Map,
+    "POINT_MAP": Map,
+    "GEOSPATIAL_MAP": Map,
     "TREEMAP": TreeMap,
     "BAR": Bar,
-    "LINE": Line,
+    "BIG_NUMBER": Bar,
 }
 
 
@@ -86,6 +85,59 @@ class BaseChart:
 
             # Configure chart
             self.configure_chart(chart, filtered_data)
+
+            chart.set_global_opts(
+                legend_opts=opts.LegendOpts(
+                    is_show=self.options.get("show_legend", True),
+                    pos_bottom="0%",  # Position at the very bottom
+                    pos_top="auto",
+                    orient="horizontal",
+                    textstyle_opts=opts.TextStyleOpts(font_size=12),
+                ),
+                toolbox_opts=opts.ToolboxOpts(
+                    is_show=True,
+                    orient="vertical",
+                    pos_left=None,  # Explicitly set to None to override the default 80%
+                    pos_right="0%",
+                    pos_top="center",
+                    feature={
+                        "saveAsImage": {
+                            "show": True,
+                            "title": "",
+                            "type": [
+                                "png",
+                                "jpeg",
+                                "svg",
+                            ],  # Support multiple export formats
+                            "pixelRatio": 2,  # Higher quality export
+                            "backgroundColor": "#fff",
+                        },
+                        "dataView": {
+                            "show": True,
+                            "title": "",
+                            "readOnly": False,  # Allow editing in data view
+                            "lang": [
+                                "Data View",
+                                "Close",
+                                "Refresh",
+                            ],  # Customize buttons
+                        },
+                        "restore": {"show": True, "title": ""},
+                        "dataZoom": {"show": True, "title": ""},
+                    },
+                ),
+                datazoom_opts=[
+                    opts.DataZoomOpts(
+                        is_show=True,
+                        type_="slider",
+                        range_start=0,
+                        range_end=100,
+                        pos_bottom="10%",
+                        xaxis_index=[0],
+                    ),
+                    opts.DataZoomOpts(type_="inside"),
+                ],
+            )
 
             return chart
         except Exception as e:
@@ -265,77 +317,6 @@ class BaseChart:
 
         return query, params
 
-    def get_chart_specific_opts(self) -> dict:
-        """Get chart type specific options. Override in subclasses."""
-        y_min, y_max = self.get_y_axis_bounds()
-
-        return {
-            "xaxis_opts": opts.AxisOpts(
-                type_="category",
-                name_location="middle",
-                name_gap=25,
-                axislabel_opts=opts.LabelOpts(margin=8),
-            ),
-            "yaxis_opts": opts.AxisOpts(
-                type_="value",
-                name_location="middle",
-                name_gap=25,
-                min_=y_min,
-                max_=y_max,
-                axislabel_opts=opts.LabelOpts(margin=8, formatter="{value}"),
-            ),
-            "tooltip_opts": opts.TooltipOpts(trigger="axis", axis_pointer_type="cross"),
-            "legend_opts": opts.LegendOpts(
-                is_show=True,
-                selected_mode=True,
-                pos_top="2%",
-                pos_left="center",
-                orient="horizontal",
-                item_gap=25,
-                padding=[5, 10, 5, 10],
-                textstyle_opts=opts.TextStyleOpts(font_size=12),
-                border_width=0,
-                background_color="transparent",
-            ),
-            "toolbox_opts": opts.ToolboxOpts(
-                is_show=True,
-                pos_left="right",
-                pos_top="5%",
-                orient="horizontal",
-                item_size=15,
-                item_gap=10,
-                feature={
-                    "dataZoom": {
-                        "show": False,
-                        "title": {"zoom": "Area Zoom", "back": "Zoom Reset"},
-                    },
-                    "restore": {"show": True, "title": "Reset"},
-                    "dataView": {
-                        "show": True,
-                        "title": "View Data",
-                        "lang": ["Data View", "Close", "Refresh"],
-                    },
-                    "saveAsImage": {
-                        "show": True,
-                        "title": "Save as Image",
-                        "type": "png",
-                    },
-                    "magicType": {
-                        "show": True,
-                        "type": ["line", "bar"],
-                        "title": {"line": "Switch to Line", "bar": "Switch to Bar"},
-                    },
-                },
-            ),
-            "grid": {
-                "top": "15%",
-                "bottom": "15%",
-                "left": "10%",
-                "right": "5%",
-                "containLabel": True,
-            },
-        }
-
     def get_y_axis_bounds(self) -> tuple[float, float]:
         """Calculate min and max bounds for y-axis."""
         try:
@@ -399,35 +380,180 @@ class BaseChart:
             logger.error(f"Error calculating y-axis bounds: {str(e)}")
             return 0, 5
 
+    def get_chart_specific_opts(self) -> dict:
+        """Get chart type specific options. Override in subclasses."""
+        y_min, y_max = self.get_y_axis_bounds()
+
+        # Create basic options with improved responsiveness and label positioning
+        return {
+            "title_opts": opts.TitleOpts(
+                title=self.options.get("title", ""),
+                subtitle=self.options.get("subtitle", ""),
+                title_textstyle_opts=opts.TextStyleOpts(
+                    font_size=16,
+                    font_weight="bold",
+                ),
+            ),
+            "tooltip_opts": opts.TooltipOpts(
+                trigger="axis",
+                axis_pointer_type="cross",
+                background_color="rgba(50,50,50,0.9)",
+                border_width=0,
+                textstyle_opts=opts.TextStyleOpts(color="#ffffff", font_size=12),
+            ),
+            "toolbox_opts": opts.ToolboxOpts(
+                is_show=True,
+                feature={
+                    "dataZoom": {"yAxisIndex": "none"},
+                    "restore": {},
+                    "saveAsImage": {},
+                },
+                pos_left="right",
+                orient="vertical",
+            ),
+            "xaxis_opts": opts.AxisOpts(
+                type_="category",
+                boundary_gap=True,
+                axislabel_opts=opts.LabelOpts(
+                    position="bottom",
+                    rotate=30,
+                    margin=10,
+                    font_size=12,
+                    is_show=True,
+                ),
+            ),
+            "yaxis_opts": opts.AxisOpts(
+                type_="value",
+                min_=y_min,
+                max_=y_max,
+                axislabel_opts=opts.LabelOpts(font_size=12, is_show=True),
+            ),
+        }
+
     def initialize_chart(self, filtered_data: Optional[pd.DataFrame] = None) -> Chart:
         """Initialize the chart with common options."""
-        chart = self.get_chart_class()(
+        chart_class = self.get_chart_class()
+        if not chart_class:
+            raise ValueError(f"Unknown chart type: {self.chart_details.chart_type}")
+
+        # Store chart ID for cross-chart interactions
+        self.chart_id = f"chart_{self.chart_details.id}"
+        # Store for potential linked charts
+        self._linked_charts: List[Chart] = []
+
+        # Get chart options with responsive sizing
+        width = cast(str, self.options.get("width", "auto"))
+        height = cast(str, self.options.get("height", "600px"))
+        theme = cast(str, self.options.get("theme", "white"))
+
+        # Determine font size based on container width for responsiveness
+        base_font_size = 12
+        if width == "auto" or width == "100%":
+            # Auto-responsive font size
+            label_font_size = base_font_size
+            title_font_size = base_font_size + 2
+        elif isinstance(width, str) and width.endswith("px"):
+            # Try to extract pixel width and adjust font size accordingly
+            try:
+                pixel_width = int(width.rstrip("px"))
+                if pixel_width < 400:
+                    label_font_size = (
+                        base_font_size - 2
+                    )  # Smaller font for small containers
+                    title_font_size = base_font_size
+                elif pixel_width > 1200:
+                    label_font_size = (
+                        base_font_size + 2
+                    )  # Larger font for large containers
+                    title_font_size = base_font_size + 4
+                else:
+                    label_font_size = base_font_size
+                    title_font_size = base_font_size + 2
+            except ValueError:
+                label_font_size = base_font_size
+                title_font_size = base_font_size + 2
+        else:
+            label_font_size = base_font_size
+            title_font_size = base_font_size + 2
+
+        # Store font sizes for use in other methods
+        self._responsive_label_font_size = label_font_size
+        self._responsive_title_font_size = title_font_size
+
+        # Create chart instance with responsive options
+        chart = chart_class(
             init_opts=opts.InitOpts(
-                width=str(self.options.get("width", "100%")),
-                height=str(self.options.get("height", "400px")),
+                width=width,
+                height=height,
+                theme=theme,
+                renderer="canvas",
                 animation_opts=opts.AnimationOpts(animation=False),
             )
         )
 
-        # Get all options
-        opts_dict = self.get_chart_specific_opts()
+        # Get chart options
+        chart_opts = self.get_chart_specific_opts()
 
-        # Set grid options
-        chart.options["grid"] = opts_dict["grid"]
+        # Enhance tooltip styling for better readability
+        if "tooltip_opts" not in chart_opts:
+            chart_opts["tooltip_opts"] = opts.TooltipOpts(
+                trigger="axis",
+                axis_pointer_type="cross",
+                background_color="rgba(50,50,50,0.9)",  # Darker background
+                border_color="#ccc",
+                border_width=0,
+                textstyle_opts=opts.TextStyleOpts(
+                    color="#fff",  # White text for contrast
+                    font_size=14,
+                ),
+            )
 
-        # Set global options
-        chart.set_global_opts(
-            # title_opts=opts.TitleOpts(
-            #     title=self.chart_details.name or "",
-            #     subtitle=self.chart_details.description or "",
-            #     pos_top="5%",
-            # ),
-            xaxis_opts=opts_dict["xaxis_opts"],
-            yaxis_opts=opts_dict["yaxis_opts"],
-            tooltip_opts=opts_dict["tooltip_opts"],
-            legend_opts=opts_dict["legend_opts"],
-            toolbox_opts=opts_dict["toolbox_opts"],
-            visualmap_opts=opts_dict.get("visualmap_opts"),
+        chart.set_global_opts(**chart_opts)
+
+        # Add responsive configuration
+        chart.js_host = ""
+
+        # Add additional initialization options for responsiveness
+        if not hasattr(chart, "options") or not chart.options:
+            chart.options = {}
+
+        chart.options.update(
+            {
+                "animation": False,
+                "grid": {
+                    "top": "10%",
+                    "right": "15%",
+                    "bottom": "15%",
+                    "left": "10%",
+                    "containLabel": True,
+                },
+                # Accessibility options
+                "aria": {
+                    "show": True,
+                    "description": getattr(self.chart_details, "title", None)
+                    or "Chart",
+                    "general": {
+                        "withTitle": True,
+                        "withDesc": True,
+                    },
+                    "label": {
+                        "enabled": True,
+                    },
+                },
+                "dataZoom": [
+                    {
+                        "type": "slider",
+                        "show": True,
+                        "realtime": True,
+                        "start": 0,
+                        "end": 100,
+                        "bottom": "10%",
+                        "xAxisIndex": [0],
+                        "height": 20,
+                    },
+                    {"type": "inside", "xAxisIndex": [0], "start": 0, "end": 100},
+                ],
+            }
         )
 
         return chart
@@ -498,22 +624,30 @@ class BaseChart:
 
         This method can be overridden by subclasses to provide chart-specific styling.
         """
-        # For numeric charts (Line, Bar), we need simple numeric values
-        data = []
-        for val in y_values:
-            # Convert to float for plotting
-            value = float(val) if val is not None else 0.0
-            data.append(value)
+        # Add series to chart
+        # This is a base implementation that will be overridden by subclasses
+        if not hasattr(chart, "add_yaxis"):
+            logger.warning("Chart does not have add_yaxis method")
+            return
 
-        # Get series-specific styling options
-        chart_opts = self.get_series_style_opts(color)
+        # Get style options
+        style_opts = self.get_series_style_opts(color)
 
-        # Add the series to the chart
+        # Add label options to position labels at the bottom
+        if "label_opts" not in style_opts:
+            style_opts["label_opts"] = opts.LabelOpts(
+                is_show=True,
+                position="bottom",  # Position labels at the bottom
+                font_size=12,
+                font_weight="normal",
+                color="#333",
+            )
+
+        # Add series to chart
         chart.add_yaxis(
             series_name=series_name,
-            y_axis=data,
-            label_opts=opts.LabelOpts(is_show=False),
-            **chart_opts,
+            y_axis=y_values,
+            **style_opts,
         )
 
     def get_series_style_opts(self, color: Optional[str] = None) -> Dict[str, Any]:
@@ -526,12 +660,53 @@ class BaseChart:
             "itemstyle_opts": opts.ItemStyleOpts(color=color) if color else None,
         }
 
+    def add_series(self, chart: Chart, filtered_data: pd.DataFrame) -> Chart:
+        """Add series data to the chart."""
+        raise NotImplementedError("Subclasses must implement add_series")
+
+    def _optimize_dataset(
+        self, data: pd.DataFrame, max_points: int = 1000
+    ) -> pd.DataFrame:
+        """Optimize large datasets by sampling to improve performance.
+
+        For large datasets, this method will sample the data to reduce the number of points
+        while preserving the overall shape of the data.
+
+        Args:
+            data: The input DataFrame
+            max_points: Maximum number of data points to display
+
+        Returns:
+            Optimized DataFrame with reduced number of points if necessary
+        """
+        if data is None or len(data) <= max_points:
+            return data
+
+        # Calculate sampling rate
+        sample_rate = max_points / len(data)
+
+        # Use systematic sampling to preserve data shape
+        if "date" in data.columns or "time" in data.columns:
+            # For time series data, preserve time distribution
+            time_col = "date" if "date" in data.columns else "time"
+            # Sort by time column
+            data = data.sort_values(by=time_col)
+            # Sample evenly across time
+            indices = np.linspace(0, len(data) - 1, max_points).astype(int)
+            return data.iloc[indices].copy()  # Return explicit DataFrame
+        else:
+            # For non-time series data, use random sampling
+            return data.sample(n=max_points)
+
     def _handle_regular_data(self, chart: Chart, filtered_data: pd.DataFrame) -> None:
         """Handle non-time-based data."""
+        # Optimize large datasets for performance
+        optimized_data = self._optimize_dataset(filtered_data)
+
         # Get x-axis field name
         x_axis_field = cast(DjangoFieldLike, self.options["x_axis_column"])
         x_field = x_axis_field.field_name
-        x_axis_data = filtered_data[x_field].tolist()
+        x_axis_data = optimized_data[x_field].tolist()
 
         # Sort values if needed
         sort_order = self.options.get("sort_order", "asc")

@@ -91,6 +91,53 @@ async def create_chart_details(
             field_name=time_column, resource=resource
         )
 
+    # Enhanced Map Chart specific options
+    # Common map options
+    if base_map := request_details.get("base_map"):
+        options["base_map"] = base_map
+    if series_name := request_details.get("series_name"):
+        options["series_name"] = series_name
+    if name_field := request_details.get("name_field"):
+        options["name_field"] = await sync_to_async(ResourceSchema.objects.get)(
+            field_name=name_field, resource=resource
+        )
+    if width := request_details.get("width"):
+        options["width"] = width
+    if height := request_details.get("height"):
+        options["height"] = height
+    if roam := request_details.get("roam"):
+        options["roam"] = roam
+    if zoom := request_details.get("zoom"):
+        options["zoom"] = zoom
+    if center := request_details.get("center"):
+        options["center"] = center
+    if show_toolbox := request_details.get("show_toolbox"):
+        options["show_toolbox"] = show_toolbox
+
+    # Polygon Map Chart options
+    if polygon_field := request_details.get("polygon_field"):
+        options["polygon_field"] = await sync_to_async(ResourceSchema.objects.get)(
+            field_name=polygon_field, resource=resource
+        )
+
+    # Point Map Chart options
+    if lat_field := request_details.get("lat_field"):
+        options["lat_field"] = await sync_to_async(ResourceSchema.objects.get)(
+            field_name=lat_field, resource=resource
+        )
+    if lng_field := request_details.get("lng_field"):
+        options["lng_field"] = await sync_to_async(ResourceSchema.objects.get)(
+            field_name=lng_field, resource=resource
+        )
+    if point_size := request_details.get("point_size"):
+        options["point_size"] = point_size
+
+    # Geospatial Map Chart options
+    if geospatial_field := request_details.get("geospatial_field"):
+        options["geospatial_field"] = await sync_to_async(ResourceSchema.objects.get)(
+            field_name=geospatial_field, resource=resource
+        )
+
     # Extract filters
     request_filters = request_details.get("filters", [])
     filters = []

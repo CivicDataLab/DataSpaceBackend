@@ -18,10 +18,15 @@ logger = structlog.get_logger("dataspace.charts")
 
 @register_chart("BAR")
 @register_chart("LINE")
-class CombinedChart(BaseChart):
+class UnifiedChart(BaseChart):
     """
-    Unified chart class for creating bar and line visualizations.
-    This class automatically handles grouped bars and multiline charts based on the number of y-axis columns.
+    Chart class for creating bar and line visualizations.
+    This class automatically handles all bar and line chart types including:
+    - Single bar charts (vertical/horizontal)
+    - Grouped bar charts (vertical/horizontal)
+    - Line charts (single/multi-series)
+
+    Chart behavior is determined by the chart_type and options like 'orientation', 'allow_multi_series', and 'stacked'.
     """
 
     def create_chart(self) -> Optional[Chart]:
@@ -113,7 +118,19 @@ class CombinedChart(BaseChart):
                 chart, series_name, y_values, color, value_mapping
             )
             # Add bar-specific options
-            bar_options = {"barGap": "30%", "barCategoryGap": "20%"}
+            bar_options = {
+                "barGap": "30%",
+                "barCategoryGap": "20%",
+                "label": {
+                    "show": False,  # Hide bar value labels
+                },
+                "itemStyle": {
+                    "opacity": 0.8,  # Slightly transparent bars
+                    "color": (
+                        color if color else None
+                    ),  # Explicitly set color in itemStyle
+                },
+            }
 
             # Add stack option if stacked bar is enabled
             is_stacked = self.options.get("stacked", False)
@@ -158,7 +175,7 @@ class CombinedChart(BaseChart):
                 series_name=series_name,
                 y_axis=data,
                 label_opts=opts.LabelOpts(is_show=False),
-                itemstyle_opts=opts.ItemStyleOpts(color=color) if color else None,
+                color=color if color else None,
                 linestyle_opts=opts.LineStyleOpts(width=2, type_="solid"),
                 is_smooth=True,
                 is_symbol_show=True,

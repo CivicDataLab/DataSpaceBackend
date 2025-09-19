@@ -65,9 +65,6 @@ class IsOrganizationMember(BasePermission):
         self.organization_id_arg = organization_id_arg
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        import structlog
-
-        logger = structlog.getLogger(__name__)
 
         # Log the type of the context object
         logger.info(
@@ -109,10 +106,6 @@ class HasOrganizationRole(BasePermission):
         self.organization_id_arg = organization_id_arg
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        import structlog
-        from django.conf import settings
-
-        logger = structlog.getLogger(__name__)
 
         # Log the type of the context object
         logger.info(
@@ -151,10 +144,6 @@ class HasDatasetPermission(BasePermission):
         self.dataset_id_arg = dataset_id_arg
 
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
-        import structlog
-        from django.conf import settings
-
-        logger = structlog.getLogger(__name__)
 
         # Log the type of the context object
         logger.info(

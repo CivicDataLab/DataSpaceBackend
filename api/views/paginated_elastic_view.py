@@ -58,8 +58,9 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
             cache_key = self._generate_cache_key(request)
             cached_result: Optional[Dict[str, Any]] = cache.get(cache_key)
 
-            if cached_result:
-                return Response(cached_result)
+            # TODO: Fix cache issues on different model updates
+            # if cached_result:
+            #     return Response(cached_result)
 
             # Original search logic
             query: str = request.GET.get("query", "")
@@ -67,12 +68,17 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
             size: int = int(request.GET.get("size", 10))
             sort: str = request.GET.get("sort", "alphabetical")
             order: str = request.GET.get("order", "asc")
-            filters: Dict[str, Any] = request.GET.dict()
-            filters.pop("query", None)
-            filters.pop("page", None)
-            filters.pop("size", None)
-            filters.pop("sort", None)
-            filters.pop("order", None)
+            # Handle multiple values for the same filter parameter
+            filters: Dict[str, Any] = {}
+            for key, values in request.GET.lists():
+                if key not in ["query", "page", "size", "sort", "order"]:
+                    if len(values) > 1:
+                        # Multiple values: join with comma for OR filtering
+                        filters[key] = ",".join(values)
+                    else:
+                        # Single value - but check if it's already comma-separated
+                        single_value = values[0]
+                        filters[key] = single_value
 
             q = self.generate_q_expression(query)
             search = self.get_search().query(q)
@@ -89,6 +95,8 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                 "composite_agg"
             ]["buckets"]
             aggregations.pop("metadata")
+            if "catalogs" in aggregations:
+                aggregations.pop("catalogs")
             for agg in metadata_aggregations:
                 label: str = agg["key"]["metadata_label"]
                 value: str = agg["key"].get("metadata_value", "")
@@ -96,23 +104,63 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                     aggregations[label] = {}
                 aggregations[label][value] = agg["doc_count"]
 
-            sectors_agg = aggregations["sectors"]["buckets"]
-            aggregations.pop("sectors")
-            aggregations["sectors"] = {}
-            for agg in sectors_agg:
-                aggregations["sectors"][agg["key"]] = agg["doc_count"]
+            # Handle sectors aggregation (now comes as "sectors.raw")
+            if "sectors.raw" in aggregations:
+                sectors_agg = aggregations["sectors.raw"]["buckets"]
+                aggregations.pop("sectors.raw")
+                aggregations["sectors"] = {}
+                for agg in sectors_agg:
+                    aggregations["sectors"][agg["key"]] = agg["doc_count"]
+            elif "sectors" in aggregations:
+                sectors_agg = aggregations["sectors"]["buckets"]
+                aggregations.pop("sectors")
+                aggregations["sectors"] = {}
+                for agg in sectors_agg:
+                    aggregations["sectors"][agg["key"]] = agg["doc_count"]
 
-            tags_agg = aggregations["tags"]["buckets"]
-            aggregations.pop("tags")
-            aggregations["tags"] = {}
-            for agg in tags_agg:
-                aggregations["tags"][agg["key"]] = agg["doc_count"]
+            # Handle tags aggregation (now comes as "tags.raw")
+            if "tags.raw" in aggregations:
+                tags_agg = aggregations["tags.raw"]["buckets"]
+                aggregations.pop("tags.raw")
+                aggregations["tags"] = {}
+                for agg in tags_agg:
+                    aggregations["tags"][agg["key"]] = agg["doc_count"]
+            elif "tags" in aggregations:
+                tags_agg = aggregations["tags"]["buckets"]
+                aggregations.pop("tags")
+                aggregations["tags"] = {}
+                for agg in tags_agg:
+                    aggregations["tags"][agg["key"]] = agg["doc_count"]
 
-            formats_agg = aggregations["formats"]["buckets"]
-            aggregations.pop("formats")
-            aggregations["formats"] = {}
-            for agg in formats_agg:
-                aggregations["formats"][agg["key"]] = agg["doc_count"]
+            if "formats" in aggregations:
+                formats_agg = aggregations["formats"]["buckets"]
+                aggregations.pop("formats")
+                aggregations["formats"] = {}
+                for agg in formats_agg:
+                    aggregations["formats"][agg["key"]] = agg["doc_count"]
+
+            if "status" in aggregations:
+                status_agg = aggregations["status"]["buckets"]
+                aggregations.pop("status")
+                aggregations["status"] = {}
+                for agg in status_agg:
+                    aggregations["status"][agg["key"]] = agg["doc_count"]
+
+            if "running_status" in aggregations:
+                running_status_agg = aggregations["running_status"]["buckets"]
+                aggregations.pop("running_status")
+                aggregations["running_status"] = {}
+                for agg in running_status_agg:
+                    aggregations["running_status"][agg["key"]] = agg["doc_count"]
+
+            if "is_individual_usecase" in aggregations:
+                is_individual_usecase_agg = aggregations["is_individual_usecase"][
+                    "buckets"
+                ]
+                aggregations.pop("is_individual_usecase")
+                aggregations["is_individual_usecase"] = {}
+                for agg in is_individual_usecase_agg:
+                    aggregations["is_individual_usecase"][agg["key"]] = agg["doc_count"]
 
             result: Dict[str, Any] = {
                 "results": serializer.data,

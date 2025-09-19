@@ -16,6 +16,7 @@ from typing import (
 )
 
 import strawberry
+import structlog
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import DataError, IntegrityError
@@ -30,6 +31,8 @@ from api.utils.error_handlers import (
 )
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.activity import record_activity
+
+logger = structlog.getLogger(__name__)
 
 # Type aliases
 ActivityData = Dict[str, Any]
@@ -231,6 +234,7 @@ class BaseMutation(Generic[T]):
                 except Exception as e:
                     # Log the error but don't expose internal details
                     error_message = "An unexpected error occurred"
+                    logger.error("mutation_failed", error=str(e))
                     errors = GraphQLValidationError.from_message(error_message)
                     return MutationResponse.error_response(errors)  # type: ignore
 

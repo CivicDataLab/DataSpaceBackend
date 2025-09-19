@@ -13,7 +13,7 @@ class ResourceChartImage(models.Model):
     name = models.CharField(max_length=50, unique=False, blank=True)
     description = models.CharField(max_length=1000, unique=False, blank=True)
     image = models.ImageField(
-        upload_to=_chart_image_directory_path, blank=True, null=True
+        upload_to=_chart_image_directory_path, blank=True, null=True, max_length=300
     )
     dataset = models.ForeignKey(
         "api.Dataset",

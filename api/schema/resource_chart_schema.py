@@ -62,6 +62,7 @@ class YAxisColumnConfig:
 
 @strawberry.input
 class ChartOptions:
+    # Standard chart options
     x_axis_label: str = "X-Axis"
     y_axis_label: str = "Y-Axis"
     x_axis_column: Optional[str] = None
@@ -74,6 +75,45 @@ class ChartOptions:
     orientation: str = "vertical"
     allow_multi_series: bool = True
     stacked: bool = False
+
+    # Big Number Chart specific options
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    label: Optional[str] = None
+    value_prefix: Optional[str] = None
+    value_suffix: Optional[str] = None
+    title_color: Optional[str] = None
+    subtitle_color: Optional[str] = None
+    value_color: Optional[str] = None
+    label_color: Optional[str] = None
+    title_font_size: Optional[int] = None
+    subtitle_font_size: Optional[int] = None
+    value_font_size: Optional[int] = None
+    label_font_size: Optional[int] = None
+    background_color: Optional[str] = None
+
+    # Enhanced Map Chart specific options
+    # Common map options
+    base_map: Optional[str] = None
+    series_name: Optional[str] = None
+    name_field: Optional[str] = None
+    width: Optional[str] = None
+    height: Optional[str] = None
+    roam: Optional[bool] = None
+    zoom: Optional[float] = None
+    center: Optional[List[float]] = None
+    show_toolbox: Optional[bool] = None
+
+    # Polygon Map Chart options
+    polygon_field: Optional[str] = None
+
+    # Point Map Chart options
+    lat_field: Optional[str] = None
+    lng_field: Optional[str] = None
+    point_size: Optional[int] = None
+
+    # Geospatial Map Chart options
+    geospatial_field: Optional[str] = None
 
 
 @strawberry.input
@@ -135,6 +175,11 @@ def _update_chart_fields(
                     "region_column",
                     "value_column",
                     "time_column",
+                    "name_field",
+                    "polygon_field",
+                    "lat_field",
+                    "lng_field",
+                    "geospatial_field",
                 ]:
                     if value:  # Only process if value is not empty
                         field = ResourceSchema.objects.get(id=value)

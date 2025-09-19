@@ -1,1 +1,2 @@
 from search.documents.dataset_document import DatasetDocument
+from search.documents.usecase_document import UseCaseDocument

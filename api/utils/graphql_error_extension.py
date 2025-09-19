@@ -32,18 +32,37 @@ class ErrorFormatterExtension(Extension):  # type: ignore[misc,valid-type]
                 )
                 if is_field_errors(error_data):
                     field_errors = error_data["field_errors"]
+                    if not field_errors:
+                        formatted_errors.append(error)
+                        continue
+                    # Get the first error message safely
+                    first_field = next(iter(field_errors.keys()))
+                    first_message = (
+                        field_errors[first_field][0]
+                        if field_errors[first_field]
+                        else "Field validation error"
+                    )
                     formatted_errors.append(
                         GraphQLError(
-                            message=next(iter(field_errors.values()))[0],
+                            message=first_message,
                             path=error.path,
                             extensions={"field_errors": field_errors},
                         )
                     )
                 elif is_non_field_errors(error_data):
                     non_field_errors = error_data["non_field_errors"]
+                    if not non_field_errors:
+                        formatted_errors.append(error)
+                        continue
+                    # Get the first error message safely
+                    first_message = (
+                        non_field_errors[0]
+                        if non_field_errors
+                        else "Non-field validation error"
+                    )
                     formatted_errors.append(
                         GraphQLError(
-                            message=non_field_errors[0],
+                            message=first_message,
                             path=error.path,
                             extensions={"non_field_errors": non_field_errors},
                         )

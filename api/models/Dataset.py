@@ -40,7 +40,7 @@ class Dataset(models.Model):
     )
     user = models.ForeignKey(
         "authorization.User",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="datasets",
@@ -107,12 +107,22 @@ class Dataset(models.Model):
         )
 
     @property
-    def has_charts(self) -> bool:
-        """Has charts.
+    def catalogs_indexing(self) -> list[str]:
+        """Catalogs for indexing.
 
         Used in Elasticsearch indexing.
         """
-        return bool(self.resources.filter(resourcechartdetails__isnull=False).exists())
+        return [catalog.name for catalog in self.catalogs.all()]  # type: ignore
+
+    @property
+    def has_charts(self) -> bool:
+        """Has charts or chart images.
+
+        Used in Elasticsearch indexing.
+        """
+        has_charts = self.resources.filter(resourcechartdetails__isnull=False).exists()
+        has_chart_images = self.chart_images.exists()
+        return has_charts or has_chart_images
 
     @property
     def download_count(self) -> int:

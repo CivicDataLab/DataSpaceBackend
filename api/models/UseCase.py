@@ -21,7 +21,9 @@ class UseCase(models.Model):
     id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=200, unique=True, blank=True, null=True)
     summary = models.CharField(max_length=10000, blank=True, null=True)
-    logo = models.ImageField(upload_to=_use_case_directory_path, blank=True, null=True)
+    logo = models.ImageField(
+        upload_to=_use_case_directory_path, max_length=300, blank=True, null=True
+    )
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     website = models.URLField(blank=True)
@@ -64,6 +66,14 @@ class UseCase(models.Model):
     @property
     def is_individual_usecase(self):
         return self.organization is None
+
+    @property
+    def sectors_indexing(self):
+        return [sector.name for sector in self.sectors.all()]  # type: ignore
+
+    @property
+    def tags_indexing(self):
+        return [tag.value for tag in self.tags.all()]  # type: ignore
 
     class Meta:
         db_table = "use_case"

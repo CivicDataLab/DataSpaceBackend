@@ -38,6 +38,19 @@ class UserAdmin(BaseUserAdmin):
                 ]
             },
         ),
+        (
+            "Profile Information",
+            {
+                "fields": [
+                    "bio",
+                    "profile_picture",
+                    "github_profile",
+                    "linkedin_profile",
+                    "twitter_profile",
+                    "location",
+                ]
+            },
+        ),
     ]  # type: ignore
     search_fields = ("username", "email", "first_name", "last_name", "keycloak_id")
 

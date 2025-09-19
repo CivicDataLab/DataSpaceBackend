@@ -56,7 +56,7 @@ def get_resource_response(
     )
 
     # Handle filename and basename explicitly
-    default_name = f"resource_{resource.id}.csv"
+    default_name = f"resource_{resource.name}.csv"
     if file_details.file.name:
         filename = str(file_details.file.name)
         # Get last part of path, fallback to default if empty
@@ -110,38 +110,48 @@ def get_chart_image_response(chart_image: ResourceChartImage) -> HttpResponse:
 
 async def download(request: HttpRequest, type: str, id: uuid.UUID) -> HttpResponse:
     """Handle download requests for resources, chart images, and charts."""
-    if type == "resource":
-        try:
-            resource = await get_resource(id)
-            return await get_resource_response(resource, request)
-        except Resource.DoesNotExist:
-            return JsonResponse({"error": "Resource not found"}, status=404)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+    try:
+        if type == "resource":
+            try:
+                resource = await get_resource(id)
+                return await get_resource_response(resource, request)
+            except Resource.DoesNotExist:
+                return JsonResponse({"error": "Resource not found"}, status=404)
+            except Exception as e:
+                return JsonResponse({"error": str(e)}, status=500)
 
-    elif type == "chart_image":
-        try:
-            chart_image = await get_chart_image(id)
-            return await get_chart_image_response(chart_image)
-        except ResourceChartImage.DoesNotExist:
-            return JsonResponse({"error": "Chart image not found"}, status=404)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
+        elif type == "chart_image":
+            try:
+                chart_image = await get_chart_image(id)
+                return await get_chart_image_response(chart_image)
+            except ResourceChartImage.DoesNotExist:
+                return JsonResponse({"error": "Chart image not found"}, status=404)
+            except Exception as e:
+                return JsonResponse({"error": str(e)}, status=500)
 
-    elif type == "chart":
-        try:
-            # Fetch the chart asynchronously
-            resource_chart = await get_resource_chart(id)
+        elif type == "chart":
+            try:
+                # Fetch the chart asynchronously
+                resource_chart = await get_resource_chart(id)
 
-            # Assuming generate_chart is an async function
-            response = await generate_chart(resource_chart)
-            response["Content-Disposition"] = 'attachment; filename="chart.png"'
-            return response
+                response = await generate_chart(resource_chart)
+                response["Content-Disposition"] = 'attachment; filename="chart.png"'
+                return response
 
-        except ObjectDoesNotExist:
-            return HttpResponse("Chart not found", content_type="text/plain")
+            except ObjectDoesNotExist:
+                return HttpResponse("Chart not found", content_type="text/plain")
 
-    return HttpResponse("Invalid type", content_type="text/plain")
+        return HttpResponse("Invalid type", content_type="text/plain")
+    except RuntimeError as e:
+        if "no running event loop" in str(e):
+            import asyncio
+
+            # Create a new event loop if one doesn't exist
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            # Re-run the function with the new loop
+            return asyncio.run(download(request, type, id))
+        raise
 
 
 def get_file_resource_response(resource: Resource) -> HttpResponse:

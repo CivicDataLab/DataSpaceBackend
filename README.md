@@ -1,8 +1,15 @@
-# DataExchange Backend
+# DataSpace Backend
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Django](https://img.shields.io/badge/django-5.0+-green.svg)](https://djangoproject.com/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Issues](https://img.shields.io/github/issues/CivicDataLab/DataSpaceBackend)](https://github.com/CivicDataLab/DataSpaceBackend/issues)
+[![Contributors](https://img.shields.io/github/contributors/CivicDataLab/DataSpaceBackend)](https://github.com/CivicDataLab/DataSpaceBackend/graphs/contributors)
 
 ## Overview
 
-DataExchange is a platform for sharing and managing datasets. This repository contains the backend code for the DataExchange platform, built with Django and GraphQL.
+DataSpace is a platform for sharing and managing datasets. This repository contains the backend code for the DataSpace platform, built with Django and GraphQL.
 
 ## Key Features
 
@@ -35,8 +42,8 @@ For detailed information about the Keycloak integration, see the [Keycloak Integ
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/CivicDataLab/DataExBackend.git
-   cd DataExBackend
+   git clone https://github.com/CivicDataLab/DataSpaceBackend.git
+   cd DataSpaceBackend
    ```
 
 2. Create a virtual environment and install dependencies:
@@ -51,7 +58,7 @@ For detailed information about the Keycloak integration, see the [Keycloak Integ
    DEBUG=True
    SECRET_KEY=your-secret-key
    DB_ENGINE=django.db.backends.postgresql
-   DB_NAME=dataexchange
+   DB_NAME=dataspace
    DB_USER=postgres
    DB_PASSWORD=postgres
    DB_HOST=localhost
