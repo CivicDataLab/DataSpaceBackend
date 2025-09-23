@@ -35,6 +35,7 @@ class Collaborative(models.Model):
         choices=CollaborativeStatus.choices,
     )
     datasets = models.ManyToManyField("api.Dataset", blank=True)
+    use_cases = models.ManyToManyField("api.UseCase", blank=True)
     tags = models.ManyToManyField("api.Tag", blank=True)
     sectors = models.ManyToManyField(
         "api.Sector", blank=True, related_name="collaboratives"

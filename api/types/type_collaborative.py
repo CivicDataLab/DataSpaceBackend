@@ -20,6 +20,7 @@ from api.types.type_collaborative_organization import (
 from api.types.type_dataset import TypeDataset, TypeTag
 from api.types.type_organization import TypeOrganization
 from api.types.type_sector import TypeSector
+from api.types.type_usecase import TypeUseCase
 from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from authorization.types import TypeUser
 
@@ -81,6 +82,17 @@ class TypeCollaborative(BaseType):
         except Exception:
             return []
 
+    @strawberry.field(description="Get use cases associated with this collaborative.")
+    def use_cases(self) -> Optional[List["TypeUseCase"]]:
+        """Get use cases associated with this collaborative."""
+        try:
+            queryset = self.use_cases.all()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeUseCase.from_django_list(queryset)
+        except Exception:
+            return []
+
     @strawberry.field(
         description="Get the count of datasets associated with this collaborative."
     )
@@ -88,6 +100,16 @@ class TypeCollaborative(BaseType):
         """Get the count of datasets associated with this collaborative."""
         try:
             return self.datasets.count()  # type: ignore
+        except Exception:
+            return 0
+
+    @strawberry.field(
+        description="Get the count of use cases associated with this collaborative."
+    )
+    def use_case_count(self: "TypeCollaborative", info: Info) -> int:
+        """Get the count of use cases associated with this collaborative."""
+        try:
+            return self.use_cases.count()  # type: ignore
         except Exception:
             return 0
 

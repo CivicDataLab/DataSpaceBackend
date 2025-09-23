@@ -24,6 +24,7 @@ from api.models import (
     Organization,
     Sector,
     Tag,
+    UseCase,
 )
 from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.types.type_collaborative import (
@@ -37,6 +38,7 @@ from api.types.type_collaborative_organization import (
 )
 from api.types.type_dataset import TypeDataset
 from api.types.type_organization import TypeOrganization
+from api.types.type_usecase import TypeUseCase
 from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.models import User
@@ -454,6 +456,32 @@ class Mutation:
         return TypeCollaborative.from_django(collaborative)
 
     @strawberry_django.mutation(handle_django_errors=True)
+    def add_usecase_to_collaborative(
+        self, info: Info, collaborative_id: str, usecase_id: str
+    ) -> TypeCollaborative:
+        """Add a usecase to a collaborative."""
+        try:
+            usecase = UseCase.objects.get(id=usecase_id)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"UseCase with ID {usecase_id} does not exist.")
+
+        try:
+            collaborative = Collaborative.objects.get(id=collaborative_id)
+        except Collaborative.DoesNotExist:
+            raise ValueError(
+                f"Collaborative with ID {collaborative_id} does not exist."
+            )
+
+        if collaborative.status != CollaborativeStatus.DRAFT:
+            raise ValueError(
+                f"Collaborative with ID {collaborative_id} is not in draft status."
+            )
+
+        collaborative.use_cases.add(usecase)
+        collaborative.save()
+        return TypeCollaborative.from_django(collaborative)
+
+    @strawberry_django.mutation(handle_django_errors=True)
     def remove_dataset_from_collaborative(
         self, info: Info, collaborative_id: str, dataset_id: uuid.UUID
     ) -> TypeCollaborative:
@@ -478,6 +506,30 @@ class Mutation:
         return TypeCollaborative.from_django(collaborative)
 
     @strawberry_django.mutation(handle_django_errors=True)
+    def remove_usecase_from_collaborative(
+        self, info: Info, collaborative_id: str, usecase_id: str
+    ) -> TypeCollaborative:
+        """Remove a usecase from a collaborative."""
+        try:
+            usecase = UseCase.objects.get(id=usecase_id)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"UseCase with ID {usecase_id} does not exist.")
+        try:
+            collaborative = Collaborative.objects.get(id=collaborative_id)
+        except Collaborative.DoesNotExist:
+            raise ValueError(
+                f"Collaborative with ID {collaborative_id} does not exist."
+            )
+
+        if collaborative.status != CollaborativeStatus.DRAFT:
+            raise ValueError(
+                f"Collaborative with ID {collaborative_id} is not in draft status."
+            )
+        collaborative.use_cases.remove(usecase)
+        collaborative.save()
+        return TypeCollaborative.from_django(collaborative)
+
+    @strawberry_django.mutation(handle_django_errors=True)
     @trace_resolver(
         name="update_collaborative_datasets",
         attributes={"component": "collaborative", "operation": "mutation"},
@@ -498,6 +550,30 @@ class Mutation:
             )
 
         collaborative.datasets.set(datasets)
+        collaborative.save()
+        return TypeCollaborative.from_django(collaborative)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="update_collaborative_use_cases",
+        attributes={"component": "collaborative", "operation": "mutation"},
+    )
+    def update_collaborative_use_cases(
+        self, info: Info, collaborative_id: str, use_case_ids: List[uuid.UUID]
+    ) -> TypeCollaborative:
+        """Update the use cases of a collaborative."""
+        try:
+            use_cases = UseCase.objects.filter(id__in=use_case_ids)
+            collaborative = Collaborative.objects.get(id=collaborative_id)
+        except Collaborative.DoesNotExist:
+            raise ValueError(f"Collaborative with ID {collaborative_id} doesn't exist")
+
+        if collaborative.status != CollaborativeStatus.DRAFT:
+            raise ValueError(
+                f"Collaborative with ID {collaborative_id} is not in draft status."
+            )
+
+        collaborative.use_cases.set(use_cases)
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
 
