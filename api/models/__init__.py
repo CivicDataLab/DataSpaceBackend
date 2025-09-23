@@ -1,5 +1,10 @@
 from api.models.AccessModel import AccessModel, AccessModelResource
 from api.models.Catalog import Catalog
+from api.models.Collaborative import Collaborative
+from api.models.CollaborativeMetadata import CollaborativeMetadata
+from api.models.CollaborativeOrganizationRelationship import (
+    CollaborativeOrganizationRelationship,
+)
 from api.models.Dataset import Dataset, Tag
 from api.models.DatasetMetadata import DatasetMetadata
 from api.models.DataSpace import DataSpace

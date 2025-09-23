@@ -104,6 +104,12 @@ class UseCaseStatus(models.TextChoices):
     ARCHIVED = "ARCHIVED"
 
 
+class CollaborativeStatus(models.TextChoices):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"
+
+
 class UseCaseRunningStatus(models.TextChoices):
     INITIATED = "INITIATED"
     ON_GOING = "ON_GOING"
