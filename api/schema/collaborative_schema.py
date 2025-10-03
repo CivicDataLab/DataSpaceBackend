@@ -16,6 +16,7 @@ from strawberry_django.mutations import mutations
 from strawberry_django.pagination import OffsetPaginationInput
 
 from api.models import (
+    SDG,
     Collaborative,
     CollaborativeMetadata,
     CollaborativeOrganizationRelationship,
@@ -64,6 +65,7 @@ class UpdateCollaborativeMetadataInput:
     metadata: List[CollaborativeMetadataItemType]
     tags: Optional[List[str]]
     sectors: List[uuid.UUID]
+    sdgs: Optional[List[uuid.UUID]]
 
 
 @strawberry_django.partial(Collaborative, fields="__all__", exclude=["datasets"])
@@ -77,6 +79,7 @@ class CollaborativeInputPartial:
     platform_url: Optional[str] = None
     tags: Optional[List[str]] = None
     sectors: Optional[List[uuid.UUID]] = None
+    sdgs: Optional[List[uuid.UUID]] = None
     started_on: Optional[datetime.date] = None
     completed_on: Optional[datetime.date] = None
 
@@ -216,6 +219,18 @@ def _update_collaborative_sectors(
     sectors_objs = Sector.objects.filter(id__in=sectors)
     collaborative.sectors.clear()
     collaborative.sectors.add(*sectors_objs)
+    collaborative.save()
+
+
+@trace_resolver(
+    name="update_collaborative_sdgs", attributes={"component": "collaborative"}
+)
+def _update_collaborative_sdgs(
+    collaborative: Collaborative, sdgs: List[uuid.UUID]
+) -> None:
+    sdgs_objs = SDG.objects.filter(id__in=sdgs)
+    collaborative.sdgs.clear()
+    collaborative.sdgs.add(*sdgs_objs)
     collaborative.save()
 
 
@@ -363,6 +378,8 @@ class Mutation:
             _update_collaborative_tags(collaborative, update_metadata_input.tags)
         _add_update_collaborative_metadata(collaborative, metadata_input)
         _update_collaborative_sectors(collaborative, update_metadata_input.sectors)
+        if update_metadata_input.sdgs is not None:
+            _update_collaborative_sdgs(collaborative, update_metadata_input.sdgs)
         return TypeCollaborative.from_django(collaborative)
 
     @strawberry_django.mutation(handle_django_errors=False)

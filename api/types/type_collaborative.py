@@ -19,6 +19,7 @@ from api.types.type_collaborative_organization import (
 )
 from api.types.type_dataset import TypeDataset, TypeTag
 from api.types.type_organization import TypeOrganization
+from api.types.type_sdg import TypeSDG
 from api.types.type_sector import TypeSector
 from api.types.type_usecase import TypeUseCase
 from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
@@ -132,6 +133,17 @@ class TypeCollaborative(BaseType):
             if not queryset.exists():
                 return []
             return TypeSector.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field(description="Get SDGs associated with this collaborative.")
+    def sdgs(self) -> Optional[List["TypeSDG"]]:
+        """Get SDGs associated with this collaborative."""
+        try:
+            queryset = self.sdgs.all()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeSDG.from_django_list(queryset)
         except Exception:
             return []
 

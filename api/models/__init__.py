@@ -22,6 +22,7 @@ from api.models.ResourceChartDetails import ResourceChartDetails
 from api.models.ResourceChartImage import ResourceChartImage
 from api.models.ResourceMetadata import ResourceMetadata
 from api.models.ResourceSchema import ResourceSchema
+from api.models.SDG import SDG
 from api.models.Sector import Sector
 from api.models.SerializableJSONField import SerializableJSONField
 from api.models.UseCase import UseCase

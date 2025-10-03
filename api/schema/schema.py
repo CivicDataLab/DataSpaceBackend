@@ -17,6 +17,7 @@ import api.schema.organization_schema
 import api.schema.resource_chart_schema
 import api.schema.resource_schema
 import api.schema.resoure_chart_image_schema
+import api.schema.sdg_schema
 import api.schema.sector_schema
 import api.schema.stats_schema
 import api.schema.tags_schema
@@ -59,6 +60,7 @@ Query = merge_types(
         api.schema.dataset_schema.Query,
         api.schema.resource_schema.Query,
         api.schema.access_model_schema.Query,
+        api.schema.sdg_schema.Query,
         api.schema.sector_schema.Query,
         api.schema.resource_chart_schema.Query,
         api.schema.stats_schema.Query,
@@ -80,6 +82,7 @@ Mutation = merge_types(
         api.schema.dataset_schema.Mutation,
         api.schema.resource_schema.Mutation,
         api.schema.access_model_schema.Mutation,
+        api.schema.sdg_schema.Mutation,
         api.schema.sector_schema.Mutation,
         api.schema.resource_chart_schema.Mutation,
         api.schema.usecase_schema.Mutation,

@@ -40,6 +40,7 @@ class MetadataModels(models.TextChoices):
     DATASET = "DATASET"
     RESEOURCE = "RESOURCE"
     USECASE = "USECASE"
+    COLLABORATIVE = "COLLABORATIVE"
 
 
 class MetadataStandards(models.TextChoices):
