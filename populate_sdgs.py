@@ -128,5 +128,5 @@ def populate_sdgs() -> None:
     )
 
 
-if __name__ == "__main__":
-    populate_sdgs()
+# Auto-execute when loaded in Django shell
+populate_sdgs()
