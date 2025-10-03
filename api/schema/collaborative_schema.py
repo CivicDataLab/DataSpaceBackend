@@ -197,6 +197,18 @@ class Query:
                 f"Collaborative with ID {collaborative_id} does not exist."
             )
 
+    @strawberry_django.field
+    @trace_resolver(
+        name="get_collaborative_by_slug",
+        attributes={"component": "collaborative"},
+    )
+    def collaborative_by_slug(self, info: Info, slug: str) -> TypeCollaborative:
+        try:
+            collaborative = Collaborative.objects.get(slug=slug)
+            return TypeCollaborative.from_django(collaborative)
+        except Collaborative.DoesNotExist:
+            raise ValueError(f"Collaborative with slug {slug} does not exist.")
+
 
 @trace_resolver(
     name="update_collaborative_tags", attributes={"component": "collaborative"}
