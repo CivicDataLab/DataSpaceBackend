@@ -1,5 +1,6 @@
 from typing import Optional
 
+import strawberry
 import strawberry_django
 from strawberry import auto
 
@@ -13,4 +14,10 @@ class TypeGeo(BaseType):
     name: auto
     code: auto
     type: auto
-    parent_id: Optional["TypeGeo"]
+
+    @strawberry.field(description="Parent geography")
+    def parent_id(self) -> Optional["TypeGeo"]:
+        """Get parent geography."""
+        if self.parent_id:  # type: ignore
+            return TypeGeo.from_django(self.parent_id)  # type: ignore
+        return None
