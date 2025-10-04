@@ -11,6 +11,7 @@ import api.schema.access_model_schema
 import api.schema.collaborative_schema
 import api.schema.dataset_schema
 import api.schema.dataspace_schema
+import api.schema.geography_schema
 import api.schema.metadata_schema
 import api.schema.organization_data_schema
 import api.schema.organization_schema
@@ -62,6 +63,7 @@ Query = merge_types(
         api.schema.access_model_schema.Query,
         api.schema.sdg_schema.Query,
         api.schema.sector_schema.Query,
+        api.schema.geography_schema.Query,
         api.schema.resource_chart_schema.Query,
         api.schema.stats_schema.Query,
         api.schema.usecase_schema.Query,
