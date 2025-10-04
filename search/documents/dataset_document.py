@@ -6,6 +6,7 @@ from api.models import (
     Catalog,
     Dataset,
     DatasetMetadata,
+    Geography,
     Metadata,
     Organization,
     Resource,
@@ -114,6 +115,16 @@ class DatasetDocument(Document):
         multi=True,
     )
 
+    geographies = fields.TextField(
+        attr="geographies_indexing",
+        analyzer=ngram_analyser,
+        fields={
+            "raw": fields.KeywordField(multi=True),
+            "suggest": fields.CompletionField(multi=True),
+        },
+        multi=True,
+    )
+
     is_individual_dataset = fields.BooleanField(attr="is_individual_dataset")
 
     has_charts = fields.BooleanField(attr="has_charts")
@@ -185,7 +196,14 @@ class DatasetDocument(Document):
     def get_instances_from_related(
         self,
         related_instance: Union[
-            Resource, Metadata, DatasetMetadata, Sector, Organization, User, Catalog
+            Resource,
+            Metadata,
+            DatasetMetadata,
+            Sector,
+            Organization,
+            User,
+            Catalog,
+            Geography,
         ],
     ) -> Optional[Union[Dataset, List[Dataset]]]:
         """Get Dataset instances from related models."""
@@ -203,6 +221,8 @@ class DatasetDocument(Document):
         elif isinstance(related_instance, User):
             return list(related_instance.datasets.all())
         elif isinstance(related_instance, Catalog):
+            return list(related_instance.datasets.all())
+        elif isinstance(related_instance, Geography):
             return list(related_instance.datasets.all())
         return None
 
@@ -225,4 +245,5 @@ class DatasetDocument(Document):
             Organization,
             User,
             Catalog,
+            Geography,
         ]

@@ -59,6 +59,9 @@ class Dataset(models.Model):
         max_length=50, default=DatasetStatus.DRAFT, choices=DatasetStatus.choices
     )
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="datasets")
+    geographies = models.ManyToManyField(
+        "api.Geography", blank=True, related_name="datasets"
+    )
     access_type = models.CharField(
         max_length=50,
         default=DatasetAccessType.PUBLIC,
@@ -90,6 +93,14 @@ class Dataset(models.Model):
         Used in Elasticsearch indexing.
         """
         return [sector.name for sector in self.sectors.all()]  # type: ignore
+
+    @property
+    def geographies_indexing(self) -> list[str]:
+        """Geographies for indexing.
+
+        Used in Elasticsearch indexing.
+        """
+        return [geo.name for geo in self.geographies.all()]  # type: ignore
 
     @property
     def formats_indexing(self) -> list[str]:

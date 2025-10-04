@@ -12,6 +12,7 @@ from strawberry_django.pagination import OffsetPaginationInput
 
 from api.models import (
     Dataset,
+    Geography,
     Metadata,
     Organization,
     Resource,
@@ -253,6 +254,7 @@ class UpdateMetadataInput:
     description: Optional[str] = None
     tags: Optional[List[str]] = None
     sectors: Optional[List[uuid.UUID]] = None
+    geographies: Optional[List[int]] = None
     access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
     license: Optional[DatasetLicenseENUM] = (
         DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
@@ -325,6 +327,17 @@ def _add_update_dataset_sectors(dataset: Dataset, sectors: List[uuid.UUID]) -> N
     sectors_objs = Sector.objects.filter(id__in=sectors)
     dataset.sectors.clear()
     dataset.sectors.add(*sectors_objs)
+    dataset.save()
+
+
+@trace_resolver(
+    name="add_update_dataset_geographies", attributes={"component": "dataset"}
+)
+def _add_update_dataset_geographies(dataset: Dataset, geography_ids: List[int]) -> None:
+    """Update geographies for a dataset."""
+    dataset.geographies.clear()
+    geographies = Geography.objects.filter(id__in=geography_ids)
+    dataset.geographies.add(*geographies)
     dataset.save()
 
 
@@ -595,6 +608,8 @@ class Mutation:
         _add_update_dataset_metadata(dataset, metadata_input)
         if update_metadata_input.sectors is not None:
             _add_update_dataset_sectors(dataset, update_metadata_input.sectors)
+        if update_metadata_input.geographies is not None:
+            _add_update_dataset_geographies(dataset, update_metadata_input.geographies)
         return MutationResponse.success_response(TypeDataset.from_django(dataset))
 
     @strawberry_django.mutation(

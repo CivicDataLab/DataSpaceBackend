@@ -11,6 +11,7 @@ from strawberry.types import Info
 from api.models import Dataset, DatasetMetadata, Resource, Tag
 from api.types.base_type import BaseType
 from api.types.type_dataset_metadata import TypeDatasetMetadata
+from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
 from api.types.type_resource import TypeResource
 from api.types.type_sector import TypeSector
@@ -75,6 +76,25 @@ class TypeDataset(BaseType):
             django_instance = cast(Dataset, self)
             queryset = django_instance.sectors.all()
             return TypeSector.from_django_list(queryset)
+        except (AttributeError, Dataset.DoesNotExist):
+            return []
+
+    @strawberry.field
+    def geographies(self, info: Info) -> List["TypeGeo"]:
+        """Get geographies for this dataset.
+
+        Args:
+            info: Request info
+
+        Returns:
+            List[TypeGeo]: List of geographies
+        """
+        try:
+            from api.types.type_geo import TypeGeo
+
+            django_instance = cast(Dataset, self)
+            queryset = django_instance.geographies.all()
+            return TypeGeo.from_django_list(queryset)
         except (AttributeError, Dataset.DoesNotExist):
             return []
 

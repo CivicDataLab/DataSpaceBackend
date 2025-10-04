@@ -63,6 +63,7 @@ class UseCaseDocumentSerializer(serializers.ModelSerializer):
     tags = serializers.ListField()
     logo = serializers.CharField()
     sectors = serializers.ListField(default=[])
+    geographies = serializers.ListField(default=[])
     slug = serializers.CharField()
     is_individual_usecase = serializers.BooleanField()
     running_status = serializers.CharField()
@@ -117,6 +118,7 @@ class UseCaseDocumentSerializer(serializers.ModelSerializer):
             "tags",
             "logo",
             "sectors",
+            "geographies",
             "is_individual_usecase",
             "organization",
             "user",
@@ -169,6 +171,7 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
         aggregations: Dict[str, str] = {
             "tags.raw": "terms",
             "sectors.raw": "terms",
+            "geographies.raw": "terms",
             "status": "terms",
             "running_status": "terms",
         }
@@ -304,7 +307,7 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
         for filter in filters:
             if filter in excluded_labels:
                 continue
-            elif filter in ["tags", "sectors"]:
+            elif filter in ["tags", "sectors", "geographies"]:
                 raw_filter = filter + ".raw"
                 if raw_filter in self.aggregations:
                     filter_values = filters[filter].split(",")
