@@ -24,9 +24,10 @@ class OrganizationTypes(models.TextChoices):
 
 
 class GeoTypes(models.TextChoices):
-    DISTRICT = "DISTRICT"
-    STATE = "STATE"
+    REGION = "REGION"
     COUNTRY = "COUNTRY"
+    STATE = "STATE"
+    DISTRICT = "DISTRICT"
     UT = "UT"
 
 

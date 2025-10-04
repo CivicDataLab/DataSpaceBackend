@@ -44,6 +44,9 @@ class Collaborative(models.Model):
         "api.Sector", blank=True, related_name="collaboratives"
     )
     sdgs = models.ManyToManyField("api.SDG", blank=True, related_name="collaboratives")
+    geographies = models.ManyToManyField(
+        "api.Geography", blank=True, related_name="collaboratives"
+    )
     contributors = models.ManyToManyField(
         "authorization.User", blank=True, related_name="contributed_collaboratives"
     )
@@ -78,6 +81,10 @@ class Collaborative(models.Model):
     @property
     def sdgs_indexing(self):
         return [sdg.code for sdg in self.sdgs.all()]  # type: ignore
+
+    @property
+    def geographies_indexing(self):
+        return [geo.name for geo in self.geographies.all()]  # type: ignore
 
     class Meta:
         db_table = "collaborative"

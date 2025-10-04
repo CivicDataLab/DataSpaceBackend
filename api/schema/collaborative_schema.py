@@ -21,6 +21,7 @@ from api.models import (
     CollaborativeMetadata,
     CollaborativeOrganizationRelationship,
     Dataset,
+    Geography,
     Metadata,
     Organization,
     Sector,
@@ -66,6 +67,7 @@ class UpdateCollaborativeMetadataInput:
     tags: Optional[List[str]]
     sectors: List[uuid.UUID]
     sdgs: Optional[List[uuid.UUID]]
+    geographies: Optional[List[uuid.UUID]]
 
 
 @strawberry_django.partial(Collaborative, fields="__all__", exclude=["datasets"])
@@ -393,6 +395,10 @@ class Mutation:
         _update_collaborative_sectors(collaborative, update_metadata_input.sectors)
         if update_metadata_input.sdgs is not None:
             _update_collaborative_sdgs(collaborative, update_metadata_input.sdgs)
+        if update_metadata_input.geographies is not None:
+            _update_collaborative_geographies(
+                collaborative, update_metadata_input.geographies
+            )
         return TypeCollaborative.from_django(collaborative)
 
     @strawberry_django.mutation(handle_django_errors=False)
@@ -959,3 +965,12 @@ class Mutation:
             )
 
         return TypeCollaborative.from_django(collaborative)
+
+
+def _update_collaborative_geographies(
+    collaborative: Collaborative, geography_ids: List[uuid.UUID]
+) -> None:
+    """Update geographies for a collaborative."""
+    collaborative.geographies.clear()
+    geographies = Geography.objects.filter(id__in=geography_ids)
+    collaborative.geographies.add(*geographies)
