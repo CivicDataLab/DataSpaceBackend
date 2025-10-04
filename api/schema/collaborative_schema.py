@@ -588,7 +588,7 @@ class Mutation:
         attributes={"component": "collaborative", "operation": "mutation"},
     )
     def update_collaborative_use_cases(
-        self, info: Info, collaborative_id: str, use_case_ids: List[uuid.UUID]
+        self, info: Info, collaborative_id: str, use_case_ids: List[str]
     ) -> TypeCollaborative:
         """Update the use cases of a collaborative."""
         try:
