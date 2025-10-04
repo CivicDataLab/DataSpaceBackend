@@ -18,6 +18,7 @@ from api.types.type_collaborative_organization import (
     TypeCollaborativeOrganizationRelationship,
 )
 from api.types.type_dataset import TypeDataset, TypeTag
+from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
 from api.types.type_sdg import TypeSDG
 from api.types.type_sector import TypeSector
@@ -70,6 +71,17 @@ class TypeCollaborative(BaseType):
     def is_individual_collaborative(self) -> bool:
         """Check if this collaborative is created by an individual user."""
         return self.organization is None
+
+    @strawberry.field(description="Get geographies associated with this collaborative.")
+    def geographies(self) -> Optional[List[TypeGeo]]:
+        """Get geographies associated with this collaborative."""
+        try:
+            queryset = self.geographies.all()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeGeo.from_django_list(queryset)
+        except Exception:
+            return []
 
     @strawberry.field(description="Get datasets associated with this collaborative.")
     def datasets(self) -> Optional[List["TypeDataset"]]:
