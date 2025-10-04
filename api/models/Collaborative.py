@@ -20,6 +20,9 @@ class Collaborative(models.Model):
     logo = models.ImageField(
         upload_to=_use_case_directory_path, max_length=300, blank=True, null=True
     )
+    cover_image = models.ImageField(
+        upload_to=_use_case_directory_path, max_length=300, blank=True, null=True
+    )
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     website = models.URLField(blank=True)

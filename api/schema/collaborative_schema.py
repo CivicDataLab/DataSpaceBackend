@@ -74,6 +74,7 @@ class CollaborativeInputPartial:
 
     id: str
     logo: Optional[Upload] = strawberry.field(default=None)
+    cover_image: Optional[Upload] = strawberry.field(default=None)
     title: Optional[str] = None
     summary: Optional[str] = None
     platform_url: Optional[str] = None
@@ -429,6 +430,8 @@ class Mutation:
             collaborative.completed_on = data.completed_on
         if data.logo is not None and data.logo is not strawberry.UNSET:
             collaborative.logo = data.logo
+        if data.cover_image is not None and data.cover_image is not strawberry.UNSET:
+            collaborative.cover_image = data.cover_image
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
 
