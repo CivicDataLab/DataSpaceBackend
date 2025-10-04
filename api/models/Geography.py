@@ -1,4 +1,3 @@
-import uuid
 from typing import Optional
 
 from django.db import models
@@ -7,7 +6,7 @@ from api.utils.enums import GeoTypes
 
 
 class Geography(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=75, unique=True)
     code = models.CharField(
         max_length=100, null=True, blank=True, unique=False, default=""

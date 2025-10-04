@@ -67,7 +67,7 @@ class UpdateCollaborativeMetadataInput:
     tags: Optional[List[str]]
     sectors: List[uuid.UUID]
     sdgs: Optional[List[uuid.UUID]]
-    geographies: Optional[List[uuid.UUID]]
+    geographies: Optional[List[int]]
 
 
 @strawberry_django.partial(Collaborative, fields="__all__", exclude=["datasets"])
@@ -968,7 +968,7 @@ class Mutation:
 
 
 def _update_collaborative_geographies(
-    collaborative: Collaborative, geography_ids: List[uuid.UUID]
+    collaborative: Collaborative, geography_ids: List[int]
 ) -> None:
     """Update geographies for a collaborative."""
     collaborative.geographies.clear()
