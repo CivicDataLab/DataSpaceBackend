@@ -64,7 +64,7 @@ class UpdateUseCaseMetadataInput:
     metadata: List[UCMetadataItemType]
     tags: Optional[List[str]]
     sectors: List[uuid.UUID]
-    sdgs: Optional[List[uuid.UUID]]
+    sdgs: Optional[List[uuid.UUID]] = None
     geographies: Optional[List[int]] = None
 
 
