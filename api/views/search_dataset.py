@@ -64,6 +64,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
     sectors = serializers.ListField()
     formats = serializers.ListField()
     catalogs = serializers.ListField()
+    geographies = serializers.ListField()
     has_charts = serializers.BooleanField()
     slug = serializers.CharField()
     download_count = serializers.IntegerField()
@@ -97,6 +98,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
             "sectors",
             "formats",
             "catalogs",
+            "geographies",
             "has_charts",
             "download_count",
             "trending_score",
@@ -145,6 +147,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
             "sectors.raw": "terms",
             "formats.raw": "terms",
             "catalogs.raw": "terms",
+            "geographies.raw": "terms",
         }
         for metadata in enabled_metadata:  # type: Metadata
             if metadata.filterable:
@@ -253,7 +256,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         for filter in filters:
             if filter in excluded_labels:
                 continue
-            elif filter in ["tags", "sectors", "formats", "catalogs"]:
+            elif filter in ["tags", "sectors", "formats", "catalogs", "geographies"]:
                 raw_filter = filter + ".raw"
                 if raw_filter in self.aggregations:
                     filter_values = filters[filter].split(",")

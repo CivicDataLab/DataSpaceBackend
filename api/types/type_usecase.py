@@ -15,7 +15,9 @@ from api.models import (
 )
 from api.types.base_type import BaseType
 from api.types.type_dataset import TypeDataset, TypeTag
+from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
+from api.types.type_sdg import TypeSDG
 from api.types.type_sector import TypeSector
 from api.types.type_usecase_dashboard import TypeUseCaseDashboard
 from api.types.type_usecase_metadata import TypeUseCaseMetadata
@@ -110,6 +112,28 @@ class TypeUseCase(BaseType):
             if not queryset.exists():
                 return []
             return TypeSector.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field(description="Get SDGs associated with this use case.")
+    def sdgs(self) -> Optional[List["TypeSDG"]]:
+        """Get SDGs associated with this use case."""
+        try:
+            queryset = self.sdgs.all()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeSDG.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field(description="Get geographies associated with this use case.")
+    def geographies(self) -> Optional[List["TypeGeo"]]:
+        """Get geographies associated with this use case."""
+        try:
+            queryset = self.geographies.all()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeGeo.from_django_list(queryset)
         except Exception:
             return []
 

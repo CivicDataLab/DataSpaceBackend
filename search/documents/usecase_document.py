@@ -2,7 +2,15 @@ from typing import Any, Dict, List, Optional, Union
 
 from django_elasticsearch_dsl import Document, Index, KeywordField, fields
 
-from api.models import Dataset, Metadata, Organization, Sector, UseCase, UseCaseMetadata
+from api.models import (
+    Dataset,
+    Geography,
+    Metadata,
+    Organization,
+    Sector,
+    UseCase,
+    UseCaseMetadata,
+)
 from api.utils.enums import UseCaseStatus
 from authorization.models import User
 from DataSpace import settings
@@ -68,6 +76,16 @@ class UseCaseDocument(Document):
 
     sectors = fields.TextField(
         attr="sectors_indexing",
+        analyzer=ngram_analyser,
+        fields={
+            "raw": fields.KeywordField(multi=True),
+            "suggest": fields.CompletionField(multi=True),
+        },
+        multi=True,
+    )
+
+    geographies = fields.TextField(
+        attr="geographies_indexing",
         analyzer=ngram_analyser,
         fields={
             "raw": fields.KeywordField(multi=True),
@@ -239,7 +257,7 @@ class UseCaseDocument(Document):
     def get_instances_from_related(
         self,
         related_instance: Union[
-            Dataset, Metadata, UseCaseMetadata, Sector, Organization, User
+            Dataset, Metadata, UseCaseMetadata, Sector, Organization, User, Geography
         ],
     ) -> Optional[Union[UseCase, List[UseCase]]]:
         """Get UseCase instances from related models."""
@@ -264,6 +282,8 @@ class UseCaseDocument(Document):
             # Get usecases where this user is a contributor
             contributed_usecases = list(related_instance.contributed_usecases.all())
             return owned_usecases + contributed_usecases
+        elif isinstance(related_instance, Geography):
+            return list(related_instance.usecases.all())
         return None
 
     class Django:
@@ -284,4 +304,5 @@ class UseCaseDocument(Document):
             Sector,
             Organization,
             User,
+            Geography,
         ]

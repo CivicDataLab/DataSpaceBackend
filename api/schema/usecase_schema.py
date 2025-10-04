@@ -16,7 +16,9 @@ from strawberry_django.mutations import mutations
 from strawberry_django.pagination import OffsetPaginationInput
 
 from api.models import (
+    SDG,
     Dataset,
+    Geography,
     Metadata,
     Organization,
     Sector,
@@ -62,6 +64,8 @@ class UpdateUseCaseMetadataInput:
     metadata: List[UCMetadataItemType]
     tags: Optional[List[str]]
     sectors: List[uuid.UUID]
+    sdgs: Optional[List[uuid.UUID]]
+    geographies: Optional[List[int]] = None
 
 
 use_case_running_status = strawberry.enum(UseCaseRunningStatus)  # type: ignore
@@ -79,6 +83,8 @@ class UseCaseInputPartial:
     platform_url: Optional[str] = None
     tags: Optional[List[str]] = None
     sectors: Optional[List[uuid.UUID]] = None
+    sdgs: Optional[List[uuid.UUID]] = None
+    geographies: Optional[List[int]] = None
     started_on: Optional[datetime.date] = None
     completed_on: Optional[datetime.date] = None
 
@@ -199,6 +205,23 @@ def _update_usecase_sectors(usecase: UseCase, sectors: List[uuid.UUID]) -> None:
     sectors_objs = Sector.objects.filter(id__in=sectors)
     usecase.sectors.clear()
     usecase.sectors.add(*sectors_objs)
+    usecase.save()
+
+
+@trace_resolver(name="update_usecase_geographies", attributes={"component": "usecase"})
+def _update_usecase_geographies(usecase: UseCase, geography_ids: List[int]) -> None:
+    """Update geographies for a usecase."""
+    usecase.geographies.clear()
+    geographies = Geography.objects.filter(id__in=geography_ids)
+    usecase.geographies.add(*geographies)
+    usecase.save()
+
+
+@trace_resolver(name="update_usecase_sdgs", attributes={"component": "usecase"})
+def _update_usecase_sdgs(usecase: UseCase, sdgs: List[uuid.UUID]) -> None:
+    sdgs_objs = SDG.objects.filter(id__in=sdgs)
+    usecase.sdgs.clear()
+    usecase.sdgs.add(*sdgs_objs)
     usecase.save()
 
 
@@ -339,6 +362,10 @@ class Mutation:
             _update_usecase_tags(usecase, update_metadata_input.tags)
         _add_update_usecase_metadata(usecase, metadata_input)
         _update_usecase_sectors(usecase, update_metadata_input.sectors)
+        if update_metadata_input.sdgs is not None:
+            _update_usecase_sdgs(usecase, update_metadata_input.sdgs)
+        if update_metadata_input.geographies is not None:
+            _update_usecase_geographies(usecase, update_metadata_input.geographies)
         return TypeUseCase.from_django(usecase)
 
     @strawberry_django.mutation(handle_django_errors=False)

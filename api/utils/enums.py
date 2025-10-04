@@ -24,9 +24,10 @@ class OrganizationTypes(models.TextChoices):
 
 
 class GeoTypes(models.TextChoices):
-    DISTRICT = "DISTRICT"
-    STATE = "STATE"
+    REGION = "REGION"
     COUNTRY = "COUNTRY"
+    STATE = "STATE"
+    DISTRICT = "DISTRICT"
     UT = "UT"
 
 
@@ -40,6 +41,7 @@ class MetadataModels(models.TextChoices):
     DATASET = "DATASET"
     RESEOURCE = "RESOURCE"
     USECASE = "USECASE"
+    COLLABORATIVE = "COLLABORATIVE"
 
 
 class MetadataStandards(models.TextChoices):
@@ -99,6 +101,12 @@ class DatasetLicense(models.TextChoices):
 
 
 class UseCaseStatus(models.TextChoices):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"
+
+
+class CollaborativeStatus(models.TextChoices):
     DRAFT = "DRAFT"
     PUBLISHED = "PUBLISHED"
     ARCHIVED = "ARCHIVED"

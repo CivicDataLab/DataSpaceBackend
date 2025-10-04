@@ -8,14 +8,17 @@ from strawberry.types import Info
 from strawberry_django.optimizer import DjangoOptimizerExtension
 
 import api.schema.access_model_schema
+import api.schema.collaborative_schema
 import api.schema.dataset_schema
 import api.schema.dataspace_schema
+import api.schema.geography_schema
 import api.schema.metadata_schema
 import api.schema.organization_data_schema
 import api.schema.organization_schema
 import api.schema.resource_chart_schema
 import api.schema.resource_schema
 import api.schema.resoure_chart_image_schema
+import api.schema.sdg_schema
 import api.schema.sector_schema
 import api.schema.stats_schema
 import api.schema.tags_schema
@@ -58,7 +61,9 @@ Query = merge_types(
         api.schema.dataset_schema.Query,
         api.schema.resource_schema.Query,
         api.schema.access_model_schema.Query,
+        api.schema.sdg_schema.Query,
         api.schema.sector_schema.Query,
+        api.schema.geography_schema.Query,
         api.schema.resource_chart_schema.Query,
         api.schema.stats_schema.Query,
         api.schema.usecase_schema.Query,
@@ -67,6 +72,7 @@ Query = merge_types(
         api.schema.dataspace_schema.Query,
         api.schema.resoure_chart_image_schema.Query,
         api.schema.user_schema.Query,
+        api.schema.collaborative_schema.Query,
         AuthQuery,
     ),
 )
@@ -78,6 +84,7 @@ Mutation = merge_types(
         api.schema.dataset_schema.Mutation,
         api.schema.resource_schema.Mutation,
         api.schema.access_model_schema.Mutation,
+        api.schema.sdg_schema.Mutation,
         api.schema.sector_schema.Mutation,
         api.schema.resource_chart_schema.Mutation,
         api.schema.usecase_schema.Mutation,
@@ -86,6 +93,7 @@ Mutation = merge_types(
         api.schema.dataspace_schema.Mutation,
         api.schema.resoure_chart_image_schema.Mutation,
         api.schema.tags_schema.Mutation,
+        api.schema.collaborative_schema.Mutation,
         AuthMutation,
     ),
 )

@@ -9,19 +9,18 @@ if TYPE_CHECKING:
     from api.models.Organization import Organization
     from authorization.models import User
 
-from api.utils.enums import (
-    OrganizationRelationshipType,
-    UseCaseRunningStatus,
-    UseCaseStatus,
-)
+from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from api.utils.file_paths import _use_case_directory_path
 
 
-class UseCase(models.Model):
+class Collaborative(models.Model):
     id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=200, unique=True, blank=True, null=True)
     summary = models.CharField(max_length=10000, blank=True, null=True)
     logo = models.ImageField(
+        upload_to=_use_case_directory_path, max_length=300, blank=True, null=True
+    )
+    cover_image = models.ImageField(
         upload_to=_use_case_directory_path, max_length=300, blank=True, null=True
     )
     created = models.DateTimeField(auto_now_add=True)
@@ -34,28 +33,28 @@ class UseCase(models.Model):
         "api.Organization", on_delete=models.CASCADE, null=True, blank=True
     )
     status = models.CharField(
-        max_length=50, default=UseCaseStatus.DRAFT, choices=UseCaseStatus.choices
+        max_length=50,
+        default=CollaborativeStatus.DRAFT,
+        choices=CollaborativeStatus.choices,
     )
     datasets = models.ManyToManyField("api.Dataset", blank=True)
+    use_cases = models.ManyToManyField("api.UseCase", blank=True)
     tags = models.ManyToManyField("api.Tag", blank=True)
-    running_status = models.CharField(
-        max_length=50,
-        default=UseCaseRunningStatus.INITIATED,
-        choices=UseCaseRunningStatus.choices,
+    sectors = models.ManyToManyField(
+        "api.Sector", blank=True, related_name="collaboratives"
     )
-    sectors = models.ManyToManyField("api.Sector", blank=True, related_name="usecases")
-    sdgs = models.ManyToManyField("api.SDG", blank=True, related_name="usecases")
+    sdgs = models.ManyToManyField("api.SDG", blank=True, related_name="collaboratives")
     geographies = models.ManyToManyField(
-        "api.Geography", blank=True, related_name="usecases"
+        "api.Geography", blank=True, related_name="collaboratives"
     )
     contributors = models.ManyToManyField(
-        "authorization.User", blank=True, related_name="contributed_usecases"
+        "authorization.User", blank=True, related_name="contributed_collaboratives"
     )
     # Organizations can be added as supporters or partners through the intermediate model
     organizations = models.ManyToManyField(
         "api.Organization",
-        through="api.UseCaseOrganizationRelationship",
-        related_name="related_usecases",
+        through="api.CollaborativeOrganizationRelationship",
+        related_name="related_collaboratives",
         blank=True,
     )
     started_on = models.DateField(blank=True, null=True)
@@ -63,12 +62,12 @@ class UseCase(models.Model):
     platform_url = models.URLField(blank=True, null=True)
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        if self.title and not self.slug:
+        if self.title:
             self.slug = slugify(cast(str, self.title))
         super().save(*args, **kwargs)
 
     @property
-    def is_individual_usecase(self):
+    def is_individual_collaborative(self):
         return self.organization is None
 
     @property
@@ -88,4 +87,4 @@ class UseCase(models.Model):
         return [geo.name for geo in self.geographies.all()]  # type: ignore
 
     class Meta:
-        db_table = "use_case"
+        db_table = "collaborative"
