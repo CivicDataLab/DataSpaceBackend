@@ -13,6 +13,9 @@ class SDG(models.Model):
     code = models.CharField(
         max_length=10, unique=True, null=False, blank=False
     )  # e.g., "SDG1", "SDG2"
+    number = models.IntegerField(
+        null=True, blank=True
+    )  # Numeric value for proper ordering (1, 2, 3... 17)
     description = models.TextField(null=True, blank=True)
     slug = models.SlugField(max_length=100, null=True, blank=False, unique=True)
 
@@ -28,4 +31,4 @@ class SDG(models.Model):
         db_table = "sdg"
         verbose_name = "SDG"
         verbose_name_plural = "SDGs"
-        ordering = ["code"]
+        ordering = ["number"]
