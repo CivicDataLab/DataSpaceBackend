@@ -45,6 +45,7 @@ from api.models import (
     UseCase,
     UseCaseMetadata,
 )
+from api.utils.enums import MetadataModels
 
 
 def parse_geography_value(value: str) -> List[str]:
@@ -76,7 +77,9 @@ def migrate_dataset_geographies(
 
     # Get geography metadata item
     try:
-        geo_metadata_item = Metadata.objects.get(label="Geography")
+        geo_metadata_item = Metadata.objects.get(
+            label="Geography", model=MetadataModels.DATASET
+        )
     except Metadata.DoesNotExist:
         print("⚠️  No Geography metadata item found. Skipping dataset migration.")
         return
@@ -169,7 +172,9 @@ def migrate_usecase_geographies(
 
     # Get geography metadata item
     try:
-        geo_metadata_item = Metadata.objects.get(label="Geography")
+        geo_metadata_item = Metadata.objects.get(
+            label="Geography", model=MetadataModels.USECASE
+        )
     except Metadata.DoesNotExist:
         print("⚠️  No Geography metadata item found. Skipping usecase migration.")
         return
