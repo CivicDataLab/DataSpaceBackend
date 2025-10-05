@@ -145,6 +145,10 @@ class UseCaseDocument(Document):
         """Preprocess comma-separated metadata values into arrays."""
         processed_metadata: List[Dict[str, Any]] = []
         for meta in instance.metadata.all():  # type: UseCaseMetadata
+            # Skip if metadata_item is None (orphaned metadata)
+            if not meta.metadata_item:
+                continue
+
             value_list = (
                 [val.strip() for val in meta.value.split(",")]
                 if "," in meta.value
