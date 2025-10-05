@@ -187,7 +187,7 @@ class TypeCollaborative(BaseType):
     def contributors(self) -> Optional[List["TypeUser"]]:
         """Get contributors associated with this collaborative."""
         try:
-            queryset = self.contributors.all().order_by("full_name")  # type: ignore
+            queryset = self.contributors.all().order_by("first_name")  # type: ignore
             if not queryset.exists():
                 return []
             return TypeUser.from_django_list(queryset)
