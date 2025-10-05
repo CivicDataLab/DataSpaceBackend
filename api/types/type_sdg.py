@@ -21,6 +21,7 @@ class SDGFilter:
 class SDGOrder:
     """Order class for SDG model."""
 
+    number: auto
     code: auto
     name: auto
 
