@@ -64,7 +64,7 @@ def find_geography_by_name(name: str) -> Geography | None:
 
 
 def migrate_dataset_geographies(
-    dry_run: bool = False, remove_metadata: bool = False, dataset_id: int | None = None
+    dry_run: bool = False, remove_metadata: bool = False, dataset_id: str | None = None
 ) -> None:
     """Migrate geography metadata to geographies field for datasets."""
     print("\n" + "=" * 80)
@@ -84,7 +84,7 @@ def migrate_dataset_geographies(
     # Find all datasets with geography metadata
     if dataset_id:
         dataset_metadata = DatasetMetadata.objects.filter(
-            metadata_item=geo_metadata_item, dataset_id=str(dataset_id)
+            metadata_item=geo_metadata_item, dataset_id=dataset_id
         ).select_related("dataset", "metadata_item")
     else:
         dataset_metadata = DatasetMetadata.objects.filter(
@@ -341,8 +341,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--dataset-id",
-        type=int,
-        help="Migrate only the dataset with the specified ID",
+        type=str,
+        help="Migrate only the dataset with the specified ID (UUID)",
     )
     parser.add_argument(
         "--usecase-id",
