@@ -1,6 +1,6 @@
 """
 Django management command to populate Asia Pacific geography data.
-Covers: India, Indonesia, Thailand at state/province level.
+Covers: India, Indonesia, Thailand, Philippines at state/province level.
 
 Usage:
     python manage.py populate_geographies
@@ -17,7 +17,9 @@ from api.utils.enums import GeoTypes
 
 
 class Command(BaseCommand):
-    help = "Populate Asia Pacific geography data (India, Indonesia, Thailand)"
+    help = (
+        "Populate Asia Pacific geography data (India, Indonesia, Thailand, Philippines)"
+    )
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
@@ -63,6 +65,9 @@ class Command(BaseCommand):
 
         # Thailand and its provinces
         self._populate_thailand(asia_pacific)
+
+        # Philippines and its provinces
+        self._populate_philippines(asia_pacific)
 
     def _populate_india(self, parent: Geography) -> None:
         """Populate India and its states/UTs."""
@@ -301,4 +306,134 @@ class Command(BaseCommand):
 
         self.stdout.write(
             f"Thai provinces: {created_count} created, {len(thai_provinces) - created_count} already existed"
+        )
+
+    def _populate_philippines(self, parent: Geography) -> None:
+        """Populate Philippines and its provinces."""
+        philippines, created = Geography.objects.get_or_create(
+            name="Philippines",
+            defaults={"code": "PH", "type": GeoTypes.COUNTRY, "parent_id": parent},
+        )
+        if created:
+            self.stdout.write(f"Created country: {philippines.name}")
+        else:
+            self.stdout.write(f"Country already exists: {philippines.name}")
+
+        philippine_provinces = [
+            # Luzon - NCR
+            ("Metro Manila", "NCR"),
+            # Luzon - CAR
+            ("Abra", "ABR"),
+            ("Apayao", "APA"),
+            ("Benguet", "BEN"),
+            ("Ifugao", "IFU"),
+            ("Kalinga", "KAL"),
+            ("Mountain Province", "MOU"),
+            # Luzon - Region I (Ilocos)
+            ("Ilocos Norte", "ILN"),
+            ("Ilocos Sur", "ILS"),
+            ("La Union", "LUN"),
+            ("Pangasinan", "PAN"),
+            # Luzon - Region II (Cagayan Valley)
+            ("Batanes", "BTN"),
+            ("Cagayan", "CAG"),
+            ("Isabela", "ISA"),
+            ("Nueva Vizcaya", "NUV"),
+            ("Quirino", "QUI"),
+            # Luzon - Region III (Central Luzon)
+            ("Aurora", "AUR"),
+            ("Bataan", "BAN"),
+            ("Bulacan", "BUL"),
+            ("Nueva Ecija", "NUE"),
+            ("Pampanga", "PAM"),
+            ("Tarlac", "TAR"),
+            ("Zambales", "ZMB"),
+            # Luzon - Region IV-A (CALABARZON)
+            ("Batangas", "BTG"),
+            ("Cavite", "CAV"),
+            ("Laguna", "LAG"),
+            ("Quezon", "QUE"),
+            ("Rizal", "RIZ"),
+            # Luzon - Region IV-B (MIMAROPA)
+            ("Marinduque", "MAD"),
+            ("Occidental Mindoro", "MDC"),
+            ("Oriental Mindoro", "MDR"),
+            ("Palawan", "PLW"),
+            ("Romblon", "ROM"),
+            # Luzon - Region V (Bicol)
+            ("Albay", "ALB"),
+            ("Camarines Norte", "CAN"),
+            ("Camarines Sur", "CAS"),
+            ("Catanduanes", "CAT"),
+            ("Masbate", "MAS"),
+            ("Sorsogon", "SOR"),
+            # Visayas - Region VI (Western Visayas)
+            ("Aklan", "AKL"),
+            ("Antique", "ANT"),
+            ("Capiz", "CAP"),
+            ("Guimaras", "GUI"),
+            ("Iloilo", "ILI"),
+            ("Negros Occidental", "NEC"),
+            # Visayas - Region VII (Central Visayas)
+            ("Bohol", "BOH"),
+            ("Cebu", "CEB"),
+            ("Negros Oriental", "NER"),
+            ("Siquijor", "SIG"),
+            # Visayas - Region VIII (Eastern Visayas)
+            ("Biliran", "BIL"),
+            ("Eastern Samar", "EAS"),
+            ("Leyte", "LEY"),
+            ("Northern Samar", "NSA"),
+            ("Samar", "WSA"),
+            ("Southern Leyte", "SLE"),
+            # Mindanao - Region IX (Zamboanga Peninsula)
+            ("Zamboanga del Norte", "ZAN"),
+            ("Zamboanga del Sur", "ZAS"),
+            ("Zamboanga Sibugay", "ZSI"),
+            # Mindanao - Region X (Northern Mindanao)
+            ("Bukidnon", "BUK"),
+            ("Camiguin", "CAM"),
+            ("Lanao del Norte", "LAN"),
+            ("Misamis Occidental", "MSC"),
+            ("Misamis Oriental", "MSR"),
+            # Mindanao - Region XI (Davao)
+            ("Davao de Oro", "COM"),
+            ("Davao del Norte", "DAV"),
+            ("Davao del Sur", "DAS"),
+            ("Davao Occidental", "DAO"),
+            ("Davao Oriental", "DAO"),
+            # Mindanao - Region XII (SOCCSKSARGEN)
+            ("Cotabato", "NCO"),
+            ("Sarangani", "SAR"),
+            ("South Cotabato", "SCO"),
+            ("Sultan Kudarat", "SUK"),
+            # Mindanao - Region XIII (Caraga)
+            ("Agusan del Norte", "AGN"),
+            ("Agusan del Sur", "AGS"),
+            ("Dinagat Islands", "DIN"),
+            ("Surigao del Norte", "SUN"),
+            ("Surigao del Sur", "SUR"),
+            # Mindanao - BARMM
+            ("Basilan", "BAS"),
+            ("Lanao del Sur", "LAS"),
+            ("Maguindanao", "MAG"),
+            ("Sulu", "SLU"),
+            ("Tawi-Tawi", "TAW"),
+        ]
+
+        created_count = 0
+        for province_name, province_code in philippine_provinces:
+            _, created = Geography.objects.get_or_create(
+                name=province_name,
+                defaults={
+                    "code": province_code,
+                    "type": GeoTypes.STATE,
+                    "parent_id": philippines,
+                },
+            )
+            if created:
+                created_count += 1
+
+        self.stdout.write(
+            f"Philippine provinces: {created_count} created, {len(philippine_provinces) - created_count} already existed"
         )
