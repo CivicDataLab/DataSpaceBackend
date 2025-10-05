@@ -139,6 +139,20 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                 for agg in formats_agg:
                     aggregations["formats"][agg["key"]] = agg["doc_count"]
 
+            # Handle geographies aggregation (now comes as "geographies.raw")
+            if "geographies.raw" in aggregations:
+                geographies_agg = aggregations["geographies.raw"]["buckets"]
+                aggregations.pop("geographies.raw")
+                aggregations["geographies"] = {}
+                for agg in geographies_agg:
+                    aggregations["geographies"][agg["key"]] = agg["doc_count"]
+            elif "geographies" in aggregations:
+                geographies_agg = aggregations["geographies"]["buckets"]
+                aggregations.pop("geographies")
+                aggregations["geographies"] = {}
+                for agg in geographies_agg:
+                    aggregations["geographies"][agg["key"]] = agg["doc_count"]
+
             if "status" in aggregations:
                 status_agg = aggregations["status"]["buckets"]
                 aggregations.pop("status")
