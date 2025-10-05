@@ -9,7 +9,7 @@ from elasticsearch_dsl.query import Query as ESQuery
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 
-from api.models import Metadata, UseCase, UseCaseMetadata
+from api.models import Geography, Metadata, UseCase, UseCaseMetadata
 from api.utils.telemetry_utils import trace_method, track_metrics
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
 from search.documents import UseCaseDocument
@@ -311,6 +311,13 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
                 raw_filter = filter + ".raw"
                 if raw_filter in self.aggregations:
                     filter_values = filters[filter].split(",")
+
+                    # For geographies, expand to include all descendant geographies
+                    if filter == "geographies":
+                        filter_values = Geography.get_geography_names_with_descendants(
+                            filter_values
+                        )
+
                     search = search.filter("terms", **{raw_filter: filter_values})
                 else:
                     search = search.filter("term", **{filter: filters[filter]})
