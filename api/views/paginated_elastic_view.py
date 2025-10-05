@@ -91,19 +91,21 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
             serializer = self.serializer_class(response, many=True)
             aggregations: Dict[str, Any] = response.aggregations.to_dict()
 
-            metadata_aggregations = aggregations["metadata"]["filtered_metadata"][
-                "composite_agg"
-            ]["buckets"]
-            aggregations.pop("metadata")
-            if "catalogs" in aggregations:
-                aggregations.pop("catalogs")
-            for agg in metadata_aggregations:
-                label: str = agg["key"]["metadata_label"]
+            if "metadata" in aggregations:
+
+                metadata_aggregations = aggregations["metadata"]["filtered_metadata"][
+                    "composite_agg"
+                ]["buckets"]
+                aggregations.pop("metadata")
+                for agg in metadata_aggregations:
+                    label: str = agg["key"]["metadata_label"]
                 value: str = agg["key"].get("metadata_value", "")
                 if label not in aggregations:
                     aggregations[label] = {}
                 aggregations[label][value] = agg["doc_count"]
 
+            if "catalogs" in aggregations:
+                aggregations.pop("catalogs")
             # Handle sectors aggregation (now comes as "sectors.raw")
             if "sectors.raw" in aggregations:
                 sectors_agg = aggregations["sectors.raw"]["buckets"]
