@@ -76,7 +76,7 @@ class TypeCollaborative(BaseType):
     def geographies(self) -> Optional[List[TypeGeo]]:
         """Get geographies associated with this collaborative."""
         try:
-            queryset = self.geographies.all()  # type: ignore
+            queryset = self.geographies.all().order_by("name")  # type: ignore
             if not queryset.exists():
                 return []
             return TypeGeo.from_django_list(queryset)
@@ -88,7 +88,7 @@ class TypeCollaborative(BaseType):
         """Get datasets associated with this collaborative."""
         try:
             # Return raw Django objects and let Strawberry handle conversion
-            queryset = self.datasets.all()  # type: ignore
+            queryset = self.datasets.all().order_by("modified")  # type: ignore
             if not queryset.exists():
                 return []
             return TypeDataset.from_django_list(queryset)
@@ -99,7 +99,7 @@ class TypeCollaborative(BaseType):
     def use_cases(self) -> Optional[List["TypeUseCase"]]:
         """Get use cases associated with this collaborative."""
         try:
-            queryset = self.use_cases.all()  # type: ignore
+            queryset = self.use_cases.all().order_by("modified")  # type: ignore
             if not queryset.exists():
                 return []
             return TypeUseCase.from_django_list(queryset)
@@ -141,7 +141,7 @@ class TypeCollaborative(BaseType):
     def sectors(self) -> Optional[List["TypeSector"]]:
         """Get sectors associated with this collaborative."""
         try:
-            queryset = self.sectors.all()  # type: ignore
+            queryset = self.sectors.all().order_by("name")  # type: ignore
             if not queryset.exists():
                 return []
             return TypeSector.from_django_list(queryset)
