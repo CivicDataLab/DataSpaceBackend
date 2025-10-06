@@ -88,7 +88,7 @@ class TypeCollaborative(BaseType):
         """Get datasets associated with this collaborative."""
         try:
             # Return raw Django objects and let Strawberry handle conversion
-            queryset = self.datasets.all().order_by("modified")  # type: ignore
+            queryset = self.datasets.all().order_by("-modified")  # type: ignore
             if not queryset.exists():
                 return []
             return TypeDataset.from_django_list(queryset)
@@ -99,7 +99,7 @@ class TypeCollaborative(BaseType):
     def use_cases(self) -> Optional[List["TypeUseCase"]]:
         """Get use cases associated with this collaborative."""
         try:
-            queryset = self.use_cases.all().order_by("modified")  # type: ignore
+            queryset = self.use_cases.all().order_by("-modified")  # type: ignore
             if not queryset.exists():
                 return []
             return TypeUseCase.from_django_list(queryset)
