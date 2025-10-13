@@ -2,7 +2,7 @@ annotated-types==0.6.0
 asgiref==3.8.1
 certifi==2024.2.2
 charset-normalizer==3.3.2
-Deprecated==1.2.14
+Deprecated==1.2.18
 Django==5.0.4
 django-choices-field==2.3.0
 django-cors-headers==4.3.1
@@ -16,7 +16,7 @@ elastic-transport==8.13.0
 elasticsearch==8.13.0
 elasticsearch-dsl==8.12.0
 googleapis-common-protos==1.65.0
-graphql-core==3.2.3
+graphql-core==3.2.6
 gunicorn==23.0.0
 grpcio==1.62.1
 idna==3.6
@@ -40,22 +40,22 @@ opentelemetry-semantic-conventions==0.44b0
 opentelemetry-util-http==0.44b0
 packaging==24.0
 pandas==2.2.2
-openpyxl==3.1.2  # For Excel file support
+openpyxl==3.1.5  # For Excel file support
 odfpy==1.4.1  # For ODS file support
 pyarrow==15.0.0  # For Parquet and Feather file support
-xlrd==2.0.1  # For Excel file support
+xlrd==2.0.2  # For Excel file support
 pillow==10.4.0
 protobuf==4.25.3
 pydantic==2.6.1  # Slightly downgraded for compatibility
 pydantic_core==2.16.2  # Matched with pydantic
-pyecharts==2.0.3
+pyecharts==2.0.9
 pyecharts-snapshot @ git+https://github.com/Deepthi-Chand/pyecharts-snapshot.git@8d6cadd055db6c919a1447064185d00d1b30ce01
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 python-magic==0.4.27
 pytz==2024.1
 requests==2.31.0
-sqlalchemy==2.0.39
+sqlalchemy==2.0.44
 six==1.16.0
 sqlparse==0.4.4
 strawberry-graphql==0.225.1
@@ -97,8 +97,8 @@ structlog==24.1.0  # Downgraded for better compatibility
 ipython==8.22.1
 
 # API Documentation
-drf-yasg==1.21.7
-drf-yasg[validation]==1.21.7
+drf-yasg==1.21.11
+drf-yasg[validation]==1.21.11
 djangorestframework-simplejwt==5.3.1  # Downgraded for better DRF compatibility
 
 # Keycloak Integration
