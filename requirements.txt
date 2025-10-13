@@ -1,16 +1,16 @@
 annotated-types==0.6.0
 asgiref==3.8.1
-certifi==2024.2.2
+certifi==2024.7.4
 charset-normalizer==3.3.2
 Deprecated==1.2.14
-Django==5.0.4
+Django==5.1.13
 django-choices-field==2.3.0
 django-cors-headers==4.3.1
 django-environ==0.9.0
 django-elasticsearch-dsl==8.0
 django-elasticsearch-dsl-drf==0.22.5
 django-nine==0.2.7
-djangorestframework==3.14.0
+djangorestframework==3.15.2
 dvc==3.59.1
 elastic-transport==8.13.0
 elasticsearch==8.13.0
@@ -19,7 +19,7 @@ googleapis-common-protos==1.65.0
 graphql-core==3.2.3
 gunicorn==23.0.0
 grpcio==1.62.1
-idna==3.6
+idna==3.7
 importlib-metadata==6.11.0
 numpy==1.26.4
 opentelemetry-api==1.23.0
@@ -45,7 +45,7 @@ odfpy==1.4.1  # For ODS file support
 pyarrow==15.0.0  # For Parquet and Feather file support
 xlrd==2.0.1  # For Excel file support
 pillow==10.4.0
-protobuf==4.25.3
+protobuf==4.25.8
 pydantic==2.6.1  # Slightly downgraded for compatibility
 pydantic_core==2.16.2  # Matched with pydantic
 pyecharts==2.0.3
@@ -54,18 +54,18 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 python-magic==0.4.27
 pytz==2024.1
-requests==2.31.0
+requests==2.32.4
 sqlalchemy==2.0.39
 six==1.16.0
-sqlparse==0.4.4
-strawberry-graphql==0.225.1
+sqlparse==0.5.0
+strawberry-graphql==0.257.0
 strawberry-graphql-django==0.37.1
 typing-extensions==4.9.0  # Fixed version that satisfies most dependencies
 tzdata==2024.1
-urllib3==2.2.1
+urllib3==2.5.0
 uvicorn==0.27.1  # Downgraded for better compatibility
 wrapt==1.16.0
-zipp==3.18.1
+zipp==3.19.1
 snapshot-selenium==0.0.2
 selenium==4.16.0  # Downgraded for compatibility
 
@@ -81,14 +81,14 @@ django-cacheops==7.0.2
 
 # Code Quality and Type Checking
 mypy==1.7.1  # Downgraded for compatibility
-black==24.2.0
+black==24.3.0
 isort==5.13.2
 pre-commit==3.6.2
 flake8==7.0.0
 pandas-stubs==2.2.0.240218  # Matched with pandas version
 
 # Data Comparison and Versioning
-deepdiff==6.7.1  # For intelligent version detection
+deepdiff==8.6.1  # For intelligent version detection
 
 # Logging
 structlog==24.1.0  # Downgraded for better compatibility
@@ -99,7 +99,7 @@ ipython==8.22.1
 # API Documentation
 drf-yasg==1.21.7
 drf-yasg[validation]==1.21.7
-djangorestframework-simplejwt==5.3.1  # Downgraded for better DRF compatibility
+djangorestframework-simplejwt==5.5.1  # Downgraded for better DRF compatibility
 
 # Keycloak Integration
 python-keycloak==5.5.1
