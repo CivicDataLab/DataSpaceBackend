@@ -82,7 +82,7 @@ django-cacheops==7.0.2
 # Code Quality and Type Checking
 mypy==1.7.1  # Downgraded for compatibility
 black==24.2.0
-isort==5.13.2
+isort==7.0.0
 pre-commit==3.6.2
 flake8==7.0.0
 pandas-stubs==2.2.0.240218  # Matched with pandas version
