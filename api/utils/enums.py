@@ -153,3 +153,50 @@ class AggregateType(models.TextChoices):
 class OrganizationRelationshipType(models.TextChoices):
     SUPPORTER = "SUPPORTER"
     PARTNER = "PARTNER"
+
+
+class AIModelType(models.TextChoices):
+    TRANSLATION = "TRANSLATION"
+    TEXT_GENERATION = "TEXT_GENERATION"
+    SUMMARIZATION = "SUMMARIZATION"
+    QUESTION_ANSWERING = "QUESTION_ANSWERING"
+    SENTIMENT_ANALYSIS = "SENTIMENT_ANALYSIS"
+    TEXT_CLASSIFICATION = "TEXT_CLASSIFICATION"
+    NAMED_ENTITY_RECOGNITION = "NAMED_ENTITY_RECOGNITION"
+    TEXT_TO_SPEECH = "TEXT_TO_SPEECH"
+    SPEECH_TO_TEXT = "SPEECH_TO_TEXT"
+    OTHER = "OTHER"
+
+
+class AIModelStatus(models.TextChoices):
+    REGISTERED = "REGISTERED"
+    VALIDATING = "VALIDATING"
+    ACTIVE = "ACTIVE"
+    AUDITING = "AUDITING"
+    APPROVED = "APPROVED"
+    FLAGGED = "FLAGGED"
+    DEPRECATED = "DEPRECATED"
+
+
+class AIModelProvider(models.TextChoices):
+    OPENAI = "OPENAI"
+    LLAMA_OLLAMA = "LLAMA_OLLAMA"
+    LLAMA_TOGETHER = "LLAMA_TOGETHER"
+    LLAMA_REPLICATE = "LLAMA_REPLICATE"
+    LLAMA_CUSTOM = "LLAMA_CUSTOM"
+    CUSTOM = "CUSTOM"
+
+
+class EndpointHTTPMethod(models.TextChoices):
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+
+
+class EndpointAuthType(models.TextChoices):
+    BEARER = "BEARER"
+    API_KEY = "API_KEY"
+    BASIC = "BASIC"
+    OAUTH2 = "OAUTH2"
+    CUSTOM = "CUSTOM"
+    NONE = "NONE"

@@ -10,6 +10,7 @@ from api.views import (
     auth,
     download,
     generate_dynamic_chart,
+    search_aimodel,
     search_dataset,
     search_usecase,
     trending_datasets,
@@ -36,6 +37,9 @@ urlpatterns = [
     ),
     path(
         "search/usecase/", search_usecase.SearchUseCase.as_view(), name="search_usecase"
+    ),
+    path(
+        "search/aimodel/", search_aimodel.SearchAIModel.as_view(), name="search_aimodel"
     ),
     path(
         "trending/datasets/",

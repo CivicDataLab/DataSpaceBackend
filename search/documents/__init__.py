@@ -1,2 +1,3 @@
+from search.documents.aimodel_document import AIModelDocument
 from search.documents.dataset_document import DatasetDocument
 from search.documents.usecase_document import UseCaseDocument
