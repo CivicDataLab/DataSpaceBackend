@@ -147,6 +147,7 @@ cython_debug/
 # IDE
 .vscode/
 .idea/
+.windsurf/
 
 #Resources upload folder
 resources/
