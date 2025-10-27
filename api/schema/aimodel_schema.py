@@ -44,6 +44,34 @@ def _update_aimodel_tags(model: AIModel, tags: Optional[List[str]]) -> None:
     model.save()
 
 
+def _update_aimodel_sectors(model: AIModel, sectors: List[str]) -> None:
+    """Helper function to update sectors for an AI model."""
+    from api.models import Sector
+
+    model.sectors.clear()
+    for sector_name in sectors:
+        try:
+            sector = Sector.objects.get(name__iexact=sector_name)
+            model.sectors.add(sector)
+        except Sector.DoesNotExist:
+            pass
+    model.save()
+
+
+def _update_aimodel_geographies(model: AIModel, geographies: List[str]) -> None:
+    """Helper function to update geographies for an AI model."""
+    from api.models import Geography
+
+    model.geographies.clear()
+    for geography_name in geographies:
+        try:
+            geography = Geography.objects.get(name__iexact=geography_name)
+            model.geographies.add(geography)
+        except Geography.DoesNotExist:
+            pass
+    model.save()
+
+
 @strawberry.input
 class CreateAIModelInput:
     """Input for creating a new AI Model."""
@@ -61,6 +89,8 @@ class CreateAIModelInput:
     input_schema: Optional[strawberry.scalars.JSON] = None
     output_schema: Optional[strawberry.scalars.JSON] = None
     tags: Optional[List[str]] = None
+    sectors: Optional[List[str]] = None
+    geographies: Optional[List[str]] = None
     metadata: Optional[strawberry.scalars.JSON] = None
     is_public: bool = False
 
@@ -83,6 +113,8 @@ class UpdateAIModelInput:
     input_schema: Optional[strawberry.scalars.JSON] = None
     output_schema: Optional[strawberry.scalars.JSON] = None
     tags: Optional[List[str]] = None
+    sectors: Optional[List[str]] = None
+    geographies: Optional[List[str]] = None
     metadata: Optional[strawberry.scalars.JSON] = None
     is_public: Optional[bool] = None
     is_active: Optional[bool] = None
@@ -294,6 +326,14 @@ class Mutation:
             if input.tags is not None:
                 _update_aimodel_tags(model, input.tags)
 
+            # Handle sectors
+            if input.sectors is not None:
+                _update_aimodel_sectors(model, input.sectors)
+
+            # Handle geographies
+            if input.geographies is not None:
+                _update_aimodel_geographies(model, input.geographies)
+
             return MutationResponse.success_response(TypeAIModel.from_django(model))
         except Exception as e:
             raise DjangoValidationError(f"Failed to create AI model: {str(e)}")
@@ -379,6 +419,14 @@ class Mutation:
         # Handle tags separately
         if input.tags is not None:
             _update_aimodel_tags(model, input.tags)
+
+        # Handle sectors
+        if input.sectors is not None:
+            _update_aimodel_sectors(model, input.sectors)
+
+        # Handle geographies
+        if input.geographies is not None:
+            _update_aimodel_geographies(model, input.geographies)
 
         return MutationResponse.success_response(TypeAIModel.from_django(model))
 

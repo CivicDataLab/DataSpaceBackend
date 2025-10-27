@@ -6,7 +6,9 @@ from django_elasticsearch_dsl import Document, Index, KeywordField, fields
 
 from api.models.AIModel import AIModel, ModelEndpoint
 from api.models.Dataset import Tag
+from api.models.Geography import Geography
 from api.models.Organization import Organization
+from api.models.Sector import Sector
 from api.utils.enums import AIModelStatus
 from authorization.models import User
 from DataSpace import settings
@@ -57,6 +59,28 @@ class AIModelDocument(Document):
     # Tags (ManyToMany relationship)
     tags = fields.TextField(
         attr="tags_indexing",
+        analyzer=ngram_analyser,
+        fields={
+            "raw": fields.KeywordField(multi=True),
+            "suggest": fields.CompletionField(multi=True),
+        },
+        multi=True,
+    )
+
+    # Sectors (ManyToMany relationship)
+    sectors = fields.TextField(
+        attr="sectors_indexing",
+        analyzer=ngram_analyser,
+        fields={
+            "raw": fields.KeywordField(multi=True),
+            "suggest": fields.CompletionField(multi=True),
+        },
+        multi=True,
+    )
+
+    # Geographies (ManyToMany relationship)
+    geographies = fields.TextField(
+        attr="geographies_indexing",
         analyzer=ngram_analyser,
         fields={
             "raw": fields.KeywordField(multi=True),
@@ -200,7 +224,9 @@ class AIModelDocument(Document):
 
     def get_instances_from_related(
         self,
-        related_instance: Union[ModelEndpoint, Organization, User, Tag],
+        related_instance: Union[
+            ModelEndpoint, Organization, User, Tag, Sector, Geography
+        ],
     ) -> Optional[Union[AIModel, List[AIModel]]]:
         """Get AIModel instances from related models."""
         if isinstance(related_instance, ModelEndpoint):
@@ -211,6 +237,10 @@ class AIModelDocument(Document):
             return list(related_instance.ai_models.all())
         elif isinstance(related_instance, Tag):
             return list(related_instance.aimodel_set.all())
+        elif isinstance(related_instance, Sector):
+            return list(related_instance.ai_models.all())
+        elif isinstance(related_instance, Geography):
+            return list(related_instance.ai_models.all())
         return None
 
     class Django:
@@ -230,4 +260,6 @@ class AIModelDocument(Document):
             Organization,
             User,
             Tag,
+            Sector,
+            Geography,
         ]

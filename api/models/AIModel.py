@@ -72,6 +72,10 @@ class AIModel(models.Model):
 
     # Metadata
     tags = models.ManyToManyField("api.Tag", blank=True)
+    sectors = models.ManyToManyField("api.Sector", blank=True, related_name="ai_models")
+    geographies = models.ManyToManyField(
+        "api.Geography", blank=True, related_name="ai_models"
+    )
     metadata = models.JSONField(
         default=dict,
         help_text="Additional metadata (training data info, limitations, etc.)",
@@ -119,6 +123,22 @@ class AIModel(models.Model):
         Used in Elasticsearch indexing.
         """
         return [tag.value for tag in self.tags.all()]  # type: ignore
+
+    @property
+    def sectors_indexing(self) -> list[str]:
+        """Sectors for indexing.
+
+        Used in Elasticsearch indexing.
+        """
+        return [sector.name for sector in self.sectors.all()]  # type: ignore
+
+    @property
+    def geographies_indexing(self) -> list[str]:
+        """Geographies for indexing.
+
+        Used in Elasticsearch indexing.
+        """
+        return [geography.name for geography in self.geographies.all()]  # type: ignore
 
     def get_primary_endpoint(self):
         """Get the primary API endpoint for this model"""

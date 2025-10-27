@@ -13,7 +13,9 @@ from strawberry.types import Info
 from api.models.AIModel import AIModel, ModelEndpoint
 from api.types.base_type import BaseType
 from api.types.type_dataset import TypeTag
+from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
+from api.types.type_sector import TypeSector
 from api.utils.enums import (
     AIModelProvider,
     AIModelStatus,
@@ -153,6 +155,28 @@ class TypeAIModel(BaseType):
             if not queryset.exists():
                 return []
             return TypeTag.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field(description="Get sectors associated with this AI model.")
+    def sectors(self) -> Optional[List[TypeSector]]:
+        """Get sectors associated with this AI model."""
+        try:
+            queryset = self.sectors.all()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeSector.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field(description="Get geographies associated with this AI model.")
+    def geographies(self) -> Optional[List[TypeGeo]]:
+        """Get geographies associated with this AI model."""
+        try:
+            queryset = self.geographies.all()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeGeo.from_django_list(queryset)
         except Exception:
             return []
 
