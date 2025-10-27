@@ -104,6 +104,7 @@ class CreateModelEndpointInput:
     timeout_seconds: int = 30
     max_retries: int = 3
     is_primary: bool = True
+    is_active: bool = True
     rate_limit_per_minute: Optional[int] = None
 
 
@@ -481,6 +482,7 @@ class Mutation:
             max_retries=input.max_retries,
             is_primary=input.is_primary,
             rate_limit_per_minute=input.rate_limit_per_minute,
+            is_active=input.is_active,
         )
 
         return MutationResponse.success_response(
