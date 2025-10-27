@@ -12,6 +12,7 @@ from api.views import (
     generate_dynamic_chart,
     search_aimodel,
     search_dataset,
+    search_unified,
     search_usecase,
     trending_datasets,
 )
@@ -40,6 +41,9 @@ urlpatterns = [
     ),
     path(
         "search/aimodel/", search_aimodel.SearchAIModel.as_view(), name="search_aimodel"
+    ),
+    path(
+        "search/unified/", search_unified.UnifiedSearch.as_view(), name="search_unified"
     ),
     path(
         "trending/datasets/",
