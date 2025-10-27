@@ -73,6 +73,8 @@ class UpdateAIModelInput:
     name: Optional[str] = None
     display_name: Optional[str] = None
     description: Optional[str] = None
+    model_type: Optional[AIModelTypeEnum] = None
+    provider: Optional[AIModelProviderEnum] = None
     version: Optional[str] = None
     provider_model_id: Optional[str] = None
     supports_streaming: Optional[bool] = None
@@ -366,6 +368,10 @@ class Mutation:
             model.is_active = input.is_active
         if input.status is not None:
             model.status = input.status
+        if input.model_type is not None:
+            model.model_type = input.model_type
+        if input.provider is not None:
+            model.provider = input.provider
 
         model.save()
 
