@@ -293,17 +293,9 @@ class UnifiedSearch(APIView):
         # Add aggregations
         search.aggs.bucket("types", "terms", field="_index")
         search.aggs.bucket("tags", "terms", field="tags.raw", size=50)
-        search.aggs.bucket(
-            "sectors", "terms", field="sectors.raw", size=50, missing_bucket=True
-        )
-        search.aggs.bucket(
-            "geographies",
-            "terms",
-            field="geographies.raw",
-            size=50,
-            missing_bucket=True,
-        )
-        search.aggs.bucket("status", "terms", field="status", missing_bucket=True)
+        search.aggs.bucket("sectors", "terms", field="sectors.raw", size=50)
+        search.aggs.bucket("geographies", "terms", field="geographies.raw", size=50)
+        search.aggs.bucket("status", "terms", field="status")
 
         # Pagination
         start = (page - 1) * size
