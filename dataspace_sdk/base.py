@@ -144,6 +144,15 @@ class BaseAPIClient:
         """Make a PUT request."""
         return self._make_request("PUT", endpoint, data=data, json_data=json_data)
 
+    def patch(
+        self,
+        endpoint: str,
+        data: Optional[Dict[str, Any]] = None,
+        json_data: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Make a PATCH request."""
+        return self._make_request("PATCH", endpoint, data=data, json_data=json_data)
+
     def delete(self, endpoint: str) -> Dict[str, Any]:
         """Make a DELETE request."""
         response = self._make_request("DELETE", endpoint)

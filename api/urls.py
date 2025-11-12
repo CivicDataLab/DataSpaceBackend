@@ -8,6 +8,7 @@ from strawberry.django.views import AsyncGraphQLView, GraphQLView
 from api.schema.schema import schema
 from api.views import (
     aimodel_detail,
+    aimodel_execution,
     auth,
     download,
     generate_dynamic_chart,
@@ -40,6 +41,16 @@ urlpatterns = [
         "aimodels/<uuid:model_id>/",
         aimodel_detail.AIModelDetailView.as_view(),
         name="aimodel_detail",
+    ),
+    path(
+        "aimodels/<uuid:model_id>/call/",
+        aimodel_execution.call_aimodel,
+        name="aimodel_call",
+    ),
+    path(
+        "aimodels/<uuid:model_id>/call-async/",
+        aimodel_execution.call_aimodel_async,
+        name="aimodel_call_async",
     ),
     path(
         "trending/datasets/",

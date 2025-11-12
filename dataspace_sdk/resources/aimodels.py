@@ -96,6 +96,11 @@ class AIModelClient(BaseAPIClient):
                 provider
                 version
                 providerModelId
+                hfUsePipeline
+                hfAuthToken
+                hfModelClass
+                hfAttnImplementation
+                framework
                 supportsStreaming
                 maxTokens
                 supportedLanguages
@@ -248,4 +253,92 @@ class AIModelClient(BaseAPIClient):
             organization_id=organization_id,
             limit=limit,
             offset=offset,
+        )
+
+    def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create a new AI model.
+
+        Args:
+            data: Dictionary containing AI model data
+
+        Returns:
+            Dictionary containing created AI model information
+        """
+        return self.post("/api/aimodels/", json_data=data)
+
+    def update(self, model_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update an existing AI model.
+
+        Args:
+            model_id: UUID of the AI model
+            data: Dictionary containing updated AI model data
+
+        Returns:
+            Dictionary containing updated AI model information
+        """
+        return self.patch(f"/api/aimodels/{model_id}/", json_data=data)
+
+    def delete_model(self, model_id: str) -> Dict[str, Any]:
+        """
+        Delete an AI model.
+
+        Args:
+            model_id: UUID of the AI model
+
+        Returns:
+            Dictionary containing deletion response
+        """
+        return self.delete(f"/api/aimodels/{model_id}/")
+
+    def call_model(
+        self, model_id: str, input_text: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Call an AI model with input text using the appropriate client (API or HuggingFace).
+
+        Args:
+            model_id: UUID of the AI model
+            input_text: Input text to process
+            parameters: Optional parameters for the model call (temperature, max_tokens, etc.)
+
+        Returns:
+            Dictionary containing model response:
+            {
+                "success": bool,
+                "output": str (if successful),
+                "error": str (if failed),
+                "latency_ms": float,
+                "provider": str,
+                ...
+            }
+        """
+        return self.post(
+            f"/api/aimodels/{model_id}/call/",
+            json_data={"input_text": input_text, "parameters": parameters or {}},
+        )
+
+    def call_model_async(
+        self, model_id: str, input_text: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Call an AI model asynchronously (returns task ID for long-running operations).
+
+        Args:
+            model_id: UUID of the AI model
+            input_text: Input text to process
+            parameters: Optional parameters for the model call
+
+        Returns:
+            Dictionary containing task information:
+            {
+                "task_id": str,
+                "status": str,
+                "model_id": str
+            }
+        """
+        return self.post(
+            f"/api/aimodels/{model_id}/call-async/",
+            json_data={"input_text": input_text, "parameters": parameters or {}},
         )

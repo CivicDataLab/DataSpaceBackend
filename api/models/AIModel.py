@@ -5,11 +5,13 @@ from django.core.validators import URLValidator
 from django.db import models
 
 from api.utils.enums import (
+    AIModelFramework,
     AIModelProvider,
     AIModelStatus,
     AIModelType,
     EndpointAuthType,
     EndpointHTTPMethod,
+    HFModelClass,
 )
 
 User = get_user_model()
@@ -34,6 +36,35 @@ class AIModel(models.Model):
         max_length=255,
         blank=True,
         help_text="Provider's model identifier (e.g., gpt-4, claude-3-opus)",
+    )
+
+    # Huggingface Models
+    hf_use_pipeline = models.BooleanField(default=False, help_text="Use Pipeline inference API")
+    hf_auth_token = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Huggingface Auth Token for gated models",
+    )
+    hf_model_class = models.CharField(
+        max_length=100,
+        choices=HFModelClass.choices,
+        blank=True,
+        null=True,
+        help_text="Specify model head to use",
+    )
+    hf_attn_implementation = models.CharField(
+        max_length=255,
+        blank=True,
+        default="flash_attention_2",
+        help_text="Attention Function",
+    )
+    framework = models.CharField(
+        max_length=10,
+        choices=AIModelFramework.choices,
+        blank=True,
+        null=True,
+        help_text="Framework (PyTorch or TensorFlow)",
     )
 
     # Ownership & Organization
@@ -65,17 +96,13 @@ class AIModel(models.Model):
     )
 
     # Input/Output Schema
-    input_schema = models.JSONField(
-        default=dict, help_text="Expected input format and parameters"
-    )
+    input_schema = models.JSONField(default=dict, help_text="Expected input format and parameters")
     output_schema = models.JSONField(default=dict, help_text="Expected output format")
 
     # Metadata
     tags = models.ManyToManyField("api.Tag", blank=True)
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="ai_models")
-    geographies = models.ManyToManyField(
-        "api.Geography", blank=True, related_name="ai_models"
-    )
+    geographies = models.ManyToManyField("api.Geography", blank=True, related_name="ai_models")
     metadata = models.JSONField(
         default=dict,
         help_text="Additional metadata (training data info, limitations, etc.)",
@@ -151,14 +178,10 @@ class ModelEndpoint(models.Model):
     Supports multiple endpoints per model (e.g., different regions, fallbacks)
     """
 
-    model = models.ForeignKey(
-        AIModel, on_delete=models.CASCADE, related_name="endpoints"
-    )
+    model = models.ForeignKey(AIModel, on_delete=models.CASCADE, related_name="endpoints")
 
     # Endpoint Configuration
-    url = models.URLField(
-        max_length=500, validators=[URLValidator()], help_text="API endpoint URL"
-    )
+    url = models.URLField(max_length=500, validators=[URLValidator()], help_text="API endpoint URL")
     http_method = models.CharField(
         max_length=10,
         choices=EndpointHTTPMethod.choices,
@@ -176,9 +199,7 @@ class ModelEndpoint(models.Model):
     )
 
     # Request Configuration
-    headers = models.JSONField(
-        default=dict, help_text="Additional headers to include in requests"
-    )
+    headers = models.JSONField(default=dict, help_text="Additional headers to include in requests")
     request_template = models.JSONField(
         default=dict, help_text="Template for request body with placeholders"
     )
@@ -222,9 +243,7 @@ class ModelEndpoint(models.Model):
         """Calculate success rate"""
         if self.total_requests == 0:
             return None
-        return (
-            (self.total_requests - self.failed_requests) / self.total_requests
-        ) * 100
+        return ((self.total_requests - self.failed_requests) / self.total_requests) * 100
 
 
 class ModelAPIKey(models.Model):
@@ -232,9 +251,7 @@ class ModelAPIKey(models.Model):
     Encrypted storage for API keys/credentials for model endpoints.
     """
 
-    model = models.ForeignKey(
-        AIModel, on_delete=models.CASCADE, related_name="api_keys"
-    )
+    model = models.ForeignKey(AIModel, on_delete=models.CASCADE, related_name="api_keys")
 
     name = models.CharField(max_length=100, help_text="Friendly name for this API key")
 

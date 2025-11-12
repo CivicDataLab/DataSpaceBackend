@@ -185,6 +185,23 @@ class AIModelProvider(models.TextChoices):
     LLAMA_REPLICATE = "LLAMA_REPLICATE"
     LLAMA_CUSTOM = "LLAMA_CUSTOM"
     CUSTOM = "CUSTOM"
+    HUGGINGFACE = "HUGGINGFACE"
+
+
+class AIModelFramework(models.TextChoices):
+    PYTORCH = "pt", "PyTorch"
+    TENSORFLOW = "tf", "TensorFlow"
+
+
+class HFModelClass(models.TextChoices):
+    CAUSAL_LM = "AutoModelForCausalLM", "Causal Language Modeling Head"
+    SEQ2SEQ_LM = "AutoModelForSeq2SeqLM", "Sequence-To-Sequence Language Modeling Head"
+    SEQUENCE_CLASSIFICATION = "AutoModelForSequenceClassification", "Sequence Classification Head"
+    NEXT_SENTENCE_PREDICTION = "AutoModelForNextSentencePrediction", "Next Sentence Prediction Head"
+    MULTIPLE_CHOICE = "AutoModelForMultipleChoice", "Multiple Choice Head"
+    TOKEN_CLASSIFICATION = "AutoModelForTokenClassification", "Token Classification Head"
+    QUESTION_ANSWERING = "AutoModelForQuestionAnswering", "Question Answering Head"
+    MASKED_LM = "AutoModelForMaskedLM", "Masked Language Modeling Head"
 
 
 class EndpointHTTPMethod(models.TextChoices):
