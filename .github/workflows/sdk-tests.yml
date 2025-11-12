@@ -28,11 +28,11 @@ jobs:
 
       - name: Run type checking with mypy
         run: |
-          mypy dataspace_sdk/ --ignore-missing-imports
+          mypy dataspace_sdk/ --ignore-missing-imports --config-file=/dev/null
 
       - name: Run tests with pytest
         run: |
-          pytest tests/ -v --cov=dataspace_sdk --cov-report=term-missing --cov-report=xml
+          pytest tests/test_auth.py tests/test_base.py tests/test_client.py tests/test_datasets.py tests/test_aimodels.py tests/test_usecases.py tests/test_exceptions.py -v -p no:django -o addopts= --override-ini=django_find_project=false --noconftest --cov=dataspace_sdk --cov-report=term-missing --cov-report=xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

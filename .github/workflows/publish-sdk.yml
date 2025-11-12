@@ -43,7 +43,10 @@ jobs:
 
       - name: Run tests
         run: |
-          python run_sdk_tests.py
+          # Run mypy
+          mypy dataspace_sdk/ --ignore-missing-imports --config-file=/dev/null
+          # Run pytest
+          pytest tests/test_auth.py tests/test_base.py tests/test_client.py tests/test_datasets.py tests/test_aimodels.py tests/test_usecases.py tests/test_exceptions.py -v -p no:django -o addopts= --override-ini=django_find_project=false --noconftest --cov=dataspace_sdk --cov-report=term-missing
 
       - name: Build package
         run: |
