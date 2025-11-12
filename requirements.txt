@@ -54,7 +54,7 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 python-magic==0.4.27
 pytz==2024.1
-requests==2.31.0
+requests==2.32.4
 sqlalchemy==2.0.39
 six==1.16.0
 sqlparse==0.4.4
