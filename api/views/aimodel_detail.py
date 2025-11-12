@@ -2,6 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 
+import logging
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
@@ -10,6 +11,8 @@ from rest_framework.views import APIView
 
 from api.models.AIModel import AIModel, ModelEndpoint
 
+
+logger = logging.getLogger(__name__)
 
 class ModelEndpointSerializer(serializers.ModelSerializer):
     """Serializer for Model Endpoint."""
@@ -125,4 +128,5 @@ class AIModelDetailView(APIView):
         except AIModel.DoesNotExist:
             return Response({"error": "AI Model not found"}, status=404)
         except Exception as e:
-            return Response({"error": str(e)}, status=500)
+            logger.exception("Unexpected exception in AIModelDetailView.get")
+            return Response({"error": "An internal error has occurred."}, status=500)
