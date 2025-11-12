@@ -5,6 +5,8 @@ Handles model inference requests via ModelAPIClient and ModelHFClient.
 
 from typing import Any
 
+import logging
+
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -82,8 +84,9 @@ def call_aimodel(request: Request, model_id: str) -> Response:
             status=status.HTTP_404_NOT_FOUND,
         )
     except ValueError as e:
+        logging.warning(f"ValueError during model execution: {e}")
         return Response(
-            {"error": str(e)},
+            {"error": "Invalid input."},
             status=status.HTTP_400_BAD_REQUEST,
         )
     except Exception as e:
