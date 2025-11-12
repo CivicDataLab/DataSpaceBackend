@@ -132,7 +132,7 @@ class DatasetClient(BaseAPIClient):
         organization_id: Optional[str] = None,
         limit: int = 10,
         offset: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> Any:
         """
         List all datasets with pagination using GraphQL.
 
@@ -194,7 +194,7 @@ class DatasetClient(BaseAPIClient):
             raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
 
         data = response.get("data", {})
-        datasets_result: Dict[str, Any] = data.get("datasets", []) if isinstance(data, dict) else []
+        datasets_result: Any = data.get("datasets", []) if isinstance(data, dict) else []
         return datasets_result
 
     def get_trending(self, limit: int = 10) -> Dict[str, Any]:
@@ -214,7 +214,7 @@ class DatasetClient(BaseAPIClient):
         organization_id: str,
         limit: int = 10,
         offset: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> Any:
         """
         Get datasets for a specific organization.
 

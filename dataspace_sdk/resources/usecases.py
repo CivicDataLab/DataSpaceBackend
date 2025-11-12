@@ -146,7 +146,7 @@ class UseCaseClient(BaseAPIClient):
         organization_id: Optional[str] = None,
         limit: int = 10,
         offset: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> Any:
         """
         List all use cases with pagination using GraphQL.
 
@@ -221,7 +221,7 @@ class UseCaseClient(BaseAPIClient):
             raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
 
         data = response.get("data", {})
-        usecases_result: Dict[str, Any] = data.get("useCases", []) if isinstance(data, dict) else []
+        usecases_result: Any = data.get("useCases", []) if isinstance(data, dict) else []
         return usecases_result
 
     def get_organization_usecases(
@@ -229,7 +229,7 @@ class UseCaseClient(BaseAPIClient):
         organization_id: str,
         limit: int = 10,
         offset: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> Any:
         """
         Get use cases for a specific organization.
 

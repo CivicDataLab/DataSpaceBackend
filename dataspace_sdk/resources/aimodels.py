@@ -156,7 +156,7 @@ class AIModelClient(BaseAPIClient):
         model_type: Optional[str] = None,
         limit: int = 10,
         offset: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> Any:
         """
         List all AI models with pagination using GraphQL.
 
@@ -224,7 +224,7 @@ class AIModelClient(BaseAPIClient):
             raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
 
         data = response.get("data", {})
-        models_result: Dict[str, Any] = data.get("aiModels", []) if isinstance(data, dict) else []
+        models_result: Any = data.get("aiModels", []) if isinstance(data, dict) else []
         return models_result
 
     def get_organization_models(
@@ -232,7 +232,7 @@ class AIModelClient(BaseAPIClient):
         organization_id: str,
         limit: int = 10,
         offset: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> Any:
         """
         Get AI models for a specific organization.
 
