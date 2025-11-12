@@ -85,17 +85,25 @@ datasets = client.datasets.search(query="test")
 print(datasets)
 ```
 
-### Unit Tests (To Be Implemented)
+### Unit Tests
 
-Create tests in `tests/` directory:
+The SDK includes comprehensive unit tests in the `tests/` directory:
 
 ```bash
-# Run tests
-pytest
+# Run all SDK tests (recommended - uses current Python environment)
+python run_sdk_tests.py
+
+# Run specific test files
+python -m pytest tests/test_auth.py -v
+python -m pytest tests/test_datasets.py -v
+python -m pytest tests/test_aimodels.py -v
+python -m pytest tests/test_usecases.py -v
 
 # Run with coverage
-pytest --cov=dataspace_sdk --cov-report=html
+python -m pytest tests/ --cov=dataspace_sdk --cov-report=html
 ```
+
+See [QUICK_TEST_GUIDE.md](QUICK_TEST_GUIDE.md) for more testing options.
 
 ## Code Quality
 
