@@ -90,8 +90,9 @@ def call_aimodel(request: Request, model_id: str) -> Response:
             status=status.HTTP_400_BAD_REQUEST,
         )
     except Exception as e:
+        logging.exception("Unexpected error during model execution")
         return Response(
-            {"error": f"Model execution failed: {str(e)}"},
+            {"error": "Model execution failed."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
