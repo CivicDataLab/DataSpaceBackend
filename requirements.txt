@@ -45,7 +45,7 @@ odfpy==1.4.1  # For ODS file support
 pyarrow==15.0.0  # For Parquet and Feather file support
 xlrd==2.0.1  # For Excel file support
 pillow==10.4.0
-protobuf==4.25.3
+protobuf==4.25.8
 pydantic==2.6.1  # Slightly downgraded for compatibility
 pydantic_core==2.16.2  # Matched with pydantic
 pyecharts==2.0.3
