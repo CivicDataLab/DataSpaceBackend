@@ -65,7 +65,7 @@ tzdata==2024.1
 urllib3==2.2.1
 uvicorn==0.27.1  # Downgraded for better compatibility
 wrapt==1.16.0
-zipp==3.18.1
+zipp==3.19.1
 snapshot-selenium==0.0.2
 selenium==4.16.0  # Downgraded for compatibility
 
