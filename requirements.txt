@@ -99,7 +99,7 @@ ipython==8.22.1
 # API Documentation
 drf-yasg==1.21.7
 drf-yasg[validation]==1.21.7
-djangorestframework-simplejwt==5.3.1  # Downgraded for better DRF compatibility
+djangorestframework-simplejwt==5.5.1  # Downgraded for better DRF compatibility
 
 # Keycloak Integration
 python-keycloak==5.5.1
