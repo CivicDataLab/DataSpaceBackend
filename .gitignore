@@ -164,3 +164,7 @@ aws/.env.*
 
 #Public files
 files/public/*
+
+#dvc files
+dvc
+dvc/*
