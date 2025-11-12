@@ -273,6 +273,7 @@ ELASTICSEARCH_DSL = {
 ELASTICSEARCH_INDEX_NAMES = {
     "search.documents.dataset_document": "dataset",
     "search.documents.usecase_document": "usecase",
+    "search.documents.aimodel_document": "aimodel",
 }
 
 

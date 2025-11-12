@@ -7,10 +7,14 @@ from strawberry.django.views import AsyncGraphQLView, GraphQLView
 
 from api.schema.schema import schema
 from api.views import (
+    aimodel_detail,
+    aimodel_execution,
     auth,
     download,
     generate_dynamic_chart,
+    search_aimodel,
     search_dataset,
+    search_unified,
     search_usecase,
     trending_datasets,
 )
@@ -25,17 +29,28 @@ from api.views.activity import (
 
 urlpatterns = [
     # Authentication endpoints
-    path(
-        "auth/keycloak/login/", auth.KeycloakLoginView.as_view(), name="keycloak_login"
-    ),
+    path("auth/keycloak/login/", auth.KeycloakLoginView.as_view(), name="keycloak_login"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("auth/user/info/", auth.UserInfoView.as_view(), name="user_info"),
     # API endpoints
+    path("search/dataset/", search_dataset.SearchDataset.as_view(), name="search_dataset"),
+    path("search/usecase/", search_usecase.SearchUseCase.as_view(), name="search_usecase"),
+    path("search/aimodel/", search_aimodel.SearchAIModel.as_view(), name="search_aimodel"),
+    path("search/unified/", search_unified.UnifiedSearch.as_view(), name="search_unified"),
     path(
-        "search/dataset/", search_dataset.SearchDataset.as_view(), name="search_dataset"
+        "aimodels/<uuid:model_id>/",
+        aimodel_detail.AIModelDetailView.as_view(),
+        name="aimodel_detail",
     ),
     path(
-        "search/usecase/", search_usecase.SearchUseCase.as_view(), name="search_usecase"
+        "aimodels/<uuid:model_id>/call/",
+        aimodel_execution.call_aimodel,
+        name="aimodel_call",
+    ),
+    path(
+        "aimodels/<uuid:model_id>/call-async/",
+        aimodel_execution.call_aimodel_async,
+        name="aimodel_call_async",
     ),
     path(
         "trending/datasets/",

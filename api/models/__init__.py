@@ -1,4 +1,5 @@
 from api.models.AccessModel import AccessModel, AccessModelResource
+from api.models.AIModel import AIModel, ModelAPIKey, ModelEndpoint
 from api.models.Catalog import Catalog
 from api.models.Collaborative import Collaborative
 from api.models.CollaborativeMetadata import CollaborativeMetadata

@@ -8,6 +8,7 @@ from strawberry.types import Info
 from strawberry_django.optimizer import DjangoOptimizerExtension
 
 import api.schema.access_model_schema
+import api.schema.aimodel_schema
 import api.schema.collaborative_schema
 import api.schema.dataset_schema
 import api.schema.dataspace_schema
@@ -61,6 +62,7 @@ Query = merge_types(
         api.schema.dataset_schema.Query,
         api.schema.resource_schema.Query,
         api.schema.access_model_schema.Query,
+        api.schema.aimodel_schema.Query,
         api.schema.sdg_schema.Query,
         api.schema.sector_schema.Query,
         api.schema.geography_schema.Query,
@@ -84,6 +86,7 @@ Mutation = merge_types(
         api.schema.dataset_schema.Mutation,
         api.schema.resource_schema.Mutation,
         api.schema.access_model_schema.Mutation,
+        api.schema.aimodel_schema.Mutation,
         api.schema.sdg_schema.Mutation,
         api.schema.sector_schema.Mutation,
         api.schema.resource_chart_schema.Mutation,
