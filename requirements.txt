@@ -62,7 +62,7 @@ strawberry-graphql==0.225.1
 strawberry-graphql-django==0.37.1
 typing-extensions==4.9.0  # Fixed version that satisfies most dependencies
 tzdata==2024.1
-urllib3==2.2.1
+urllib3==2.5.0
 uvicorn==0.27.1  # Downgraded for better compatibility
 wrapt==1.16.0
 zipp==3.18.1
