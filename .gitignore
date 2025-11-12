@@ -149,8 +149,9 @@ cython_debug/
 .idea/
 .windsurf/
 
-#Resources upload folder
-resources/
+#Resources upload folder (but not SDK resources)
+/resources/
+!/dataspace_sdk/resources/
 
 #local env file
 .env
