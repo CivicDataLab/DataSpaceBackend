@@ -381,7 +381,7 @@ class UnifiedSearch(APIView):
 
         except Exception as e:
             self.logger.error("unified_search_error", error=str(e), exc_info=True)
-            return Response({"error": str(e)}, status=500)
+            return Response({"error": "An internal error has occurred."}, status=500)
 
     def _build_aggregations(
         self, results: List[Dict[str, Any]]
