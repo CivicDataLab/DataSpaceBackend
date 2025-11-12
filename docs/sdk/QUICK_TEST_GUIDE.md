@@ -35,6 +35,7 @@ mypy dataspace_sdk/ --ignore-missing-imports
 ## CI/CD
 
 Tests run automatically on:
+
 - Push to `dev` or `main`
 - Pull requests to `dev` or `main`
 

@@ -52,6 +52,7 @@ org_datasets = client.datasets.get_organization_datasets(org_id)
 ## Available Operations
 
 ### Datasets
+
 - Search with filters (tags, sectors, geographies, status, access_type)
 - Get by UUID
 - List all with pagination
@@ -59,12 +60,14 @@ org_datasets = client.datasets.get_organization_datasets(org_id)
 - Get organization-specific datasets
 
 ### AI Models
+
 - Search with filters (tags, sectors, model_type, provider, status)
 - Get by UUID
 - List all with pagination
 - Get organization-specific models
 
 ### Use Cases
+
 - Search with filters (tags, sectors, status, running_status)
 - Get by ID
 - List all with pagination
@@ -73,6 +76,7 @@ org_datasets = client.datasets.get_organization_datasets(org_id)
 ## Examples
 
 Check out the [examples](../../examples/) directory for:
+
 - Basic usage
 - Organization resources
 - Advanced search with filters
@@ -84,6 +88,6 @@ AGPL-3.0 License
 
 ## Support
 
-- **GitHub**: https://github.com/CivicDataLab/DataExchange
-- **Issues**: https://github.com/CivicDataLab/DataExchange/issues
-- **Email**: tech@civicdatalab.in
+- **GitHub**: <https://github.com/CivicDataLab/DataExchange>
+- **Issues**: <https://github.com/CivicDataLab/DataExchange/issues>
+- **Email**: <tech@civicdatalab.in>

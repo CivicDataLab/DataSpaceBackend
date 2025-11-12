@@ -5,29 +5,29 @@ This guide covers development, testing, and publishing of the DataSpace Python S
 ## Project Structure
 
 ```
-DataExBackend/
-├── dataspace_sdk/           # Main SDK package
-│   ├── __init__.py         # Package initialization and exports
-│   ├── auth.py             # Authentication client
-│   ├── base.py             # Base API client
-│   ├── client.py           # Main DataSpaceClient
-│   ├── exceptions.py       # Custom exceptions
-│   └── resources/          # Resource-specific clients
-│       ├── __init__.py
-│       ├── datasets.py     # Dataset operations
-│       ├── aimodels.py     # AI Model operations
-│       └── usecases.py     # UseCase operations
-├── examples/               # Usage examples
-│   ├── basic_usage.py
-│   ├── organization_resources.py
-│   ├── advanced_search.py
-│   └── error_handling.py
-├── tests/                  # Unit tests (to be created)
-├── setup.py               # Package setup configuration
-├── pyproject.toml         # Modern Python packaging config
-├── MANIFEST.in            # Files to include in distribution
-├── docs/sdk/README.md     # SDK documentation
-└── docs/sdk/DEVELOPMENT.md # This file
+    DataExBackend/
+    ├── dataspace_sdk/           # Main SDK package
+    │   ├── __init__.py         # Package initialization and exports
+    │   ├── auth.py             # Authentication client
+    │   ├── base.py             # Base API client
+    │   ├── client.py           # Main DataSpaceClient
+    │   ├── exceptions.py       # Custom exceptions
+    │   └── resources/          # Resource-specific clients
+    │       ├── __init__.py
+    │       ├── datasets.py     # Dataset operations
+    │       ├── aimodels.py     # AI Model operations
+    │       └── usecases.py     # UseCase operations
+    ├── examples/               # Usage examples
+    │   ├── basic_usage.py
+    │   ├── organization_resources.py
+    │   ├── advanced_search.py
+    │   └── error_handling.py
+    ├── tests/                  # Unit tests (to be created)
+    ├── setup.py               # Package setup configuration
+    ├── pyproject.toml         # Modern Python packaging config
+    ├── MANIFEST.in            # Files to include in distribution
+    ├── README_SDK.md          # SDK documentation
+    └── SDK_DEVELOPMENT.md     # This file
 ```
 
 ## Development Setup
@@ -85,25 +85,17 @@ datasets = client.datasets.search(query="test")
 print(datasets)
 ```
 
-### Unit Tests
+### Unit Tests (To Be Implemented)
 
-The SDK includes comprehensive unit tests in the `tests/` directory:
+Create tests in `tests/` directory:
 
 ```bash
-# Run all SDK tests (recommended - uses current Python environment)
-python run_sdk_tests.py
-
-# Run specific test files
-python -m pytest tests/test_auth.py -v
-python -m pytest tests/test_datasets.py -v
-python -m pytest tests/test_aimodels.py -v
-python -m pytest tests/test_usecases.py -v
+# Run tests
+pytest
 
 # Run with coverage
-python -m pytest tests/ --cov=dataspace_sdk --cov-report=html
+pytest --cov=dataspace_sdk --cov-report=html
 ```
-
-See [QUICK_TEST_GUIDE.md](QUICK_TEST_GUIDE.md) for more testing options.
 
 ## Code Quality
 
@@ -261,13 +253,13 @@ Example: `0.1.0` → `0.2.0` (new features) → `1.0.0` (stable release)
             self.newresource = NewResourceClient(self.base_url, self._auth)
     ```
 
-4. Update documentation in `docs/sdk/README.md`
+4. Update documentation
 
 ### Adding New Methods
 
 1. Add method to appropriate client class
 2. Add docstring with parameters and return type
-3. Add example in `docs/sdk/README.md`
+3. Add example in `README_SDK.md`
 4. Create example file if needed
 
 ## Troubleshooting
@@ -317,5 +309,5 @@ python -m build
 
 For issues and questions:
 
-- GitHub Issues: <https://github.com/CivicDataLab/DataExchange/issues>
-- Email: <info@civicdatalab.in>
+- GitHub Issues: <https://github.com/CivicDataLab/DataSpace/issues>
+- Email: <tech@civicdatalab.in>
