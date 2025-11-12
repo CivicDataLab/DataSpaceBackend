@@ -161,3 +161,6 @@ authorization/migrations/*
 
 # AWS files
 aws/.env.*
+
+#Public files
+files/public/*
