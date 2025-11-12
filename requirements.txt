@@ -58,7 +58,7 @@ requests==2.31.0
 sqlalchemy==2.0.39
 six==1.16.0
 sqlparse==0.4.4
-strawberry-graphql==0.225.1
+strawberry-graphql==0.257.0
 strawberry-graphql-django==0.37.1
 typing-extensions==4.9.0  # Fixed version that satisfies most dependencies
 tzdata==2024.1
