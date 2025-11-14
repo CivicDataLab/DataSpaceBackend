@@ -1,9 +1,13 @@
+import json
+import os
 import uuid
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
+import requests
 import strawberry
 import strawberry_django
+from strawberry.scalars import JSON
 from django.db.models import Q
 from django.db.models.expressions import Combinable
 from strawberry.types import Info
@@ -19,6 +23,8 @@ from api.types.type_access_model import TypeAccessModel
 from api.utils.enums import AccessTypes
 
 AccessTypesEnum = strawberry.enum(AccessTypes)  # type: ignore
+PARAKH_API_BASE_URL= os.environ["PARAKH_API_BASE_URL"]
+RESOURCE_ENDPOINT = os.environ["RESOURCE_ENDPOINT"]
 
 
 @strawberry.input
@@ -59,7 +65,118 @@ class Query:
     def access_model(self, info: Info, access_model_id: uuid.UUID) -> TypeAccessModel:
         model = AccessModel.objects.get(id=access_model_id)
         return TypeAccessModel.from_django(model)
+    
+    # @strawberry.field
+    # def access_model_data(self, info: Info, access_model_id: uuid.UUID) -> JSON:
+    #     """
+    #     Fetches and filters data from Parakh API based on an AccessModel.
+    #     """
+    #     user = info.context.user
+    #     if not user.is_authenticated:
+    #         raise Exception("Authentication required to access data.")
 
+    #     try:
+    #         jwt_token = info.context.auth_token
+    #         access_model = AccessModel.objects.get(id=access_model_id)
+            
+    #         if access_model.type != AccessTypes.PUBLIC and (not hasattr(user, 'organization_id') or access_model.organization_id != user.organization_id):
+    #              raise Exception("Not authorized to access data via this Access Model.")
+
+    #         am_resources = AccessModelResource.objects.filter(
+    #             access_model=access_model
+    #         ).select_related('resource')
+
+    #         result = {}
+    #         headers = {
+    #             "Authorization": f"Bearer {jwt_token}",
+    #             "Accept": "application/json",
+    #         }
+            
+    #         for amr in am_resources:
+    #             resource_endpoint = amr.resource.external_endpoint 
+    #             allowed_fields = list(amr.fields.values_list('field_name', flat=True))
+
+    #             api_url = f"{PARAKH_API_BASE_URL}/{resource_endpoint}"
+    #             response = requests.get(api_url, headers=headers)
+    #             response.raise_for_status()
+    #             model_data = response.json()
+    #             if not isinstance(model_data, list):
+    #                 model_data = [model_data] 
+    #             filtered_model_data = []
+    #             for model in model_data:
+    #                 filtered_model = {
+    #                     field: model.get(field)
+    #                     for field in allowed_fields if field in model
+    #                 }
+    #                 filtered_model_data.append(filtered_model)
+                
+    #             result[resource_endpoint] = filtered_model_data
+    #         return [TypeAccessModel.from_django(model) for model in model_data]
+
+    #     except AccessModel.DoesNotExist:
+    #         raise Exception(f"Access Model with ID {access_model_id} not found.")
+
+    @strawberry_django.field
+    def request_audit_from_parakh(info: Any, model_id: strawberry.ID, audit_name: str, audit_type: str, configuration: JSON, test_dataset_id: Optional[int] = None) -> JSON: # type: ignore
+        """
+        Sends a GraphQL mutation to ParakhAI to request a new audit.
+        """
+        if hasattr(info.context.user, 'auth_token') and info.context.user.auth_token:
+            JWT_TOKEN = info.context.user.auth_token
+        else:
+            JWT_TOKEN = "SYSTEM_AUDIT_TOKEN"
+
+        API_URL = f"{PARAKH_API_BASE_URL}/{RESOURCE_ENDPOINT}" 
+
+        audit_input_variables = {
+            "modelId": str(model_id),
+            "name": audit_name,
+            "auditType": audit_type,
+            "testDatasetId": test_dataset_id,
+            "configuration": configuration if configuration is not None else {}
+        }
+
+        variables = {"input": audit_input_variables}
+        mutation_query = """
+        mutation RequestAuditMutation($input: RequestAuditInput!) {
+        requestAudit(input: $input) {
+            success
+            message
+            audit {
+            id
+            status
+            name
+            }
+        }
+        }
+        """
+        HEADERS = {
+            "Authorization": f"Bearer {JWT_TOKEN}",
+            "Content-Type": "application/json",
+        }
+
+        try:
+            response = requests.post(
+                API_URL,
+                headers=HEADERS,
+                json={'query': mutation_query, 'variables': variables}
+            )
+            response.raise_for_status() 
+            
+            response_data = response.json()
+            if 'errors' in response_data:
+                raise Exception(f"GraphQL API returned errors: {response_data['errors']}")
+            result_object = response_data['data']['requestAudit']
+            return json.dumps(result_object)
+        
+        except requests.exceptions.RequestException as e:
+            status_code = e.response.status_code if e.response else "N/A"
+            error_text = e.response.text if e.response else str(e)
+            raise Exception(f"HTTP Error calling Parakh request_audit (Status {status_code}): {error_text}")
+            
+        except Exception as e:
+            raise Exception(f"An unexpected error occurred during audit request: {str(e)}")
+    
 
 def _add_resource_fields(
     access_model_resource: AccessModelResource,
