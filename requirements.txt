@@ -18,26 +18,26 @@ elasticsearch-dsl==8.12.0
 googleapis-common-protos==1.65.0
 graphql-core==3.2.3
 gunicorn==23.0.0
-grpcio==1.62.1
+grpcio==1.68.1
 idna==3.6
 importlib-metadata==6.11.0
 numpy==1.26.4
-opentelemetry-api==1.23.0
-opentelemetry-exporter-otlp==1.23.0
-opentelemetry-exporter-otlp-proto-common==1.23.0
-opentelemetry-exporter-otlp-proto-grpc==1.23.0
-opentelemetry-exporter-otlp-proto-http==1.23.0
-opentelemetry-instrumentation==0.44b0
-opentelemetry-instrumentation-django==0.44b0
-opentelemetry-instrumentation-wsgi==0.44b0
-opentelemetry-instrumentation-redis==0.44b0
-opentelemetry-instrumentation-elasticsearch==0.44b0
-opentelemetry-instrumentation-requests==0.44b0
-opentelemetry-instrumentation-sqlalchemy==0.44b0
-opentelemetry-proto==1.23.0
-opentelemetry-sdk==1.23.0
-opentelemetry-semantic-conventions==0.44b0
-opentelemetry-util-http==0.44b0
+opentelemetry-api==1.28.2
+opentelemetry-exporter-otlp==1.28.2
+opentelemetry-exporter-otlp-proto-common==1.28.2
+opentelemetry-exporter-otlp-proto-grpc==1.28.2
+opentelemetry-exporter-otlp-proto-http==1.28.2
+opentelemetry-instrumentation==0.49b2
+opentelemetry-instrumentation-django==0.49b2
+opentelemetry-instrumentation-wsgi==0.49b2
+opentelemetry-instrumentation-redis==0.49b2
+opentelemetry-instrumentation-elasticsearch==0.49b2
+opentelemetry-instrumentation-requests==0.49b2
+opentelemetry-instrumentation-sqlalchemy==0.49b2
+opentelemetry-proto==1.28.2
+opentelemetry-sdk==1.28.2
+opentelemetry-semantic-conventions==0.49b2
+opentelemetry-util-http==0.49b2
 packaging==24.0
 pandas==2.2.2
 openpyxl==3.1.2  # For Excel file support
@@ -45,13 +45,13 @@ odfpy==1.4.1  # For ODS file support
 pyarrow==15.0.0  # For Parquet and Feather file support
 xlrd==2.0.1  # For Excel file support
 pillow==10.4.0
-protobuf==4.25.3
-pydantic==2.6.1  # Slightly downgraded for compatibility
-pydantic_core==2.16.2  # Matched with pydantic
+protobuf==5.28.3
+pydantic==2.11.7  # Updated for deepeval and ML packages compatibility
+pydantic_core==2.33.2  # Matched with pydantic
 pyecharts==2.0.3
 pyecharts-snapshot @ git+https://github.com/Deepthi-Chand/pyecharts-snapshot.git@8d6cadd055db6c919a1447064185d00d1b30ce01
 python-dateutil==2.9.0.post0
-python-dotenv==1.0.1
+python-dotenv==1.1.1
 python-magic==0.4.27
 pytz==2024.1
 requests==2.31.0
@@ -60,27 +60,27 @@ six==1.16.0
 sqlparse==0.4.4
 strawberry-graphql==0.225.1
 strawberry-graphql-django==0.37.1
-typing-extensions==4.9.0  # Fixed version that satisfies most dependencies
+typing-extensions==4.14.0
 tzdata==2024.1
 urllib3==2.2.1
-uvicorn==0.27.1  # Downgraded for better compatibility
+uvicorn==0.27.1
 wrapt==1.16.0
 zipp==3.18.1
 snapshot-selenium==0.0.2
-selenium==4.16.0  # Downgraded for compatibility
+selenium==4.16.0
 
 # Security and Environment Management
 python-decouple==3.8
-django-debug-toolbar==4.2.0  # Downgraded for better Django compatibility
+django-debug-toolbar==4.2.0
 django-ratelimit==4.1.0
 
 # Caching and Performance
-django-redis==5.4.0  # Added for Redis caching
-redis==5.0.1  # Added Redis client
+django-redis==5.4.0
+redis==5.0.1
 django-cacheops==7.0.2
 
 # Code Quality and Type Checking
-mypy==1.7.1  # Downgraded for compatibility
+mypy==1.7.1
 black==24.2.0
 isort==5.13.2
 pre-commit==3.6.2
@@ -88,10 +88,10 @@ flake8==7.0.0
 pandas-stubs==2.2.0.240218  # Matched with pandas version
 
 # Data Comparison and Versioning
-deepdiff==6.7.1  # For intelligent version detection
+deepdiff==6.7.1
 
 # Logging
-structlog==24.1.0  # Downgraded for better compatibility
+structlog==24.1.0
 
 # Development and Debugging
 ipython==8.22.1
@@ -99,17 +99,17 @@ ipython==8.22.1
 # API Documentation
 drf-yasg==1.21.7
 drf-yasg[validation]==1.21.7
-djangorestframework-simplejwt==5.3.1  # Downgraded for better DRF compatibility
+djangorestframework-simplejwt==5.3.1
 
 # Keycloak Integration
 python-keycloak==5.5.1
 django-keycloak-auth==1.0.0
 
 # API Versioning and Throttling
-django-filter==23.5  # Downgraded for better Django compatibility
+django-filter==23.5
 
-django-stubs==4.2.7  # Downgraded for better compatibility
-djangorestframework-stubs==3.14.5  # Matched with DRF version
+django-stubs==4.2.7
+djangorestframework-stubs==3.14.5
 
  #whitenoise for managing static files
  whitenoise==6.9.0
