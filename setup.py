@@ -1,13 +1,22 @@
 """Setup configuration for DataSpace Python SDK."""
 
+import os
+from typing import Any, Dict
+
 from setuptools import find_packages, setup
+
+# Read version from __version__.py
+version: Dict[str, Any] = {}
+version_file = os.path.join(os.path.dirname(__file__), "dataspace_sdk", "__version__.py")
+with open(version_file, "r", encoding="utf-8") as f:
+    exec(f.read(), version)
 
 with open("docs/sdk/README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
     name="dataspace-sdk",
-    version="0.1.0",
+    version=version["__version__"],
     author="CivicDataLab",
     author_email="tech@civicdatalab.in",
     description="Python SDK for DataSpace API - programmatic access to datasets, AI models, and use cases",
