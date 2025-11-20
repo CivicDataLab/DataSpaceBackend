@@ -13,18 +13,60 @@ class TestAuthClient(unittest.TestCase):
     def setUp(self) -> None:
         """Set up test fixtures."""
         self.base_url = "https://api.test.com"
-        self.auth_client = AuthClient(self.base_url)
+        self.keycloak_url = "https://keycloak.test.com"
+        self.keycloak_realm = "test-realm"
+        self.keycloak_client_id = "test-client"
+        self.auth_client = AuthClient(
+            self.base_url,
+            keycloak_url=self.keycloak_url,
+            keycloak_realm=self.keycloak_realm,
+            keycloak_client_id=self.keycloak_client_id,
+        )
 
     def test_init(self) -> None:
         """Test AuthClient initialization."""
         self.assertEqual(self.auth_client.base_url, self.base_url)
+        self.assertEqual(self.auth_client.keycloak_url, self.keycloak_url)
+        self.assertEqual(self.auth_client.keycloak_realm, self.keycloak_realm)
+        self.assertEqual(self.auth_client.keycloak_client_id, self.keycloak_client_id)
         self.assertIsNone(self.auth_client.access_token)
         self.assertIsNone(self.auth_client.refresh_token)
         self.assertIsNone(self.auth_client.user_info)
 
     @patch("dataspace_sdk.auth.requests.post")
-    def test_login_success(self, mock_post: MagicMock) -> None:
-        """Test successful login."""
+    def test_login_with_username_password(self, mock_post: MagicMock) -> None:
+        """Test successful login with username/password."""
+        # Mock Keycloak token response
+        keycloak_response = MagicMock()
+        keycloak_response.status_code = 200
+        keycloak_response.json.return_value = {
+            "access_token": "keycloak_access_token",
+            "refresh_token": "keycloak_refresh_token",
+            "expires_in": 300,
+        }
+
+        # Mock DataSpace backend login response
+        backend_response = MagicMock()
+        backend_response.status_code = 200
+        backend_response.json.return_value = {
+            "access": "test_access_token",
+            "refresh": "test_refresh_token",
+            "user": {"id": "123", "username": "testuser"},
+        }
+
+        mock_post.side_effect = [keycloak_response, backend_response]
+
+        result = self.auth_client.login("testuser", "password")
+
+        self.assertEqual(self.auth_client.access_token, "test_access_token")
+        self.assertEqual(self.auth_client.refresh_token, "test_refresh_token")
+        self.assertIsNotNone(self.auth_client.user_info)
+        self.assertEqual(result["user"]["username"], "testuser")
+        self.assertEqual(mock_post.call_count, 2)
+
+    @patch("dataspace_sdk.auth.requests.post")
+    def test_login_with_token(self, mock_post: MagicMock) -> None:
+        """Test successful login with Keycloak token."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -34,7 +76,7 @@ class TestAuthClient(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        result = self.auth_client.login_with_keycloak("test_keycloak_token")
+        result = self.auth_client._login_with_keycloak_token("test_keycloak_token")
 
         self.assertEqual(self.auth_client.access_token, "test_access_token")
         self.assertEqual(self.auth_client.refresh_token, "test_refresh_token")
@@ -46,11 +88,11 @@ class TestAuthClient(unittest.TestCase):
         """Test failed login."""
         mock_response = MagicMock()
         mock_response.status_code = 401
-        mock_response.json.return_value = {"error": "Invalid token"}
+        mock_response.json.return_value = {"error": "invalid_grant"}
         mock_post.return_value = mock_response
 
         with self.assertRaises(DataSpaceAuthError):
-            self.auth_client.login_with_keycloak("invalid_token")
+            self.auth_client.login("invalid_user", "invalid_password")
 
     @patch("dataspace_sdk.auth.requests.post")
     def test_refresh_token_success(self, mock_post: MagicMock) -> None:
