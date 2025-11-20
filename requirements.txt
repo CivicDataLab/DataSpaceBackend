@@ -118,3 +118,7 @@ djangorestframework-stubs==3.14.5  # Matched with DRF version
 django-activity-stream==2.0.0
 
 tenacity==9.1.2
+torch==2.9.0
+transformers==4.57.1
+sentencepiece==0.2.1
+accelerate==1.11.0
