@@ -60,7 +60,7 @@ six==1.16.0
 sqlparse==0.4.4
 strawberry-graphql==0.225.1
 strawberry-graphql-django==0.37.1
-typing-extensions==4.14.0
+typing-extensions==4.15.0
 tzdata==2024.1
 urllib3==2.2.1
 uvicorn==0.27.1
