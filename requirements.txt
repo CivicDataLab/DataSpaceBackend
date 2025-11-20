@@ -46,8 +46,8 @@ pyarrow==15.0.0  # For Parquet and Feather file support
 xlrd==2.0.1  # For Excel file support
 pillow==10.4.0
 protobuf==5.28.3
-pydantic==2.11.7  # Updated for deepeval and ML packages compatibility
-pydantic_core==2.33.2  # Matched with pydantic
+pydantic==2.9.2
+pydantic_core==2.23.4  # Matched with pydantic
 pyecharts==2.0.3
 pyecharts-snapshot @ git+https://github.com/Deepthi-Chand/pyecharts-snapshot.git@8d6cadd055db6c919a1447064185d00d1b30ce01
 python-dateutil==2.9.0.post0
@@ -58,8 +58,8 @@ requests==2.31.0
 sqlalchemy==2.0.39
 six==1.16.0
 sqlparse==0.4.4
-strawberry-graphql==0.243.0
-strawberry-graphql-django==0.47.2
+strawberry-graphql==0.235.2
+strawberry-graphql-django==0.42.0
 typing-extensions==4.15.0
 tzdata==2024.1
 urllib3==2.2.1
