@@ -7,7 +7,7 @@ with open("docs/sdk/README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="dataspace-sdk",
-    version="0.2.0",
+    version="0.3.0",
     author="CivicDataLab",
     author_email="tech@civicdatalab.in",
     description="Python SDK for DataSpace API - programmatic access to datasets, AI models, and use cases",
