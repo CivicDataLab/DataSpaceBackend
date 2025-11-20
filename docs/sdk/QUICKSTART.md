@@ -21,19 +21,41 @@ pip install -e .
 ```python
 from dataspace_sdk import DataSpaceClient
 
-# 1. Initialize the client
-client = DataSpaceClient(base_url="https://api.dataspace.example.com")
+# 1. Initialize the client with Keycloak configuration
+client = DataSpaceClient(
+    base_url="https://dataspace.civicdatalab.in",
+    keycloak_url="https://opub-kc.civicdatalab.in",
+    keycloak_realm="DataSpace",
+    keycloak_client_id="dataspace"
+)
 
-# 2. Login with your Keycloak token
-client.login(keycloak_token="your_keycloak_token")
+# 2. Login with username and password
+# Credentials are stored securely for automatic token refresh
+user_info = client.login(
+    username="your-email@example.com",
+    password="your-password"
+)
+print(f"Logged in as: {user_info['user']['username']}")
 
-# 3. Search for datasets
+# 3. Search for datasets (tokens auto-refresh as needed)
 datasets = client.datasets.search(query="health", page_size=5)
 print(f"Found {datasets['total']} datasets")
 
 # 4. Get a specific dataset
 dataset = client.datasets.get_by_id("dataset-uuid")
 print(f"Dataset: {dataset['title']}")
+```
+
+### Alternative: Login with Pre-obtained Token
+
+If you already have a Keycloak token:
+
+```python
+# Initialize without Keycloak config
+client = DataSpaceClient(base_url="https://dataspace.civicdatalab.in")
+
+# Login with token
+client.login_with_token(keycloak_token="your_keycloak_token")
 ```
 
 ## Common Operations

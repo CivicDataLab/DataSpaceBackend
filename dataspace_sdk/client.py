@@ -33,24 +33,67 @@ class DataSpaceClient:
         >>> org_usecases = client.usecases.get_organization_usecases("org-uuid")
     """
 
-    def __init__(self, base_url: str):
+    def __init__(
+        self,
+        base_url: str,
+        keycloak_url: Optional[str] = None,
+        keycloak_realm: Optional[str] = None,
+        keycloak_client_id: Optional[str] = None,
+        keycloak_client_secret: Optional[str] = None,
+    ):
         """
         Initialize the DataSpace client.
 
         Args:
             base_url: Base URL of the DataSpace API (e.g., "https://api.dataspace.example.com")
+            keycloak_url: Keycloak server URL (e.g., "https://opub-kc.civicdatalab.in")
+            keycloak_realm: Keycloak realm name (e.g., "DataSpace")
+            keycloak_client_id: Keycloak client ID (e.g., "dataspace")
+            keycloak_client_secret: Optional client secret for confidential clients
         """
         self.base_url = base_url.rstrip("/")
-        self._auth = AuthClient(self.base_url)
+        self._auth = AuthClient(
+            self.base_url,
+            keycloak_url=keycloak_url,
+            keycloak_realm=keycloak_realm,
+            keycloak_client_id=keycloak_client_id,
+            keycloak_client_secret=keycloak_client_secret,
+        )
 
         # Initialize resource clients
         self.datasets = DatasetClient(self.base_url, self._auth)
         self.aimodels = AIModelClient(self.base_url, self._auth)
         self.usecases = UseCaseClient(self.base_url, self._auth)
 
-    def login(self, keycloak_token: str) -> dict:
+    def login(self, username: str, password: str) -> dict:
         """
-        Login using a Keycloak token.
+        Login using username and password.
+
+        Args:
+            username: User's username or email
+            password: User's password
+
+        Returns:
+            Dictionary containing user info and tokens
+
+        Raises:
+            DataSpaceAuthError: If authentication fails
+
+        Example:
+            >>> client = DataSpaceClient(
+            ...     base_url="https://api.dataspace.example.com",
+            ...     keycloak_url="https://opub-kc.civicdatalab.in",
+            ...     keycloak_realm="DataSpace",
+            ...     keycloak_client_id="dataspace"
+            ... )
+            >>> user_info = client.login(username="user@example.com", password="secret")
+            >>> print(user_info["user"]["username"])
+        """
+        return self._auth.login(username, password)
+
+    def login_with_token(self, keycloak_token: str) -> dict:
+        """
+        Login using a pre-obtained Keycloak token.
 
         Args:
             keycloak_token: Valid Keycloak access token
@@ -63,10 +106,10 @@ class DataSpaceClient:
 
         Example:
             >>> client = DataSpaceClient(base_url="https://api.dataspace.example.com")
-            >>> user_info = client.login(keycloak_token="your_token")
+            >>> user_info = client.login_with_token(keycloak_token="your_token")
             >>> print(user_info["user"]["username"])
         """
-        return self._auth.login_with_keycloak(keycloak_token)
+        return self._auth._login_with_keycloak_token(keycloak_token)
 
     def refresh_token(self) -> str:
         """
