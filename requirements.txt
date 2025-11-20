@@ -116,3 +116,5 @@ djangorestframework-stubs==3.14.5  # Matched with DRF version
 
 # Activity stream for tracking user actions
 django-activity-stream==2.0.0
+
+tenacity==9.1.2
