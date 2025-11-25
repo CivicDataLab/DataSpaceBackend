@@ -71,9 +71,33 @@ class KeycloakManager:
                 logger.warning("Token is not active")
                 return {}
 
-            # Get user info from the token
-            user_info = self.keycloak_openid.userinfo(token)
-            return user_info
+            # Try to get user info from the userinfo endpoint
+            # If that fails (403), fall back to token introspection data
+            try:
+                user_info = self.keycloak_openid.userinfo(token)
+                return user_info
+            except KeycloakError as userinfo_error:
+                # If userinfo fails (e.g., 403), extract user info from token introspection
+                logger.warning(
+                    f"Userinfo endpoint failed ({userinfo_error}), using token introspection data"
+                )
+
+                # Build user info from introspection response
+                user_info = {
+                    "sub": token_info.get("sub"),
+                    "preferred_username": token_info.get("username")
+                    or token_info.get("preferred_username"),
+                    "email": token_info.get("email"),
+                    "email_verified": token_info.get("email_verified", False),
+                    "name": token_info.get("name"),
+                    "given_name": token_info.get("given_name"),
+                    "family_name": token_info.get("family_name"),
+                }
+
+                # Remove None values
+                user_info = {k: v for k, v in user_info.items() if v is not None}
+                return user_info
+
         except KeycloakError as e:
             logger.error(f"Error validating token: {e}")
             return {}
@@ -129,9 +153,7 @@ class KeycloakManager:
                     if len(parts) >= 3:
                         org_id = parts[1]
                         role_name = parts[2]
-                        organizations.append(
-                            {"organization_id": org_id, "role": role_name}
-                        )
+                        organizations.append({"organization_id": org_id, "role": role_name})
 
             return organizations
         except KeycloakError as e:
@@ -198,9 +220,7 @@ class KeycloakManager:
             # Process organizations from Keycloak
             for org_info in organizations:
                 org_id = org_info.get("organization_id")
-                role = org_info.get(
-                    "role", "viewer"
-                )  # Default to viewer if role not specified
+                role = org_info.get("role", "viewer")  # Default to viewer if role not specified
 
                 # Try to get the organization
                 try:

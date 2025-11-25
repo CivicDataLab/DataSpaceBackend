@@ -2,7 +2,7 @@ FROM python:3.10
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies without mixing old Debian repos
+# Install system dependencies
 RUN apt-get update && \
     apt-get autoremove -y && \
     apt-get install -y \
@@ -19,7 +19,7 @@ RUN apt-get update && \
         libdbus-1-3 \
         libexpat1 \
         libfontconfig1 \
-        libgdk-pixbuf2.0-0 \
+        libgdk-pixbuf-2.0-0 \
         libglib2.0-0 \
         libgtk-3-0 \
         libnspr4 \
