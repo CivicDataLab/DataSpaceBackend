@@ -122,22 +122,19 @@ class KeycloakManager:
 
         return roles
 
-    def get_user_organizations(self, token: str) -> List[Dict[str, Any]]:
+    def get_user_organizations(self, token_info: dict) -> List[Dict[str, Any]]:
         """
-        Get the organizations a user belongs to from their token.
+        Get the organizations a user belongs to from their token info.
         This assumes that organization information is stored in the token
         as client roles or in user attributes.
 
         Args:
-            token: The user's token
+            token_info: The decoded token information
 
         Returns:
             List of organization information
         """
         try:
-            # Decode the token to get user info
-            token_info = self.keycloak_openid.decode_token(token)
-
             # Get organization info from resource_access or attributes
             # This implementation depends on how organizations are represented in Keycloak
             # This is a simplified example - adjust based on your Keycloak configuration

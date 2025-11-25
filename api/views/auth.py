@@ -32,9 +32,12 @@ class KeycloakLoginView(views.APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
+        # Get token introspection data for roles and organizations
+        token_info = keycloak_manager.keycloak_openid.introspect(keycloak_token)
+
         # Get user roles and organizations from the token
-        roles = keycloak_manager.get_user_roles(keycloak_token)
-        organizations = keycloak_manager.get_user_organizations(keycloak_token)
+        roles = keycloak_manager.get_user_roles(token_info)
+        organizations = keycloak_manager.get_user_organizations(token_info)
 
         # Sync the user information with our database
         user = keycloak_manager.sync_user_from_keycloak(user_info, roles, organizations)
