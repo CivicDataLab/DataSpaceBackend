@@ -361,16 +361,16 @@ class KeycloakManager:
         self,
         user_info: Dict[str, Any],
         roles: List[str],
-        organizations: List[Dict[str, Any]],
+        organizations: Optional[List[Dict[str, Any]]] = None,
     ) -> Optional[User]:
         """
         Synchronize user information from Keycloak to Django.
-        Creates or updates the User and UserOrganization records.
+        Creates or updates the User record.
 
         Args:
             user_info: User information from Keycloak
             roles: User roles from Keycloak
-            organizations: User organization memberships from Keycloak
+            organizations: Deprecated - organizations are managed in DataSpace
 
         Returns:
             The synchronized User object or None if failed
@@ -405,39 +405,6 @@ class KeycloakManager:
                 user.is_superuser = False
 
             user.save()
-
-            # Update organization memberships
-            # First, get all existing organization memberships
-            existing_memberships = OrganizationMembership.objects.filter(user=user)
-            existing_org_ids = {
-                membership.organization_id for membership in existing_memberships  # type: ignore[attr-defined]
-            }
-
-            # Process organizations from Keycloak
-            for org_info in organizations:
-                org_id = org_info.get("organization_id")
-                role = org_info.get("role", "viewer")  # Default to viewer if role not specified
-
-                # Try to get the organization
-                try:
-                    organization = Organization.objects.get(id=org_id)  # type: ignore[misc]
-
-                    # Create or update the membership
-                    OrganizationMembership.objects.update_or_create(
-                        user=user, organization=organization, defaults={"role": role}
-                    )
-
-                    # Remove from the set of existing memberships
-                    if org_id in existing_org_ids:
-                        existing_org_ids.remove(org_id)
-                except Organization.DoesNotExist:
-                    logger.warning(f"Organization with ID {org_id} does not exist")
-
-            # Remove memberships that no longer exist in Keycloak
-            if existing_org_ids:
-                OrganizationMembership.objects.filter(
-                    user=user, organization_id__in=existing_org_ids
-                ).delete()
 
             return user
         except Exception as e:
