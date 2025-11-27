@@ -20,10 +20,10 @@ class TestAIModelClient(unittest.TestCase):
         self.assertEqual(self.client.base_url, self.base_url)
         self.assertEqual(self.client.auth_client, self.auth_client)
 
-    @patch.object(AIModelClient, "get")
-    def test_search_models(self, mock_get: MagicMock) -> None:
+    @patch.object(AIModelClient, "_make_request")
+    def test_search_models(self, mock_request: MagicMock) -> None:
         """Test AI model search."""
-        mock_get.return_value = {
+        mock_request.return_value = {
             "total": 5,
             "results": [{"id": "1", "displayName": "Test Model", "modelType": "LLM"}],
         }
@@ -33,12 +33,12 @@ class TestAIModelClient(unittest.TestCase):
         self.assertEqual(result["total"], 5)
         self.assertEqual(len(result["results"]), 1)
         self.assertEqual(result["results"][0]["displayName"], "Test Model")
-        mock_get.assert_called_once()
+        mock_request.assert_called_once()
 
-    @patch.object(AIModelClient, "get")
-    def test_get_model_by_id(self, mock_get: MagicMock) -> None:
+    @patch.object(AIModelClient, "_make_request")
+    def test_get_model_by_id(self, mock_request: MagicMock) -> None:
         """Test get AI model by ID."""
-        mock_get.return_value = {
+        mock_request.return_value = {
             "id": "123",
             "displayName": "Test Model",
             "modelType": "LLM",
@@ -90,37 +90,37 @@ class TestAIModelClient(unittest.TestCase):
         self.assertIsInstance(result, (list, dict))
         mock_post.assert_called_once()
 
-    @patch.object(AIModelClient, "get")
-    def test_search_with_filters(self, mock_get: MagicMock) -> None:
+    @patch.object(AIModelClient, "_make_request")
+    def test_search_with_filters(self, mock_request: MagicMock) -> None:
         """Test AI model search with filters."""
-        mock_get.return_value = {"total": 3, "results": []}
+        mock_request.return_value = {"total": 3, "results": []}
 
         result = self.client.search(
             query="language",
             tags=["nlp"],
             sectors=["tech"],
+            status="ACTIVE",
             model_type="LLM",
             provider="OpenAI",
-            status="ACTIVE",
         )
 
         self.assertEqual(result["total"], 3)
-        mock_get.assert_called_once()
+        mock_request.assert_called_once()
 
-    @patch.object(AIModelClient, "post")
-    def test_graphql_error_handling(self, mock_post: MagicMock) -> None:
+    @patch.object(AIModelClient, "_make_request")
+    def test_graphql_error_handling(self, mock_request: MagicMock) -> None:
         """Test GraphQL error handling."""
         from dataspace_sdk.exceptions import DataSpaceAPIError
 
-        mock_post.return_value = {"errors": [{"message": "GraphQL error"}]}
+        mock_request.return_value = {"errors": [{"message": "GraphQL error"}]}
 
         with self.assertRaises(DataSpaceAPIError):
             self.client.get_by_id_graphql("123")
 
-    @patch.object(AIModelClient, "post")
-    def test_call_model(self, mock_post: MagicMock) -> None:
+    @patch.object(AIModelClient, "_make_request")
+    def test_call_model(self, mock_request: MagicMock) -> None:
         """Test calling an AI model."""
-        mock_post.return_value = {
+        mock_request.return_value = {
             "success": True,
             "output": "Paris is the capital of France.",
             "latency_ms": 150,
@@ -136,12 +136,12 @@ class TestAIModelClient(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertEqual(result["output"], "Paris is the capital of France.")
         self.assertEqual(result["latency_ms"], 150)
-        mock_post.assert_called_once()
+        mock_request.assert_called_once()
 
-    @patch.object(AIModelClient, "post")
-    def test_call_model_async(self, mock_post: MagicMock) -> None:
+    @patch.object(AIModelClient, "_make_request")
+    def test_call_model_async(self, mock_request: MagicMock) -> None:
         """Test calling an AI model asynchronously."""
-        mock_post.return_value = {
+        mock_request.return_value = {
             "task_id": "task-456",
             "status": "PENDING",
             "created_at": "2024-01-01T00:00:00Z",
@@ -155,12 +155,12 @@ class TestAIModelClient(unittest.TestCase):
 
         self.assertEqual(result["task_id"], "task-456")
         self.assertEqual(result["status"], "PENDING")
-        mock_post.assert_called_once()
+        mock_request.assert_called_once()
 
-    @patch.object(AIModelClient, "post")
-    def test_call_model_error(self, mock_post: MagicMock) -> None:
+    @patch.object(AIModelClient, "_make_request")
+    def test_call_model_error(self, mock_request: MagicMock) -> None:
         """Test AI model call with error."""
-        mock_post.return_value = {
+        mock_request.return_value = {
             "success": False,
             "error": "Model not available",
         }
@@ -173,10 +173,10 @@ class TestAIModelClient(unittest.TestCase):
         self.assertFalse(result["success"])
         self.assertEqual(result["error"], "Model not available")
 
-    @patch.object(AIModelClient, "post")
-    def test_create_model(self, mock_post: MagicMock) -> None:
+    @patch.object(AIModelClient, "_make_request")
+    def test_create_model(self, mock_request: MagicMock) -> None:
         """Test creating an AI model."""
-        mock_post.return_value = {
+        mock_request.return_value = {
             "id": "new-model-123",
             "displayName": "New Model",
             "modelType": "LLM",
@@ -192,36 +192,33 @@ class TestAIModelClient(unittest.TestCase):
 
         self.assertEqual(result["id"], "new-model-123")
         self.assertEqual(result["displayName"], "New Model")
-        mock_post.assert_called_once()
+        mock_request.assert_called_once()
 
-    @patch.object(AIModelClient, "put")
-    def test_update_model(self, mock_put: MagicMock) -> None:
+    @patch.object(AIModelClient, "_make_request")
+    def test_update_model(self, mock_request: MagicMock) -> None:
         """Test updating an AI model."""
-        mock_put.return_value = {
+        mock_request.return_value = {
             "id": "123",
             "displayName": "Updated Model",
-            "modelType": "LLM",
+            "description": "Updated description",
         }
 
         result = self.client.update(
-            "123",
-            {
-                "displayName": "Updated Model",
-            },
+            "123", {"displayName": "Updated Model", "description": "Updated description"}
         )
 
         self.assertEqual(result["displayName"], "Updated Model")
-        mock_put.assert_called_once()
+        mock_request.assert_called_once()
 
-    @patch.object(AIModelClient, "delete")
-    def test_delete_model(self, mock_delete: MagicMock) -> None:
+    @patch.object(AIModelClient, "_make_request")
+    def test_delete_model(self, mock_request: MagicMock) -> None:
         """Test deleting an AI model."""
-        mock_delete.return_value = {"message": "Model deleted successfully"}
+        mock_request.return_value = {"message": "Model deleted successfully"}
 
         result = self.client.delete_model("123")
 
         self.assertEqual(result["message"], "Model deleted successfully")
-        mock_delete.assert_called_once()
+        mock_request.assert_called_once()
 
 
 if __name__ == "__main__":

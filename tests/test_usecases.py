@@ -20,10 +20,10 @@ class TestUseCaseClient(unittest.TestCase):
         self.assertEqual(self.client.base_url, self.base_url)
         self.assertEqual(self.client.auth_client, self.auth_client)
 
-    @patch.object(UseCaseClient, "get")
-    def test_search_usecases(self, mock_get: MagicMock) -> None:
+    @patch.object(UseCaseClient, "_make_request")
+    def test_search_usecases(self, mock_request: MagicMock) -> None:
         """Test use case search."""
-        mock_get.return_value = {
+        mock_request.return_value = {
             "total": 8,
             "results": [
                 {
@@ -40,7 +40,7 @@ class TestUseCaseClient(unittest.TestCase):
         self.assertEqual(result["total"], 8)
         self.assertEqual(len(result["results"]), 1)
         self.assertEqual(result["results"][0]["title"], "Test Use Case")
-        mock_get.assert_called_once()
+        mock_request.assert_called_once()
 
     @patch.object(UseCaseClient, "post")
     def test_get_usecase_by_id(self, mock_post: MagicMock) -> None:
@@ -82,10 +82,10 @@ class TestUseCaseClient(unittest.TestCase):
         self.assertIsInstance(result, (list, dict))
         mock_post.assert_called_once()
 
-    @patch.object(UseCaseClient, "get")
-    def test_search_with_filters(self, mock_get: MagicMock) -> None:
+    @patch.object(UseCaseClient, "_make_request")
+    def test_search_with_filters(self, mock_request: MagicMock) -> None:
         """Test use case search with filters."""
-        mock_get.return_value = {"total": 4, "results": []}
+        mock_request.return_value = {"total": 4, "results": []}
 
         result = self.client.search(
             query="monitoring",
@@ -96,17 +96,17 @@ class TestUseCaseClient(unittest.TestCase):
         )
 
         self.assertEqual(result["total"], 4)
-        mock_get.assert_called_once()
+        mock_request.assert_called_once()
 
-    @patch.object(UseCaseClient, "get")
-    def test_search_with_sorting(self, mock_get: MagicMock) -> None:
+    @patch.object(UseCaseClient, "_make_request")
+    def test_search_with_sorting(self, mock_request: MagicMock) -> None:
         """Test use case search with sorting."""
-        mock_get.return_value = {"total": 2, "results": []}
+        mock_request.return_value = {"total": 2, "results": []}
 
         result = self.client.search(query="test", sort="completed_on", page=1, page_size=10)
 
         self.assertEqual(result["total"], 2)
-        mock_get.assert_called_once()
+        mock_request.assert_called_once()
 
     @patch.object(UseCaseClient, "post")
     def test_graphql_error_handling(self, mock_post: MagicMock) -> None:
@@ -118,21 +118,17 @@ class TestUseCaseClient(unittest.TestCase):
         with self.assertRaises(DataSpaceAPIError):
             self.client.get_by_id(123)
 
-    @patch.object(UseCaseClient, "get")
-    def test_search_pagination(self, mock_get: MagicMock) -> None:
+    @patch.object(UseCaseClient, "_make_request")
+    def test_search_pagination(self, mock_request: MagicMock) -> None:
         """Test use case search with pagination."""
-        mock_get.return_value = {
-            "total": 50,
-            "page": 2,
-            "page_size": 20,
-            "results": [],
-        }
+        mock_request.return_value = {"total": 50, "results": [], "page": 2, "page_size": 20}
 
         result = self.client.search(query="test", page=2, page_size=20)
 
         self.assertEqual(result["total"], 50)
         self.assertEqual(result["page"], 2)
-        mock_get.assert_called_once()
+        self.assertEqual(result["page_size"], 20)
+        mock_request.assert_called_once()
 
 
 if __name__ == "__main__":

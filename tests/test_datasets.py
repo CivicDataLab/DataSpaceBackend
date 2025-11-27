@@ -20,10 +20,10 @@ class TestDatasetClient(unittest.TestCase):
         self.assertEqual(self.client.base_url, self.base_url)
         self.assertEqual(self.client.auth_client, self.auth_client)
 
-    @patch.object(DatasetClient, "get")
-    def test_search_datasets(self, mock_get: MagicMock) -> None:
+    @patch.object(DatasetClient, "_make_request")
+    def test_search_datasets(self, mock_request: MagicMock) -> None:
         """Test dataset search."""
-        mock_get.return_value = {
+        mock_request.return_value = {
             "total": 10,
             "results": [{"id": "1", "title": "Test Dataset"}],
         }
@@ -32,22 +32,22 @@ class TestDatasetClient(unittest.TestCase):
 
         self.assertEqual(result["total"], 10)
         self.assertEqual(len(result["results"]), 1)
-        mock_get.assert_called_once()
+        mock_request.assert_called_once()
 
-    @patch.object(DatasetClient, "post")
-    def test_get_dataset_by_id(self, mock_post: MagicMock) -> None:
+    @patch.object(DatasetClient, "_make_request")
+    def test_get_dataset_by_id(self, mock_request: MagicMock) -> None:
         """Test get dataset by ID."""
-        mock_post.return_value = {"data": {"dataset": {"id": "123", "title": "Test Dataset"}}}
+        mock_request.return_value = {"data": {"dataset": {"id": "123", "title": "Test Dataset"}}}
 
         result = self.client.get_by_id("123")
 
         self.assertEqual(result["id"], "123")
         self.assertEqual(result["title"], "Test Dataset")
 
-    @patch.object(DatasetClient, "post")
-    def test_list_all_datasets(self, mock_post: MagicMock) -> None:
+    @patch.object(DatasetClient, "_make_request")
+    def test_list_all_datasets(self, mock_request: MagicMock) -> None:
         """Test list all datasets."""
-        mock_post.return_value = {"data": {"datasets": [{"id": "1", "title": "Dataset 1"}]}}
+        mock_request.return_value = {"data": {"datasets": [{"id": "1", "title": "Dataset 1"}]}}
 
         result = self.client.list_all(limit=10, offset=0)
 
@@ -73,10 +73,10 @@ class TestDatasetClient(unittest.TestCase):
         self.assertIsInstance(result, (list, dict))
         mock_post.assert_called_once()
 
-    @patch.object(DatasetClient, "get")
-    def test_search_with_filters(self, mock_get: MagicMock) -> None:
+    @patch.object(DatasetClient, "_make_request")
+    def test_search_with_filters(self, mock_request: MagicMock) -> None:
         """Test dataset search with filters."""
-        mock_get.return_value = {"total": 5, "results": []}
+        mock_request.return_value = {"total": 5, "results": []}
 
         result = self.client.search(
             query="health",
@@ -87,52 +87,57 @@ class TestDatasetClient(unittest.TestCase):
         )
 
         self.assertEqual(result["total"], 5)
-        mock_get.assert_called_once()
+        mock_request.assert_called_once()
 
-    @patch.object(DatasetClient, "get")
-    def test_get_resources(self, mock_get: MagicMock) -> None:
-        """Test get dataset resources."""
-        mock_get.return_value = [
-            {
-                "id": "res-1",
-                "title": "Resource 1",
-                "format": "CSV",
-                "url": "https://example.com/data.csv",
-            }
-        ]
-
-        result = self.client.get_resources("dataset-123")
-
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["title"], "Resource 1")
-        mock_get.assert_called_once()
-
-    @patch.object(DatasetClient, "post")
-    def test_list_by_organization(self, mock_post: MagicMock) -> None:
-        """Test list datasets by organization."""
-        mock_post.return_value = {
+    @patch.object(DatasetClient, "_make_request")
+    def test_get_dataset_with_resources(self, mock_request: MagicMock) -> None:
+        """Test get dataset by ID which includes resources."""
+        mock_request.return_value = {
             "data": {
-                "datasets": [
-                    {"id": "1", "title": "Org Dataset 1"},
-                    {"id": "2", "title": "Org Dataset 2"},
-                ]
+                "dataset": {
+                    "id": "dataset-123",
+                    "title": "Test Dataset",
+                    "resources": [
+                        {
+                            "id": "res-1",
+                            "title": "Resource 1",
+                            "fileDetails": {"format": "CSV"},
+                        }
+                    ],
+                }
             }
         }
 
-        result = self.client.list_by_organization("org-123", limit=10)
+        result = self.client.get_by_id("dataset-123")
 
-        self.assertIsInstance(result, (list, dict))
-        mock_post.assert_called_once()
+        self.assertEqual(result["id"], "dataset-123")
+        self.assertEqual(len(result["resources"]), 1)
+        self.assertEqual(result["resources"][0]["title"], "Resource 1")
+        mock_request.assert_called_once()
 
-    @patch.object(DatasetClient, "get")
-    def test_search_with_sorting(self, mock_get: MagicMock) -> None:
+    @patch.object(DatasetClient, "list_all")
+    def test_get_organization_datasets(self, mock_list_all: MagicMock) -> None:
+        """Test get datasets by organization."""
+        mock_list_all.return_value = [
+            {"id": "1", "title": "Org Dataset 1"},
+            {"id": "2", "title": "Org Dataset 2"},
+        ]
+
+        result = self.client.get_organization_datasets("org-123", limit=10)
+
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 2)
+        mock_list_all.assert_called_once_with(organization_id="org-123", limit=10, offset=0)
+
+    @patch.object(DatasetClient, "_make_request")
+    def test_search_with_sorting(self, mock_request: MagicMock) -> None:
         """Test dataset search with sorting."""
-        mock_get.return_value = {"total": 3, "results": []}
+        mock_request.return_value = {"total": 3, "results": []}
 
         result = self.client.search(query="test", sort="recent", page=1, page_size=10)
 
         self.assertEqual(result["total"], 3)
-        mock_get.assert_called_once()
+        mock_request.assert_called_once()
 
 
 if __name__ == "__main__":
