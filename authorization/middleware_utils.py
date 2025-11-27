@@ -7,6 +7,8 @@ from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.utils.functional import SimpleLazyObject
 from rest_framework.request import Request
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.tokens import AccessToken
 
 from api.utils.debug_utils import debug_auth_headers, debug_token_validation
 from authorization.keycloak import keycloak_manager
@@ -68,7 +70,28 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
         # For debugging, print the raw token
         logger.debug(f"Raw token: {token}")
 
+        # First, try to validate as Django JWT token
         try:
+            logger.debug("Attempting to validate as Django JWT token")
+            access_token = AccessToken(token)
+            user_id = access_token.get("user_id")
+
+            if user_id:
+                logger.debug(f"Valid Django JWT token for user_id: {user_id}")
+                try:
+                    user = User.objects.get(id=user_id)
+                    logger.debug(f"Successfully authenticated user via Django JWT: {user.username}")
+                    return user
+                except User.DoesNotExist:
+                    logger.warning(f"User with id {user_id} not found in database")
+        except (TokenError, InvalidToken) as e:
+            logger.debug(f"Not a valid Django JWT token: {e}, trying Keycloak validation")
+        except Exception as e:
+            logger.debug(f"Error validating Django JWT: {e}, trying Keycloak validation")
+
+        # If Django JWT validation failed, try Keycloak token validation
+        try:
+            logger.debug("Attempting to validate as Keycloak token")
             # Try direct validation without any complex logic
             user_info = keycloak_manager.validate_token(token)
 
@@ -102,16 +125,18 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
         logger.debug(f"User organizations from token: {organizations}")
 
         # Sync the user information with our database
-        user = keycloak_manager.sync_user_from_keycloak(user_info, roles, organizations)
-        if not user:
+        synced_user = keycloak_manager.sync_user_from_keycloak(user_info, roles, organizations)
+        if not synced_user:
             logger.warning("User synchronization failed, returning anonymous user")
             return cast(User, AnonymousUser())
 
-        logger.debug(f"Successfully authenticated user: {user.username} (ID: {user.id})")
+        logger.debug(
+            f"Successfully authenticated user: {synced_user.username} (ID: {synced_user.id})"
+        )
 
         # Return the authenticated user
-        logger.debug(f"Returning authenticated user: {user.username}")
-        return user
+        logger.debug(f"Returning authenticated user: {synced_user.username}")
+        return synced_user
     except Exception as e:
         logger.error(f"Error in get_user_from_keycloak_token: {str(e)}")
         return cast(User, AnonymousUser())
