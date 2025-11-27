@@ -49,7 +49,7 @@ class TestAIModelClient(unittest.TestCase):
 
         self.assertEqual(result["id"], "123")
         self.assertEqual(result["displayName"], "Test Model")
-        mock_get.assert_called_once()
+        mock_request.assert_called_once()
 
     @patch.object(AIModelClient, "post")
     def test_get_model_by_id_graphql(self, mock_post: MagicMock) -> None:
