@@ -89,6 +89,51 @@ class TestDatasetClient(unittest.TestCase):
         self.assertEqual(result["total"], 5)
         mock_get.assert_called_once()
 
+    @patch.object(DatasetClient, "get")
+    def test_get_resources(self, mock_get: MagicMock) -> None:
+        """Test get dataset resources."""
+        mock_get.return_value = [
+            {
+                "id": "res-1",
+                "title": "Resource 1",
+                "format": "CSV",
+                "url": "https://example.com/data.csv",
+            }
+        ]
+
+        result = self.client.get_resources("dataset-123")
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["title"], "Resource 1")
+        mock_get.assert_called_once()
+
+    @patch.object(DatasetClient, "post")
+    def test_list_by_organization(self, mock_post: MagicMock) -> None:
+        """Test list datasets by organization."""
+        mock_post.return_value = {
+            "data": {
+                "datasets": [
+                    {"id": "1", "title": "Org Dataset 1"},
+                    {"id": "2", "title": "Org Dataset 2"},
+                ]
+            }
+        }
+
+        result = self.client.list_by_organization("org-123", limit=10)
+
+        self.assertIsInstance(result, (list, dict))
+        mock_post.assert_called_once()
+
+    @patch.object(DatasetClient, "get")
+    def test_search_with_sorting(self, mock_get: MagicMock) -> None:
+        """Test dataset search with sorting."""
+        mock_get.return_value = {"total": 3, "results": []}
+
+        result = self.client.search(query="test", sort="recent", page=1, page_size=10)
+
+        self.assertEqual(result["total"], 3)
+        mock_get.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

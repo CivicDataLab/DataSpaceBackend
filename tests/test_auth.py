@@ -141,6 +141,51 @@ class TestAuthClient(unittest.TestCase):
         self.auth_client.access_token = "test_token"
         self.assertTrue(self.auth_client.is_authenticated())
 
+    @patch("dataspace_sdk.auth.requests.post")
+    def test_login_as_service_account(self, mock_post: MagicMock) -> None:
+        """Test successful service account login."""
+        # Create auth client with client secret
+        auth_client = AuthClient(
+            self.base_url,
+            keycloak_url=self.keycloak_url,
+            keycloak_realm=self.keycloak_realm,
+            keycloak_client_id=self.keycloak_client_id,
+            keycloak_client_secret="test_secret",
+        )
+
+        # Mock Keycloak token response
+        keycloak_response = MagicMock()
+        keycloak_response.status_code = 200
+        keycloak_response.json.return_value = {
+            "access_token": "service_access_token",
+            "refresh_token": "service_refresh_token",
+            "expires_in": 300,
+        }
+
+        # Mock DataSpace backend login response
+        backend_response = MagicMock()
+        backend_response.status_code = 200
+        backend_response.json.return_value = {
+            "access": "test_access_token",
+            "refresh": "test_refresh_token",
+            "user": {"id": "service-123", "username": "service-account"},
+        }
+
+        mock_post.side_effect = [keycloak_response, backend_response]
+
+        result = auth_client.login_as_service_account()
+
+        self.assertEqual(auth_client.access_token, "test_access_token")
+        self.assertEqual(auth_client.refresh_token, "test_refresh_token")
+        self.assertIsNotNone(auth_client.user_info)
+        self.assertEqual(result["user"]["username"], "service-account")
+        self.assertEqual(mock_post.call_count, 2)
+
+    def test_login_as_service_account_no_secret(self) -> None:
+        """Test service account login without client secret."""
+        with self.assertRaises(DataSpaceAuthError):
+            self.auth_client.login_as_service_account()
+
 
 if __name__ == "__main__":
     unittest.main()

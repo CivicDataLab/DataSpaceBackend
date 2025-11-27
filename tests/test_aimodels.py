@@ -117,6 +117,112 @@ class TestAIModelClient(unittest.TestCase):
         with self.assertRaises(DataSpaceAPIError):
             self.client.get_by_id_graphql("123")
 
+    @patch.object(AIModelClient, "post")
+    def test_call_model(self, mock_post: MagicMock) -> None:
+        """Test calling an AI model."""
+        mock_post.return_value = {
+            "success": True,
+            "output": "Paris is the capital of France.",
+            "latency_ms": 150,
+            "provider": "OpenAI",
+        }
+
+        result = self.client.call_model(
+            model_id="123",
+            input_text="What is the capital of France?",
+            parameters={"temperature": 0.7, "max_tokens": 100},
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["output"], "Paris is the capital of France.")
+        self.assertEqual(result["latency_ms"], 150)
+        mock_post.assert_called_once()
+
+    @patch.object(AIModelClient, "post")
+    def test_call_model_async(self, mock_post: MagicMock) -> None:
+        """Test calling an AI model asynchronously."""
+        mock_post.return_value = {
+            "task_id": "task-456",
+            "status": "PENDING",
+            "created_at": "2024-01-01T00:00:00Z",
+        }
+
+        result = self.client.call_model_async(
+            model_id="123",
+            input_text="Generate a long document",
+            parameters={"max_tokens": 2000},
+        )
+
+        self.assertEqual(result["task_id"], "task-456")
+        self.assertEqual(result["status"], "PENDING")
+        mock_post.assert_called_once()
+
+    @patch.object(AIModelClient, "post")
+    def test_call_model_error(self, mock_post: MagicMock) -> None:
+        """Test AI model call with error."""
+        mock_post.return_value = {
+            "success": False,
+            "error": "Model not available",
+        }
+
+        result = self.client.call_model(
+            model_id="123",
+            input_text="Test input",
+        )
+
+        self.assertFalse(result["success"])
+        self.assertEqual(result["error"], "Model not available")
+
+    @patch.object(AIModelClient, "post")
+    def test_create_model(self, mock_post: MagicMock) -> None:
+        """Test creating an AI model."""
+        mock_post.return_value = {
+            "id": "new-model-123",
+            "displayName": "New Model",
+            "modelType": "LLM",
+        }
+
+        result = self.client.create(
+            {
+                "displayName": "New Model",
+                "modelType": "LLM",
+                "provider": "OpenAI",
+            }
+        )
+
+        self.assertEqual(result["id"], "new-model-123")
+        self.assertEqual(result["displayName"], "New Model")
+        mock_post.assert_called_once()
+
+    @patch.object(AIModelClient, "put")
+    def test_update_model(self, mock_put: MagicMock) -> None:
+        """Test updating an AI model."""
+        mock_put.return_value = {
+            "id": "123",
+            "displayName": "Updated Model",
+            "modelType": "LLM",
+        }
+
+        result = self.client.update(
+            "123",
+            {
+                "displayName": "Updated Model",
+            },
+        )
+
+        self.assertEqual(result["displayName"], "Updated Model")
+        mock_put.assert_called_once()
+
+    @patch.object(AIModelClient, "delete")
+    def test_delete_model(self, mock_delete: MagicMock) -> None:
+        """Test deleting an AI model."""
+        mock_delete.return_value = {"message": "Model deleted successfully"}
+
+        result = self.client.delete_model("123")
+
+        self.assertEqual(result["message"], "Model deleted successfully")
+        mock_delete.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
