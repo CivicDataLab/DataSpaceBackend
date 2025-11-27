@@ -11,7 +11,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import AccessToken
 
 from api.utils.debug_utils import debug_auth_headers, debug_token_validation
-from authorization.keycloak import keycloak_manager
+from api.utils.keycloak_utils import keycloak_manager
 from authorization.models import User
 
 logger = structlog.getLogger(__name__)

@@ -5,7 +5,7 @@ from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.request import Request
 
-from authorization.keycloak import keycloak_manager
+from api.utils.keycloak_utils import keycloak_manager
 from authorization.models import User
 
 
@@ -41,9 +41,7 @@ class KeycloakAuthentication(BaseAuthentication):
 
         # Ensure we have a subject ID in the token
         if not user_info.get("sub"):
-            raise AuthenticationFailed(
-                "Token validation succeeded but missing subject ID"
-            )
+            raise AuthenticationFailed("Token validation succeeded but missing subject ID")
 
         # Get user roles and organizations from the token
         roles = keycloak_manager.get_user_roles(token)

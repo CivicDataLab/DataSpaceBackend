@@ -56,7 +56,7 @@ class KeycloakManager:
 
     def validate_token(self, token: str) -> Dict[str, Any]:
         """
-        Validate a Keycloak token and return the user info.
+        Validate a token (Django JWT or Keycloak) and return the user info.
 
         Args:
             token: The token to validate
@@ -64,6 +64,41 @@ class KeycloakManager:
         Returns:
             Dict containing the user information
         """
+        from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+        from rest_framework_simplejwt.tokens import AccessToken
+
+        # First, try to validate as Django JWT token
+        try:
+            logger.debug("Attempting to validate as Django JWT token")
+            access_token = AccessToken(token)  # type: ignore[arg-type]
+            user_id = access_token.get("user_id")
+
+            if user_id:
+                logger.debug(f"Valid Django JWT token for user_id: {user_id}")
+                try:
+                    from authorization.models import User
+
+                    user = User.objects.get(id=user_id)
+                    # Return user info in Keycloak format
+                    return {
+                        "sub": (
+                            str(user.keycloak_id)
+                            if hasattr(user, "keycloak_id") and user.keycloak_id
+                            else str(user.id)
+                        ),
+                        "preferred_username": user.username,
+                        "email": user.email,
+                        "given_name": user.first_name,
+                        "family_name": user.last_name,
+                    }
+                except User.DoesNotExist:
+                    logger.warning(f"User with id {user_id} not found in database")
+        except (TokenError, InvalidToken) as e:
+            logger.debug(f"Not a valid Django JWT token: {e}, trying Keycloak validation")
+        except Exception as e:
+            logger.debug(f"Error validating Django JWT: {e}, trying Keycloak validation")
+
+        # If Django JWT validation failed, try Keycloak token validation
         try:
             # Verify the token is valid
             token_info = self.keycloak_openid.introspect(token)
@@ -228,6 +263,98 @@ class KeycloakManager:
         except KeycloakError as e:
             logger.error(f"Error getting user organizations: {e}")
             return []
+
+    def update_user_in_keycloak(self, user: User) -> bool:
+        """Update user details in Keycloak using admin credentials."""
+        if not user.keycloak_id:
+            logger.warning("Cannot update user in Keycloak: No keycloak_id", user_id=str(user.id))
+            return False
+
+        try:
+            # Get admin credentials from settings
+            admin_username = getattr(settings, "KEYCLOAK_ADMIN_USERNAME", "")
+            admin_password = getattr(settings, "KEYCLOAK_ADMIN_PASSWORD", "")
+            # Log credential presence (not the actual values)
+            logger.info(
+                "Admin credentials check",
+                username_present=bool(admin_username),
+                password_present=bool(admin_password),
+            )
+
+            if not admin_username or not admin_password:
+                logger.error("Keycloak admin credentials not configured")
+                return False
+
+            from keycloak import KeycloakOpenID
+
+            # First get an admin token directly
+            keycloak_openid = KeycloakOpenID(
+                server_url=self.server_url,
+                client_id="admin-cli",  # Special client for admin operations
+                realm_name="master",  # Admin users are in master realm
+                verify=True,
+            )
+
+            # Get token
+            try:
+                token = keycloak_openid.token(
+                    username=admin_username,
+                    password=admin_password,
+                    grant_type="password",
+                )
+                access_token = token.get("access_token")
+
+                if not access_token:
+                    logger.error("Failed to get admin access token")
+                    return False
+
+                # Now use the token to update the user
+                import requests
+
+                headers = {
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                }
+
+                user_data = {
+                    "firstName": user.first_name,
+                    "lastName": user.last_name,
+                    "email": user.email,
+                    "emailVerified": True,
+                }
+
+                # Direct API call to update user
+                base_url = self.server_url.rstrip("/")  # Remove any trailing slash
+                response = requests.put(
+                    f"{base_url}/admin/realms/{self.realm}/users/{user.keycloak_id}",
+                    headers=headers,
+                    json=user_data,
+                )
+
+                if response.status_code == 204:  # Success for this endpoint
+                    logger.info(
+                        "Successfully updated user in Keycloak",
+                        user_id=str(user.id),
+                        keycloak_id=user.keycloak_id,
+                    )
+                    return True
+                else:
+                    logger.error(
+                        f"Failed to update user in Keycloak: {response.status_code}: {response.text}",
+                        user_id=str(user.id),
+                    )
+                    return False
+
+            except Exception as token_error:
+                logger.error(
+                    f"Error getting admin token: {str(token_error)}",
+                    user_id=str(user.id),
+                )
+                return False
+
+        except Exception as e:
+            logger.error(f"Error updating user in Keycloak: {str(e)}", user_id=str(user.id))
+            return False
 
     @transaction.atomic
     def sync_user_from_keycloak(
