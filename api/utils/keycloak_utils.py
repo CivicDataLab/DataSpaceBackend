@@ -79,6 +79,13 @@ class KeycloakManager:
                     from authorization.models import User
 
                     user = User.objects.get(id=user_id)
+                    user.save()
+
+                    # NOTE: Organizations are managed in DataSpace database, not Keycloak
+                    # Organization memberships should be created/managed through DataSpace's
+                    # organization management interface, not during Keycloak sync
+
+                    # Log for debugging Keycloak validation")
                     # Return user info in Keycloak format
                     return {
                         "sub": (
@@ -167,31 +174,18 @@ class KeycloakManager:
         """
         Get organizations from token introspection data.
 
+        NOTE: In DataSpace, organizations are ALWAYS managed in the database.
+        This method always returns an empty list.
+
         Args:
-            token_info: Token introspection response
+            token_info: Token introspection response (not used)
 
         Returns:
-            List of organization information
+            Empty list - organizations are managed in DataSpace database
         """
-        try:
-            # Get organization info from resource_access or attributes
-            resource_access = token_info.get("resource_access", {})
-            client_roles = resource_access.get(self.client_id, {}).get("roles", [])
-
-            # Extract organization info from roles
-            organizations = []
-            for role in client_roles:
-                if role.startswith("org_"):
-                    parts = role.split("_")
-                    if len(parts) >= 3:
-                        org_id = parts[1]
-                        role_name = parts[2]
-                        organizations.append({"organization_id": org_id, "role": role_name})
-
-            return organizations
-        except Exception as e:
-            logger.error(f"Error getting user organizations: {e}")
-            return []
+        # Organizations are managed in DataSpace database, not Keycloak
+        logger.debug("Organizations are managed in DataSpace DB, returning empty list")
+        return []
 
     def get_user_roles(self, token: str) -> list[str]:
         """
@@ -229,40 +223,24 @@ class KeycloakManager:
     def get_user_organizations(self, token: str) -> List[Dict[str, Any]]:
         """
         Get the organizations a user belongs to from their token.
-        This assumes that organization information is stored in the token
-        as client roles or in user attributes.
+
+        NOTE: In DataSpace, organizations and memberships are ALWAYS managed
+        in the database, NOT in Keycloak. This method always returns an empty list.
+
+        Organizations should be retrieved using AuthorizationService.get_user_organizations()
+        which queries the OrganizationMembership table.
 
         Args:
-            token: The user's token
+            token: The user's token (not used)
 
         Returns:
-            List of organization information
+            Empty list - organizations are managed in DataSpace database
         """
-        try:
-            # Decode the token to get user info
-            token_info = self.keycloak_openid.decode_token(token)
-
-            # Get organization info from resource_access or attributes
-            # This implementation depends on how organizations are represented in Keycloak
-            # This is a simplified example - adjust based on your Keycloak configuration
-            resource_access = token_info.get("resource_access", {})
-            client_roles = resource_access.get(self.client_id, {}).get("roles", [])
-
-            # Extract organization info from roles
-            # Format could be 'org_<org_id>_<role>' or similar
-            organizations = []
-            for role in client_roles:
-                if role.startswith("org_"):
-                    parts = role.split("_")
-                    if len(parts) >= 3:
-                        org_id = parts[1]
-                        role_name = parts[2]
-                        organizations.append({"organization_id": org_id, "role": role_name})
-
-            return organizations
-        except KeycloakError as e:
-            logger.error(f"Error getting user organizations: {e}")
-            return []
+        # Organizations are managed in DataSpace database, not Keycloak
+        # Always return empty list - the actual organizations will be fetched
+        # from the database via AuthorizationService.get_user_organizations()
+        logger.debug("Organizations are managed in DataSpace DB, returning empty list")
+        return []
 
     def update_user_in_keycloak(self, user: User) -> bool:
         """Update user details in Keycloak using admin credentials."""
@@ -367,10 +345,14 @@ class KeycloakManager:
         Synchronize user information from Keycloak to Django.
         Creates or updates the User record.
 
+        NOTE: Organizations are ALWAYS managed in DataSpace database, not Keycloak.
+        Organization memberships should be created/managed through DataSpace's
+        organization management interface. This method does NOT sync organizations.
+
         Args:
             user_info: User information from Keycloak
-            roles: User roles from Keycloak
-            organizations: Deprecated - organizations are managed in DataSpace
+            roles: User roles from Keycloak (for is_staff/is_superuser only)
+            organizations: Ignored - organizations are managed in DataSpace database
 
         Returns:
             The synchronized User object or None if failed
