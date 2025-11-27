@@ -29,11 +29,20 @@ pip install -e ".[dev]"
 ```python
 from dataspace_sdk import DataSpaceClient
 
-# Initialize the client
-client = DataSpaceClient(base_url="https://api.dataspace.example.com")
+# Initialize the client with Keycloak configuration
+client = DataSpaceClient(
+    base_url="https://dev.api.civicdataspace.in",
+    keycloak_url="https://opub-kc.civicdatalab.in",
+    keycloak_realm="DataSpace",
+    keycloak_client_id="dataspace",
+    keycloak_client_secret="your_client_secret"
+)
 
-# Login with Keycloak token
-user_info = client.login(keycloak_token="your_keycloak_token")
+# Login with username and password
+user_info = client.login(
+    username="your_email@example.com",
+    password="your_password"
+)
 print(f"Logged in as: {user_info['user']['username']}")
 
 # Search for datasets
@@ -49,35 +58,65 @@ dataset = client.datasets.get_by_id("dataset-uuid")
 print(f"Dataset: {dataset['title']}")
 
 # Get organization's resources
-org_id = user_info['user']['organizations'][0]['id']
-org_datasets = client.datasets.get_organization_datasets(org_id)
+if user_info['user']['organizations']:
+    org_id = user_info['user']['organizations'][0]['id']
+    org_datasets = client.datasets.get_organization_datasets(org_id)
 ```
 
 ## Features
 
-- **Authentication**: Login with Keycloak tokens and automatic token refresh
+- **Authentication**: Multiple authentication methods (username/password, Keycloak token, service account)
+- **Automatic Token Management**: Automatic token refresh and re-login
 - **Datasets**: Search, retrieve, and list datasets with filtering and pagination
-- **AI Models**: Search, retrieve, and list AI models with filtering
+- **AI Models**: Search, retrieve, call, and list AI models with filtering
 - **Use Cases**: Search, retrieve, and list use cases with filtering
 - **Organization Resources**: Get resources specific to your organizations
 - **GraphQL & REST**: Supports both GraphQL and REST API endpoints
+- **Error Handling**: Comprehensive exception handling with detailed error messages
 
 ## Authentication
 
-### Login with Keycloak
+The SDK supports three authentication methods:
+
+### 1. Username and Password (Recommended for Users)
 
 ```python
 from dataspace_sdk import DataSpaceClient
 
-client = DataSpaceClient(base_url="https://api.dataspace.example.com")
+client = DataSpaceClient(
+    base_url="https://dev.api.civicdataspace.in",
+    keycloak_url="https://opub-kc.civicdatalab.in",
+    keycloak_realm="DataSpace",
+    keycloak_client_id="dataspace",
+    keycloak_client_secret="your_client_secret"
+)
 
-# Login with Keycloak token
-response = client.login(keycloak_token="your_keycloak_token")
+# Login with username and password
+user_info = client.login(
+    username="your_email@example.com",
+    password="your_password"
+)
 
 # Access user information
-print(response['user']['username'])
-print(response['user']['organizations'])
+print(user_info['user']['username'])
+print(user_info['user']['organizations'])
 ```
+
+### 2. Keycloak Token (For Token Pass-through)
+
+```python
+# Login with an existing Keycloak token
+response = client.login_with_token(keycloak_token="your_keycloak_token")
+```
+
+### 3. Service Account (For Backend Services)
+
+```python
+# Login as a service account using client credentials
+service_info = client.login_as_service_account()
+```
+
+For detailed authentication documentation, see [AUTHENTICATION_COMPLETE.md](./AUTHENTICATION_COMPLETE.md)
 
 ### Token Refresh
 
@@ -203,6 +242,36 @@ print(f"Provider: {model['provider']}")
 print(f"Endpoints: {len(model['endpoints'])}")
 ```
 
+### Call an AI Model
+
+```python
+# Call an AI model with input text
+result = client.aimodels.call_model(
+    model_id="model-uuid",
+    input_text="What is the capital of France?",
+    parameters={
+        "temperature": 0.7,
+        "max_tokens": 100
+    }
+)
+
+if result['success']:
+    print(f"Output: {result['output']}")
+    print(f"Latency: {result['latency_ms']}ms")
+    print(f"Provider: {result['provider']}")
+else:
+    print(f"Error: {result['error']}")
+
+# For long-running operations, use async call
+task = client.aimodels.call_model_async(
+    model_id="model-uuid",
+    input_text="Generate a long document...",
+    parameters={"max_tokens": 2000}
+)
+print(f"Task ID: {task['task_id']}")
+print(f"Status: {task['status']}")
+```
+
 ### List All AI Models
 
 ```python
@@ -249,6 +318,7 @@ results = client.usecases.search(
 ### Get Use Case by ID
 
 ```python
+# Get use case by ID
 usecase = client.usecases.get_by_id(123)
 
 print(f"Title: {usecase['title']}")
@@ -375,7 +445,9 @@ Main client for interacting with DataSpace API.
 
 **Methods:**
 
-- `login(keycloak_token: str) -> dict`: Login with Keycloak token
+- `login(username: str, password: str) -> dict`: Login with username and password
+- `login_with_token(keycloak_token: str) -> dict`: Login with Keycloak token
+- `login_as_service_account() -> dict`: Login as service account (client credentials)
 - `refresh_token() -> str`: Refresh access token
 - `get_user_info() -> dict`: Get current user information
 - `is_authenticated() -> bool`: Check authentication status
@@ -395,10 +467,12 @@ Client for dataset operations.
 **Methods:**
 
 - `search(...)`: Search datasets with filters
-- `get_by_id(dataset_id: str)`: Get dataset by UUID
+- `get_by_id(dataset_id: str)`: Get dataset by UUID (GraphQL)
 - `list_all(...)`: List all datasets with pagination
 - `get_trending(limit: int)`: Get trending datasets
 - `get_organization_datasets(organization_id: str, ...)`: Get organization's datasets
+- `get_resources(dataset_id: str)`: Get dataset resources
+- `list_by_organization(organization_id: str, ...)`: List datasets by organization
 
 ### AIModelClient
 
@@ -409,8 +483,13 @@ Client for AI model operations.
 - `search(...)`: Search AI models with filters
 - `get_by_id(model_id: str)`: Get AI model by UUID (REST)
 - `get_by_id_graphql(model_id: str)`: Get AI model by UUID (GraphQL)
+- `call_model(model_id: str, input_text: str, parameters: dict)`: Call an AI model
+- `call_model_async(model_id: str, input_text: str, parameters: dict)`: Call an AI model asynchronously
 - `list_all(...)`: List all AI models with pagination
 - `get_organization_models(organization_id: str, ...)`: Get organization's AI models
+- `create(data: dict)`: Create a new AI model
+- `update(model_id: str, data: dict)`: Update an AI model
+- `delete_model(model_id: str)`: Delete an AI model
 
 ### UseCaseClient
 
@@ -419,7 +498,7 @@ Client for use case operations.
 **Methods:**
 
 - `search(...)`: Search use cases with filters
-- `get_by_id(usecase_id: int)`: Get use case by ID
+- `get_by_id(usecase_id: int)`: Get use case by ID (GraphQL)
 - `list_all(...)`: List all use cases with pagination
 - `get_organization_usecases(organization_id: str, ...)`: Get organization's use cases
 

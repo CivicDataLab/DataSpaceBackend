@@ -57,7 +57,7 @@ class UseCaseClient(BaseAPIClient):
         if sort:
             params["sort"] = sort
 
-        return self.get("/api/search/usecase/", params=params)
+        return super().get("/api/search/usecase/", params=params)
 
     def get_by_id(self, usecase_id: int) -> Dict[str, Any]:
         """

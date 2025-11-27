@@ -61,7 +61,7 @@ class AIModelClient(BaseAPIClient):
         if sort:
             params["sort"] = sort
 
-        return self.get("/api/search/aimodel/", params=params)
+        return super().get("/api/search/aimodel/", params=params)
 
     def get_by_id(self, model_id: str) -> Dict[str, Any]:
         """
@@ -73,7 +73,8 @@ class AIModelClient(BaseAPIClient):
         Returns:
             Dictionary containing AI model information
         """
-        return self.get(f"/api/aimodels/{model_id}/")
+        # Use parent class get method with full endpoint path
+        return super().get(f"/api/aimodels/{model_id}/")
 
     def get_by_id_graphql(self, model_id: str) -> Dict[str, Any]:
         """

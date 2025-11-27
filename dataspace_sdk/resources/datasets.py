@@ -57,7 +57,7 @@ class DatasetClient(BaseAPIClient):
         if sort:
             params["sort"] = sort
 
-        return self.get("/api/search/dataset/", params=params)
+        return super().get("/api/search/dataset/", params=params)
 
     def get_by_id(self, dataset_id: str) -> Dict[str, Any]:
         """
