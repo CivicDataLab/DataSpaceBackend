@@ -77,6 +77,39 @@ class AuthClient:
         # Login to DataSpace backend
         return self._login_with_keycloak_token(keycloak_token)
 
+    def login_as_service_account(self) -> Dict[str, Any]:
+        """
+        Login using client credentials (service account).
+
+        This method authenticates the client itself (not a user) using
+        the client_id and client_secret. Requires the Keycloak client
+        to have "Service Accounts Enabled".
+
+        Returns:
+            Dictionary containing user info and tokens
+
+        Raises:
+            DataSpaceAuthError: If authentication fails
+        """
+        if not all(
+            [
+                self.keycloak_url,
+                self.keycloak_realm,
+                self.keycloak_client_id,
+                self.keycloak_client_secret,
+            ]
+        ):
+            raise DataSpaceAuthError(
+                "Service account authentication requires keycloak_url, "
+                "keycloak_realm, keycloak_client_id, and keycloak_client_secret."
+            )
+
+        # Get Keycloak token using client credentials
+        keycloak_token = self._get_service_account_token()
+
+        # Login to DataSpace backend
+        return self._login_with_keycloak_token(keycloak_token)
+
     def _get_keycloak_token(self, username: str, password: str) -> str:
         """
         Get Keycloak access token using username and password.
@@ -139,6 +172,64 @@ class AuthClient:
                 )
         except requests.RequestException as e:
             raise DataSpaceAuthError(f"Network error during Keycloak authentication: {str(e)}")
+
+    def _get_service_account_token(self) -> str:
+        """
+        Get Keycloak access token using client credentials (service account).
+
+        Returns:
+            Keycloak access token
+
+        Raises:
+            DataSpaceAuthError: If authentication fails
+        """
+        token_url = (
+            f"{self.keycloak_url}/auth/realms/{self.keycloak_realm}/"
+            f"protocol/openid-connect/token"
+        )
+
+        data = {
+            "grant_type": "client_credentials",
+            "client_id": self.keycloak_client_id,
+            "client_secret": self.keycloak_client_secret,
+        }
+
+        try:
+            response = requests.post(
+                token_url,
+                data=data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+
+            if response.status_code == 200:
+                token_data = response.json()
+                self.keycloak_access_token = token_data.get("access_token")
+                self.keycloak_refresh_token = token_data.get("refresh_token")
+
+                # Calculate token expiration time
+                expires_in = token_data.get("expires_in", 300)
+                self.token_expires_at = time.time() + expires_in
+
+                if not self.keycloak_access_token:
+                    raise DataSpaceAuthError("No access token in Keycloak response")
+
+                return self.keycloak_access_token
+            else:
+                error_data = response.json()
+                error_msg = error_data.get(
+                    "error_description",
+                    error_data.get("error", "Service account authentication failed"),
+                )
+                raise DataSpaceAuthError(
+                    f"Service account login failed: {error_msg}. "
+                    f"Ensure 'Service Accounts Enabled' is ON in Keycloak client settings.",
+                    status_code=response.status_code,
+                    response=error_data,
+                )
+        except requests.RequestException as e:
+            raise DataSpaceAuthError(
+                f"Network error during service account authentication: {str(e)}"
+            )
 
     def _refresh_keycloak_token(self) -> str:
         """

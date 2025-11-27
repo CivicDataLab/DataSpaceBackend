@@ -91,6 +91,34 @@ class DataSpaceClient:
         """
         return self._auth.login(username, password)
 
+    def login_as_service_account(self) -> dict:
+        """
+        Login using client credentials (service account).
+
+        This method authenticates the client itself using client_id and client_secret.
+        The Keycloak client must have "Service Accounts Enabled" turned ON.
+
+        This is the recommended approach for backend services and automated tasks.
+
+        Returns:
+            Dictionary containing user info and tokens
+
+        Raises:
+            DataSpaceAuthError: If authentication fails
+
+        Example:
+            >>> client = DataSpaceClient(
+            ...     base_url="https://api.dataspace.example.com",
+            ...     keycloak_url="https://opub-kc.civicdatalab.in",
+            ...     keycloak_realm="DataSpace",
+            ...     keycloak_client_id="dataspace",
+            ...     keycloak_client_secret="your-secret"
+            ... )
+            >>> info = client.login_as_service_account()
+            >>> print("Authenticated as service account")
+        """
+        return self._auth.login_as_service_account()
+
     def login_with_token(self, keycloak_token: str) -> dict:
         """
         Login using a pre-obtained Keycloak token.
