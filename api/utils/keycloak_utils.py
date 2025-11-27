@@ -102,9 +102,15 @@ class KeycloakManager:
             logger.error(f"Error validating token: {e}")
             return {}
 
-    def get_user_roles(self, token_info: dict) -> list[str]:
+    def get_user_roles_from_token_info(self, token_info: dict) -> list[str]:
         """
-        Extract roles from a Keycloak token.
+        Extract roles from token introspection data.
+
+        Args:
+            token_info: Token introspection response
+
+        Returns:
+            List of role names
         """
         roles: list[str] = []
 
@@ -122,19 +128,85 @@ class KeycloakManager:
 
         return roles
 
-    def get_user_organizations(self, token_info: dict) -> List[Dict[str, Any]]:
+    def get_user_organizations_from_token_info(self, token_info: dict) -> List[Dict[str, Any]]:
         """
-        Get the organizations a user belongs to from their token info.
-        This assumes that organization information is stored in the token
-        as client roles or in user attributes.
+        Get organizations from token introspection data.
 
         Args:
-            token_info: The decoded token information
+            token_info: Token introspection response
 
         Returns:
             List of organization information
         """
         try:
+            # Get organization info from resource_access or attributes
+            resource_access = token_info.get("resource_access", {})
+            client_roles = resource_access.get(self.client_id, {}).get("roles", [])
+
+            # Extract organization info from roles
+            organizations = []
+            for role in client_roles:
+                if role.startswith("org_"):
+                    parts = role.split("_")
+                    if len(parts) >= 3:
+                        org_id = parts[1]
+                        role_name = parts[2]
+                        organizations.append({"organization_id": org_id, "role": role_name})
+
+            return organizations
+        except Exception as e:
+            logger.error(f"Error getting user organizations: {e}")
+            return []
+
+    def get_user_roles(self, token: str) -> list[str]:
+        """
+        Extract roles from a Keycloak token.
+
+        Args:
+            token: The user's token
+
+        Returns:
+            List of role names
+        """
+        try:
+            # Decode the token to get user info
+            token_info = self.keycloak_openid.decode_token(token)
+
+            roles: list[str] = []
+
+            # Extract realm roles
+            realm_access = token_info.get("realm_access", {})
+            if realm_access and "roles" in realm_access:
+                roles.extend(realm_access["roles"])  # type: ignore[no-any-return]
+
+            # Extract client roles
+            resource_access = token_info.get("resource_access", {})
+            client_id = settings.KEYCLOAK_CLIENT_ID
+            if resource_access and client_id in resource_access:
+                client_roles = resource_access[client_id].get("roles", [])
+                roles.extend(client_roles)
+
+            return roles
+        except Exception as e:
+            logger.error(f"Error getting user roles: {e}")
+            return []
+
+    def get_user_organizations(self, token: str) -> List[Dict[str, Any]]:
+        """
+        Get the organizations a user belongs to from their token.
+        This assumes that organization information is stored in the token
+        as client roles or in user attributes.
+
+        Args:
+            token: The user's token
+
+        Returns:
+            List of organization information
+        """
+        try:
+            # Decode the token to get user info
+            token_info = self.keycloak_openid.decode_token(token)
+
             # Get organization info from resource_access or attributes
             # This implementation depends on how organizations are represented in Keycloak
             # This is a simplified example - adjust based on your Keycloak configuration

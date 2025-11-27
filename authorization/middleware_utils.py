@@ -50,9 +50,7 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
                 # Use the raw header value, but check if it might be a raw token
                 # (no 'Bearer ' prefix but still a valid JWT format)
                 token = auth_header
-                logger.debug(
-                    f"Using raw Authorization header as token, length: {len(token)}"
-                )
+                logger.debug(f"Using raw Authorization header as token, length: {len(token)}")
 
         # If no token found, return anonymous user
         if not token:
@@ -91,14 +89,10 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
             return cast(User, AnonymousUser())
 
         # Log the user info for debugging
-        logger.debug(
-            f"User info from token: {user_info.keys() if user_info else 'None'}"
-        )
+        logger.debug(f"User info from token: {user_info.keys() if user_info else 'None'}")
         logger.debug(f"User sub: {user_info.get('sub', 'None')}")
         logger.debug(f"User email: {user_info.get('email', 'None')}")
-        logger.debug(
-            f"User preferred_username: {user_info.get('preferred_username', 'None')}"
-        )
+        logger.debug(f"User preferred_username: {user_info.get('preferred_username', 'None')}")
 
         # Get user roles and organizations from the token
         roles = keycloak_manager.get_user_roles(token)
@@ -113,9 +107,7 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
             logger.warning("User synchronization failed, returning anonymous user")
             return cast(User, AnonymousUser())
 
-        logger.debug(
-            f"Successfully authenticated user: {user.username} (ID: {user.id})"
-        )
+        logger.debug(f"Successfully authenticated user: {user.username} (ID: {user.id})")
 
         # Return the authenticated user
         logger.debug(f"Returning authenticated user: {user.username}")
