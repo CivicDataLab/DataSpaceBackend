@@ -74,11 +74,11 @@ def _update_aimodel_geographies(model: AIModel, geographies: List[str]) -> None:
 class CreateAIModelInput:
     """Input for creating a new AI Model."""
 
-    name: str
-    display_name: str
-    description: str
     model_type: AIModelTypeEnum
     provider: AIModelProviderEnum
+    name: Optional[str] = None
+    display_name: Optional[str] = None
+    description: Optional[str] = None
     version: Optional[str] = None
     provider_model_id: Optional[str] = None
     supports_streaming: bool = False
@@ -290,6 +290,12 @@ class Mutation:
         organization = info.context.context.get("organization")
         user = info.context.user
 
+        # Generate default values if not provided (similar to dataset creation)
+        timestamp = datetime.datetime.now().strftime("%d %b %Y - %H:%M:%S")
+        name = input.name or f"untitled-ai-model-{timestamp}"
+        display_name = input.display_name or f"Untitled AI Model - {timestamp}"
+        description = input.description or ""
+
         # Prepare supported_languages
         supported_languages = input.supported_languages or []
 
@@ -302,10 +308,10 @@ class Mutation:
 
         try:
             model = AIModel.objects.create(
-                name=input.name,
-                display_name=input.display_name,
+                name=name,
+                display_name=display_name,
                 version=input.version or "",
-                description=input.description,
+                description=description,
                 model_type=input.model_type,
                 provider=input.provider,
                 provider_model_id=input.provider_model_id or "",
