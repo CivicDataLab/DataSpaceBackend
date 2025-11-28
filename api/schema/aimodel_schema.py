@@ -38,9 +38,7 @@ def _update_aimodel_tags(model: AIModel, tags: Optional[List[str]]) -> None:
         return
     model.tags.clear()
     for tag in tags:
-        model.tags.add(
-            Tag.objects.get_or_create(defaults={"value": tag}, value__iexact=tag)[0]
-        )
+        model.tags.add(Tag.objects.get_or_create(defaults={"value": tag}, value__iexact=tag)[0])
     model.save()
 
 
@@ -190,9 +188,9 @@ class Query:
                     queryset = AIModel.objects.all()
                 else:
                     # For authenticated users, show their models and public models
-                    queryset = AIModel.objects.filter(
-                        user=user
-                    ) | AIModel.objects.filter(is_public=True, is_active=True)
+                    queryset = AIModel.objects.filter(user=user) | AIModel.objects.filter(
+                        is_public=True, is_active=True
+                    )
             else:
                 # For non-authenticated users, only show public active models
                 queryset = AIModel.objects.filter(is_public=True, is_active=True)
@@ -203,10 +201,12 @@ class Query:
         if order is not strawberry.UNSET:
             queryset = strawberry_django.ordering.apply(order, queryset, info)
 
+        queryset = queryset.distinct()
+
         if pagination is not strawberry.UNSET:
             queryset = strawberry_django.pagination.apply(pagination, queryset)
 
-        return TypeAIModel.from_django_list(list(queryset.distinct()))
+        return TypeAIModel.from_django_list(list(queryset))
 
     @strawberry.field
     @trace_resolver(name="get_ai_model", attributes={"component": "aimodel"})
@@ -279,9 +279,7 @@ class Mutation:
             "get_data": lambda result, **kwargs: {
                 "model_id": str(result.id),
                 "model_name": result.name,
-                "organization": (
-                    str(result.organization.id) if result.organization else None
-                ),
+                "organization": (str(result.organization.id) if result.organization else None),
             },
         },
     )
@@ -348,9 +346,7 @@ class Mutation:
             "get_data": lambda result, **kwargs: {
                 "model_id": str(result.id),
                 "model_name": result.name,
-                "organization": (
-                    str(result.organization.id) if result.organization else None
-                ),
+                "organization": (str(result.organization.id) if result.organization else None),
             },
         },
     )
@@ -372,13 +368,9 @@ class Mutation:
                     user=user, organization=model.organization
                 ).first()
                 if not org_member or not org_member.role.can_change:
-                    raise DjangoValidationError(
-                        "You don't have permission to update this model."
-                    )
+                    raise DjangoValidationError("You don't have permission to update this model.")
             else:
-                raise DjangoValidationError(
-                    "You don't have permission to update this model."
-                )
+                raise DjangoValidationError("You don't have permission to update this model.")
 
         # Update fields
         if input.name is not None:
@@ -459,13 +451,9 @@ class Mutation:
                     user=user, organization=model.organization
                 ).first()
                 if not org_member or not org_member.role.can_delete:
-                    raise DjangoValidationError(
-                        "You don't have permission to delete this model."
-                    )
+                    raise DjangoValidationError("You don't have permission to delete this model.")
             else:
-                raise DjangoValidationError(
-                    "You don't have permission to delete this model."
-                )
+                raise DjangoValidationError("You don't have permission to delete this model.")
 
         model.delete()
         return MutationResponse.success_response(True)
@@ -492,9 +480,7 @@ class Mutation:
         try:
             model = AIModel.objects.get(id=input.model_id)
         except AIModel.DoesNotExist:
-            raise DjangoValidationError(
-                f"AI Model with ID {input.model_id} does not exist."
-            )
+            raise DjangoValidationError(f"AI Model with ID {input.model_id} does not exist.")
 
         # Check permissions
         if not user.is_superuser and model.user != user:
@@ -513,9 +499,7 @@ class Mutation:
 
         # If this is primary, unset other primary endpoints
         if input.is_primary:
-            ModelEndpoint.objects.filter(model=model, is_primary=True).update(
-                is_primary=False
-            )
+            ModelEndpoint.objects.filter(model=model, is_primary=True).update(is_primary=False)
 
         endpoint = ModelEndpoint.objects.create(
             model=model,
@@ -533,9 +517,7 @@ class Mutation:
             is_active=input.is_active,
         )
 
-        return MutationResponse.success_response(
-            TypeModelEndpoint.from_django(endpoint)
-        )
+        return MutationResponse.success_response(TypeModelEndpoint.from_django(endpoint))
 
     @strawberry.mutation
     @BaseMutation.mutation(
@@ -559,9 +541,7 @@ class Mutation:
         try:
             endpoint = ModelEndpoint.objects.get(id=input.id)
         except ModelEndpoint.DoesNotExist:
-            raise DjangoValidationError(
-                f"Model Endpoint with ID {input.id} does not exist."
-            )
+            raise DjangoValidationError(f"Model Endpoint with ID {input.id} does not exist.")
 
         model = endpoint.model
 
@@ -576,9 +556,7 @@ class Mutation:
                         "You don't have permission to update this endpoint."
                     )
             else:
-                raise DjangoValidationError(
-                    "You don't have permission to update this endpoint."
-                )
+                raise DjangoValidationError("You don't have permission to update this endpoint.")
 
         # Update fields
         if input.url is not None:
@@ -612,9 +590,7 @@ class Mutation:
             endpoint.is_primary = True
 
         endpoint.save()
-        return MutationResponse.success_response(
-            TypeModelEndpoint.from_django(endpoint)
-        )
+        return MutationResponse.success_response(TypeModelEndpoint.from_django(endpoint))
 
     @strawberry.mutation
     @BaseMutation.mutation(
@@ -629,18 +605,14 @@ class Mutation:
             },
         },
     )
-    def delete_model_endpoint(
-        self, info: Info, endpoint_id: int
-    ) -> MutationResponse[bool]:
+    def delete_model_endpoint(self, info: Info, endpoint_id: int) -> MutationResponse[bool]:
         """Delete a model endpoint."""
         user = info.context.user
 
         try:
             endpoint = ModelEndpoint.objects.get(id=endpoint_id)
         except ModelEndpoint.DoesNotExist:
-            raise DjangoValidationError(
-                f"Model Endpoint with ID {endpoint_id} does not exist."
-            )
+            raise DjangoValidationError(f"Model Endpoint with ID {endpoint_id} does not exist.")
 
         model = endpoint.model
 
@@ -655,9 +627,7 @@ class Mutation:
                         "You don't have permission to delete this endpoint."
                     )
             else:
-                raise DjangoValidationError(
-                    "You don't have permission to delete this endpoint."
-                )
+                raise DjangoValidationError("You don't have permission to delete this endpoint.")
 
         endpoint.delete()
         return MutationResponse.success_response(True)
