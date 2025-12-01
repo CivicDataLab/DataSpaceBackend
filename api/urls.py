@@ -38,17 +38,17 @@ urlpatterns = [
     path("search/aimodel/", search_aimodel.SearchAIModel.as_view(), name="search_aimodel"),
     path("search/unified/", search_unified.UnifiedSearch.as_view(), name="search_unified"),
     path(
-        "aimodels/<uuid:model_id>/",
+        "aimodels/<model_id>/",
         aimodel_detail.AIModelDetailView.as_view(),
         name="aimodel_detail",
     ),
     path(
-        "aimodels/<uuid:model_id>/call/",
+        "aimodels/<model_id>/call/",
         aimodel_execution.call_aimodel,
         name="aimodel_call",
     ),
     path(
-        "aimodels/<uuid:model_id>/call-async/",
+        "aimodels/<model_id>/call-async/",
         aimodel_execution.call_aimodel_async,
         name="aimodel_call_async",
     ),
