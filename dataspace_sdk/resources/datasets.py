@@ -71,15 +71,15 @@ class DatasetClient(BaseAPIClient):
         """
         query = """
         query GetDataset($id: UUID!) {
-            dataset(id: $id) {
+            getDataset(datasetId: $id) {
                 id
                 title
                 description
                 status
                 accessType
                 license
-                createdAt
-                updatedAt
+                created
+                modified
                 organization {
                     id
                     name
@@ -99,12 +99,16 @@ class DatasetClient(BaseAPIClient):
                 }
                 resources {
                     id
-                    title
+                    name
                     description
-                    fileDetails
-                    schema
-                    createdAt
-                    updatedAt
+                    fileDetails {
+                      format
+                    }
+                    schema {
+                      fieldName
+                    }
+                    created
+                    modified
                 }
             }
         }
