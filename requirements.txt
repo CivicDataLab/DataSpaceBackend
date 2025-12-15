@@ -71,7 +71,7 @@ selenium==4.16.0  # Downgraded for compatibility
 
 # Security and Environment Management
 python-decouple==3.8
-django-debug-toolbar==4.2.0  # Downgraded for better Django compatibility
+django-debug-toolbar==6.0.0  # Downgraded for better Django compatibility
 django-ratelimit==4.1.0
 
 # Caching and Performance
