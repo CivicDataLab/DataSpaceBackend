@@ -47,7 +47,7 @@ xlrd==2.0.1  # For Excel file support
 pillow==10.4.0
 protobuf==4.25.3
 pydantic==2.6.1  # Slightly downgraded for compatibility
-pydantic_core==2.16.2  # Matched with pydantic
+pydantic_core==2.41.1  # Matched with pydantic
 pyecharts==2.0.3
 pyecharts-snapshot @ git+https://github.com/Deepthi-Chand/pyecharts-snapshot.git@8d6cadd055db6c919a1447064185d00d1b30ce01
 python-dateutil==2.9.0.post0
