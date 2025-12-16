@@ -86,8 +86,8 @@ class AIModelClient(BaseAPIClient):
             Dictionary containing AI model information
         """
         query = """
-        query GetAIModel($id: UUID!) {
-            aiModel(id: $id) {
+        query GetAIModel($id: Int!) {
+            getAiModel(modelId: $id) {
                 id
                 name
                 displayName
@@ -128,7 +128,6 @@ class AIModelClient(BaseAPIClient):
                 }
                 endpoints {
                     id
-                    name
                     url
                     httpMethod
                     authType
