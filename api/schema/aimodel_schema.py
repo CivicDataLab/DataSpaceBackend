@@ -12,6 +12,7 @@ from strawberry.types import Info
 from strawberry_django.pagination import OffsetPaginationInput
 
 from api.models.AIModel import AIModel, ModelAPIKey, ModelEndpoint
+from api.models.AIModelVersion import AIModelVersion, VersionProvider
 from api.models.Dataset import Tag
 from api.schema.base_mutation import BaseMutation, MutationResponse
 from api.schema.extensions import TrackActivity, TrackModelActivity
@@ -21,10 +22,14 @@ from api.types.type_aimodel import (
     AIModelProviderEnum,
     AIModelStatusEnum,
     AIModelTypeEnum,
+    AIModelVersionFilter,
+    AIModelVersionOrder,
     EndpointAuthTypeEnum,
     EndpointHTTPMethodEnum,
     TypeAIModel,
+    TypeAIModelVersion,
     TypeModelEndpoint,
+    TypeVersionProvider,
 )
 from api.utils.graphql_telemetry import trace_resolver
 from authorization.graphql_permissions import IsAuthenticated
@@ -155,6 +160,72 @@ class UpdateModelEndpointInput:
     is_primary: Optional[bool] = None
     is_active: Optional[bool] = None
     rate_limit_per_minute: Optional[int] = None
+
+
+@strawberry.input
+class CreateAIModelVersionInput:
+    """Input for creating a new AI Model Version."""
+
+    model_id: int
+    version: str
+    version_notes: Optional[str] = ""
+    supports_streaming: bool = False
+    max_tokens: Optional[int] = None
+    supported_languages: Optional[List[str]] = None
+    input_schema: Optional[strawberry.scalars.JSON] = None
+    output_schema: Optional[strawberry.scalars.JSON] = None
+    metadata: Optional[strawberry.scalars.JSON] = None
+    copy_from_version_id: Optional[int] = None
+
+
+@strawberry.input
+class UpdateAIModelVersionInput:
+    """Input for updating an AI Model Version."""
+
+    id: int
+    version: Optional[str] = None
+    version_notes: Optional[str] = None
+    supports_streaming: Optional[bool] = None
+    max_tokens: Optional[int] = None
+    supported_languages: Optional[List[str]] = None
+    input_schema: Optional[strawberry.scalars.JSON] = None
+    output_schema: Optional[strawberry.scalars.JSON] = None
+    metadata: Optional[strawberry.scalars.JSON] = None
+    status: Optional[AIModelStatusEnum] = None
+    is_latest: Optional[bool] = None
+
+
+@strawberry.input
+class CreateVersionProviderInput:
+    """Input for creating a new Version Provider."""
+
+    version_id: int
+    provider: AIModelProviderEnum
+    provider_model_id: Optional[str] = ""
+    is_primary: bool = False
+    is_active: bool = True
+    hf_use_pipeline: bool = False
+    hf_auth_token: Optional[str] = None
+    hf_model_class: Optional[str] = None
+    hf_attn_implementation: Optional[str] = "flash_attention_2"
+    framework: Optional[str] = None
+    config: Optional[strawberry.scalars.JSON] = None
+
+
+@strawberry.input
+class UpdateVersionProviderInput:
+    """Input for updating a Version Provider."""
+
+    id: int
+    provider_model_id: Optional[str] = None
+    is_primary: Optional[bool] = None
+    is_active: Optional[bool] = None
+    hf_use_pipeline: Optional[bool] = None
+    hf_auth_token: Optional[str] = None
+    hf_model_class: Optional[str] = None
+    hf_attn_implementation: Optional[str] = None
+    framework: Optional[str] = None
+    config: Optional[strawberry.scalars.JSON] = None
 
 
 @strawberry.type
@@ -637,3 +708,368 @@ class Mutation:
 
         endpoint.delete()
         return MutationResponse.success_response(True)
+
+    # ==================== VERSION MUTATIONS ====================
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[IsAuthenticated],
+        trace_name="create_ai_model_version",
+        trace_attributes={"component": "aimodel"},
+    )
+    def create_ai_model_version(
+        self, info: Info, input: CreateAIModelVersionInput
+    ) -> MutationResponse[TypeAIModelVersion]:
+        """Create a new AI model version. Optionally copy providers from another version."""
+        user = info.context.user
+
+        try:
+            model = AIModel.objects.get(id=input.model_id)
+        except AIModel.DoesNotExist:
+            raise DjangoValidationError(f"AI Model with ID {input.model_id} does not exist.")
+
+        # Check permissions
+        if not user.is_superuser and model.user != user:
+            if model.organization:
+                org_member = OrganizationMembership.objects.filter(
+                    user=user, organization=model.organization
+                ).first()
+                if not org_member or not org_member.role.can_change:
+                    raise DjangoValidationError(
+                        "You don't have permission to add versions to this model."
+                    )
+            else:
+                raise DjangoValidationError(
+                    "You don't have permission to add versions to this model."
+                )
+
+        # Create the version
+        version = AIModelVersion.objects.create(
+            ai_model=model,
+            version=input.version,
+            version_notes=input.version_notes or "",
+            supports_streaming=input.supports_streaming,
+            max_tokens=input.max_tokens,
+            supported_languages=input.supported_languages or [],
+            input_schema=input.input_schema or {},
+            output_schema=input.output_schema or {},
+            metadata=input.metadata or {},
+            status="DRAFT",
+            is_latest=True,
+        )
+
+        # If copy_from_version_id is provided, copy all providers
+        if input.copy_from_version_id:
+            try:
+                source_version = AIModelVersion.objects.get(id=input.copy_from_version_id)
+                version.copy_providers_from(source_version)
+            except AIModelVersion.DoesNotExist:
+                pass  # Silently ignore if source version doesn't exist
+
+        return MutationResponse.success_response(TypeAIModelVersion.from_django(version))
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[IsAuthenticated],
+        trace_name="update_ai_model_version",
+        trace_attributes={"component": "aimodel"},
+    )
+    def update_ai_model_version(
+        self, info: Info, input: UpdateAIModelVersionInput
+    ) -> MutationResponse[TypeAIModelVersion]:
+        """Update an AI model version."""
+        user = info.context.user
+
+        try:
+            version = AIModelVersion.objects.get(id=input.id)
+        except AIModelVersion.DoesNotExist:
+            raise DjangoValidationError(f"AI Model Version with ID {input.id} does not exist.")
+
+        model = version.ai_model
+
+        # Check permissions
+        if not user.is_superuser and model.user != user:
+            if model.organization:
+                org_member = OrganizationMembership.objects.filter(
+                    user=user, organization=model.organization
+                ).first()
+                if not org_member or not org_member.role.can_change:
+                    raise DjangoValidationError("You don't have permission to update this version.")
+            else:
+                raise DjangoValidationError("You don't have permission to update this version.")
+
+        # Update fields
+        if input.version is not None:
+            version.version = input.version
+        if input.version_notes is not None:
+            version.version_notes = input.version_notes
+        if input.supports_streaming is not None:
+            version.supports_streaming = input.supports_streaming
+        if input.max_tokens is not None:
+            version.max_tokens = input.max_tokens
+        if input.supported_languages is not None:
+            version.supported_languages = input.supported_languages
+        if input.input_schema is not None:
+            version.input_schema = input.input_schema
+        if input.output_schema is not None:
+            version.output_schema = input.output_schema
+        if input.metadata is not None:
+            version.metadata = input.metadata
+        if input.status is not None:
+            version.status = input.status
+        if input.is_latest is not None:
+            version.is_latest = input.is_latest
+
+        version.save()
+        return MutationResponse.success_response(TypeAIModelVersion.from_django(version))
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[IsAuthenticated],
+        trace_name="delete_ai_model_version",
+        trace_attributes={"component": "aimodel"},
+    )
+    def delete_ai_model_version(self, info: Info, version_id: int) -> MutationResponse[bool]:
+        """Delete an AI model version."""
+        user = info.context.user
+
+        try:
+            version = AIModelVersion.objects.get(id=version_id)
+        except AIModelVersion.DoesNotExist:
+            raise DjangoValidationError(f"AI Model Version with ID {version_id} does not exist.")
+
+        model = version.ai_model
+
+        # Check permissions
+        if not user.is_superuser and model.user != user:
+            if model.organization:
+                org_member = OrganizationMembership.objects.filter(
+                    user=user, organization=model.organization
+                ).first()
+                if not org_member or not org_member.role.can_delete:
+                    raise DjangoValidationError("You don't have permission to delete this version.")
+            else:
+                raise DjangoValidationError("You don't have permission to delete this version.")
+
+        version.delete()
+        return MutationResponse.success_response(True)
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[IsAuthenticated],
+        trace_name="publish_ai_model_version",
+        trace_attributes={"component": "aimodel"},
+    )
+    def publish_ai_model_version(
+        self, info: Info, version_id: int
+    ) -> MutationResponse[TypeAIModelVersion]:
+        """Publish an AI model version and set it as latest."""
+        user = info.context.user
+
+        try:
+            version = AIModelVersion.objects.get(id=version_id)
+        except AIModelVersion.DoesNotExist:
+            raise DjangoValidationError(f"AI Model Version with ID {version_id} does not exist.")
+
+        model = version.ai_model
+
+        # Check permissions
+        if not user.is_superuser and model.user != user:
+            if model.organization:
+                org_member = OrganizationMembership.objects.filter(
+                    user=user, organization=model.organization
+                ).first()
+                if not org_member or not org_member.role.can_change:
+                    raise DjangoValidationError(
+                        "You don't have permission to publish this version."
+                    )
+            else:
+                raise DjangoValidationError("You don't have permission to publish this version.")
+
+        from django.utils import timezone
+
+        version.status = "ACTIVE"
+        version.is_latest = True
+        version.published_at = timezone.now()
+        version.save()
+
+        return MutationResponse.success_response(TypeAIModelVersion.from_django(version))
+
+    # ==================== PROVIDER MUTATIONS ====================
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[IsAuthenticated],
+        trace_name="create_version_provider",
+        trace_attributes={"component": "aimodel"},
+    )
+    def create_version_provider(
+        self, info: Info, input: CreateVersionProviderInput
+    ) -> MutationResponse[TypeVersionProvider]:
+        """Create a new provider for a version."""
+        user = info.context.user
+
+        try:
+            version = AIModelVersion.objects.get(id=input.version_id)
+        except AIModelVersion.DoesNotExist:
+            raise DjangoValidationError(
+                f"AI Model Version with ID {input.version_id} does not exist."
+            )
+
+        model = version.ai_model
+
+        # Check permissions
+        if not user.is_superuser and model.user != user:
+            if model.organization:
+                org_member = OrganizationMembership.objects.filter(
+                    user=user, organization=model.organization
+                ).first()
+                if not org_member or not org_member.role.can_change:
+                    raise DjangoValidationError(
+                        "You don't have permission to add providers to this version."
+                    )
+            else:
+                raise DjangoValidationError(
+                    "You don't have permission to add providers to this version."
+                )
+
+        provider = VersionProvider.objects.create(
+            version=version,
+            provider=input.provider,
+            provider_model_id=input.provider_model_id or "",
+            is_primary=input.is_primary,
+            is_active=input.is_active,
+            hf_use_pipeline=input.hf_use_pipeline,
+            hf_auth_token=input.hf_auth_token,
+            hf_model_class=input.hf_model_class,
+            hf_attn_implementation=input.hf_attn_implementation or "flash_attention_2",
+            framework=input.framework,
+            config=input.config or {},
+        )
+
+        return MutationResponse.success_response(TypeVersionProvider.from_django(provider))
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[IsAuthenticated],
+        trace_name="update_version_provider",
+        trace_attributes={"component": "aimodel"},
+    )
+    def update_version_provider(
+        self, info: Info, input: UpdateVersionProviderInput
+    ) -> MutationResponse[TypeVersionProvider]:
+        """Update a version provider."""
+        user = info.context.user
+
+        try:
+            provider = VersionProvider.objects.get(id=input.id)
+        except VersionProvider.DoesNotExist:
+            raise DjangoValidationError(f"Version Provider with ID {input.id} does not exist.")
+
+        model = provider.version.ai_model
+
+        # Check permissions
+        if not user.is_superuser and model.user != user:
+            if model.organization:
+                org_member = OrganizationMembership.objects.filter(
+                    user=user, organization=model.organization
+                ).first()
+                if not org_member or not org_member.role.can_change:
+                    raise DjangoValidationError(
+                        "You don't have permission to update this provider."
+                    )
+            else:
+                raise DjangoValidationError("You don't have permission to update this provider.")
+
+        # Update fields
+        if input.provider_model_id is not None:
+            provider.provider_model_id = input.provider_model_id
+        if input.is_primary is not None:
+            provider.is_primary = input.is_primary
+        if input.is_active is not None:
+            provider.is_active = input.is_active
+        if input.hf_use_pipeline is not None:
+            provider.hf_use_pipeline = input.hf_use_pipeline
+        if input.hf_auth_token is not None:
+            provider.hf_auth_token = input.hf_auth_token
+        if input.hf_model_class is not None:
+            provider.hf_model_class = input.hf_model_class
+        if input.hf_attn_implementation is not None:
+            provider.hf_attn_implementation = input.hf_attn_implementation
+        if input.framework is not None:
+            provider.framework = input.framework
+        if input.config is not None:
+            provider.config = input.config
+
+        provider.save()
+        return MutationResponse.success_response(TypeVersionProvider.from_django(provider))
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[IsAuthenticated],
+        trace_name="delete_version_provider",
+        trace_attributes={"component": "aimodel"},
+    )
+    def delete_version_provider(self, info: Info, provider_id: int) -> MutationResponse[bool]:
+        """Delete a version provider."""
+        user = info.context.user
+
+        try:
+            provider = VersionProvider.objects.get(id=provider_id)
+        except VersionProvider.DoesNotExist:
+            raise DjangoValidationError(f"Version Provider with ID {provider_id} does not exist.")
+
+        model = provider.version.ai_model
+
+        # Check permissions
+        if not user.is_superuser and model.user != user:
+            if model.organization:
+                org_member = OrganizationMembership.objects.filter(
+                    user=user, organization=model.organization
+                ).first()
+                if not org_member or not org_member.role.can_delete:
+                    raise DjangoValidationError(
+                        "You don't have permission to delete this provider."
+                    )
+            else:
+                raise DjangoValidationError("You don't have permission to delete this provider.")
+
+        provider.delete()
+        return MutationResponse.success_response(True)
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[IsAuthenticated],
+        trace_name="set_primary_provider",
+        trace_attributes={"component": "aimodel"},
+    )
+    def set_primary_provider(
+        self, info: Info, provider_id: int
+    ) -> MutationResponse[TypeVersionProvider]:
+        """Set a provider as the primary provider for its version."""
+        user = info.context.user
+
+        try:
+            provider = VersionProvider.objects.get(id=provider_id)
+        except VersionProvider.DoesNotExist:
+            raise DjangoValidationError(f"Version Provider with ID {provider_id} does not exist.")
+
+        model = provider.version.ai_model
+
+        # Check permissions
+        if not user.is_superuser and model.user != user:
+            if model.organization:
+                org_member = OrganizationMembership.objects.filter(
+                    user=user, organization=model.organization
+                ).first()
+                if not org_member or not org_member.role.can_change:
+                    raise DjangoValidationError(
+                        "You don't have permission to update this provider."
+                    )
+            else:
+                raise DjangoValidationError("You don't have permission to update this provider.")
+
+        provider.is_primary = True
+        provider.save()  # The save method will unset other primaries
+
+        return MutationResponse.success_response(TypeVersionProvider.from_django(provider))

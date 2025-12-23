@@ -169,6 +169,7 @@ class AIModelType(models.TextChoices):
 
 
 class AIModelStatus(models.TextChoices):
+    DRAFT = "DRAFT"
     REGISTERED = "REGISTERED"
     VALIDATING = "VALIDATING"
     ACTIVE = "ACTIVE"
