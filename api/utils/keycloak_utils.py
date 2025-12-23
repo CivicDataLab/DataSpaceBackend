@@ -366,17 +366,36 @@ class KeycloakManager:
                 logger.error("Missing required user information from Keycloak")
                 return None
 
-            # Get or create the user
-            user, created = User.objects.update_or_create(
-                keycloak_id=keycloak_id,
-                defaults={
-                    "username": username,
-                    "email": email,
-                    "first_name": user_info.get("given_name", ""),
-                    "last_name": user_info.get("family_name", ""),
-                    "is_active": True,
-                },
-            )
+            # First, try to find user by keycloak_id
+            user = User.objects.filter(keycloak_id=keycloak_id).first()
+
+            if not user and email:
+                # If not found by keycloak_id, check if user exists with same email
+                # and update their keycloak_id (handles pre-existing users)
+                user = User.objects.filter(email=email).first()
+                if user:
+                    logger.info(
+                        f"Found existing user with email {email}, updating keycloak_id to {keycloak_id}"
+                    )
+
+            if user:
+                # Update existing user
+                user.keycloak_id = keycloak_id
+                user.username = username
+                user.email = email
+                user.first_name = user_info.get("given_name", "") or user.first_name
+                user.last_name = user_info.get("family_name", "") or user.last_name
+                user.is_active = True
+            else:
+                # Create new user
+                user = User(
+                    keycloak_id=keycloak_id,
+                    username=username,
+                    email=email,
+                    first_name=user_info.get("given_name", ""),
+                    last_name=user_info.get("family_name", ""),
+                    is_active=True,
+                )
 
             # Update user roles based on Keycloak roles
             if "admin" in roles:
