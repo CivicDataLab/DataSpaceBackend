@@ -61,14 +61,14 @@ def _update_aimodel_sectors(model: AIModel, sectors: List[str]) -> None:
     model.save()
 
 
-def _update_aimodel_geographies(model: AIModel, geographies: List[str]) -> None:
+def _update_aimodel_geographies(model: AIModel, geographies: List[int]) -> None:
     """Helper function to update geographies for an AI model."""
     from api.models import Geography
 
     model.geographies.clear()
-    for geography_name in geographies:
+    for geography_id in geographies:
         try:
-            geography = Geography.objects.get(name__iexact=geography_name)
+            geography = Geography.objects.get(id=geography_id)
             model.geographies.add(geography)
         except Geography.DoesNotExist:
             pass
@@ -93,7 +93,7 @@ class CreateAIModelInput:
     output_schema: Optional[strawberry.scalars.JSON] = None
     tags: Optional[List[str]] = None
     sectors: Optional[List[str]] = None
-    geographies: Optional[List[str]] = None
+    geographies: Optional[List[int]] = None
     metadata: Optional[strawberry.scalars.JSON] = None
     is_public: bool = False
 
@@ -117,7 +117,7 @@ class UpdateAIModelInput:
     output_schema: Optional[strawberry.scalars.JSON] = None
     tags: Optional[List[str]] = None
     sectors: Optional[List[str]] = None
-    geographies: Optional[List[str]] = None
+    geographies: Optional[List[int]] = None
     metadata: Optional[strawberry.scalars.JSON] = None
     is_public: Optional[bool] = None
     is_active: Optional[bool] = None
