@@ -19,6 +19,7 @@ from api.types.type_organization import TypeOrganization
 from api.types.type_sector import TypeSector
 from api.utils.enums import (
     AIModelFramework,
+    AIModelLifecycleStage,
     AIModelProvider,
     AIModelStatus,
     AIModelType,
@@ -39,6 +40,7 @@ EndpointAuthTypeEnum = strawberry.enum(EndpointAuthType)  # type: ignore
 EndpointHTTPMethodEnum = strawberry.enum(EndpointHTTPMethod)  # type: ignore
 AIModelFrameworkEnum = strawberry.enum(AIModelFramework)  # type: ignore
 HFModelClassEnum = strawberry.enum(HFModelClass)  # type: ignore
+AIModelLifecycleStageEnum = strawberry.enum(AIModelLifecycleStage)  # type: ignore
 
 
 @strawberry.type
@@ -195,7 +197,8 @@ class TypeAIModel(BaseType):
     def versions(self) -> List["TypeAIModelVersion"]:
         """Get all versions of this AI model."""
         try:
-            queryset = self.versions.all()  # type: ignore
+            django_instance = cast(AIModel, self)
+            queryset = django_instance.versions.all()
             return TypeAIModelVersion.from_django_list(list(queryset))
         except Exception:
             return []
@@ -204,9 +207,10 @@ class TypeAIModel(BaseType):
     def latest_version(self) -> Optional["TypeAIModelVersion"]:
         """Get the latest version of this AI model."""
         try:
-            version = self.versions.filter(is_latest=True).first()  # type: ignore
+            django_instance = cast(AIModel, self)
+            version = django_instance.versions.filter(is_latest=True).first()
             if not version:
-                version = self.versions.order_by("-created_at").first()  # type: ignore
+                version = django_instance.versions.order_by("-created_at").first()
             if version:
                 return TypeAIModelVersion.from_django(version)
             return None
@@ -265,6 +269,7 @@ class TypeAIModelVersion(BaseType):
     output_schema: strawberry.scalars.JSON
     metadata: strawberry.scalars.JSON
     status: AIModelStatusEnum
+    lifecycle_stage: AIModelLifecycleStageEnum
     is_latest: bool
     created_at: datetime
     updated_at: datetime

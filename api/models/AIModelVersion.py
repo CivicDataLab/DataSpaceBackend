@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from django.db import models
 
-from api.utils.enums import AIModelStatus
+from api.utils.enums import AIModelLifecycleStage, AIModelStatus
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -36,11 +36,17 @@ class AIModelVersion(models.Model):
     output_schema = models.JSONField(default=dict, help_text="Expected output format")
     metadata = models.JSONField(default=dict, help_text="Additional version-specific metadata")
 
-    # Status
+    # Status & Lifecycle
     status = models.CharField(
         max_length=20,
         choices=AIModelStatus.choices,
         default=AIModelStatus.REGISTERED,
+    )
+    lifecycle_stage = models.CharField(
+        max_length=20,
+        choices=AIModelLifecycleStage.choices,
+        default=AIModelLifecycleStage.DEVELOPMENT,
+        help_text="Current lifecycle stage of this version",
     )
     is_latest = models.BooleanField(default=False, help_text="Whether this is the latest version")
 

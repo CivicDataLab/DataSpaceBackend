@@ -189,6 +189,16 @@ class AIModelProvider(models.TextChoices):
     HUGGINGFACE = "HUGGINGFACE"
 
 
+class AIModelLifecycleStage(models.TextChoices):
+    DEVELOPMENT = "DEVELOPMENT", "Development"
+    TESTING = "TESTING", "Testing"
+    BETA = "BETA", "Beta Testing"
+    STAGING = "STAGING", "Staging"
+    PRODUCTION = "PRODUCTION", "Production"
+    DEPRECATED = "DEPRECATED", "Deprecated"
+    RETIRED = "RETIRED", "Retired"
+
+
 class AIModelFramework(models.TextChoices):
     PYTORCH = "pt", "PyTorch"
     TENSORFLOW = "tf", "TensorFlow"

@@ -18,6 +18,7 @@ from api.schema.base_mutation import BaseMutation, MutationResponse
 from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.types.type_aimodel import (
     AIModelFilter,
+    AIModelLifecycleStageEnum,
     AIModelOrder,
     AIModelProviderEnum,
     AIModelStatusEnum,
@@ -169,6 +170,7 @@ class CreateAIModelVersionInput:
     model_id: int
     version: str
     version_notes: Optional[str] = ""
+    lifecycle_stage: Optional[AIModelLifecycleStageEnum] = None
     supports_streaming: bool = False
     max_tokens: Optional[int] = None
     supported_languages: Optional[List[str]] = None
@@ -176,6 +178,7 @@ class CreateAIModelVersionInput:
     output_schema: Optional[strawberry.scalars.JSON] = None
     metadata: Optional[strawberry.scalars.JSON] = None
     copy_from_version_id: Optional[int] = None
+    is_latest: Optional[bool] = None
 
 
 @strawberry.input
@@ -185,6 +188,7 @@ class UpdateAIModelVersionInput:
     id: int
     version: Optional[str] = None
     version_notes: Optional[str] = None
+    lifecycle_stage: Optional[AIModelLifecycleStageEnum] = None
     supports_streaming: Optional[bool] = None
     max_tokens: Optional[int] = None
     supported_languages: Optional[List[str]] = None
@@ -748,6 +752,7 @@ class Mutation:
             ai_model=model,
             version=input.version,
             version_notes=input.version_notes or "",
+            lifecycle_stage=input.lifecycle_stage.value if input.lifecycle_stage else "DEVELOPMENT",  # type: ignore[misc]
             supports_streaming=input.supports_streaming,
             max_tokens=input.max_tokens,
             supported_languages=input.supported_languages or [],
@@ -755,7 +760,7 @@ class Mutation:
             output_schema=input.output_schema or {},
             metadata=input.metadata or {},
             status="DRAFT",
-            is_latest=True,
+            is_latest=input.is_latest if input.is_latest is not None else True,
         )
 
         # If copy_from_version_id is provided, copy all providers
@@ -803,6 +808,8 @@ class Mutation:
             version.version = input.version
         if input.version_notes is not None:
             version.version_notes = input.version_notes
+        if input.lifecycle_stage is not None:
+            version.lifecycle_stage = input.lifecycle_stage.value  # type: ignore[misc]
         if input.supports_streaming is not None:
             version.supports_streaming = input.supports_streaming
         if input.max_tokens is not None:
