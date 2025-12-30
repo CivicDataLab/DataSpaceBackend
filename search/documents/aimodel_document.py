@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Union
 from django_elasticsearch_dsl import Document, Index, KeywordField, fields
 
 from api.models.AIModel import AIModel, ModelEndpoint
+from api.models.AIModelVersion import AIModelVersion, VersionProvider
 from api.models.Dataset import Tag
 from api.models.Geography import Geography
 from api.models.Organization import Organization
@@ -45,11 +46,14 @@ class AIModelDocument(Document):
     )
 
     version = fields.KeywordField()
+    provider = fields.KeywordField()
+    provider_model_id = fields.KeywordField()
+    supported_languages = fields.KeywordField(multi=True)
+    supports_streaming = fields.BooleanField()
+    max_tokens = fields.IntegerField()
 
     # Model configuration
     model_type = fields.KeywordField()
-    provider = fields.KeywordField()
-    provider_model_id = fields.KeywordField()
 
     # Status and visibility
     status = fields.KeywordField()
@@ -89,13 +93,6 @@ class AIModelDocument(Document):
         multi=True,
     )
 
-    # Supported languages (stored as JSON array in model)
-    supported_languages = fields.KeywordField(multi=True)
-
-    # Capabilities
-    supports_streaming = fields.BooleanField()
-    max_tokens = fields.IntegerField()
-
     # Performance metrics
     average_latency_ms = fields.FloatField()
     success_rate = fields.FloatField()
@@ -130,10 +127,38 @@ class AIModelDocument(Document):
         }
     )
 
+    versions = fields.NestedField(
+        properties={
+            "id": fields.IntegerField(),
+            "version": fields.KeywordField(),
+            "version_notes": fields.TextField(analyzer=html_strip),
+            "lifecycle_stage": fields.KeywordField(),
+            "is_latest": fields.BooleanField(),
+            "status": fields.KeywordField(),
+            "supports_streaming": fields.BooleanField(),
+            "max_tokens": fields.IntegerField(),
+            "supported_languages": fields.KeywordField(multi=True),
+            "created_at": fields.DateField(),
+            "updated_at": fields.DateField(),
+            "providers": fields.NestedField(
+                properties={
+                    "id": fields.IntegerField(),
+                    "provider": fields.KeywordField(),
+                    "provider_model_id": fields.KeywordField(),
+                    "is_primary": fields.BooleanField(),
+                    "is_active": fields.BooleanField(),
+                }
+            ),
+        }
+    )
+
     # Computed fields
     is_individual_model = fields.BooleanField()
     has_active_endpoints = fields.BooleanField()
     endpoint_count = fields.IntegerField()
+    version_count = fields.IntegerField()
+    lifecycle_stage = fields.KeywordField()  # Primary version's lifecycle stage
+    all_providers = fields.KeywordField(multi=True)  # All unique providers across versions
 
     def prepare_organization(self, instance: AIModel) -> Optional[Dict[str, str]]:
         """Prepare organization data for indexing, including logo URL."""
@@ -150,9 +175,7 @@ class AIModelDocument(Document):
                 "name": instance.user.full_name,
                 "bio": instance.user.bio or "",
                 "profile_picture": (
-                    instance.user.profile_picture.url
-                    if instance.user.profile_picture
-                    else ""
+                    instance.user.profile_picture.url if instance.user.profile_picture else ""
                 ),
             }
         return None
@@ -183,6 +206,131 @@ class AIModelDocument(Document):
     def prepare_endpoint_count(self, instance: AIModel) -> int:
         """Count the number of endpoints."""
         return instance.endpoints.count()
+
+    def prepare_versions(self, instance: AIModel) -> List[Dict[str, Any]]:
+        """Prepare versions data for indexing."""
+        versions_data: List[Dict[str, Any]] = []
+        for version in instance.versions.all():  # type: ignore[attr-defined]
+            version_obj: AIModelVersion = version  # type: ignore[assignment]
+            providers_data: List[Dict[str, Any]] = []
+            for provider in version_obj.providers.all():  # type: ignore[attr-defined]
+                provider_obj: VersionProvider = provider  # type: ignore[assignment]
+                providers_data.append(
+                    {
+                        "id": provider_obj.id,
+                        "provider": provider_obj.provider,
+                        "provider_model_id": provider_obj.provider_model_id,
+                        "is_primary": provider_obj.is_primary,
+                        "is_active": provider_obj.is_active,
+                    }
+                )
+            versions_data.append(
+                {
+                    "id": version_obj.id,
+                    "version": version_obj.version,
+                    "version_notes": version_obj.version_notes or "",
+                    "lifecycle_stage": version_obj.lifecycle_stage,
+                    "is_latest": version_obj.is_latest,
+                    "status": version_obj.status,
+                    "supports_streaming": version_obj.supports_streaming,
+                    "max_tokens": version_obj.max_tokens,
+                    "supported_languages": version_obj.supported_languages or [],
+                    "created_at": version_obj.created_at,
+                    "updated_at": version_obj.updated_at,
+                    "providers": providers_data,
+                }
+            )
+        return versions_data
+
+    def _get_primary_version(self, instance: AIModel) -> Optional[AIModelVersion]:
+        """Get the primary (latest) version of the model."""
+        primary = instance.versions.filter(is_latest=True).first()  # type: ignore[attr-defined]
+        if not primary:
+            primary = instance.versions.first()  # type: ignore[attr-defined]
+        return primary  # type: ignore[return-value]
+
+    def _get_primary_provider(self, version: Optional[AIModelVersion]) -> Optional[VersionProvider]:
+        """Get the primary provider of a version."""
+        if not version:
+            return None
+        primary = version.providers.filter(is_primary=True).first()  # type: ignore[attr-defined]
+        if not primary:
+            primary = version.providers.first()  # type: ignore[attr-defined]
+        return primary  # type: ignore[return-value]
+
+    def prepare_version(self, instance: AIModel) -> str:
+        """Prepare version from primary version for backward compatibility."""
+        primary_version = self._get_primary_version(instance)
+        if primary_version:
+            return str(primary_version.version)
+        # Fallback to legacy field on AIModel
+        return instance.version or ""
+
+    def prepare_provider(self, instance: AIModel) -> str:
+        """Prepare provider from primary version's primary provider for backward compatibility."""
+        primary_version = self._get_primary_version(instance)
+        primary_provider = self._get_primary_provider(primary_version)
+        if primary_provider:
+            return str(primary_provider.provider)
+        # Fallback to legacy field on AIModel
+        return instance.provider or ""
+
+    def prepare_provider_model_id(self, instance: AIModel) -> str:
+        """Prepare provider_model_id from primary version's primary provider."""
+        primary_version = self._get_primary_version(instance)
+        primary_provider = self._get_primary_provider(primary_version)
+        if primary_provider:
+            return primary_provider.provider_model_id or ""
+        # Fallback to legacy field on AIModel
+        return instance.provider_model_id or ""
+
+    def prepare_supported_languages(self, instance: AIModel) -> List[str]:
+        """Prepare supported_languages from primary version."""
+        primary_version = self._get_primary_version(instance)
+        if primary_version and primary_version.supported_languages:
+            return list(primary_version.supported_languages)
+        # Fallback to legacy field on AIModel
+        return list(instance.supported_languages or [])
+
+    def prepare_supports_streaming(self, instance: AIModel) -> bool:
+        """Prepare supports_streaming from primary version."""
+        primary_version = self._get_primary_version(instance)
+        if primary_version:
+            return bool(primary_version.supports_streaming)
+        # Fallback to legacy field on AIModel
+        return bool(instance.supports_streaming)
+
+    def prepare_max_tokens(self, instance: AIModel) -> Optional[int]:
+        """Prepare max_tokens from primary version."""
+        primary_version = self._get_primary_version(instance)
+        if primary_version and primary_version.max_tokens:
+            return int(primary_version.max_tokens)
+        # Fallback to legacy field on AIModel
+        return instance.max_tokens
+
+    def prepare_version_count(self, instance: AIModel) -> int:
+        """Count the number of versions."""
+        return instance.versions.count()  # type: ignore[attr-defined]
+
+    def prepare_lifecycle_stage(self, instance: AIModel) -> str:
+        """Get lifecycle stage from primary version."""
+        primary_version = self._get_primary_version(instance)
+        if primary_version:
+            return str(primary_version.lifecycle_stage)
+        return "DEVELOPMENT"
+
+    def prepare_all_providers(self, instance: AIModel) -> List[str]:
+        """Get all unique providers across all versions."""
+        providers: set[str] = set()
+        for version in instance.versions.all():  # type: ignore[attr-defined]
+            version_obj: AIModelVersion = version  # type: ignore[assignment]
+            for provider in version_obj.providers.all():  # type: ignore[attr-defined]
+                provider_obj: VersionProvider = provider  # type: ignore[assignment]
+                providers.add(str(provider_obj.provider))
+        # Also include legacy provider if set
+        if instance.provider:
+            providers.add(str(instance.provider))
+        return list(providers)
 
     def should_index_object(self, obj: AIModel) -> bool:
         """
@@ -225,7 +373,14 @@ class AIModelDocument(Document):
     def get_instances_from_related(
         self,
         related_instance: Union[
-            ModelEndpoint, Organization, User, Tag, Sector, Geography
+            ModelEndpoint,
+            Organization,
+            User,
+            Tag,
+            Sector,
+            Geography,
+            AIModelVersion,
+            VersionProvider,
         ],
     ) -> Optional[Union[AIModel, List[AIModel]]]:
         """Get AIModel instances from related models."""
@@ -241,6 +396,10 @@ class AIModelDocument(Document):
             return list(related_instance.ai_models.all())
         elif isinstance(related_instance, Geography):
             return list(related_instance.ai_models.all())
+        elif isinstance(related_instance, AIModelVersion):
+            return related_instance.ai_model
+        elif isinstance(related_instance, VersionProvider):
+            return related_instance.version.ai_model
         return None
 
     class Django:
@@ -262,4 +421,6 @@ class AIModelDocument(Document):
             Tag,
             Sector,
             Geography,
+            AIModelVersion,
+            VersionProvider,
         ]

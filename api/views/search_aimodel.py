@@ -21,10 +21,15 @@ class AIModelDocumentSerializer(serializers.ModelSerializer):
     """Serializer for AIModel document."""
 
     tags = serializers.ListField()
+    sectors = serializers.ListField()
+    geographies = serializers.ListField()
     supported_languages = serializers.ListField()
     is_individual_model = serializers.BooleanField()
     has_active_endpoints = serializers.BooleanField()
     endpoint_count = serializers.IntegerField()
+    version_count = serializers.IntegerField()
+    lifecycle_stage = serializers.CharField()
+    all_providers = serializers.ListField()
 
     class OrganizationSerializer(serializers.Serializer):
         name = serializers.CharField()
@@ -42,9 +47,31 @@ class AIModelDocumentSerializer(serializers.ModelSerializer):
         is_primary = serializers.BooleanField()
         is_active = serializers.BooleanField()
 
+    class ProviderSerializer(serializers.Serializer):
+        id = serializers.IntegerField()
+        provider = serializers.CharField()
+        provider_model_id = serializers.CharField()
+        is_primary = serializers.BooleanField()
+        is_active = serializers.BooleanField()
+
+    class VersionSerializer(serializers.Serializer):
+        id = serializers.IntegerField()
+        version = serializers.CharField()
+        version_notes = serializers.CharField(allow_blank=True)
+        lifecycle_stage = serializers.CharField()
+        is_latest = serializers.BooleanField()
+        status = serializers.CharField()
+        supports_streaming = serializers.BooleanField()
+        max_tokens = serializers.IntegerField(allow_null=True)
+        supported_languages = serializers.ListField()
+        created_at = serializers.DateTimeField()
+        updated_at = serializers.DateTimeField()
+        providers = serializers.ListField()
+
     organization = OrganizationSerializer(allow_null=True)
     user = UserSerializer(allow_null=True)
     endpoints = EndpointSerializer(many=True)
+    versions = VersionSerializer(many=True)
 
     class Meta:
         model = AIModel
@@ -61,6 +88,8 @@ class AIModelDocumentSerializer(serializers.ModelSerializer):
             "is_public",
             "is_active",
             "tags",
+            "sectors",
+            "geographies",
             "supported_languages",
             "supports_streaming",
             "max_tokens",
@@ -74,9 +103,13 @@ class AIModelDocumentSerializer(serializers.ModelSerializer):
             "is_individual_model",
             "has_active_endpoints",
             "endpoint_count",
+            "version_count",
+            "lifecycle_stage",
+            "all_providers",
             "organization",
             "user",
             "endpoints",
+            "versions",
         ]
 
 
@@ -91,9 +124,7 @@ class SearchAIModel(PaginatedElasticSearchAPIView):
         super().__init__(**kwargs)
         self.searchable_fields: List[str]
         self.aggregations: Dict[str, str]
-        self.searchable_fields, self.aggregations = (
-            self.get_searchable_and_aggregations()
-        )
+        self.searchable_fields, self.aggregations = self.get_searchable_and_aggregations()
         self.logger = structlog.get_logger(__name__)
 
     @trace_method(
@@ -115,10 +146,14 @@ class SearchAIModel(PaginatedElasticSearchAPIView):
             "provider": "terms",
             "status": "terms",
             "tags.raw": "terms",
+            "sectors.raw": "terms",
+            "geographies.raw": "terms",
             "supported_languages": "terms",
             "is_public": "terms",
             "is_active": "terms",
             "supports_streaming": "terms",
+            "lifecycle_stage": "terms",
+            "all_providers": "terms",
         }
 
         return searchable_fields, aggregations
@@ -134,19 +169,13 @@ class SearchAIModel(PaginatedElasticSearchAPIView):
             )
         return search
 
-    @trace_method(
-        name="generate_q_expression", attributes={"component": "search_aimodel"}
-    )
-    def generate_q_expression(
-        self, query: str
-    ) -> Optional[Union[ESQuery, List[ESQuery]]]:
+    @trace_method(name="generate_q_expression", attributes={"component": "search_aimodel"})
+    def generate_q_expression(self, query: str) -> Optional[Union[ESQuery, List[ESQuery]]]:
         """Generate Elasticsearch Query expression."""
         if query:
             queries: List[ESQuery] = []
             for field in self.searchable_fields:
-                queries.append(
-                    ESQ("fuzzy", **{field: {"value": query, "fuzziness": "AUTO"}})
-                )
+                queries.append(ESQ("fuzzy", **{field: {"value": query, "fuzziness": "AUTO"}}))
         else:
             queries = [ESQ("match_all")]
 
@@ -164,11 +193,21 @@ class SearchAIModel(PaginatedElasticSearchAPIView):
                     search = search.filter("terms", **{raw_filter: filter_values})
                 else:
                     search = search.filter("term", **{filter_key: filters[filter_key]})
+            elif filter_key in ["sectors", "geographies"]:
+                # Handle multi-value filters for sectors and geographies
+                raw_filter = filter_key + ".raw"
+                if raw_filter in self.aggregations:
+                    filter_values = filters[filter_key].split(",")
+                    search = search.filter("terms", **{raw_filter: filter_values})
+                else:
+                    search = search.filter("term", **{filter_key: filters[filter_key]})
             elif filter_key in [
                 "model_type",
                 "provider",
                 "status",
                 "supported_languages",
+                "lifecycle_stage",
+                "all_providers",
             ]:
                 # Handle single or multi-value filters
                 filter_values = filters[filter_key].split(",")
