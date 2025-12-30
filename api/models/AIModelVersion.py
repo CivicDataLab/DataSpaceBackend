@@ -81,15 +81,34 @@ class AIModelVersion(models.Model):
             # Create a copy of the provider
             VersionProvider.objects.create(
                 version=self,
+                # Provider info
                 provider=provider.provider,  # type: ignore[attr-defined]
                 provider_model_id=provider.provider_model_id,  # type: ignore[attr-defined]
                 is_primary=provider.is_primary,  # type: ignore[attr-defined]
                 is_active=provider.is_active,  # type: ignore[attr-defined]
+                # API Endpoint Configuration
+                api_endpoint_url=provider.api_endpoint_url,  # type: ignore[attr-defined]
+                api_http_method=provider.api_http_method,  # type: ignore[attr-defined]
+                api_timeout_seconds=provider.api_timeout_seconds,  # type: ignore[attr-defined]
+                # Authentication Configuration
+                api_auth_type=provider.api_auth_type,  # type: ignore[attr-defined]
+                api_auth_header_name=provider.api_auth_header_name,  # type: ignore[attr-defined]
+                api_key=provider.api_key,  # type: ignore[attr-defined]
+                api_key_prefix=provider.api_key_prefix,  # type: ignore[attr-defined]
+                # Request/Response Configuration
+                api_headers=provider.api_headers,  # type: ignore[attr-defined]
+                api_request_template=provider.api_request_template,  # type: ignore[attr-defined]
+                api_response_path=provider.api_response_path,  # type: ignore[attr-defined]
+                # HuggingFace fields
                 hf_use_pipeline=provider.hf_use_pipeline,  # type: ignore[attr-defined]
                 hf_auth_token=provider.hf_auth_token,  # type: ignore[attr-defined]
                 hf_model_class=provider.hf_model_class,  # type: ignore[attr-defined]
                 hf_attn_implementation=provider.hf_attn_implementation,  # type: ignore[attr-defined]
+                hf_trust_remote_code=provider.hf_trust_remote_code,  # type: ignore[attr-defined]
+                hf_torch_dtype=provider.hf_torch_dtype,  # type: ignore[attr-defined]
+                hf_device_map=provider.hf_device_map,  # type: ignore[attr-defined]
                 framework=provider.framework,  # type: ignore[attr-defined]
+                # Additional config
                 config=provider.config,  # type: ignore[attr-defined]
             )
 
@@ -101,7 +120,13 @@ class VersionProvider(models.Model):
     Only ONE can be primary per version.
     """
 
-    from api.utils.enums import AIModelFramework, AIModelProvider, HFModelClass
+    from api.utils.enums import (
+        AIModelFramework,
+        AIModelProvider,
+        EndpointAuthType,
+        EndpointHTTPMethod,
+        HFModelClass,
+    )
 
     version = models.ForeignKey(
         AIModelVersion,
@@ -121,7 +146,75 @@ class VersionProvider(models.Model):
     )
     is_active = models.BooleanField(default=True)
 
+    # ============================================
+    # API Endpoint Configuration (for API-based providers)
+    # ============================================
+    api_endpoint_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="API endpoint URL (e.g., https://api.openai.com/v1/chat/completions)",
+    )
+    api_http_method = models.CharField(
+        max_length=10,
+        choices=EndpointHTTPMethod.choices,
+        default=EndpointHTTPMethod.POST,
+        help_text="HTTP method for API calls",
+    )
+    api_timeout_seconds = models.IntegerField(
+        default=60,
+        help_text="Request timeout in seconds",
+    )
+
+    # ============================================
+    # Authentication Configuration
+    # ============================================
+    api_auth_type = models.CharField(
+        max_length=20,
+        choices=EndpointAuthType.choices,
+        default=EndpointAuthType.BEARER,
+        help_text="Authentication type for API calls",
+    )
+    api_auth_header_name = models.CharField(
+        max_length=100,
+        default="Authorization",
+        help_text="Header name for authentication (e.g., Authorization, X-API-Key)",
+    )
+    api_key = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="API key or token (encrypted at rest)",
+    )
+    api_key_prefix = models.CharField(
+        max_length=50,
+        blank=True,
+        default="Bearer",
+        help_text="Prefix for API key (e.g., Bearer, Token)",
+    )
+
+    # ============================================
+    # Request/Response Configuration
+    # ============================================
+    api_headers = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Additional headers to include in requests",
+    )
+    api_request_template = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Request body template with placeholders like {input}, {prompt}",
+    )
+    api_response_path = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="JSON path to extract response (e.g., choices[0].message.content)",
+    )
+
+    # ============================================
     # Huggingface-specific fields
+    # ============================================
     hf_use_pipeline = models.BooleanField(default=False, help_text="Use Pipeline inference API")
     hf_auth_token = models.CharField(
         max_length=255,
@@ -142,6 +235,22 @@ class VersionProvider(models.Model):
         default="flash_attention_2",
         help_text="Attention Function",
     )
+    hf_trust_remote_code = models.BooleanField(
+        default=True,
+        help_text="Trust remote code when loading model",
+    )
+    hf_torch_dtype = models.CharField(
+        max_length=50,
+        blank=True,
+        default="auto",
+        help_text="Torch dtype (auto, float16, float32, bfloat16)",
+    )
+    hf_device_map = models.CharField(
+        max_length=50,
+        blank=True,
+        default="auto",
+        help_text="Device map for model loading (auto, cpu, cuda)",
+    )
     framework = models.CharField(
         max_length=10,
         choices=AIModelFramework.choices,
@@ -150,8 +259,10 @@ class VersionProvider(models.Model):
         help_text="Framework (PyTorch or TensorFlow)",
     )
 
-    # Provider-specific configuration
-    config = models.JSONField(default=dict, help_text="Provider-specific configuration")
+    # ============================================
+    # Provider-specific configuration (catch-all)
+    # ============================================
+    config = models.JSONField(default=dict, help_text="Additional provider-specific configuration")
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)

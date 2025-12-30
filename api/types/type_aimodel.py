@@ -227,11 +227,34 @@ class TypeVersionProvider(BaseType):
     provider_model_id: Optional[str]
     is_primary: bool
     is_active: bool
+
+    # API Endpoint Configuration
+    api_endpoint_url: Optional[str]
+    api_http_method: EndpointHTTPMethodEnum
+    api_timeout_seconds: int
+
+    # Authentication Configuration
+    api_auth_type: EndpointAuthTypeEnum
+    api_auth_header_name: str
+    api_key: Optional[str]
+    api_key_prefix: Optional[str]
+
+    # Request/Response Configuration
+    api_headers: strawberry.scalars.JSON
+    api_request_template: strawberry.scalars.JSON
+    api_response_path: Optional[str]
+
+    # HuggingFace Configuration
     hf_use_pipeline: bool
     hf_auth_token: Optional[str]
     hf_model_class: Optional[str]
     hf_attn_implementation: Optional[str]
+    hf_trust_remote_code: bool
+    hf_torch_dtype: Optional[str]
+    hf_device_map: Optional[str]
     framework: Optional[str]
+
+    # Additional config
     config: strawberry.scalars.JSON
     created_at: datetime
     updated_at: datetime

@@ -1,9 +1,9 @@
 """
 API Client for making requests to AI model endpoints.
 Supports various authentication methods and providers.
+Works with VersionProvider configuration.
 """
 
-import json
 import time
 from typing import Any, Dict, Optional
 
@@ -12,52 +12,62 @@ from asgiref.sync import sync_to_async
 from django.utils import timezone
 from tenacity import retry, stop_after_attempt, wait_exponential  # type: ignore
 
-from api.models import AIModel, ModelAPIKey, ModelEndpoint
+from api.models.AIModelVersion import VersionProvider
 
 
 class ModelAPIClient:
-    """Client for interacting with AI model APIs"""
+    """Client for interacting with AI model APIs via VersionProvider configuration."""
 
-    def __init__(self, model: AIModel):
-        self.model = model
-        self.endpoint = model.get_primary_endpoint()
-        if not self.endpoint:
-            raise ValueError(f"No primary endpoint configured for model {model.name}")
+    def __init__(self, provider: VersionProvider):
+        """
+        Initialize the API client with a VersionProvider.
 
-        # Get API key if available
-        self.api_key = self._get_api_key()
+        Args:
+            provider: VersionProvider instance with API configuration
+        """
+        self.provider = provider
+        self.version = provider.version
+        self.model = provider.version.ai_model
 
-    def _get_api_key(self) -> Optional[str]:
-        """Get the active API key for this model"""
-        api_key_obj = self.model.api_keys.filter(is_active=True).first()
-        if api_key_obj:
-            return api_key_obj.get_key()
-        return None
+        # Validate that we have an API endpoint configured
+        if not provider.api_endpoint_url:
+            raise ValueError(
+                f"No API endpoint URL configured for provider {provider.provider} "
+                f"on model {self.model.name}"
+            )
 
     def _build_headers(self) -> Dict[str, str]:
-        """Build request headers including authentication"""
-        headers = {"Content-Type": "application/json", **self.endpoint.headers}
+        """Build request headers including authentication."""
+        headers: Dict[str, str] = {
+            "Content-Type": "application/json",
+            **(self.provider.api_headers or {}),
+        }
 
         # Add authentication header
-        if self.api_key and self.endpoint.auth_type != "NONE":
-            if self.endpoint.auth_type == "BEARER":
-                headers[self.endpoint.auth_header_name] = f"Bearer {self.api_key}"
-            elif self.endpoint.auth_type == "API_KEY":
-                headers[self.endpoint.auth_header_name] = self.api_key
-            elif self.endpoint.auth_type == "CUSTOM":
-                # Custom headers should be in endpoint.headers
+        if self.provider.api_key and self.provider.api_auth_type != "NONE":
+            auth_value = self.provider.api_key
+            if self.provider.api_auth_type == "BEARER":
+                auth_value = f"{self.provider.api_key_prefix} {self.provider.api_key}".strip()
+            elif self.provider.api_auth_type == "API_KEY":
+                # Just use the key directly
                 pass
+            elif self.provider.api_auth_type == "BASIC":
+                import base64
+
+                auth_value = f"Basic {base64.b64encode(self.provider.api_key.encode()).decode()}"
+
+            headers[self.provider.api_auth_header_name] = auth_value
 
         return headers
 
     def _build_request_body(
         self, input_text: str, parameters: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """Build request body based on provider and template"""
+        """Build request body based on provider and template."""
         body: Dict[str, Any]
-        if self.endpoint.request_template:
+        if self.provider.api_request_template:
             # Use custom template
-            template_copy = self.endpoint.request_template.copy()
+            template_copy = self.provider.api_request_template.copy()
             # Replace placeholders
             body = self._replace_placeholders(template_copy, input_text, parameters or {})
         else:
@@ -93,75 +103,77 @@ class ModelAPIClient:
         return result
 
     def _get_default_template(self, input_text: str, parameters: Dict) -> Dict[str, Any]:
-        """Get default request template based on provider"""
-        provider = self.model.provider.upper()
+        """Get default request template based on provider."""
+        provider_type = self.provider.provider.upper()
+        model_id = self.provider.provider_model_id
+        max_tokens = self.version.max_tokens or 1000
 
-        if provider == "OPENAI":
+        if provider_type == "OPENAI":
             return {
-                "model": self.model.provider_model_id or "gpt-3.5-turbo",
+                "model": model_id or "gpt-3.5-turbo",
                 "messages": [{"role": "user", "content": input_text}],
                 "temperature": parameters.get("temperature", 0.7),
-                "max_tokens": parameters.get("max_tokens", self.model.max_tokens or 1000),
+                "max_tokens": parameters.get("max_tokens", max_tokens),
             }
-        elif "LLAMA" in provider:
+        elif "LLAMA" in provider_type:
             # Llama models - format depends on provider
-            if "OLLAMA" in provider:
+            if "OLLAMA" in provider_type:
                 return {
-                    "model": self.model.provider_model_id or "llama2",
+                    "model": model_id or "llama2",
                     "prompt": input_text,
                     "stream": False,
                     "options": {
                         "temperature": parameters.get("temperature", 0.7),
-                        "num_predict": parameters.get("max_tokens", self.model.max_tokens or 1000),
+                        "num_predict": parameters.get("max_tokens", max_tokens),
                     },
                 }
-            elif "TOGETHER" in provider:
+            elif "TOGETHER" in provider_type:
                 return {
-                    "model": self.model.provider_model_id or "togethercomputer/llama-2-7b-chat",
+                    "model": model_id or "togethercomputer/llama-2-7b-chat",
                     "prompt": input_text,
                     "temperature": parameters.get("temperature", 0.7),
-                    "max_tokens": parameters.get("max_tokens", self.model.max_tokens or 1000),
+                    "max_tokens": parameters.get("max_tokens", max_tokens),
                 }
-            elif "REPLICATE" in provider:
+            elif "REPLICATE" in provider_type:
                 return {
-                    "version": self.model.provider_model_id,
+                    "version": model_id,
                     "input": {
                         "prompt": input_text,
                         "temperature": parameters.get("temperature", 0.7),
-                        "max_length": parameters.get("max_tokens", self.model.max_tokens or 1000),
+                        "max_length": parameters.get("max_tokens", max_tokens),
                     },
                 }
             else:
                 # Generic Llama format (OpenAI-compatible)
                 return {
-                    "model": self.model.provider_model_id or "llama-2-7b-chat",
+                    "model": model_id or "llama-2-7b-chat",
                     "messages": [{"role": "user", "content": input_text}],
                     "temperature": parameters.get("temperature", 0.7),
-                    "max_tokens": parameters.get("max_tokens", self.model.max_tokens or 1000),
+                    "max_tokens": parameters.get("max_tokens", max_tokens),
                 }
         else:
             # Generic template for custom APIs
             return {"input": input_text, "parameters": parameters}
 
     def _extract_response(self, response_data: Dict) -> str:
-        """Extract text response from API response"""
-        if self.endpoint.response_path:
+        """Extract text response from API response."""
+        if self.provider.api_response_path:
             # Use custom response path
-            result: Any = self._get_nested_value(response_data, self.endpoint.response_path)
+            result: Any = self._get_nested_value(response_data, self.provider.api_response_path)
             return str(result)
 
         # Default extraction based on provider
-        provider = self.model.provider.upper()
+        provider_type = self.provider.provider.upper()
 
         try:
-            if provider == "OPENAI":
+            if provider_type == "OPENAI":
                 return str(response_data["choices"][0]["message"]["content"])
-            elif "LLAMA" in provider:
-                if "OLLAMA" in provider:
+            elif "LLAMA" in provider_type:
+                if "OLLAMA" in provider_type:
                     return str(response_data["response"])
-                elif "TOGETHER" in provider:
+                elif "TOGETHER" in provider_type:
                     return str(response_data["output"]["choices"][0]["text"])
-                elif "REPLICATE" in provider:
+                elif "REPLICATE" in provider_type:
                     # Replicate returns array of strings
                     output = response_data.get("output", [])
                     return "".join(output) if isinstance(output, list) else str(output)
@@ -204,23 +216,23 @@ class ModelAPIClient:
 
         return current
 
-    async def _update_endpoint_success(self) -> None:
-        """Update endpoint statistics on successful call (async-safe)"""
+    async def _update_provider_success(self) -> None:
+        """Update provider statistics on successful call (async-safe)."""
 
         def _update() -> None:
-            self.endpoint.total_requests += 1
-            self.endpoint.last_success_at = timezone.now()
-            self.endpoint.save(update_fields=["total_requests", "last_success_at"])
+            # Update provider's updated_at timestamp
+            self.provider.updated_at = timezone.now()
+            self.provider.save(update_fields=["updated_at"])
 
         await sync_to_async(_update)()
 
-    async def _update_endpoint_failure(self) -> None:
-        """Update endpoint statistics on failed call (async-safe)"""
+    async def _update_provider_failure(self) -> None:
+        """Update provider statistics on failed call (async-safe)."""
 
         def _update() -> None:
-            self.endpoint.failed_requests += 1
-            self.endpoint.last_failure_at = timezone.now()
-            self.endpoint.save(update_fields=["failed_requests", "last_failure_at"])
+            # Update provider's updated_at timestamp
+            self.provider.updated_at = timezone.now()
+            self.provider.save(update_fields=["updated_at"])
 
         await sync_to_async(_update)()
 
@@ -228,28 +240,30 @@ class ModelAPIClient:
     async def call_async(
         self, input_text: str, parameters: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """Make async API call to the model"""
+        """Make async API call to the model via the provider configuration."""
         start_time = time.time()
 
         headers = self._build_headers()
         body = self._build_request_body(input_text, parameters)
 
+        endpoint_url: str = self.provider.api_endpoint_url  # type: ignore[assignment]
+
         try:
-            async with httpx.AsyncClient(timeout=self.endpoint.timeout_seconds) as client:
-                if self.endpoint.http_method == "POST":
-                    response = await client.post(self.endpoint.url, headers=headers, json=body)
-                elif self.endpoint.http_method == "GET":
-                    response = await client.get(self.endpoint.url, headers=headers, params=body)
+            async with httpx.AsyncClient(timeout=self.provider.api_timeout_seconds) as client:
+                if self.provider.api_http_method == "POST":
+                    response = await client.post(endpoint_url, headers=headers, json=body)
+                elif self.provider.api_http_method == "GET":
+                    response = await client.get(endpoint_url, headers=headers, params=body)
                 else:
-                    raise ValueError(f"Unsupported HTTP method: {self.endpoint.http_method}")
+                    raise ValueError(f"Unsupported HTTP method: {self.provider.api_http_method}")
 
                 response.raise_for_status()
                 response_data = response.json()
 
                 latency_ms = (time.time() - start_time) * 1000
 
-                # Update endpoint statistics (async-safe)
-                await self._update_endpoint_success()
+                # Update provider statistics (async-safe)
+                await self._update_provider_success()
 
                 # Extract response text
                 output_text = self._extract_response(response_data)
@@ -260,26 +274,32 @@ class ModelAPIClient:
                     "raw_response": response_data,
                     "latency_ms": latency_ms,
                     "status_code": response.status_code,
+                    "provider": self.provider.provider,
+                    "model_id": self.provider.provider_model_id,
                 }
 
         except httpx.HTTPStatusError as e:
             # Update failure statistics (async-safe)
-            await self._update_endpoint_failure()
+            await self._update_provider_failure()
 
             return {
                 "success": False,
                 "error": f"HTTP {e.response.status_code}: {e.response.text}",
                 "status_code": e.response.status_code,
                 "latency_ms": (time.time() - start_time) * 1000,
+                "provider": self.provider.provider,
+                "model_id": self.provider.provider_model_id,
             }
         except Exception as e:
             # Update failure statistics (async-safe)
-            await self._update_endpoint_failure()
+            await self._update_provider_failure()
 
             return {
                 "success": False,
                 "error": str(e),
                 "latency_ms": (time.time() - start_time) * 1000,
+                "provider": self.provider.provider,
+                "model_id": self.provider.provider_model_id,
             }
 
     def call(self, input_text: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

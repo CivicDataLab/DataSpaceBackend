@@ -208,11 +208,34 @@ class CreateVersionProviderInput:
     provider_model_id: Optional[str] = ""
     is_primary: bool = False
     is_active: bool = True
+
+    # API Endpoint Configuration
+    api_endpoint_url: Optional[str] = None
+    api_http_method: Optional[EndpointHTTPMethodEnum] = None
+    api_timeout_seconds: int = 60
+
+    # Authentication Configuration
+    api_auth_type: Optional[EndpointAuthTypeEnum] = None
+    api_auth_header_name: str = "Authorization"
+    api_key: Optional[str] = None
+    api_key_prefix: str = "Bearer"
+
+    # Request/Response Configuration
+    api_headers: Optional[strawberry.scalars.JSON] = None
+    api_request_template: Optional[strawberry.scalars.JSON] = None
+    api_response_path: Optional[str] = None
+
+    # HuggingFace Configuration
     hf_use_pipeline: bool = False
     hf_auth_token: Optional[str] = None
     hf_model_class: Optional[str] = None
     hf_attn_implementation: Optional[str] = "flash_attention_2"
+    hf_trust_remote_code: bool = True
+    hf_torch_dtype: Optional[str] = "auto"
+    hf_device_map: Optional[str] = "auto"
     framework: Optional[str] = None
+
+    # Additional config
     config: Optional[strawberry.scalars.JSON] = None
 
 
@@ -224,11 +247,34 @@ class UpdateVersionProviderInput:
     provider_model_id: Optional[str] = None
     is_primary: Optional[bool] = None
     is_active: Optional[bool] = None
+
+    # API Endpoint Configuration
+    api_endpoint_url: Optional[str] = None
+    api_http_method: Optional[EndpointHTTPMethodEnum] = None
+    api_timeout_seconds: Optional[int] = None
+
+    # Authentication Configuration
+    api_auth_type: Optional[EndpointAuthTypeEnum] = None
+    api_auth_header_name: Optional[str] = None
+    api_key: Optional[str] = None
+    api_key_prefix: Optional[str] = None
+
+    # Request/Response Configuration
+    api_headers: Optional[strawberry.scalars.JSON] = None
+    api_request_template: Optional[strawberry.scalars.JSON] = None
+    api_response_path: Optional[str] = None
+
+    # HuggingFace Configuration
     hf_use_pipeline: Optional[bool] = None
     hf_auth_token: Optional[str] = None
     hf_model_class: Optional[str] = None
     hf_attn_implementation: Optional[str] = None
+    hf_trust_remote_code: Optional[bool] = None
+    hf_torch_dtype: Optional[str] = None
+    hf_device_map: Optional[str] = None
     framework: Optional[str] = None
+
+    # Additional config
     config: Optional[strawberry.scalars.JSON] = None
 
 
@@ -946,11 +992,29 @@ class Mutation:
             provider_model_id=input.provider_model_id or "",
             is_primary=input.is_primary,
             is_active=input.is_active,
+            # API Endpoint Configuration
+            api_endpoint_url=input.api_endpoint_url,
+            api_http_method=input.api_http_method or "POST",
+            api_timeout_seconds=input.api_timeout_seconds,
+            # Authentication Configuration
+            api_auth_type=input.api_auth_type or "BEARER",
+            api_auth_header_name=input.api_auth_header_name,
+            api_key=input.api_key,
+            api_key_prefix=input.api_key_prefix,
+            # Request/Response Configuration
+            api_headers=input.api_headers or {},
+            api_request_template=input.api_request_template or {},
+            api_response_path=input.api_response_path or "",
+            # HuggingFace Configuration
             hf_use_pipeline=input.hf_use_pipeline,
             hf_auth_token=input.hf_auth_token,
             hf_model_class=input.hf_model_class,
             hf_attn_implementation=input.hf_attn_implementation or "flash_attention_2",
+            hf_trust_remote_code=input.hf_trust_remote_code,
+            hf_torch_dtype=input.hf_torch_dtype or "auto",
+            hf_device_map=input.hf_device_map or "auto",
             framework=input.framework,
+            # Additional config
             config=input.config or {},
         )
 
@@ -995,6 +1059,34 @@ class Mutation:
             provider.is_primary = input.is_primary
         if input.is_active is not None:
             provider.is_active = input.is_active
+
+        # API Endpoint Configuration
+        if input.api_endpoint_url is not None:
+            provider.api_endpoint_url = input.api_endpoint_url
+        if input.api_http_method is not None:
+            provider.api_http_method = input.api_http_method
+        if input.api_timeout_seconds is not None:
+            provider.api_timeout_seconds = input.api_timeout_seconds
+
+        # Authentication Configuration
+        if input.api_auth_type is not None:
+            provider.api_auth_type = input.api_auth_type
+        if input.api_auth_header_name is not None:
+            provider.api_auth_header_name = input.api_auth_header_name
+        if input.api_key is not None:
+            provider.api_key = input.api_key
+        if input.api_key_prefix is not None:
+            provider.api_key_prefix = input.api_key_prefix
+
+        # Request/Response Configuration
+        if input.api_headers is not None:
+            provider.api_headers = input.api_headers
+        if input.api_request_template is not None:
+            provider.api_request_template = input.api_request_template
+        if input.api_response_path is not None:
+            provider.api_response_path = input.api_response_path
+
+        # HuggingFace Configuration
         if input.hf_use_pipeline is not None:
             provider.hf_use_pipeline = input.hf_use_pipeline
         if input.hf_auth_token is not None:
@@ -1003,8 +1095,16 @@ class Mutation:
             provider.hf_model_class = input.hf_model_class
         if input.hf_attn_implementation is not None:
             provider.hf_attn_implementation = input.hf_attn_implementation
+        if input.hf_trust_remote_code is not None:
+            provider.hf_trust_remote_code = input.hf_trust_remote_code
+        if input.hf_torch_dtype is not None:
+            provider.hf_torch_dtype = input.hf_torch_dtype
+        if input.hf_device_map is not None:
+            provider.hf_device_map = input.hf_device_map
         if input.framework is not None:
             provider.framework = input.framework
+
+        # Additional config
         if input.config is not None:
             provider.config = input.config
 
