@@ -147,6 +147,15 @@ class AIModelDocument(Document):
                     "provider_model_id": fields.KeywordField(),
                     "is_primary": fields.BooleanField(),
                     "is_active": fields.BooleanField(),
+                    # API Configuration
+                    "api_endpoint_url": fields.KeywordField(),
+                    "api_http_method": fields.KeywordField(),
+                    "api_timeout_seconds": fields.IntegerField(),
+                    "api_auth_type": fields.KeywordField(),
+                    # HuggingFace Configuration
+                    "hf_use_pipeline": fields.BooleanField(),
+                    "hf_model_class": fields.KeywordField(),
+                    "framework": fields.KeywordField(),
                 }
             ),
         }
@@ -222,6 +231,15 @@ class AIModelDocument(Document):
                         "provider_model_id": provider_obj.provider_model_id,
                         "is_primary": provider_obj.is_primary,
                         "is_active": provider_obj.is_active,
+                        # API Configuration
+                        "api_endpoint_url": provider_obj.api_endpoint_url,
+                        "api_http_method": provider_obj.api_http_method,
+                        "api_timeout_seconds": provider_obj.api_timeout_seconds,
+                        "api_auth_type": provider_obj.api_auth_type,
+                        # HuggingFace Configuration
+                        "hf_use_pipeline": provider_obj.hf_use_pipeline,
+                        "hf_model_class": provider_obj.hf_model_class,
+                        "framework": provider_obj.framework,
                     }
                 )
             versions_data.append(

@@ -135,10 +135,25 @@ class AIModelClient(BaseAPIClient):
                         providerModelId
                         isPrimary
                         isActive
+                        # API Configuration
+                        apiEndpointUrl
+                        apiHttpMethod
+                        apiTimeoutSeconds
+                        apiAuthType
+                        apiAuthHeaderName
+                        apiKey
+                        apiKeyPrefix
+                        apiHeaders
+                        apiRequestTemplate
+                        apiResponsePath
+                        # HuggingFace Configuration
                         hfUsePipeline
                         hfAuthToken
                         hfModelClass
                         hfAttnImplementation
+                        hfTrustRemoteCode
+                        hfTorchDtype
+                        hfDeviceMap
                         framework
                         config
                     }
@@ -589,10 +604,25 @@ class AIModelClient(BaseAPIClient):
                     providerModelId
                     isPrimary
                     isActive
+                    # API Configuration
+                    apiEndpointUrl
+                    apiHttpMethod
+                    apiTimeoutSeconds
+                    apiAuthType
+                    apiAuthHeaderName
+                    apiKey
+                    apiKeyPrefix
+                    apiHeaders
+                    apiRequestTemplate
+                    apiResponsePath
+                    # HuggingFace Configuration
                     hfUsePipeline
                     hfAuthToken
                     hfModelClass
                     hfAttnImplementation
+                    hfTrustRemoteCode
+                    hfTorchDtype
+                    hfDeviceMap
                     framework
                     config
                 }
@@ -623,10 +653,25 @@ class AIModelClient(BaseAPIClient):
         provider: str,
         provider_model_id: str,
         is_primary: bool = False,
+        # API Configuration
+        api_endpoint_url: Optional[str] = None,
+        api_http_method: str = "POST",
+        api_timeout_seconds: int = 60,
+        api_auth_type: str = "BEARER",
+        api_auth_header_name: str = "Authorization",
+        api_key: Optional[str] = None,
+        api_key_prefix: str = "Bearer",
+        api_headers: Optional[Dict[str, str]] = None,
+        api_request_template: Optional[Dict[str, Any]] = None,
+        api_response_path: Optional[str] = None,
+        # HuggingFace Configuration
         hf_use_pipeline: bool = False,
         hf_model_class: Optional[str] = None,
         hf_auth_token: Optional[str] = None,
         hf_attn_implementation: Optional[str] = None,
+        hf_trust_remote_code: bool = True,
+        hf_torch_dtype: Optional[str] = "auto",
+        hf_device_map: Optional[str] = "auto",
         framework: Optional[str] = None,
         config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
@@ -639,12 +684,25 @@ class AIModelClient(BaseAPIClient):
                      LLAMA_CUSTOM, CUSTOM, HUGGINGFACE)
             provider_model_id: Model ID at the provider (e.g., "gpt-4", "meta-llama/Llama-2-7b")
             is_primary: Whether this is the primary provider
+            api_endpoint_url: Full URL for the API endpoint
+            api_http_method: HTTP method (POST, GET)
+            api_timeout_seconds: Request timeout in seconds
+            api_auth_type: Authentication type (BEARER, API_KEY, BASIC, OAUTH2, CUSTOM, NONE)
+            api_auth_header_name: Header name for authentication
+            api_key: API key or token
+            api_key_prefix: Prefix for the API key (e.g., "Bearer")
+            api_headers: Additional headers as dict
+            api_request_template: Request body template as dict
+            api_response_path: JSON path to extract response text
             hf_use_pipeline: For HuggingFace - whether to use pipeline API
             hf_model_class: For HuggingFace - model class (e.g., "AutoModelForCausalLM")
             hf_auth_token: For HuggingFace - auth token for gated models
             hf_attn_implementation: For HuggingFace - attention implementation
+            hf_trust_remote_code: For HuggingFace - trust remote code
+            hf_torch_dtype: For HuggingFace - torch dtype (auto, float16, bfloat16)
+            hf_device_map: For HuggingFace - device map (auto, cuda, cpu)
             framework: Framework (pt, tf)
-            config: Additional configuration (apiKey, baseUrl, authType, etc.)
+            config: Additional configuration
 
         Returns:
             Dictionary containing created provider information
@@ -670,15 +728,40 @@ class AIModelClient(BaseAPIClient):
             "provider": provider,
             "providerModelId": provider_model_id,
             "isPrimary": is_primary,
+            # API Configuration
+            "apiHttpMethod": api_http_method,
+            "apiTimeoutSeconds": api_timeout_seconds,
+            "apiAuthType": api_auth_type,
+            "apiAuthHeaderName": api_auth_header_name,
+            "apiKeyPrefix": api_key_prefix,
+            # HuggingFace Configuration
             "hfUsePipeline": hf_use_pipeline,
+            "hfTrustRemoteCode": hf_trust_remote_code,
         }
 
+        # Optional API fields
+        if api_endpoint_url:
+            input_data["apiEndpointUrl"] = api_endpoint_url
+        if api_key:
+            input_data["apiKey"] = api_key
+        if api_headers:
+            input_data["apiHeaders"] = api_headers
+        if api_request_template:
+            input_data["apiRequestTemplate"] = api_request_template
+        if api_response_path:
+            input_data["apiResponsePath"] = api_response_path
+
+        # Optional HuggingFace fields
         if hf_model_class:
             input_data["hfModelClass"] = hf_model_class
         if hf_auth_token:
             input_data["hfAuthToken"] = hf_auth_token
         if hf_attn_implementation:
             input_data["hfAttnImplementation"] = hf_attn_implementation
+        if hf_torch_dtype:
+            input_data["hfTorchDtype"] = hf_torch_dtype
+        if hf_device_map:
+            input_data["hfDeviceMap"] = hf_device_map
         if framework:
             input_data["framework"] = framework
         if config:
@@ -705,10 +788,25 @@ class AIModelClient(BaseAPIClient):
         provider_id: int,
         provider_model_id: Optional[str] = None,
         is_primary: Optional[bool] = None,
+        # API Configuration
+        api_endpoint_url: Optional[str] = None,
+        api_http_method: Optional[str] = None,
+        api_timeout_seconds: Optional[int] = None,
+        api_auth_type: Optional[str] = None,
+        api_auth_header_name: Optional[str] = None,
+        api_key: Optional[str] = None,
+        api_key_prefix: Optional[str] = None,
+        api_headers: Optional[Dict[str, str]] = None,
+        api_request_template: Optional[Dict[str, Any]] = None,
+        api_response_path: Optional[str] = None,
+        # HuggingFace Configuration
         hf_use_pipeline: Optional[bool] = None,
         hf_model_class: Optional[str] = None,
         hf_auth_token: Optional[str] = None,
         hf_attn_implementation: Optional[str] = None,
+        hf_trust_remote_code: Optional[bool] = None,
+        hf_torch_dtype: Optional[str] = None,
+        hf_device_map: Optional[str] = None,
         framework: Optional[str] = None,
         config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
@@ -719,10 +817,23 @@ class AIModelClient(BaseAPIClient):
             provider_id: ID of the provider to update
             provider_model_id: New model ID at the provider
             is_primary: Whether this is the primary provider
+            api_endpoint_url: Full URL for the API endpoint
+            api_http_method: HTTP method (POST, GET)
+            api_timeout_seconds: Request timeout in seconds
+            api_auth_type: Authentication type (BEARER, API_KEY, BASIC, OAUTH2, CUSTOM, NONE)
+            api_auth_header_name: Header name for authentication
+            api_key: API key or token
+            api_key_prefix: Prefix for the API key (e.g., "Bearer")
+            api_headers: Additional headers as dict
+            api_request_template: Request body template as dict
+            api_response_path: JSON path to extract response text
             hf_use_pipeline: For HuggingFace - whether to use pipeline API
             hf_model_class: For HuggingFace - model class
             hf_auth_token: For HuggingFace - auth token
             hf_attn_implementation: For HuggingFace - attention implementation
+            hf_trust_remote_code: For HuggingFace - trust remote code
+            hf_torch_dtype: For HuggingFace - torch dtype
+            hf_device_map: For HuggingFace - device map
             framework: Framework (pt, tf)
             config: Additional configuration
 
@@ -751,6 +862,28 @@ class AIModelClient(BaseAPIClient):
             input_data["providerModelId"] = provider_model_id
         if is_primary is not None:
             input_data["isPrimary"] = is_primary
+        # API Configuration
+        if api_endpoint_url is not None:
+            input_data["apiEndpointUrl"] = api_endpoint_url
+        if api_http_method is not None:
+            input_data["apiHttpMethod"] = api_http_method
+        if api_timeout_seconds is not None:
+            input_data["apiTimeoutSeconds"] = api_timeout_seconds
+        if api_auth_type is not None:
+            input_data["apiAuthType"] = api_auth_type
+        if api_auth_header_name is not None:
+            input_data["apiAuthHeaderName"] = api_auth_header_name
+        if api_key is not None:
+            input_data["apiKey"] = api_key
+        if api_key_prefix is not None:
+            input_data["apiKeyPrefix"] = api_key_prefix
+        if api_headers is not None:
+            input_data["apiHeaders"] = api_headers
+        if api_request_template is not None:
+            input_data["apiRequestTemplate"] = api_request_template
+        if api_response_path is not None:
+            input_data["apiResponsePath"] = api_response_path
+        # HuggingFace Configuration
         if hf_use_pipeline is not None:
             input_data["hfUsePipeline"] = hf_use_pipeline
         if hf_model_class is not None:
@@ -759,6 +892,12 @@ class AIModelClient(BaseAPIClient):
             input_data["hfAuthToken"] = hf_auth_token
         if hf_attn_implementation is not None:
             input_data["hfAttnImplementation"] = hf_attn_implementation
+        if hf_trust_remote_code is not None:
+            input_data["hfTrustRemoteCode"] = hf_trust_remote_code
+        if hf_torch_dtype is not None:
+            input_data["hfTorchDtype"] = hf_torch_dtype
+        if hf_device_map is not None:
+            input_data["hfDeviceMap"] = hf_device_map
         if framework is not None:
             input_data["framework"] = framework
         if config is not None:
