@@ -81,8 +81,22 @@ class ModelAPIClient:
         result: Dict[str, Any] = {}
         for key, value in template.items():
             if isinstance(value, str):
+                # template = {
+                #   "model": "{model_id}",
+                #   "messages": [{"role": "user", "content": "{input}"}]
+                #   "temperature": {temperature},
+                #   "max_tokens": {max_tokens}
+                # }
+                # parameters = {
+                #   "temperature": 0.7,
+                #   "max_tokens": 1000
+                # }
+                #
                 replaced_value = value.replace("{input}", input_text)
                 replaced_value = replaced_value.replace("{prompt}", input_text)
+                replaced_value = replaced_value.replace(
+                    "{model_id}", self.provider.provider_model_id
+                )
                 # Replace parameter placeholders
                 for param_key, param_value in parameters.items():
                     replaced_value = replaced_value.replace(f"{{{param_key}}}", str(param_value))
