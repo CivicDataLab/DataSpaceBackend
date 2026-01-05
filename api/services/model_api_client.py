@@ -272,6 +272,15 @@ class ModelAPIClient:
                     raise ValueError(f"Unsupported HTTP method: {self.provider.api_http_method}")
 
                 response.raise_for_status()
+
+                # Check if response is JSON
+                content_type = response.headers.get("content-type", "")
+                if "application/json" not in content_type:
+                    raise ValueError(
+                        f"Expected JSON response but got {content_type}. "
+                        f"Check if the API endpoint URL is correct: {endpoint_url}"
+                    )
+
                 response_data = response.json()
 
                 latency_ms = (time.time() - start_time) * 1000
