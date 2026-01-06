@@ -9,7 +9,7 @@ from strawberry.types import Info
 
 from api.models import Sector
 from api.types.base_type import BaseType
-from api.utils.enums import DatasetStatus
+from api.utils.enums import AIModelStatus, DatasetStatus
 
 
 @strawberry.enum
@@ -53,6 +53,24 @@ class SectorFilter:
 
         # Return queryset with filter
         return queryset, Q(**{f"{prefix}_dataset_count__gte": value})
+
+    @strawberry_django.filter_field
+    def min_aimodel_count(self, queryset: Any, value: Optional[int], prefix: str) -> tuple[Any, Q]:  # type: ignore
+        # Skip filtering if no value provided
+        if value is None:
+            return queryset, Q()
+
+        # Annotate queryset with dataset count
+        queryset = queryset.annotate(
+            _aimodel_count=Count(
+                "ai_models",
+                filter=Q(ai_models__status=AIModelStatus.ACTIVE),
+                distinct=True,
+            )
+        )
+
+        # Return queryset with filter
+        return queryset, Q(**{f"{prefix}_aimodel_count__gte": value})
 
     @strawberry_django.filter_field
     def max_dataset_count(self, queryset: Any, value: Optional[int], prefix: str) -> tuple[Any, Q]:  # type: ignore

@@ -5,6 +5,7 @@ from typing import Optional
 from dataspace_sdk.auth import AuthClient
 from dataspace_sdk.resources.aimodels import AIModelClient
 from dataspace_sdk.resources.datasets import DatasetClient
+from dataspace_sdk.resources.sectors import SectorClient
 from dataspace_sdk.resources.usecases import UseCaseClient
 
 
@@ -64,6 +65,7 @@ class DataSpaceClient:
         self.datasets = DatasetClient(self.base_url, self._auth)
         self.aimodels = AIModelClient(self.base_url, self._auth)
         self.usecases = UseCaseClient(self.base_url, self._auth)
+        self.sectors = SectorClient(self.base_url, self._auth)
 
     def login(self, username: str, password: str) -> dict:
         """
