@@ -44,9 +44,9 @@ class SectorClient(BaseAPIClient):
         if search:
             filters["search"] = search
         if min_dataset_count is not None:
-            filters["min_dataset_count"] = min_dataset_count
+            filters["minDatasetCount"] = min_dataset_count
         if min_aimodel_count is not None:
-            filters["min_aimodel_count"] = min_aimodel_count
+            filters["minAimodelCount"] = min_aimodel_count
 
         variables: Dict[str, Any] = {
             "pagination": {"limit": limit, "offset": offset},

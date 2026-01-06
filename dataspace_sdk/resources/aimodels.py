@@ -219,6 +219,15 @@ class AIModelClient(BaseAPIClient):
                     id
                     value
                 }
+                sectors {
+                    id
+                    name
+                    slug
+                }
+                geographies {
+                    id
+                    name
+                }
                 versions {
                     id
                     version
