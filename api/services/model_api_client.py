@@ -326,20 +326,69 @@ class ModelAPIClient:
             }
 
     def call(self, input_text: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Make synchronous API call to the model"""
-        import asyncio
+        """Make synchronous API call to the model using httpx sync client."""
+        start_time = time.time()
 
-        # Run async call in sync context
+        headers = self._build_headers()
+        body = self._build_request_body(input_text, parameters)
+        endpoint_url: str = self.provider.api_endpoint_url  # type: ignore[assignment]
+
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If loop is already running, use nest_asyncio
-                import nest_asyncio  # type: ignore
+            with httpx.Client(timeout=self.provider.api_timeout_seconds) as client:
+                if self.provider.api_http_method == "POST":
+                    response = client.post(endpoint_url, headers=headers, json=body)
+                elif self.provider.api_http_method == "GET":
+                    response = client.get(endpoint_url, headers=headers, params=body)
+                else:
+                    raise ValueError(f"Unsupported HTTP method: {self.provider.api_http_method}")
 
-                nest_asyncio.apply()
-                return loop.run_until_complete(self.call_async(input_text, parameters))
-            else:
-                return asyncio.run(self.call_async(input_text, parameters))
-        except RuntimeError:
-            # No event loop, create one
-            return asyncio.run(self.call_async(input_text, parameters))
+                response.raise_for_status()
+
+                # Check if response is JSON
+                content_type = response.headers.get("content-type", "")
+                if "application/json" not in content_type:
+                    raise ValueError(
+                        f"Expected JSON response but got {content_type}. "
+                        f"Check if the API endpoint URL is correct: {endpoint_url}"
+                    )
+
+                response_data = response.json()
+                latency_ms = (time.time() - start_time) * 1000
+
+                # Update provider timestamp (sync)
+                self.provider.updated_at = timezone.now()
+                self.provider.save(update_fields=["updated_at"])
+
+                # Extract response text
+                output_text = self._extract_response(response_data)
+
+                return {
+                    "success": True,
+                    "output": output_text,
+                    "raw_response": response_data,
+                    "latency_ms": latency_ms,
+                    "status_code": response.status_code,
+                    "provider": self.provider.provider,
+                    "model_id": self.provider.provider_model_id,
+                }
+
+        except httpx.HTTPStatusError as e:
+            self.provider.updated_at = timezone.now()
+            self.provider.save(update_fields=["updated_at"])
+
+            return {
+                "success": False,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "status_code": e.response.status_code,
+                "latency_ms": (time.time() - start_time) * 1000,
+                "provider": self.provider.provider,
+                "model_id": self.provider.provider_model_id,
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "latency_ms": (time.time() - start_time) * 1000,
+                "provider": self.provider.provider,
+                "model_id": self.provider.provider_model_id,
+            }
