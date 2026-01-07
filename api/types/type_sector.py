@@ -128,3 +128,7 @@ class TypeSector(BaseType):
     @strawberry.field
     def dataset_count(self: Any) -> int:
         return int(self.datasets.filter(status=DatasetStatus.PUBLISHED).count())
+
+    @strawberry.field
+    def aimodel_count(self: Any) -> int:
+        return int(self.ai_models.filter(status=AIModelStatus.ACTIVE).count())

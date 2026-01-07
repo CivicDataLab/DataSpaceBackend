@@ -36,6 +36,8 @@ class SectorClient(BaseAPIClient):
                 name
                 slug
                 description
+                datasetCount
+                aimodelCount
             }
         }
         """
@@ -90,6 +92,8 @@ class SectorClient(BaseAPIClient):
                 name
                 slug
                 description
+                datasetCount
+                aimodelCount
             }
         }
         """
