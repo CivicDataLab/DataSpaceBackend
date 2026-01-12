@@ -8,19 +8,20 @@ import structlog
 from strawberry.enum import EnumType
 from strawberry.types import Info
 
-from api.models import Dataset, DatasetMetadata, Resource, Tag
+from api.models import Dataset, DatasetMetadata, PromptDataset, Resource, Tag
 from api.types.base_type import BaseType
 from api.types.type_dataset_metadata import TypeDatasetMetadata
 from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
 from api.types.type_resource import TypeResource
 from api.types.type_sector import TypeSector
-from api.utils.enums import DatasetStatus
+from api.utils.enums import DatasetStatus, DatasetType, PromptTaskType
 from authorization.types import TypeUser
 
 logger = structlog.get_logger("dataspace.type_dataset")
 
 dataset_status: EnumType = strawberry.enum(DatasetStatus)  # type: ignore
+dataset_type_enum: EnumType = strawberry.enum(DatasetType)  # type: ignore
 
 
 @strawberry_django.filter(Dataset)
@@ -29,6 +30,7 @@ class DatasetFilter:
 
     id: Optional[uuid.UUID]
     status: Optional[dataset_status]
+    dataset_type: Optional[dataset_type_enum]
 
 
 @strawberry_django.order(Dataset)
@@ -55,6 +57,7 @@ class TypeDataset(BaseType):
     description: Optional[str]
     slug: str
     status: dataset_status
+    dataset_type: dataset_type_enum
     organization: Optional["TypeOrganization"]
     created: datetime
     modified: datetime
@@ -108,6 +111,30 @@ class TypeDataset(BaseType):
             return []
 
     @strawberry.field
+    def prompt_metadata(self) -> Optional[strawberry.scalars.JSON]:
+        """Get prompt-specific metadata for this dataset (only for PROMPT type datasets)."""
+        try:
+            # Check if this dataset is a PromptDataset (via multi-table inheritance)
+            prompt_dataset = PromptDataset.objects.filter(dataset_ptr_id=self.id).first()
+            if prompt_dataset:
+                return {
+                    "task_type": prompt_dataset.task_type,
+                    "target_languages": prompt_dataset.target_languages,
+                    "domain": prompt_dataset.domain,
+                    "target_model_types": prompt_dataset.target_model_types,
+                    "prompt_format": prompt_dataset.prompt_format,
+                    "has_system_prompt": prompt_dataset.has_system_prompt,
+                    "has_example_responses": prompt_dataset.has_example_responses,
+                    "avg_prompt_length": prompt_dataset.avg_prompt_length,
+                    "prompt_count": prompt_dataset.prompt_count,
+                    "use_case": prompt_dataset.use_case,
+                    "evaluation_criteria": prompt_dataset.evaluation_criteria,
+                }
+            return None
+        except (AttributeError, PromptDataset.DoesNotExist):
+            return None
+
+    @strawberry.field
     def resources(self) -> List["TypeResource"]:
         """Get resources for this dataset."""
         try:
@@ -129,9 +156,7 @@ class TypeDataset(BaseType):
         except (AttributeError, Resource.DoesNotExist):
             return []
 
-    @strawberry.field(
-        description="Get similar datasets for this dataset from elasticsearch index."
-    )
+    @strawberry.field(description="Get similar datasets for this dataset from elasticsearch index.")
     def similar_datasets(self: Any) -> List["TypeDataset"]:  # type: ignore
         """Get similar datasets for this dataset from elasticsearch index."""
         try:
@@ -182,9 +207,7 @@ class TypeDataset(BaseType):
 
             sectors = [sector.name for sector in dataset.sectors.all().select_related()]  # type: ignore
             if sectors:
-                should_queries.append(
-                    ESQ("terms", **{"sectors.raw": sectors, "boost": 2.0})
-                )
+                should_queries.append(ESQ("terms", **{"sectors.raw": sectors, "boost": 2.0}))
 
             # Add metadata similarity
             # Dataset.metadata is the related_name for DatasetMetadata

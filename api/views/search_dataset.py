@@ -56,6 +56,21 @@ class DatasetMetadataSerializer(serializers.ModelSerializer):
         return cast(Dict[str, Any], super().to_internal_value(data))
 
 
+class PromptMetadataSerializer(serializers.Serializer):
+    """Serializer for PromptMetadata in search results."""
+
+    task_type = serializers.CharField(allow_null=True)
+    target_languages = serializers.ListField(child=serializers.CharField(), allow_null=True)
+    domain = serializers.CharField(allow_null=True)
+    target_model_types = serializers.ListField(child=serializers.CharField(), allow_null=True)
+    prompt_format = serializers.CharField(allow_null=True)
+    has_system_prompt = serializers.BooleanField(allow_null=True)
+    has_example_responses = serializers.BooleanField(allow_null=True)
+    avg_prompt_length = serializers.IntegerField(allow_null=True)
+    prompt_count = serializers.IntegerField(allow_null=True)
+    use_case = serializers.CharField(allow_null=True)
+
+
 class DatasetDocumentSerializer(serializers.ModelSerializer):
     """Serializer for Dataset document."""
 
@@ -70,6 +85,8 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
     download_count = serializers.IntegerField()
     trending_score = serializers.FloatField(required=False)
     is_individual_dataset = serializers.BooleanField()
+    dataset_type = serializers.CharField(required=False, default="DATA")
+    prompt_metadata = PromptMetadataSerializer(required=False, allow_null=True)
 
     class OrganizationSerializer(serializers.Serializer):
         name = serializers.CharField()
@@ -93,6 +110,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
             "created",
             "modified",
             "status",
+            "dataset_type",
             "metadata",
             "tags",
             "sectors",
@@ -105,6 +123,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
             "is_individual_dataset",
             "organization",
             "user",
+            "prompt_metadata",
         ]
 
 
@@ -119,9 +138,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         super().__init__(**kwargs)
         self.searchable_fields: List[str]
         self.aggregations: Dict[str, str]
-        self.searchable_fields, self.aggregations = (
-            self.get_searchable_and_aggregations()
-        )
+        self.searchable_fields, self.aggregations = self.get_searchable_and_aggregations()
         self.logger = structlog.get_logger(__name__)
 
     @trace_method(
@@ -148,6 +165,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
             "formats.raw": "terms",
             "catalogs.raw": "terms",
             "geographies.raw": "terms",
+            "dataset_type": "terms",
         }
         for metadata in enabled_metadata:  # type: Metadata
             if metadata.filterable:
@@ -175,11 +193,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
 
             metadata_bucket = search.aggs.bucket("metadata", "nested", path="metadata")
             composite_sources = [
-                {
-                    "metadata_label": {
-                        "terms": {"field": "metadata.metadata_item.label"}
-                    }
-                },
+                {"metadata_label": {"terms": {"field": "metadata.metadata_item.label"}}},
                 {"metadata_value": {"terms": {"field": "metadata.value"}}},
             ]
             composite_agg = A(
@@ -191,13 +205,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
                 "filter",
                 {  # type: ignore[arg-type]
                     "bool": {
-                        "must": [
-                            {
-                                "terms": {
-                                    "metadata.metadata_item.label": filterable_metadata
-                                }
-                            }
-                        ]
+                        "must": [{"terms": {"metadata.metadata_item.label": filterable_metadata}}]
                     }
                 },
             )
@@ -207,19 +215,13 @@ class SearchDataset(PaginatedElasticSearchAPIView):
 
         return search
 
-    @trace_method(
-        name="generate_q_expression", attributes={"component": "search_dataset"}
-    )
-    def generate_q_expression(
-        self, query: str
-    ) -> Optional[Union[ESQuery, List[ESQuery]]]:
+    @trace_method(name="generate_q_expression", attributes={"component": "search_dataset"})
+    def generate_q_expression(self, query: str) -> Optional[Union[ESQuery, List[ESQuery]]]:
         """Generate Elasticsearch Query expression."""
         if query:
             queries: List[ESQuery] = []
             for field in self.searchable_fields:
-                if field.startswith("resources.name") or field.startswith(
-                    "resources.description"
-                ):
+                if field.startswith("resources.name") or field.startswith("resources.description"):
                     queries.append(
                         ESQ(
                             "nested",
@@ -230,18 +232,14 @@ class SearchDataset(PaginatedElasticSearchAPIView):
                                     ESQ("wildcard", **{field: {"value": f"*{query}*"}}),
                                     ESQ(
                                         "fuzzy",
-                                        **{
-                                            field: {"value": query, "fuzziness": "AUTO"}
-                                        },
+                                        **{field: {"value": query, "fuzziness": "AUTO"}},
                                     ),
                                 ],
                             ),
                         )
                     )
                 else:
-                    queries.append(
-                        ESQ("fuzzy", **{field: {"value": query, "fuzziness": "AUTO"}})
-                    )
+                    queries.append(ESQ("fuzzy", **{field: {"value": query, "fuzziness": "AUTO"}}))
         else:
             queries = [ESQ("match_all")]
 
@@ -256,6 +254,37 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         for filter in filters:
             if filter in excluded_labels:
                 continue
+            elif filter == "dataset_type":
+                # Filter by dataset type (DATA or PROMPT)
+                search = search.filter("term", dataset_type=filters[filter])
+            elif filter == "task_type":
+                # Filter by prompt task type (nested in prompt_metadata)
+                search = search.filter(
+                    "nested",
+                    path="prompt_metadata",
+                    query={
+                        "bool": {"must": {"term": {"prompt_metadata.task_type": filters[filter]}}}
+                    },
+                )
+            elif filter == "domain":
+                # Filter by prompt domain (nested in prompt_metadata)
+                search = search.filter(
+                    "nested",
+                    path="prompt_metadata",
+                    query={"bool": {"must": {"term": {"prompt_metadata.domain": filters[filter]}}}},
+                )
+            elif filter == "target_languages":
+                # Filter by target languages (nested in prompt_metadata)
+                filter_values = filters[filter].split(",")
+                search = search.filter(
+                    "nested",
+                    path="prompt_metadata",
+                    query={
+                        "bool": {
+                            "must": {"terms": {"prompt_metadata.target_languages": filter_values}}
+                        }
+                    },
+                )
             elif filter in ["tags", "sectors", "formats", "catalogs", "geographies"]:
                 raw_filter = filter + ".raw"
                 if raw_filter in self.aggregations:
@@ -274,9 +303,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
                 search = search.filter(
                     "nested",
                     path="metadata",
-                    query={
-                        "bool": {"must": {"term": {f"metadata.value": filters[filter]}}}
-                    },
+                    query={"bool": {"must": {"term": {f"metadata.value": filters[filter]}}}},
                 )
         return search
 

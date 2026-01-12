@@ -15,6 +15,7 @@ from api.models import (
     Geography,
     Metadata,
     Organization,
+    PromptDataset,
     Resource,
     ResourceChartDetails,
     ResourceChartImage,
@@ -31,12 +32,15 @@ from api.schema.base_mutation import (
 from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.types.type_dataset import DatasetFilter, DatasetOrder, TypeDataset
 from api.types.type_organization import TypeOrganization
+from api.types.type_prompt_metadata import TypePromptDataset, prompt_task_type_enum
 from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
 from api.utils.enums import (
     DatasetAccessType,
     DatasetLicense,
     DatasetStatus,
+    DatasetType,
+    PromptTaskType,
     UseCaseStatus,
 )
 from api.utils.graphql_telemetry import trace_resolver
@@ -50,6 +54,8 @@ from authorization.types import TypeUser
 
 DatasetAccessTypeENUM = strawberry.enum(DatasetAccessType)  # type: ignore
 DatasetLicenseENUM = strawberry.enum(DatasetLicense)  # type: ignore
+DatasetTypeENUM = strawberry.enum(DatasetType)  # type: ignore
+PromptTaskTypeENUM = strawberry.enum(PromptTaskType)  # type: ignore
 
 
 # Create permission classes dynamically with different operations
@@ -104,9 +110,7 @@ class AllowPublishedDatasets(BasePermission):
                     return False
                 if user.is_superuser:
                     return True
-                dataset_perm = DatasetPermission.objects.filter(
-                    user=user, dataset=dataset
-                ).first()
+                dataset_perm = DatasetPermission.objects.filter(user=user, dataset=dataset).first()
                 if dataset_perm:
                     return dataset_perm.role.can_view
                 org_perm = OrganizationMembership.objects.filter(
@@ -154,9 +158,7 @@ class ChartDataPermission(BasePermission):
                 if dataset.user and dataset.user == user:
                     return True
                 # Check if user has specific dataset permissions
-                dataset_perm = DatasetPermission.objects.filter(
-                    user=user, dataset=dataset
-                ).first()
+                dataset_perm = DatasetPermission.objects.filter(user=user, dataset=dataset).first()
                 if dataset_perm:
                     return dataset_perm.role.can_view
                 return False
@@ -232,9 +234,7 @@ class UpdateDatasetPermission(BasePermission):
                     return True
 
             # Check dataset-specific permissions
-            dataset_perm = DatasetPermission.objects.filter(
-                user=user, dataset=dataset
-            ).first()
+            dataset_perm = DatasetPermission.objects.filter(user=user, dataset=dataset).first()
             return dataset_perm and dataset_perm.role.can_change and dataset.status == DatasetStatus.DRAFT.value  # type: ignore
 
         except Dataset.DoesNotExist:
@@ -256,9 +256,7 @@ class UpdateMetadataInput:
     sectors: Optional[List[uuid.UUID]] = None
     geographies: Optional[List[int]] = None
     access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
-    license: Optional[DatasetLicenseENUM] = (
-        DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
-    )
+    license: Optional[DatasetLicenseENUM] = DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
 
 
 @strawberry.input
@@ -268,9 +266,49 @@ class UpdateDatasetInput:
     description: Optional[str] = None
     tags: Optional[List[str]] = None
     access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
-    license: Optional[DatasetLicenseENUM] = (
-        DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
-    )
+    license: Optional[DatasetLicenseENUM] = DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
+
+
+@strawberry.input
+class CreateDatasetInput:
+    """Input for creating a new dataset with optional type specification."""
+
+    dataset_type: Optional[DatasetTypeENUM] = DatasetTypeENUM.DATA
+
+
+@strawberry.input
+class PromptMetadataInput:
+    """Input for prompt-specific metadata."""
+
+    task_type: Optional[PromptTaskTypeENUM] = None
+    target_languages: Optional[List[str]] = None
+    domain: Optional[str] = None
+    target_model_types: Optional[List[str]] = None
+    prompt_format: Optional[str] = None
+    has_system_prompt: Optional[bool] = False
+    has_example_responses: Optional[bool] = False
+    avg_prompt_length: Optional[int] = None
+    prompt_count: Optional[int] = None
+    use_case: Optional[str] = None
+    evaluation_criteria: Optional[strawberry.scalars.JSON] = None
+
+
+@strawberry.input
+class UpdatePromptMetadataInput:
+    """Input for updating prompt-specific metadata."""
+
+    dataset: uuid.UUID
+    task_type: Optional[PromptTaskTypeENUM] = None
+    target_languages: Optional[List[str]] = None
+    domain: Optional[str] = None
+    target_model_types: Optional[List[str]] = None
+    prompt_format: Optional[str] = None
+    has_system_prompt: Optional[bool] = None
+    has_example_responses: Optional[bool] = None
+    avg_prompt_length: Optional[int] = None
+    prompt_count: Optional[int] = None
+    use_case: Optional[str] = None
+    evaluation_criteria: Optional[strawberry.scalars.JSON] = None
 
 
 @trace_resolver(name="add_update_dataset_metadata", attributes={"component": "dataset"})
@@ -285,9 +323,7 @@ def _add_update_dataset_metadata(
             metadata_field = Metadata.objects.get(id=metadata_input_item.id)
             if not metadata_field.enabled:
                 _delete_existing_metadata(dataset)
-                raise ValueError(
-                    f"Metadata with ID {metadata_input_item.id} is not enabled."
-                )
+                raise ValueError(f"Metadata with ID {metadata_input_item.id} is not enabled.")
             ds_metadata = DatasetMetadata(
                 dataset=dataset,
                 metadata_item=metadata_field,
@@ -296,9 +332,7 @@ def _add_update_dataset_metadata(
             ds_metadata.save()
         except Metadata.DoesNotExist as e:
             _delete_existing_metadata(dataset)
-            raise ValueError(
-                f"Metadata with ID {metadata_input_item.id} does not exist."
-            )
+            raise ValueError(f"Metadata with ID {metadata_input_item.id} does not exist.")
 
 
 @trace_resolver(name="update_dataset_tags", attributes={"component": "dataset"})
@@ -307,9 +341,7 @@ def _update_dataset_tags(dataset: Dataset, tags: Optional[List[str]]) -> None:
         return
     dataset.tags.clear()
     for tag in tags:
-        dataset.tags.add(
-            Tag.objects.get_or_create(defaults={"value": tag}, value__iexact=tag)[0]
-        )
+        dataset.tags.add(Tag.objects.get_or_create(defaults={"value": tag}, value__iexact=tag)[0])
     dataset.save()
 
 
@@ -330,9 +362,7 @@ def _add_update_dataset_sectors(dataset: Dataset, sectors: List[uuid.UUID]) -> N
     dataset.save()
 
 
-@trace_resolver(
-    name="add_update_dataset_geographies", attributes={"component": "dataset"}
-)
+@trace_resolver(name="add_update_dataset_geographies", attributes={"component": "dataset"})
 def _add_update_dataset_geographies(dataset: Dataset, geography_ids: List[int]) -> None:
     """Update geographies for a dataset."""
     dataset.geographies.clear()
@@ -424,28 +454,24 @@ class Query:
                 dataset = Dataset.objects.get(id=dataset_id)
                 # Fetch ResourceChartImage for the dataset
                 chart_images = list(
-                    ResourceChartImage.objects.filter(dataset_id=dataset_id).order_by(
-                        "modified"
-                    )
+                    ResourceChartImage.objects.filter(dataset_id=dataset_id).order_by("modified")
                 )
-                resource_ids = Resource.objects.filter(
-                    dataset_id=dataset_id
-                ).values_list("id", flat=True)
+                resource_ids = Resource.objects.filter(dataset_id=dataset_id).values_list(
+                    "id", flat=True
+                )
             except Dataset.DoesNotExist:
                 raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
         else:
             organization = info.context.context.get("organization")
             if organization:
                 chart_images = list(
-                    ResourceChartImage.objects.filter(
-                        dataset__organization=organization
-                    ).order_by("modified")
+                    ResourceChartImage.objects.filter(dataset__organization=organization).order_by(
+                        "modified"
+                    )
                 )
             else:
                 chart_images = list(
-                    ResourceChartImage.objects.filter(dataset__user=user).order_by(
-                        "modified"
-                    )
+                    ResourceChartImage.objects.filter(dataset__user=user).order_by("modified")
                 )
             if organization:
                 resource_ids = Resource.objects.filter(
@@ -458,9 +484,7 @@ class Query:
 
         # Fetch ResourceChartDetails based on the related Resources
         chart_details = list(
-            ResourceChartDetails.objects.filter(resource_id__in=resource_ids).order_by(
-                "modified"
-            )
+            ResourceChartDetails.objects.filter(resource_id__in=resource_ids).order_by("modified")
         )
 
         # Convert to Strawberry types after getting lists
@@ -485,26 +509,14 @@ class Query:
     def get_publishers(self, info: Info) -> List[Union[TypeOrganization, TypeUser]]:
         """Get all publishers (both individual publishers and organizations) who have published datasets."""
         # Get all published datasets
-        published_datasets = Dataset.objects.filter(
-            status=DatasetStatus.PUBLISHED.value
-        )
-        published_ds_organizations = published_datasets.values_list(
-            "organization_id", flat=True
-        )
-        published_usecases = UseCase.objects.filter(
-            status=UseCaseStatus.PUBLISHED.value
-        )
-        published_uc_organizations = published_usecases.values_list(
-            "organization_id", flat=True
-        )
-        published_organizations = set(published_ds_organizations) | set(
-            published_uc_organizations
-        )
+        published_datasets = Dataset.objects.filter(status=DatasetStatus.PUBLISHED.value)
+        published_ds_organizations = published_datasets.values_list("organization_id", flat=True)
+        published_usecases = UseCase.objects.filter(status=UseCaseStatus.PUBLISHED.value)
+        published_uc_organizations = published_usecases.values_list("organization_id", flat=True)
+        published_organizations = set(published_ds_organizations) | set(published_uc_organizations)
 
         # Get unique organizations that have published datasets
-        org_publishers = Organization.objects.filter(
-            id__in=published_organizations
-        ).distinct()
+        org_publishers = Organization.objects.filter(id__in=published_organizations).distinct()
 
         published_ds_users = published_datasets.values_list("user_id", flat=True)
         published_uc_users = published_usecases.values_list("user_id", flat=True)
@@ -533,27 +545,53 @@ class Mutation:
             "get_data": lambda result, **kwargs: {
                 "dataset_id": str(result.id),
                 "dataset_title": result.title,
-                "organization": (
-                    str(result.organization.id) if result.organization else None
-                ),
+                "dataset_type": result.dataset_type,
+                "organization": (str(result.organization.id) if result.organization else None),
             },
         },
     )
-    def add_dataset(self, info: Info) -> MutationResponse[TypeDataset]:
+    def add_dataset(
+        self, info: Info, create_input: Optional[CreateDatasetInput] = None
+    ) -> MutationResponse[TypeDataset]:
         # Get organization from context
         organization = info.context.context.get("organization")
         dataspace = info.context.context.get("dataspace")
         user = info.context.user
 
-        dataset = Dataset.objects.create(
-            organization=organization,
-            dataspace=dataspace,
-            title=f"New dataset {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}",
-            description="",
-            user=user,
-            access_type=DatasetAccessType.PUBLIC,
-            license=DatasetLicense.CC_BY_4_0_ATTRIBUTION,
-        )
+        # Determine dataset type
+        dataset_type = DatasetType.DATA
+        if create_input and create_input.dataset_type:
+            dataset_type = create_input.dataset_type
+
+        # Create title based on dataset type
+        type_label = "prompt dataset" if dataset_type == DatasetType.PROMPT else "dataset"
+        title = f"New {type_label} {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}"
+
+        # Create PromptDataset or regular Dataset based on type
+        dataset: Dataset
+        if dataset_type == DatasetType.PROMPT:
+            dataset = PromptDataset.objects.create(
+                organization=organization,
+                dataspace=dataspace,
+                title=title,
+                description="",
+                user=user,
+                access_type=DatasetAccessType.PUBLIC,
+                license=DatasetLicense.CC_BY_4_0_ATTRIBUTION,
+                # dataset_type is set automatically in PromptDataset.save()
+            )
+        else:
+            dataset = Dataset.objects.create(
+                organization=organization,
+                dataspace=dataspace,
+                title=title,
+                description="",
+                user=user,
+                access_type=DatasetAccessType.PUBLIC,
+                license=DatasetLicense.CC_BY_4_0_ATTRIBUTION,
+                dataset_type=dataset_type,
+            )
+
         DatasetPermission.objects.create(
             user=user, dataset=dataset, role=Role.objects.get(name="owner")
         )
@@ -568,9 +606,7 @@ class Mutation:
             "get_data": lambda result, update_metadata_input=None, **kwargs: {
                 "dataset_id": str(result.id),
                 "dataset_title": result.title,
-                "organization": (
-                    str(result.organization.id) if result.organization else None
-                ),
+                "organization": (str(result.organization.id) if result.organization else None),
                 "updated_fields": {
                     "metadata": True,
                     "description": bool(
@@ -592,9 +628,7 @@ class Mutation:
         except Dataset.DoesNotExist as e:
             raise DjangoValidationError(f"Dataset with ID {dataset_id} does not exist.")
         if dataset.status != DatasetStatus.DRAFT.value:
-            raise DjangoValidationError(
-                f"Dataset with ID {dataset_id} is not in draft status."
-            )
+            raise DjangoValidationError(f"Dataset with ID {dataset_id} is not in draft status.")
 
         if update_metadata_input.description:
             dataset.description = update_metadata_input.description
@@ -621,17 +655,12 @@ class Mutation:
                 get_data=lambda result, **kwargs: {
                     "dataset_id": str(result.id),
                     "dataset_title": result.title,
-                    "organization": (
-                        str(result.organization.id) if result.organization else None
-                    ),
+                    "organization": (str(result.organization.id) if result.organization else None),
                     "updated_fields": {
                         "title": kwargs.get("update_dataset_input").title is not None,
-                        "description": kwargs.get("update_dataset_input").description
-                        is not None,
-                        "access_type": kwargs.get("update_dataset_input").access_type
-                        is not None,
-                        "license": kwargs.get("update_dataset_input").license
-                        is not None,
+                        "description": kwargs.get("update_dataset_input").description is not None,
+                        "access_type": kwargs.get("update_dataset_input").access_type is not None,
+                        "license": kwargs.get("update_dataset_input").license is not None,
                         "tags": kwargs.get("update_dataset_input").tags is not None,
                     },
                 },
@@ -642,9 +671,7 @@ class Mutation:
         name="update_dataset",
         attributes={"component": "dataset", "operation": "mutation"},
     )
-    def update_dataset(
-        self, info: Info, update_dataset_input: UpdateDatasetInput
-    ) -> TypeDataset:
+    def update_dataset(self, info: Info, update_dataset_input: UpdateDatasetInput) -> TypeDataset:
         dataset_id = update_dataset_input.dataset
         try:
             dataset = Dataset.objects.get(id=dataset_id)
@@ -675,9 +702,7 @@ class Mutation:
                 get_data=lambda result, **kwargs: {
                     "dataset_id": str(result.id),
                     "dataset_title": result.title,
-                    "organization": (
-                        str(result.organization.id) if result.organization else None
-                    ),
+                    "organization": (str(result.organization.id) if result.organization else None),
                 },
             )
         ],
@@ -706,9 +731,7 @@ class Mutation:
                 get_data=lambda result, **kwargs: {
                     "dataset_id": str(result.id),
                     "dataset_title": result.title,
-                    "organization": (
-                        str(result.organization.id) if result.organization else None
-                    ),
+                    "organization": (str(result.organization.id) if result.organization else None),
                     "updated_fields": {"status": "DRAFT", "action": "unpublished"},
                 },
             )
@@ -753,3 +776,61 @@ class Mutation:
             return True
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[UpdateDatasetPermission],
+        track_activity={
+            "verb": "updated",
+            "get_data": lambda result, **kwargs: {
+                "dataset_id": str(result.id),
+                "dataset_title": result.title,
+                "updated_fields": {"prompt_metadata": True},
+            },
+        },
+        trace_name="update_prompt_metadata",
+        trace_attributes={"component": "dataset"},
+    )
+    def update_prompt_metadata(
+        self, info: Info, update_input: UpdatePromptMetadataInput
+    ) -> MutationResponse[TypePromptDataset]:
+        """Update prompt-specific metadata for a prompt dataset."""
+        dataset_id = update_input.dataset
+
+        # Get the PromptDataset directly (it's a child of Dataset via multi-table inheritance)
+        try:
+            prompt_dataset = PromptDataset.objects.get(dataset_ptr_id=dataset_id)
+        except PromptDataset.DoesNotExist:
+            raise DjangoValidationError(
+                f"Dataset with ID {dataset_id} is not a prompt dataset or does not exist."
+            )
+
+        if prompt_dataset.status != DatasetStatus.DRAFT.value:
+            raise DjangoValidationError(f"Dataset with ID {dataset_id} is not in draft status.")
+
+        # Update fields if provided
+        if update_input.task_type is not None:
+            prompt_dataset.task_type = update_input.task_type
+        if update_input.target_languages is not None:
+            prompt_dataset.target_languages = update_input.target_languages
+        if update_input.domain is not None:
+            prompt_dataset.domain = update_input.domain
+        if update_input.target_model_types is not None:
+            prompt_dataset.target_model_types = update_input.target_model_types
+        if update_input.prompt_format is not None:
+            prompt_dataset.prompt_format = update_input.prompt_format
+        if update_input.has_system_prompt is not None:
+            prompt_dataset.has_system_prompt = update_input.has_system_prompt
+        if update_input.has_example_responses is not None:
+            prompt_dataset.has_example_responses = update_input.has_example_responses
+        if update_input.avg_prompt_length is not None:
+            prompt_dataset.avg_prompt_length = update_input.avg_prompt_length
+        if update_input.prompt_count is not None:
+            prompt_dataset.prompt_count = update_input.prompt_count
+        if update_input.use_case is not None:
+            prompt_dataset.use_case = update_input.use_case
+        if update_input.evaluation_criteria is not None:
+            prompt_dataset.evaluation_criteria = update_input.evaluation_criteria
+
+        prompt_dataset.save()
+        return MutationResponse.success_response(TypePromptDataset.from_django(prompt_dataset))

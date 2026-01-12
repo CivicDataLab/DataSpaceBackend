@@ -16,6 +16,7 @@ class DatasetClient(BaseAPIClient):
         geographies: Optional[List[str]] = None,
         status: Optional[str] = None,
         access_type: Optional[str] = None,
+        dataset_type: Optional[str] = None,
         sort: Optional[str] = None,
         page: int = 1,
         page_size: int = 10,
@@ -30,6 +31,7 @@ class DatasetClient(BaseAPIClient):
             geographies: Filter by geographies
             status: Filter by status (DRAFT, PUBLISHED, etc.)
             access_type: Filter by access type (OPEN, RESTRICTED, etc.)
+            dataset_type: Filter by dataset type (DATA, PROMPT)
             sort: Sort order (recent, alphabetical)
             page: Page number (1-indexed)
             page_size: Number of results per page
@@ -54,6 +56,8 @@ class DatasetClient(BaseAPIClient):
             params["status"] = status
         if access_type:
             params["access_type"] = access_type
+        if dataset_type:
+            params["dataset_type"] = dataset_type
         if sort:
             params["sort"] = sort
 
@@ -231,3 +235,197 @@ class DatasetClient(BaseAPIClient):
             limit=limit,
             offset=offset,
         )
+
+    def create(self, dataset_type: str = "DATA") -> Dict[str, Any]:
+        """
+        Create a new dataset using GraphQL.
+
+        Args:
+            dataset_type: Type of dataset to create (DATA or PROMPT)
+
+        Returns:
+            Dictionary containing the created dataset information
+        """
+        query = """
+        mutation AddDataset($createInput: CreateDatasetInput) {
+            addDataset(createInput: $createInput) {
+                success
+                errors
+                data {
+                    id
+                    title
+                    description
+                    status
+                    datasetType
+                    createdAt
+                    updatedAt
+                }
+            }
+        }
+        """
+
+        response = self.post(
+            "/api/graphql",
+            json_data={
+                "query": query,
+                "variables": {"createInput": {"datasetType": dataset_type}},
+            },
+        )
+
+        if "errors" in response:
+            from dataspace_sdk.exceptions import DataSpaceAPIError
+
+            raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
+
+        result: Dict[str, Any] = response.get("data", {}).get("addDataset", {})
+        return result
+
+    def search_prompts(
+        self,
+        query: Optional[str] = None,
+        task_type: Optional[str] = None,
+        domain: Optional[str] = None,
+        target_languages: Optional[List[str]] = None,
+        tags: Optional[List[str]] = None,
+        sectors: Optional[List[str]] = None,
+        sort: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 10,
+    ) -> Dict[str, Any]:
+        """
+        Search for prompt datasets specifically.
+
+        Args:
+            query: Search query string
+            task_type: Filter by prompt task type (TEXT_GENERATION, QUESTION_ANSWERING, etc.)
+            domain: Filter by domain (healthcare, education, etc.)
+            target_languages: Filter by target languages
+            tags: Filter by tags
+            sectors: Filter by sectors
+            sort: Sort order (recent, alphabetical)
+            page: Page number (1-indexed)
+            page_size: Number of results per page
+
+        Returns:
+            Dictionary containing search results and metadata
+        """
+        params: Dict[str, Any] = {
+            "page": page,
+            "page_size": page_size,
+            "dataset_type": "PROMPT",
+        }
+
+        if query:
+            params["q"] = query
+        if task_type:
+            params["task_type"] = task_type
+        if domain:
+            params["domain"] = domain
+        if target_languages:
+            params["target_languages"] = ",".join(target_languages)
+        if tags:
+            params["tags"] = ",".join(tags)
+        if sectors:
+            params["sectors"] = ",".join(sectors)
+        if sort:
+            params["sort"] = sort
+
+        return super().get("/api/search/dataset/", params=params)
+
+    def update_prompt_metadata(
+        self,
+        dataset_id: str,
+        task_type: Optional[str] = None,
+        target_languages: Optional[List[str]] = None,
+        domain: Optional[str] = None,
+        target_model_types: Optional[List[str]] = None,
+        prompt_format: Optional[str] = None,
+        has_system_prompt: Optional[bool] = None,
+        has_example_responses: Optional[bool] = None,
+        avg_prompt_length: Optional[int] = None,
+        prompt_count: Optional[int] = None,
+        use_case: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Update prompt-specific metadata for a prompt dataset.
+
+        Args:
+            dataset_id: UUID of the prompt dataset
+            task_type: Type of prompt task
+            target_languages: List of target languages
+            domain: Domain/category of prompts
+            target_model_types: List of target AI model types
+            prompt_format: Format of prompts
+            has_system_prompt: Whether prompts include system instructions
+            has_example_responses: Whether prompts include example responses
+            avg_prompt_length: Average prompt length
+            prompt_count: Total number of prompts
+            use_case: Description of intended use cases
+
+        Returns:
+            Dictionary containing the updated prompt metadata
+        """
+        query = """
+        mutation UpdatePromptMetadata($updateInput: UpdatePromptMetadataInput!) {
+            updatePromptMetadata(updateInput: $updateInput) {
+                success
+                errors
+                data {
+                    id
+                    title
+                    description
+                    status
+                    datasetType
+                    taskType
+                    targetLanguages
+                    domain
+                    targetModelTypes
+                    promptFormat
+                    hasSystemPrompt
+                    hasExampleResponses
+                    avgPromptLength
+                    promptCount
+                    useCase
+                }
+            }
+        }
+        """
+
+        variables: Dict[str, Any] = {"dataset": dataset_id}
+
+        if task_type is not None:
+            variables["taskType"] = task_type
+        if target_languages is not None:
+            variables["targetLanguages"] = target_languages
+        if domain is not None:
+            variables["domain"] = domain
+        if target_model_types is not None:
+            variables["targetModelTypes"] = target_model_types
+        if prompt_format is not None:
+            variables["promptFormat"] = prompt_format
+        if has_system_prompt is not None:
+            variables["hasSystemPrompt"] = has_system_prompt
+        if has_example_responses is not None:
+            variables["hasExampleResponses"] = has_example_responses
+        if avg_prompt_length is not None:
+            variables["avgPromptLength"] = avg_prompt_length
+        if prompt_count is not None:
+            variables["promptCount"] = prompt_count
+        if use_case is not None:
+            variables["useCase"] = use_case
+
+        response = self.post(
+            "/api/graphql",
+            json_data={
+                "query": query,
+                "variables": {"updateInput": variables},
+            },
+        )
+
+        if "errors" in response:
+            from dataspace_sdk.exceptions import DataSpaceAPIError
+
+            raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
+
+        result: Dict[str, Any] = response.get("data", {}).get("updatePromptMetadata", {})
+        return result

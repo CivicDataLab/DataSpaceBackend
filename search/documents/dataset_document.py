@@ -9,10 +9,11 @@ from api.models import (
     Geography,
     Metadata,
     Organization,
+    PromptDataset,
     Resource,
     Sector,
 )
-from api.utils.enums import DatasetStatus
+from api.utils.enums import DatasetStatus, DatasetType
 from authorization.models import User
 from DataSpace import settings
 from search.documents.analysers import html_strip, ngram_analyser
@@ -29,9 +30,7 @@ class DatasetDocument(Document):
         properties={
             "value": KeywordField(multi=True),
             "raw": KeywordField(multi=True),
-            "metadata_item": fields.ObjectField(
-                properties={"label": KeywordField(multi=False)}
-            ),
+            "metadata_item": fields.ObjectField(properties={"label": KeywordField(multi=False)}),
         }
     )
 
@@ -131,6 +130,22 @@ class DatasetDocument(Document):
     download_count = fields.IntegerField(attr="download_count")
     trending_score = fields.FloatField(attr="trending_score")
 
+    # Prompt-specific metadata (nested object, only populated for PROMPT type datasets)
+    prompt_metadata = fields.NestedField(
+        properties={
+            "task_type": KeywordField(),
+            "target_languages": KeywordField(multi=True),
+            "domain": KeywordField(),
+            "target_model_types": KeywordField(multi=True),
+            "prompt_format": KeywordField(),
+            "has_system_prompt": fields.BooleanField(),
+            "has_example_responses": fields.BooleanField(),
+            "avg_prompt_length": fields.IntegerField(),
+            "prompt_count": fields.IntegerField(),
+            "use_case": fields.TextField(analyzer=html_strip),
+        }
+    )
+
     def prepare_metadata(self, instance: Dataset) -> List[Dict[str, Any]]:
         """Preprocess comma-separated metadata values into arrays."""
         processed_metadata: List[Dict[str, Any]] = []
@@ -167,11 +182,34 @@ class DatasetDocument(Document):
                 "name": instance.user.full_name,
                 "bio": instance.user.bio or "",
                 "profile_picture": (
-                    instance.user.profile_picture.url
-                    if instance.user.profile_picture
-                    else ""
+                    instance.user.profile_picture.url if instance.user.profile_picture else ""
                 ),
             }
+        return None
+
+    def prepare_prompt_metadata(self, instance: Dataset) -> Optional[Dict[str, Any]]:
+        """Prepare prompt metadata for indexing (only for PROMPT type datasets)."""
+        if instance.dataset_type != DatasetType.PROMPT:
+            return None
+
+        try:
+            # With multi-table inheritance, check if this Dataset has a PromptDataset child
+            prompt_dataset = PromptDataset.objects.filter(dataset_ptr_id=instance.id).first()
+            if prompt_dataset:
+                return {
+                    "task_type": prompt_dataset.task_type,
+                    "target_languages": prompt_dataset.target_languages or [],
+                    "domain": prompt_dataset.domain,
+                    "target_model_types": prompt_dataset.target_model_types or [],
+                    "prompt_format": prompt_dataset.prompt_format,
+                    "has_system_prompt": prompt_dataset.has_system_prompt,
+                    "has_example_responses": prompt_dataset.has_example_responses,
+                    "avg_prompt_length": prompt_dataset.avg_prompt_length,
+                    "prompt_count": prompt_dataset.prompt_count,
+                    "use_case": prompt_dataset.use_case,
+                }
+        except PromptDataset.DoesNotExist:
+            pass
         return None
 
     def should_index_object(self, obj: Dataset) -> bool:
@@ -191,11 +229,7 @@ class DatasetDocument(Document):
 
     def get_queryset(self) -> Any:
         """Get the queryset for indexing."""
-        return (
-            super(DatasetDocument, self)
-            .get_queryset()
-            .filter(status=DatasetStatus.PUBLISHED)
-        )
+        return super(DatasetDocument, self).get_queryset().filter(status=DatasetStatus.PUBLISHED)
 
     def get_instances_from_related(
         self,
@@ -203,6 +237,7 @@ class DatasetDocument(Document):
             Resource,
             Metadata,
             DatasetMetadata,
+            PromptDataset,
             Sector,
             Organization,
             User,
@@ -218,6 +253,9 @@ class DatasetDocument(Document):
             return [obj.dataset for obj in ds_metadata_objects]  # type: ignore
         elif isinstance(related_instance, DatasetMetadata):
             return related_instance.dataset
+        elif isinstance(related_instance, PromptDataset):
+            # PromptDataset IS a Dataset (multi-table inheritance), cast to Dataset
+            return Dataset.objects.get(pk=related_instance.pk)
         elif isinstance(related_instance, Sector):
             return list(related_instance.datasets.all())
         elif isinstance(related_instance, Organization):
@@ -239,12 +277,14 @@ class DatasetDocument(Document):
             "id",
             "created",
             "modified",
+            "dataset_type",
         ]
 
         related_models = [
             Resource,
             Metadata,
             DatasetMetadata,
+            PromptDataset,
             Sector,
             Organization,
             User,

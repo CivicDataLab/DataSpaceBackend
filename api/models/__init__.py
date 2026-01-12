@@ -13,6 +13,7 @@ from api.models.DataSpace import DataSpace
 from api.models.Geography import Geography
 from api.models.Metadata import Metadata
 from api.models.Organization import Organization
+from api.models.PromptDataset import PromptDataset
 from api.models.Resource import (
     Resource,
     ResourceDataTable,
