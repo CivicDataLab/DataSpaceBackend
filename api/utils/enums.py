@@ -136,20 +136,20 @@ class PromptFormat(models.TextChoices):
 
 
 class TargetLanguage(models.TextChoices):
-    ENGLISH = "en"
-    HINDI = "hi"
-    TAMIL = "ta"
-    TELUGU = "te"
-    BENGALI = "bn"
-    MARATHI = "mr"
-    GUJARATI = "gu"
-    KANNADA = "kn"
-    MALAYALAM = "ml"
-    PUNJABI = "pa"
-    ODIA = "or"
-    ASSAMESE = "as"
-    URDU = "ur"
-    OTHER = "other"
+    ENGLISH = "ENGLISH"
+    HINDI = "HINDI"
+    TAMIL = "TAMIL"
+    TELUGU = "TELUGU"
+    BENGALI = "BENGALI"
+    MARATHI = "MARATHI"
+    GUJARATI = "GUJARATI"
+    KANNADA = "KANNADA"
+    MALAYALAM = "MALAYALAM"
+    PUNJABI = "PUNJABI"
+    ODIA = "ODIA"
+    ASSAMESE = "ASSAMESE"
+    URDU = "URDU"
+    OTHER = "OTHER"
 
 
 class TargetModelType(models.TextChoices):
