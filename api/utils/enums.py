@@ -108,6 +108,63 @@ class PromptTaskType(models.TextChoices):
     OTHER = "OTHER"
 
 
+class PromptDomain(models.TextChoices):
+    HEALTHCARE = "HEALTHCARE"
+    EDUCATION = "EDUCATION"
+    LEGAL = "LEGAL"
+    FINANCE = "FINANCE"
+    AGRICULTURE = "AGRICULTURE"
+    ENVIRONMENT = "ENVIRONMENT"
+    GOVERNMENT = "GOVERNMENT"
+    TECHNOLOGY = "TECHNOLOGY"
+    SCIENCE = "SCIENCE"
+    SOCIAL_SERVICES = "SOCIAL_SERVICES"
+    TRANSPORTATION = "TRANSPORTATION"
+    ENERGY = "ENERGY"
+    GENERAL = "GENERAL"
+    OTHER = "OTHER"
+
+
+class PromptFormat(models.TextChoices):
+    INSTRUCTION = "INSTRUCTION"
+    CHAT = "CHAT"
+    COMPLETION = "COMPLETION"
+    FEW_SHOT = "FEW_SHOT"
+    CHAIN_OF_THOUGHT = "CHAIN_OF_THOUGHT"
+    ZERO_SHOT = "ZERO_SHOT"
+    OTHER = "OTHER"
+
+
+class TargetLanguage(models.TextChoices):
+    ENGLISH = "en"
+    HINDI = "hi"
+    TAMIL = "ta"
+    TELUGU = "te"
+    BENGALI = "bn"
+    MARATHI = "mr"
+    GUJARATI = "gu"
+    KANNADA = "kn"
+    MALAYALAM = "ml"
+    PUNJABI = "pa"
+    ODIA = "or"
+    ASSAMESE = "as"
+    URDU = "ur"
+    OTHER = "other"
+
+
+class TargetModelType(models.TextChoices):
+    GPT = "GPT"
+    LLAMA = "LLAMA"
+    MISTRAL = "MISTRAL"
+    GEMINI = "GEMINI"
+    CLAUDE = "CLAUDE"
+    FALCON = "FALCON"
+    BLOOM = "BLOOM"
+    INDIC_LLM = "INDIC_LLM"
+    CUSTOM = "CUSTOM"
+    OTHER = "OTHER"
+
+
 class DatasetAccessType(models.TextChoices):
     PUBLIC = "PUBLIC"
     PRIVATE = "PRIVATE"

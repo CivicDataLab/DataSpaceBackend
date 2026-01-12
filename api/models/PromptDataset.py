@@ -3,7 +3,7 @@
 from django.db import models
 
 from api.models.Dataset import Dataset
-from api.utils.enums import DatasetType, PromptTaskType
+from api.utils.enums import DatasetType, PromptDomain, PromptFormat, PromptTaskType
 
 
 class PromptDataset(Dataset):
@@ -39,6 +39,7 @@ class PromptDataset(Dataset):
     # Domain/category of prompts
     domain = models.CharField(
         max_length=200,
+        choices=PromptDomain.choices,
         blank=True,
         null=True,
         help_text="Domain or category (e.g., healthcare, education, legal)",
@@ -48,12 +49,13 @@ class PromptDataset(Dataset):
     target_model_types = models.JSONField(
         blank=True,
         null=True,
-        help_text="List of AI model types these prompts are designed for",
+        help_text="List of AI model types these prompts are designed for (e.g., ['GPT', 'LLAMA'])",
     )
 
     # Prompt format/template information
     prompt_format = models.CharField(
         max_length=100,
+        choices=PromptFormat.choices,
         blank=True,
         null=True,
         help_text="Format of prompts (e.g., instruction, chat, completion)",
