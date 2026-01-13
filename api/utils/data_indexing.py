@@ -30,9 +30,7 @@ def get_sql_type(pandas_dtype: str) -> str:
         return "TEXT"
 
 
-def create_table_for_resource(
-    resource: Resource, df: pd.DataFrame
-) -> Optional[ResourceDataTable]:
+def create_table_for_resource(resource: Resource, df: pd.DataFrame) -> Optional[ResourceDataTable]:
     """Create a database table for the resource data and index it."""
     try:
         # Create ResourceDataTable entry first to get the table name
@@ -65,9 +63,7 @@ def create_table_for_resource(
             df.to_csv(csv_data, index=False, header=False)
             csv_data.seek(0)
 
-            copy_sql = (
-                f'COPY "{temp_table}" ({",".join(quoted_columns)}) FROM STDIN WITH CSV'
-            )
+            copy_sql = f'COPY "{temp_table}" ({",".join(quoted_columns)}) FROM STDIN WITH CSV'
             cursor.copy_expert(copy_sql, csv_data)
 
             # Insert from temp to main table with validation
@@ -102,14 +98,10 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
         try:
             file_details = resource.resourcefiledetails
             if not file_details:
-                logger.info(
-                    f"Resource {resource_id} has no file details, skipping indexing"
-                )
+                logger.info(f"Resource {resource_id} has no file details, skipping indexing")
                 return None
         except Exception as e:
-            logger.error(
-                f"Failed to access file details for resource {resource_id}: {str(e)}"
-            )
+            logger.error(f"Failed to access file details for resource {resource_id}: {str(e)}")
             return None
 
         # Check file format
@@ -131,9 +123,7 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
                 )
                 return None
         except Exception as e:
-            logger.error(
-                f"Failed to determine format for resource {resource_id}: {str(e)}"
-            )
+            logger.error(f"Failed to determine format for resource {resource_id}: {str(e)}")
             return None
 
         # Load tabular data with timeout protection
@@ -144,9 +134,7 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
             @contextmanager
             def timeout(seconds: int) -> Generator[None, None, None]:
                 def handler(signum: int, frame: Any) -> None:
-                    raise TimeoutError(
-                        f"Loading data timed out after {seconds} seconds"
-                    )
+                    raise TimeoutError(f"Loading data timed out after {seconds} seconds")
 
                 # Set the timeout handler
                 original_handler = signal.getsignal(signal.SIGALRM)
@@ -163,9 +151,7 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
                 with timeout(60):  # 60 second timeout for loading data
                     df = load_tabular_data(file_details.file.path, format)
             except TimeoutError as te:
-                logger.error(
-                    f"Timeout while loading data for resource {resource_id}: {str(te)}"
-                )
+                logger.error(f"Timeout while loading data for resource {resource_id}: {str(te)}")
                 return None
             except Exception:
                 # Fallback without timeout if signal.SIGALRM is not available (e.g., on Windows)
@@ -204,9 +190,7 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
                             # Rename all but the first occurrence
                             for i, idx in enumerate(indices[1:], 1):
                                 df.columns.values[idx] = f"{col}_{i}"
-                    logger.warning(
-                        f"Renamed duplicate columns in resource {resource_id}"
-                    )
+                    logger.warning(f"Renamed duplicate columns in resource {resource_id}")
             except Exception as e:
                 logger.error(
                     f"Failed to sanitize column names for resource {resource_id}: {str(e)}"
@@ -229,9 +213,7 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
                     existing_table = ResourceDataTable.objects.get(resource=resource)
                     try:
                         with connections[DATA_DB].cursor() as cursor:
-                            cursor.execute(
-                                f'DROP TABLE IF EXISTS "{existing_table.table_name}"'
-                            )
+                            cursor.execute(f'DROP TABLE IF EXISTS "{existing_table.table_name}"')
                     except Exception as drop_error:
                         logger.error(
                             f"Failed to drop existing table for resource {resource_id}: {str(drop_error)}"
@@ -292,15 +274,11 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
                             # For description, preserve existing if available, otherwise auto-generate
                             description = f"Description of column {col}"
                             if col in existing_schemas:
-                                existing_description = existing_schemas[col][
-                                    "description"
-                                ]
+                                existing_description = existing_schemas[col]["description"]
                                 # Check for None and non-auto-generated descriptions
                                 if existing_description is not None:
                                     description = existing_description
-                                    logger.debug(
-                                        f"Preserved custom description for column {col}"
-                                    )
+                                    logger.debug(f"Preserved custom description for column {col}")
 
                             # Create the schema entry
                             ResourceSchema.objects.create(
@@ -393,9 +371,7 @@ def get_row_count(resource: Resource) -> int:
         import traceback
 
         error_tb = traceback.format_exc()
-        logger.error(
-            f"Error getting row count for resource {resource.id}:\n{str(e)}\n{error_tb}"
-        )
+        logger.error(f"Error getting row count for resource {resource.id}:\n{str(e)}\n{error_tb}")
         return 0
 
 
@@ -429,9 +405,7 @@ def get_preview_data(resource: Resource) -> Optional[PreviewData]:
             try:
                 if is_all_entries:
                     # For safety, always limit the number of rows returned even for 'all entries'
-                    cursor.execute(
-                        f'SELECT * FROM "{data_table.table_name}" LIMIT 1000'
-                    )
+                    cursor.execute(f'SELECT * FROM "{data_table.table_name}" LIMIT 1000')
                 else:
                     # Ensure we have valid integer values for the calculation
                     start = int(start_entry) if start_entry is not None else 0
@@ -443,8 +417,8 @@ def get_preview_data(resource: Resource) -> Optional[PreviewData]:
 
                 columns = [desc[0] for desc in cursor.description]
                 data = cursor.fetchall()
-                # Convert tuples to lists
-                rows = [list(row) for row in data]
+                # Convert tuples to lists and sanitize None values to empty strings
+                rows = [[cell if cell is not None else "" for cell in row] for row in data]
                 return PreviewData(columns=columns, rows=rows)
             except Exception as query_error:
                 logger.error(
