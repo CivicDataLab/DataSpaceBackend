@@ -139,12 +139,6 @@ class DatasetDocument(Document):
             "target_languages": KeywordField(multi=True),
             "domain": KeywordField(),
             "target_model_types": KeywordField(multi=True),
-            "prompt_format": KeywordField(),
-            "has_system_prompt": fields.BooleanField(),
-            "has_example_responses": fields.BooleanField(),
-            "avg_prompt_length": fields.IntegerField(),
-            "prompt_count": fields.IntegerField(),
-            "use_case": fields.TextField(analyzer=html_strip),
         }
     )
 
@@ -203,12 +197,6 @@ class DatasetDocument(Document):
                     "target_languages": prompt_dataset.target_languages or [],
                     "domain": prompt_dataset.domain,
                     "target_model_types": prompt_dataset.target_model_types or [],
-                    "prompt_format": prompt_dataset.prompt_format,
-                    "has_system_prompt": prompt_dataset.has_system_prompt,
-                    "has_example_responses": prompt_dataset.has_example_responses,
-                    "avg_prompt_length": prompt_dataset.avg_prompt_length,
-                    "prompt_count": prompt_dataset.prompt_count,
-                    "use_case": prompt_dataset.use_case,
                 }
         except PromptDataset.DoesNotExist:
             pass

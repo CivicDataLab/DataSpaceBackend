@@ -8,6 +8,7 @@ from strawberry import auto
 from strawberry_django import type
 
 from api.models import (
+    PromptResource,
     Resource,
     ResourceFileDetails,
     ResourceMetadata,
@@ -104,9 +105,7 @@ class TypeResource(BaseType):
     #         return []
 
     @strawberry.field
-    @trace_resolver(
-        name="get_resource_file_details", attributes={"component": "resource"}
-    )
+    @trace_resolver(name="get_resource_file_details", attributes={"component": "resource"})
     def file_details(self) -> Optional[TypeFileDetails]:
         """Get file details for this resource.
 
@@ -138,9 +137,7 @@ class TypeResource(BaseType):
             return []
 
     @strawberry.field
-    @trace_resolver(
-        name="get_resource_preview_data", attributes={"component": "resource"}
-    )
+    @trace_resolver(name="get_resource_preview_data", attributes={"component": "resource"})
     def preview_data(self) -> PreviewData:
         """Get preview data for the resource.
 
@@ -151,9 +148,11 @@ class TypeResource(BaseType):
             file_details = getattr(self, "resourcefiledetails", None)
             if not file_details or not getattr(self, "preview_details", None):
                 return PreviewData(columns=[], rows=[])
-            if not getattr(
-                self, "preview_enabled", False
-            ) or not file_details.format.lower() in ["csv", "xls", "xlsx"]:
+            if not getattr(self, "preview_enabled", False) or not file_details.format.lower() in [
+                "csv",
+                "xls",
+                "xlsx",
+            ]:
                 return PreviewData(columns=[], rows=[])
 
             try:
@@ -169,9 +168,7 @@ class TypeResource(BaseType):
             return PreviewData(columns=[], rows=[])
 
     @strawberry.field
-    @trace_resolver(
-        name="get_resource_no_of_entries", attributes={"component": "resource"}
-    )
+    @trace_resolver(name="get_resource_no_of_entries", attributes={"component": "resource"})
     def no_of_entries(self) -> int:
         """Get the number of entries in the resource."""
         try:
@@ -179,10 +176,7 @@ class TypeResource(BaseType):
             if not file_details:
                 return 0
 
-            if (
-                not hasattr(file_details, "format")
-                or file_details.format.lower() != "csv"
-            ):
+            if not hasattr(file_details, "format") or file_details.format.lower() != "csv":
                 return 0
 
             try:
@@ -193,3 +187,25 @@ class TypeResource(BaseType):
         except Exception as e:
             logger.error(f"Error getting number of entries: {str(e)}")
             return 0
+
+    @strawberry.field
+    @trace_resolver(name="get_prompt_details", attributes={"component": "resource"})
+    def prompt_details(self) -> Optional[strawberry.scalars.JSON]:
+        """Get prompt-specific details for this resource (only for prompt datasets).
+
+        Returns:
+            Optional[JSON]: Prompt details if they exist, None otherwise
+        """
+        try:
+            prompt_resource = PromptResource.objects.filter(resource_id=self.id).first()
+            if prompt_resource:
+                return {
+                    "prompt_format": prompt_resource.prompt_format,
+                    "has_system_prompt": prompt_resource.has_system_prompt,
+                    "has_example_responses": prompt_resource.has_example_responses,
+                    "avg_prompt_length": prompt_resource.avg_prompt_length,
+                    "prompt_count": prompt_resource.prompt_count,
+                }
+            return None
+        except (AttributeError, PromptResource.DoesNotExist):
+            return None

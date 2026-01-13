@@ -122,12 +122,6 @@ class TypeDataset(BaseType):
                     "target_languages": prompt_dataset.target_languages,
                     "domain": prompt_dataset.domain,
                     "target_model_types": prompt_dataset.target_model_types,
-                    "prompt_format": prompt_dataset.prompt_format,
-                    "has_system_prompt": prompt_dataset.has_system_prompt,
-                    "has_example_responses": prompt_dataset.has_example_responses,
-                    "avg_prompt_length": prompt_dataset.avg_prompt_length,
-                    "prompt_count": prompt_dataset.prompt_count,
-                    "use_case": prompt_dataset.use_case,
                     "evaluation_criteria": prompt_dataset.evaluation_criteria,
                 }
             return None

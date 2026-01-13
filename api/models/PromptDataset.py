@@ -3,7 +3,7 @@
 from django.db import models
 
 from api.models.Dataset import Dataset
-from api.utils.enums import DatasetType, PromptDomain, PromptFormat, PromptTaskType
+from api.utils.enums import DatasetType, PromptDomain, PromptTaskType
 
 
 class PromptDataset(Dataset):
@@ -50,48 +50,6 @@ class PromptDataset(Dataset):
         blank=True,
         null=True,
         help_text="List of AI model types these prompts are designed for (e.g., ['GPT', 'LLAMA'])",
-    )
-
-    # Prompt format/template information
-    prompt_format = models.CharField(
-        max_length=100,
-        choices=PromptFormat.choices,
-        blank=True,
-        null=True,
-        help_text="Format of prompts (e.g., instruction, chat, completion)",
-    )
-
-    # Whether prompts include system instructions
-    has_system_prompt = models.BooleanField(
-        default=False,
-        help_text="Whether the prompts include system-level instructions",
-    )
-
-    # Whether prompts include example responses
-    has_example_responses = models.BooleanField(
-        default=False,
-        help_text="Whether the prompts include example/expected responses",
-    )
-
-    # Average prompt length (for filtering/search)
-    avg_prompt_length = models.IntegerField(
-        blank=True,
-        null=True,
-        help_text="Average character length of prompts in this dataset",
-    )
-
-    # Number of prompts in the dataset
-    prompt_count = models.IntegerField(
-        blank=True,
-        null=True,
-        help_text="Total number of prompts in this dataset",
-    )
-
-    # Use case description
-    use_case = models.TextField(
-        blank=True,
-        null=True,
-        help_text="Description of intended use cases for these prompts",
     )
 
     # Evaluation criteria or metrics

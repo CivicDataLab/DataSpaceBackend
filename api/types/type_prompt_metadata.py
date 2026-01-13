@@ -39,16 +39,11 @@ class TypePromptDataset(TypeDataset):
     Inherits all Dataset fields plus adds prompt-specific ones.
     """
 
-    # Prompt-specific fields
+    # Dataset-level prompt fields
     task_type: Optional[prompt_task_type_enum]
     target_languages: Optional[List[target_language_enum]]
     domain: Optional[prompt_domain_enum]
     target_model_types: Optional[List[target_model_type_enum]]
-    prompt_format: Optional[prompt_format_enum]
-    has_system_prompt: bool
-    has_example_responses: bool
-    avg_prompt_length: Optional[int]
-    prompt_count: Optional[int]
     evaluation_criteria: Optional[strawberry.scalars.JSON]
 
 
@@ -61,9 +56,15 @@ class TypePromptMetadata:
     target_languages: Optional[List[target_language_enum]]
     domain: Optional[prompt_domain_enum]
     target_model_types: Optional[List[target_model_type_enum]]
+    evaluation_criteria: Optional[strawberry.scalars.JSON]
+
+
+@strawberry.type
+class TypePromptResourceDetails:
+    """Prompt-specific fields for a resource/file."""
+
     prompt_format: Optional[prompt_format_enum]
     has_system_prompt: bool
     has_example_responses: bool
     avg_prompt_length: Optional[int]
     prompt_count: Optional[int]
-    evaluation_criteria: Optional[strawberry.scalars.JSON]

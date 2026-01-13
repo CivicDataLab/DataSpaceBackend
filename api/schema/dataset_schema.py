@@ -33,6 +33,7 @@ from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.types.type_dataset import DatasetFilter, DatasetOrder, TypeDataset
 from api.types.type_organization import TypeOrganization
 from api.types.type_prompt_metadata import TypePromptDataset, prompt_task_type_enum
+from api.types.type_resource import TypeResource
 from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
 from api.utils.enums import (
@@ -297,20 +298,26 @@ class PromptMetadataInput:
 
 @strawberry.input
 class UpdatePromptMetadataInput:
-    """Input for updating prompt-specific metadata."""
+    """Input for updating prompt-specific metadata (dataset-level fields)."""
 
     dataset: uuid.UUID
     task_type: Optional[PromptTaskTypeENUM] = None
     target_languages: Optional[List[str]] = None
     domain: Optional[str] = None
     target_model_types: Optional[List[str]] = None
+    evaluation_criteria: Optional[strawberry.scalars.JSON] = None
+
+
+@strawberry.input
+class UpdatePromptResourceInput:
+    """Input for updating prompt-specific resource metadata (file-level fields)."""
+
+    resource: uuid.UUID
     prompt_format: Optional[str] = None
     has_system_prompt: Optional[bool] = None
     has_example_responses: Optional[bool] = None
     avg_prompt_length: Optional[int] = None
     prompt_count: Optional[int] = None
-    use_case: Optional[str] = None
-    evaluation_criteria: Optional[strawberry.scalars.JSON] = None
 
 
 @trace_resolver(name="add_update_dataset_metadata", attributes={"component": "dataset"})
@@ -695,6 +702,88 @@ class Mutation:
         _update_dataset_tags(dataset, update_dataset_input.tags)
         return TypeDataset.from_django(dataset)
 
+    @strawberry.mutation(
+        permission_classes=[UpdateDatasetPermission],
+    )
+    @trace_resolver(
+        name="update_prompt_metadata",
+        attributes={"component": "dataset"},
+    )
+    def update_prompt_metadata(
+        self, info: Info, update_input: UpdatePromptMetadataInput
+    ) -> MutationResponse[TypePromptDataset]:
+        """Update prompt-specific metadata for a prompt dataset (dataset-level fields)."""
+        dataset_id = update_input.dataset
+
+        # Get the PromptDataset directly (it's a child of Dataset via multi-table inheritance)
+        try:
+            prompt_dataset = PromptDataset.objects.get(dataset_ptr_id=dataset_id)
+        except PromptDataset.DoesNotExist:
+            raise DjangoValidationError(
+                f"Dataset with ID {dataset_id} is not a prompt dataset or does not exist."
+            )
+
+        if prompt_dataset.status != DatasetStatus.DRAFT.value:
+            raise DjangoValidationError(f"Dataset with ID {dataset_id} is not in draft status.")
+
+        # Update dataset-level fields if provided
+        if update_input.task_type is not None:
+            prompt_dataset.task_type = update_input.task_type
+        if update_input.target_languages is not None:
+            prompt_dataset.target_languages = update_input.target_languages
+        if update_input.domain is not None:
+            prompt_dataset.domain = update_input.domain
+        if update_input.target_model_types is not None:
+            prompt_dataset.target_model_types = update_input.target_model_types
+        if update_input.evaluation_criteria is not None:
+            prompt_dataset.evaluation_criteria = update_input.evaluation_criteria
+
+        prompt_dataset.save()
+        return MutationResponse.success_response(TypePromptDataset.from_django(prompt_dataset))
+
+    @strawberry.mutation(
+        permission_classes=[IsAuthenticated],
+    )
+    @trace_resolver(
+        name="update_prompt_resource",
+        attributes={"component": "resource"},
+    )
+    def update_prompt_resource(
+        self, info: Info, update_input: UpdatePromptResourceInput
+    ) -> MutationResponse[TypeResource]:
+        """Update prompt-specific metadata for a resource (file-level fields)."""
+        from api.models import PromptResource, Resource
+
+        resource_id = update_input.resource
+
+        # Get the Resource
+        try:
+            resource = Resource.objects.get(id=resource_id)
+        except Resource.DoesNotExist:
+            raise DjangoValidationError(f"Resource with ID {resource_id} does not exist.")
+
+        # Check if the dataset is in draft status
+        if resource.dataset.status != DatasetStatus.DRAFT.value:
+            raise DjangoValidationError(f"Cannot update resource - dataset is not in draft status.")
+
+        # Get or create PromptResource
+        prompt_resource, created = PromptResource.objects.get_or_create(resource=resource)
+
+        # Update file-level fields if provided
+        if update_input.prompt_format is not None:
+            prompt_resource.prompt_format = update_input.prompt_format
+        if update_input.has_system_prompt is not None:
+            prompt_resource.has_system_prompt = update_input.has_system_prompt
+        if update_input.has_example_responses is not None:
+            prompt_resource.has_example_responses = update_input.has_example_responses
+        if update_input.avg_prompt_length is not None:
+            prompt_resource.avg_prompt_length = update_input.avg_prompt_length
+        if update_input.prompt_count is not None:
+            prompt_resource.prompt_count = update_input.prompt_count
+
+        prompt_resource.save()
+        return MutationResponse.success_response(TypeResource.from_django(resource))
+
     @strawberry_django.mutation(
         handle_django_errors=True,
         permission_classes=[PublishDatasetPermission],  # type: ignore[list-item]
@@ -778,61 +867,3 @@ class Mutation:
             return True
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
-
-    @strawberry.mutation
-    @BaseMutation.mutation(
-        permission_classes=[UpdateDatasetPermission],
-        track_activity={
-            "verb": "updated",
-            "get_data": lambda result, **kwargs: {
-                "dataset_id": str(result.id),
-                "dataset_title": result.title,
-                "updated_fields": {"prompt_metadata": True},
-            },
-        },
-        trace_name="update_prompt_metadata",
-        trace_attributes={"component": "dataset"},
-    )
-    def update_prompt_metadata(
-        self, info: Info, update_input: UpdatePromptMetadataInput
-    ) -> MutationResponse[TypePromptDataset]:
-        """Update prompt-specific metadata for a prompt dataset."""
-        dataset_id = update_input.dataset
-
-        # Get the PromptDataset directly (it's a child of Dataset via multi-table inheritance)
-        try:
-            prompt_dataset = PromptDataset.objects.get(dataset_ptr_id=dataset_id)
-        except PromptDataset.DoesNotExist:
-            raise DjangoValidationError(
-                f"Dataset with ID {dataset_id} is not a prompt dataset or does not exist."
-            )
-
-        if prompt_dataset.status != DatasetStatus.DRAFT.value:
-            raise DjangoValidationError(f"Dataset with ID {dataset_id} is not in draft status.")
-
-        # Update fields if provided
-        if update_input.task_type is not None:
-            prompt_dataset.task_type = update_input.task_type
-        if update_input.target_languages is not None:
-            prompt_dataset.target_languages = update_input.target_languages
-        if update_input.domain is not None:
-            prompt_dataset.domain = update_input.domain
-        if update_input.target_model_types is not None:
-            prompt_dataset.target_model_types = update_input.target_model_types
-        if update_input.prompt_format is not None:
-            prompt_dataset.prompt_format = update_input.prompt_format
-        if update_input.has_system_prompt is not None:
-            prompt_dataset.has_system_prompt = update_input.has_system_prompt
-        if update_input.has_example_responses is not None:
-            prompt_dataset.has_example_responses = update_input.has_example_responses
-        if update_input.avg_prompt_length is not None:
-            prompt_dataset.avg_prompt_length = update_input.avg_prompt_length
-        if update_input.prompt_count is not None:
-            prompt_dataset.prompt_count = update_input.prompt_count
-        if update_input.use_case is not None:
-            prompt_dataset.use_case = update_input.use_case
-        if update_input.evaluation_criteria is not None:
-            prompt_dataset.evaluation_criteria = update_input.evaluation_criteria
-
-        prompt_dataset.save()
-        return MutationResponse.success_response(TypePromptDataset.from_django(prompt_dataset))
