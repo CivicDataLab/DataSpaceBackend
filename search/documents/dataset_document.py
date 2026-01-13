@@ -126,6 +126,8 @@ class DatasetDocument(Document):
 
     is_individual_dataset = fields.BooleanField(attr="is_individual_dataset")
 
+    dataset_type = fields.KeywordField()
+
     has_charts = fields.BooleanField(attr="has_charts")
     download_count = fields.IntegerField(attr="download_count")
     trending_score = fields.FloatField(attr="trending_score")
@@ -277,7 +279,6 @@ class DatasetDocument(Document):
             "id",
             "created",
             "modified",
-            "dataset_type",
         ]
 
         related_models = [
