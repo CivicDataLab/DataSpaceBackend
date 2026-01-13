@@ -18,6 +18,7 @@ from api.models import (
 from api.types.base_type import BaseType
 from api.types.type_file_details import TypeFileDetails
 from api.types.type_preview_data import PreviewData
+from api.types.type_prompt_metadata import TypePromptResourceDetails
 from api.types.type_resource_metadata import TypeResourceMetadata
 from api.utils.data_indexing import get_preview_data, get_row_count
 from api.utils.graphql_telemetry import trace_resolver
@@ -190,22 +191,22 @@ class TypeResource(BaseType):
 
     @strawberry.field
     @trace_resolver(name="get_prompt_details", attributes={"component": "resource"})
-    def prompt_details(self) -> Optional[strawberry.scalars.JSON]:
+    def prompt_details(self) -> Optional[TypePromptResourceDetails]:
         """Get prompt-specific details for this resource (only for prompt datasets).
 
         Returns:
-            Optional[JSON]: Prompt details if they exist, None otherwise
+            Optional[TypePromptResourceDetails]: Prompt details if they exist, None otherwise
         """
         try:
             prompt_resource = PromptResource.objects.filter(resource_id=self.id).first()
             if prompt_resource:
-                return {
-                    "prompt_format": prompt_resource.prompt_format,
-                    "has_system_prompt": prompt_resource.has_system_prompt,
-                    "has_example_responses": prompt_resource.has_example_responses,
-                    "avg_prompt_length": prompt_resource.avg_prompt_length,
-                    "prompt_count": prompt_resource.prompt_count,
-                }
+                return TypePromptResourceDetails(
+                    prompt_format=prompt_resource.prompt_format,
+                    has_system_prompt=prompt_resource.has_system_prompt,
+                    has_example_responses=prompt_resource.has_example_responses,
+                    avg_prompt_length=prompt_resource.avg_prompt_length,
+                    prompt_count=prompt_resource.prompt_count,
+                )
             return None
         except (AttributeError, PromptResource.DoesNotExist):
             return None
