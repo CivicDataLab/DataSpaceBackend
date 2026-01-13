@@ -41,6 +41,7 @@ from api.utils.enums import (
     DatasetLicense,
     DatasetStatus,
     DatasetType,
+    PromptFormat,
     PromptTaskType,
     UseCaseStatus,
 )
@@ -57,6 +58,7 @@ DatasetAccessTypeENUM = strawberry.enum(DatasetAccessType)  # type: ignore
 DatasetLicenseENUM = strawberry.enum(DatasetLicense)  # type: ignore
 DatasetTypeENUM = strawberry.enum(DatasetType)  # type: ignore
 PromptTaskTypeENUM = strawberry.enum(PromptTaskType)  # type: ignore
+PromptFormatENUM = strawberry.enum(PromptFormat)  # type: ignore
 
 
 # Create permission classes dynamically with different operations

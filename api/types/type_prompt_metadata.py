@@ -43,15 +43,3 @@ class TypePromptDataset(TypeDataset):
     domain: Optional[prompt_domain_enum]
     target_model_types: Optional[List[target_model_type_enum]]
     evaluation_criteria: Optional[strawberry.scalars.JSON]
-
-
-# Keep TypePromptMetadata as an alias for backward compatibility in nested queries
-@strawberry.type
-class TypePromptMetadata:
-    """Prompt-specific metadata fields (for embedding in TypeDataset)."""
-
-    task_type: Optional[prompt_task_type_enum]
-    target_languages: Optional[List[target_language_enum]]
-    domain: Optional[prompt_domain_enum]
-    target_model_types: Optional[List[target_model_type_enum]]
-    evaluation_criteria: Optional[strawberry.scalars.JSON]
