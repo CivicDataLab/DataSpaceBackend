@@ -14,7 +14,6 @@ from api.types.base_type import BaseType
 from api.types.type_dataset import TypeDataset
 from api.utils.enums import (
     PromptDomain,
-    PromptFormat,
     PromptTaskType,
     TargetLanguage,
     TargetModelType,
@@ -22,7 +21,6 @@ from api.utils.enums import (
 
 prompt_task_type_enum: EnumType = strawberry.enum(PromptTaskType)  # type: ignore
 prompt_domain_enum: EnumType = strawberry.enum(PromptDomain)  # type: ignore
-prompt_format_enum: EnumType = strawberry.enum(PromptFormat)  # type: ignore
 target_language_enum: EnumType = strawberry.enum(TargetLanguage)  # type: ignore
 target_model_type_enum: EnumType = strawberry.enum(TargetModelType)  # type: ignore
 
@@ -57,14 +55,3 @@ class TypePromptMetadata:
     domain: Optional[prompt_domain_enum]
     target_model_types: Optional[List[target_model_type_enum]]
     evaluation_criteria: Optional[strawberry.scalars.JSON]
-
-
-@strawberry.type
-class TypePromptResourceDetails:
-    """Prompt-specific fields for a resource/file."""
-
-    prompt_format: Optional[prompt_format_enum]
-    has_system_prompt: bool
-    has_example_responses: bool
-    avg_prompt_length: Optional[int]
-    prompt_count: Optional[int]

@@ -18,7 +18,7 @@ from api.models import (
 from api.types.base_type import BaseType
 from api.types.type_file_details import TypeFileDetails
 from api.types.type_preview_data import PreviewData
-from api.types.type_prompt_metadata import TypePromptResourceDetails
+from api.types.type_prompt_resource_details import TypePromptResourceDetails
 from api.types.type_resource_metadata import TypeResourceMetadata
 from api.utils.data_indexing import get_preview_data, get_row_count
 from api.utils.graphql_telemetry import trace_resolver
