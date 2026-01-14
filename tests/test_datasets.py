@@ -37,7 +37,7 @@ class TestDatasetClient(unittest.TestCase):
     @patch.object(DatasetClient, "_make_request")
     def test_get_dataset_by_id(self, mock_request: MagicMock) -> None:
         """Test get dataset by ID."""
-        mock_request.return_value = {"data": {"dataset": {"id": "123", "title": "Test Dataset"}}}
+        mock_request.return_value = {"data": {"getDataset": {"id": "123", "title": "Test Dataset"}}}
 
         result = self.client.get_by_id("123")
 
@@ -94,7 +94,7 @@ class TestDatasetClient(unittest.TestCase):
         """Test get dataset by ID which includes resources."""
         mock_request.return_value = {
             "data": {
-                "dataset": {
+                "getDataset": {
                     "id": "dataset-123",
                     "title": "Test Dataset",
                     "resources": [
