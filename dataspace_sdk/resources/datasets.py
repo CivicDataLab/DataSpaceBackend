@@ -91,7 +91,6 @@ class DatasetClient(BaseAPIClient):
                 }
                 user {
                     id
-                    name
                 }
                 tags {
                     id
@@ -318,7 +317,6 @@ class DatasetClient(BaseAPIClient):
                 }
                 user {
                     id
-                    name
                 }
                 tags {
                     id
