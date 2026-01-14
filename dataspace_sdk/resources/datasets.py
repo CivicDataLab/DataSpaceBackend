@@ -392,8 +392,7 @@ class DatasetClient(BaseAPIClient):
                 status
                 accessType
                 datasetType
-                createdAt
-                updatedAt
+                created
                 organization {
                     id
                     name
@@ -402,21 +401,20 @@ class DatasetClient(BaseAPIClient):
                     id
                     value
                 }
-                promptMetadata {
-                    taskType
-                    targetLanguages
-                    domain
-                    targetModelTypes
-
-                }
+                promptMetadata
                 resources {
                     id
-                    title
-                    fileDetails
-                    promptFormat
-                    hasSystemPrompt
-                    hasExampleResponses
-                    promptCount
+                    name
+                    fileDetails {
+                        format
+                        size
+                    }
+                    promptDetails {
+                        promptFormat
+                        hasSystemPrompt
+                        hasExampleResponses
+                        promptCount
+                    }
                 }
             }
         }
