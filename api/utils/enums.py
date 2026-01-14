@@ -108,6 +108,13 @@ class PromptTaskType(models.TextChoices):
     OTHER = "OTHER"
 
 
+class PromptPurpose(models.TextChoices):
+    RESEARCH = "RESEARCH"
+    EDUCATION = "EDUCATION"
+    EVALUATION = "EVALUATION"
+    OTHER = "OTHER"
+
+
 class PromptDomain(models.TextChoices):
     HEALTHCARE = "HEALTHCARE"
     EDUCATION = "EDUCATION"

@@ -42,6 +42,7 @@ from api.utils.enums import (
     DatasetStatus,
     DatasetType,
     PromptFormat,
+    PromptPurpose,
     PromptTaskType,
     UseCaseStatus,
 )
@@ -59,6 +60,7 @@ DatasetLicenseENUM = strawberry.enum(DatasetLicense)  # type: ignore
 DatasetTypeENUM = strawberry.enum(DatasetType)  # type: ignore
 PromptTaskTypeENUM = strawberry.enum(PromptTaskType)  # type: ignore
 PromptFormatENUM = strawberry.enum(PromptFormat)  # type: ignore
+PromptPurposeENUM = strawberry.enum(PromptPurpose)  # type: ignore
 
 
 # Create permission classes dynamically with different operations
@@ -294,8 +296,8 @@ class PromptMetadataInput:
     has_example_responses: Optional[bool] = False
     avg_prompt_length: Optional[int] = None
     prompt_count: Optional[int] = None
-    use_case: Optional[str] = None
     evaluation_criteria: Optional[strawberry.scalars.JSON] = None
+    purpose: Optional[PromptPurposeENUM] = None
 
 
 @strawberry.input
@@ -308,6 +310,7 @@ class UpdatePromptMetadataInput:
     domain: Optional[str] = None
     target_model_types: Optional[List[str]] = None
     evaluation_criteria: Optional[strawberry.scalars.JSON] = None
+    purpose: Optional[PromptPurposeENUM] = None
 
 
 @strawberry.input
@@ -739,6 +742,8 @@ class Mutation:
             prompt_dataset.target_model_types = update_input.target_model_types
         if update_input.evaluation_criteria is not None:
             prompt_dataset.evaluation_criteria = update_input.evaluation_criteria
+        if update_input.purpose is not None:
+            prompt_dataset.purpose = update_input.purpose
 
         prompt_dataset.save()
         return MutationResponse.success_response(TypePromptDataset.from_django(prompt_dataset))

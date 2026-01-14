@@ -3,7 +3,7 @@
 from django.db import models
 
 from api.models.Dataset import Dataset
-from api.utils.enums import DatasetType, PromptDomain, PromptTaskType
+from api.utils.enums import DatasetType, PromptDomain, PromptPurpose, PromptTaskType
 
 
 class PromptDataset(Dataset):
@@ -57,6 +57,15 @@ class PromptDataset(Dataset):
         blank=True,
         null=True,
         help_text="Criteria or metrics for evaluating prompt effectiveness",
+    )
+
+    # Purpose of the prompt dataset
+    purpose = models.CharField(
+        max_length=200,
+        choices=PromptPurpose.choices,
+        blank=True,
+        null=True,
+        help_text="Purpose of the prompt dataset",
     )
 
     def save(self, *args, **kwargs):
