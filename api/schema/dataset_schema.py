@@ -395,6 +395,7 @@ class Query:
         filters: Optional[DatasetFilter] = None,
         pagination: Optional[OffsetPaginationInput] = None,
         order: Optional[DatasetOrder] = None,
+        include_public: Optional[bool] = False,
     ) -> list[TypeDataset]:
         """Get all datasets."""
         organization = info.context.context.get("organization")
@@ -437,6 +438,9 @@ class Query:
         # Apply pagination LAST (this will slice the queryset)
         if pagination is not None:
             queryset = strawberry_django.pagination.apply(pagination, queryset)
+
+        if include_public:
+            queryset = queryset | Dataset.objects.filter(status=DatasetStatus.PUBLISHED)
 
         return TypeDataset.from_django_list(queryset)
 

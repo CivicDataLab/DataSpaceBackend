@@ -361,6 +361,7 @@ class DatasetClient(BaseAPIClient):
         task_type: Optional[str] = None,
         domain: Optional[str] = None,
         organization_id: Optional[str] = None,
+        include_public: Optional[bool] = False,
         limit: int = 10,
         offset: int = 0,
     ) -> Any:
@@ -372,6 +373,7 @@ class DatasetClient(BaseAPIClient):
             task_type: Filter by prompt task type
             domain: Filter by domain
             organization_id: Filter by organization
+            include_public: Include public datasets
             limit: Number of results to return
             offset: Number of results to skip
 
@@ -424,6 +426,7 @@ class DatasetClient(BaseAPIClient):
         variables: Dict[str, Any] = {
             "pagination": {"limit": limit, "offset": offset},
             "filters": filters,
+            "include_public": include_public,
         }
 
         response = self.post(
