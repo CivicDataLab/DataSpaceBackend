@@ -427,6 +427,10 @@ class Query:
                 # For non-authenticated users, return empty queryset
                 queryset = Dataset.objects.none()
 
+        # Include public datasets if requested (BEFORE filters/pagination)
+        if include_public:
+            queryset = queryset | Dataset.objects.filter(status=DatasetStatus.PUBLISHED)
+
         # Apply filters FIRST (before any slicing)
         if filters is not None:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
@@ -438,9 +442,6 @@ class Query:
         # Apply pagination LAST (this will slice the queryset)
         if pagination is not None:
             queryset = strawberry_django.pagination.apply(pagination, queryset)
-
-        if include_public:
-            queryset = queryset | Dataset.objects.filter(status=DatasetStatus.PUBLISHED)
 
         return TypeDataset.from_django_list(queryset)
 
