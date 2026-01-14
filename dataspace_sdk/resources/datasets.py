@@ -293,7 +293,7 @@ class DatasetClient(BaseAPIClient):
         """
         query = """
         query GetPromptDataset($id: UUID!) {
-            dataset(id: $id) {
+            get_dataset(id: $id) {
                 id
                 title
                 description
@@ -352,7 +352,7 @@ class DatasetClient(BaseAPIClient):
 
             raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
 
-        result: Dict[str, Any] = response.get("data", {}).get("dataset", {})
+        result: Dict[str, Any] = response.get("data", {}).get("get_dataset", {})
         return result
 
     def list_prompts(
