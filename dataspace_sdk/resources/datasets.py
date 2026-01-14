@@ -75,19 +75,23 @@ class DatasetClient(BaseAPIClient):
         """
         query = """
         query GetDataset($id: UUID!) {
-            dataset(id: $id) {
+            getDataset(datasetId: $id) {
                 id
                 title
                 description
                 status
-                accessType
-                license
+                datasetType
                 created
-                updated
+                modified
+                downloadCount
                 organization {
                     id
                     name
                     description
+                }
+                user {
+                    id
+                    name
                 }
                 tags {
                     id
@@ -109,7 +113,12 @@ class DatasetClient(BaseAPIClient):
                         format
                         size
                     }
-                    schema
+                    schema {
+                        id
+                        fieldName
+                        format
+                        description
+                    }
                 }
             }
         }
@@ -128,7 +137,7 @@ class DatasetClient(BaseAPIClient):
 
             raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
 
-        result: Dict[str, Any] = response.get("data", {}).get("dataset", {})
+        result: Dict[str, Any] = response.get("data", {}).get("getDataset", {})
         return result
 
     def list_all(
@@ -293,20 +302,23 @@ class DatasetClient(BaseAPIClient):
         """
         query = """
         query GetPromptDataset($id: UUID!) {
-            get_dataset(id: $id) {
+            getDataset(datasetId: $id) {
                 id
                 title
                 description
                 status
-                accessType
-                license
                 datasetType
                 created
-                updated
+                modified
+                downloadCount
                 organization {
                     id
                     name
                     description
+                }
+                user {
+                    id
+                    name
                 }
                 tags {
                     id
@@ -352,7 +364,7 @@ class DatasetClient(BaseAPIClient):
 
             raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
 
-        result: Dict[str, Any] = response.get("data", {}).get("get_dataset", {})
+        result: Dict[str, Any] = response.get("data", {}).get("getDataset", {})
         return result
 
     def list_prompts(
