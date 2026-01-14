@@ -381,8 +381,8 @@ class DatasetClient(BaseAPIClient):
             List of prompt datasets
         """
         query = """
-        query ListPromptDatasets($filters: DatasetFilter, $pagination: OffsetPaginationInput) {
-            datasets(filters: $filters, pagination: $pagination) {
+        query ListPromptDatasets($filters: DatasetFilter, $pagination: OffsetPaginationInput, $include_public: Boolean) {
+            datasets(filters: $filters, pagination: $pagination, includePublic: $include_public) {
                 id
                 title
                 description
