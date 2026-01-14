@@ -82,8 +82,8 @@ class DatasetClient(BaseAPIClient):
                 status
                 accessType
                 license
-                createdAt
-                updatedAt
+                created
+                updated
                 organization {
                     id
                     name
@@ -103,12 +103,13 @@ class DatasetClient(BaseAPIClient):
                 }
                 resources {
                     id
-                    title
+                    name
                     description
-                    fileDetails
+                    fileDetails {
+                        format
+                        size
+                    }
                     schema
-                    createdAt
-                    updatedAt
                 }
             }
         }
@@ -158,8 +159,8 @@ class DatasetClient(BaseAPIClient):
                 status
                 accessType
                 license
-                createdAt
-                updatedAt
+                created
+                updated
                 organization {
                     id
                     name
@@ -257,8 +258,8 @@ class DatasetClient(BaseAPIClient):
                     description
                     status
                     datasetType
-                    createdAt
-                    updatedAt
+                    created
+                    updated
                 }
             }
         }
@@ -300,8 +301,8 @@ class DatasetClient(BaseAPIClient):
                 accessType
                 license
                 datasetType
-                createdAt
-                updatedAt
+                created
+                updated
                 organization {
                     id
                     name
@@ -321,25 +322,19 @@ class DatasetClient(BaseAPIClient):
                 }
                 resources {
                     id
-                    title
-                    description
-                    fileDetails
-                    schema
-                    createdAt
-                    updatedAt
-                    promptFormat
-                    hasSystemPrompt
-                    hasExampleResponses
-                    avgPromptLength
-                    promptCount
+                    name
+                    fileDetails {
+                        format
+                        size
+                    }
+                    promptDetails {
+                        promptFormat
+                        hasSystemPrompt
+                        hasExampleResponses
+                        promptCount
+                    }
                 }
-                promptMetadata {
-                    taskType
-                    targetLanguages
-                    domain
-                    targetModelTypes
-
-                }
+                promptMetadata
             }
         }
         """
