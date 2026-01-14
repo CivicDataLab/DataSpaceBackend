@@ -280,6 +280,176 @@ class DatasetClient(BaseAPIClient):
         result: Dict[str, Any] = response.get("data", {}).get("addDataset", {})
         return result
 
+    def get_prompt_by_id(self, dataset_id: str) -> Dict[str, Any]:
+        """
+        Get a prompt dataset by ID with prompt-specific metadata.
+
+        Args:
+            dataset_id: UUID of the prompt dataset
+
+        Returns:
+            Dictionary containing prompt dataset information including prompt metadata
+        """
+        query = """
+        query GetPromptDataset($id: UUID!) {
+            dataset(id: $id) {
+                id
+                title
+                description
+                status
+                accessType
+                license
+                datasetType
+                createdAt
+                updatedAt
+                organization {
+                    id
+                    name
+                    description
+                }
+                tags {
+                    id
+                    value
+                }
+                sectors {
+                    id
+                    name
+                }
+                geographies {
+                    id
+                    name
+                }
+                resources {
+                    id
+                    title
+                    description
+                    fileDetails
+                    schema
+                    createdAt
+                    updatedAt
+                    promptFormat
+                    hasSystemPrompt
+                    hasExampleResponses
+                    avgPromptLength
+                    promptCount
+                }
+                promptMetadata {
+                    taskType
+                    targetLanguages
+                    domain
+                    targetModelTypes
+
+                }
+            }
+        }
+        """
+
+        response = self.post(
+            "/api/graphql",
+            json_data={
+                "query": query,
+                "variables": {"id": dataset_id},
+            },
+        )
+
+        if "errors" in response:
+            from dataspace_sdk.exceptions import DataSpaceAPIError
+
+            raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
+
+        result: Dict[str, Any] = response.get("data", {}).get("dataset", {})
+        return result
+
+    def list_prompts(
+        self,
+        status: Optional[str] = None,
+        task_type: Optional[str] = None,
+        domain: Optional[str] = None,
+        organization_id: Optional[str] = None,
+        limit: int = 10,
+        offset: int = 0,
+    ) -> Any:
+        """
+        List prompt datasets with pagination using GraphQL.
+
+        Args:
+            status: Filter by status (DRAFT, PUBLISHED, etc.)
+            task_type: Filter by prompt task type
+            domain: Filter by domain
+            organization_id: Filter by organization
+            limit: Number of results to return
+            offset: Number of results to skip
+
+        Returns:
+            List of prompt datasets
+        """
+        query = """
+        query ListPromptDatasets($filters: DatasetFilter, $pagination: OffsetPaginationInput) {
+            datasets(filters: $filters, pagination: $pagination) {
+                id
+                title
+                description
+                status
+                accessType
+                datasetType
+                createdAt
+                updatedAt
+                organization {
+                    id
+                    name
+                }
+                tags {
+                    id
+                    value
+                }
+                promptMetadata {
+                    taskType
+                    targetLanguages
+                    domain
+                    targetModelTypes
+
+                }
+                resources {
+                    id
+                    title
+                    fileDetails
+                    promptFormat
+                    hasSystemPrompt
+                    hasExampleResponses
+                    promptCount
+                }
+            }
+        }
+        """
+
+        filters: Dict[str, Any] = {"datasetType": "PROMPT"}
+        if status:
+            filters["status"] = status
+        if organization_id:
+            filters["organization"] = {"id": {"exact": organization_id}}
+
+        variables: Dict[str, Any] = {
+            "pagination": {"limit": limit, "offset": offset},
+            "filters": filters,
+        }
+
+        response = self.post(
+            "/api/graphql",
+            json_data={
+                "query": query,
+                "variables": variables,
+            },
+        )
+
+        if "errors" in response:
+            from dataspace_sdk.exceptions import DataSpaceAPIError
+
+            raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
+
+        data = response.get("data", {})
+        datasets_result: Any = data.get("datasets", []) if isinstance(data, dict) else []
+        return datasets_result
+
     def search_prompts(
         self,
         query: Optional[str] = None,
