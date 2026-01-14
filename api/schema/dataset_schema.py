@@ -387,18 +387,14 @@ def _add_update_dataset_geographies(dataset: Dataset, geography_ids: List[int]) 
 
 @strawberry.type
 class Query:
-    @strawberry_django.field(
-        filters=DatasetFilter,
-        pagination=True,
-        order=DatasetOrder,
-    )
+    @strawberry.field
     @trace_resolver(name="datasets", attributes={"component": "dataset"})
     def datasets(
         self,
         info: Info,
-        filters: Optional[DatasetFilter] = strawberry.UNSET,
-        pagination: Optional[OffsetPaginationInput] = strawberry.UNSET,
-        order: Optional[DatasetOrder] = strawberry.UNSET,
+        filters: Optional[DatasetFilter] = None,
+        pagination: Optional[OffsetPaginationInput] = None,
+        order: Optional[DatasetOrder] = None,
     ) -> list[TypeDataset]:
         """Get all datasets."""
         organization = info.context.context.get("organization")
@@ -430,13 +426,16 @@ class Query:
                 # For non-authenticated users, return empty queryset
                 queryset = Dataset.objects.none()
 
-        if filters is not strawberry.UNSET:
+        # Apply filters FIRST (before any slicing)
+        if filters is not None:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
 
-        if order is not strawberry.UNSET:
+        # Apply ordering SECOND
+        if order is not None:
             queryset = strawberry_django.ordering.apply(order, queryset, info)
 
-        if pagination is not strawberry.UNSET:
+        # Apply pagination LAST (this will slice the queryset)
+        if pagination is not None:
             queryset = strawberry_django.pagination.apply(pagination, queryset)
 
         return TypeDataset.from_django_list(queryset)
