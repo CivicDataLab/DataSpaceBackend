@@ -387,7 +387,11 @@ def _add_update_dataset_geographies(dataset: Dataset, geography_ids: List[int]) 
 
 @strawberry.type
 class Query:
-    @strawberry_django.field
+    @strawberry_django.field(
+        filters=DatasetFilter,
+        pagination=True,
+        order=DatasetOrder,
+    )
     @trace_resolver(name="datasets", attributes={"component": "dataset"})
     def datasets(
         self,
@@ -395,7 +399,7 @@ class Query:
         filters: Optional[DatasetFilter] = strawberry.UNSET,
         pagination: Optional[OffsetPaginationInput] = strawberry.UNSET,
         order: Optional[DatasetOrder] = strawberry.UNSET,
-    ) -> Any:
+    ) -> list[TypeDataset]:
         """Get all datasets."""
         organization = info.context.context.get("organization")
         user = info.context.user
@@ -426,7 +430,16 @@ class Query:
                 # For non-authenticated users, return empty queryset
                 queryset = Dataset.objects.none()
 
-        return queryset
+        if filters is not strawberry.UNSET:
+            queryset = strawberry_django.filters.apply(filters, queryset, info)
+
+        if order is not strawberry.UNSET:
+            queryset = strawberry_django.ordering.apply(order, queryset, info)
+
+        if pagination is not strawberry.UNSET:
+            queryset = strawberry_django.pagination.apply(pagination, queryset)
+
+        return TypeDataset.from_django_list(queryset)
 
     @strawberry.field(
         permission_classes=[AllowPublishedDatasets],  # type: ignore[list-item]
