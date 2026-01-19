@@ -97,7 +97,7 @@ class UserInfoView(views.APIView):
                         "name": org.organization.name,  # type: ignore[attr-defined]
                         "role": org.role.name,  # type: ignore[attr-defined]
                         "description": org.organization.description,  # type: ignore[attr-defined]
-                        "logo": org.organization.logo,  # type: ignore[attr-defined]
+                        "logo": org.organization.logo.url if org.organization.logo else None,  # type: ignore[attr-defined]
                         "homepage": org.organization.homepage,  # type: ignore[attr-defined]
                         "created": org.organization.created,  # type: ignore[attr-defined]
                         "updated": org.organization.modified,  # type: ignore[attr-defined]
