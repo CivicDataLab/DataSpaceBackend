@@ -98,8 +98,7 @@ class UserInfoView(views.APIView):
                         "role": org.role.name,  # type: ignore[attr-defined]
                         "description": org.organization.description,  # type: ignore[attr-defined]
                         "logo": org.organization.logo,  # type: ignore[attr-defined]
-                        "is_active": org.organization.is_active,  # type: ignore[attr-defined]
-                        "is_public": org.organization.is_public,  # type: ignore[attr-defined]
+                        "homepage": org.organization.homepage,  # type: ignore[attr-defined]
                         "created_at": org.organization.created_at,  # type: ignore[attr-defined]
                         "updated_at": org.organization.updated_at,  # type: ignore[attr-defined]
                     }
