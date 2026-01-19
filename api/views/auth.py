@@ -96,6 +96,12 @@ class UserInfoView(views.APIView):
                         "id": org.organization.id,  # type: ignore[attr-defined]
                         "name": org.organization.name,  # type: ignore[attr-defined]
                         "role": org.role.name,  # type: ignore[attr-defined]
+                        "description": org.organization.description,  # type: ignore[attr-defined]
+                        "logo": org.organization.logo,  # type: ignore[attr-defined]
+                        "is_active": org.organization.is_active,  # type: ignore[attr-defined]
+                        "is_public": org.organization.is_public,  # type: ignore[attr-defined]
+                        "created_at": org.organization.created_at,  # type: ignore[attr-defined]
+                        "updated_at": org.organization.updated_at,  # type: ignore[attr-defined]
                     }
                     for org in user.organizationmembership_set.all()  # type: ignore[union-attr, arg-type]
                 ],
