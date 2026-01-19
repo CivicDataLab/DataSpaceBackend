@@ -65,11 +65,21 @@ def call_aimodel(request: Request, model_id: str) -> Response:
             )
 
         parameters = request.data.get("parameters", {})
+        version_id = request.data.get("version_id")
 
-        # Get the primary version and provider
-        primary_version = model.versions.filter(is_latest=True).first()
-        if not primary_version:
-            primary_version = model.versions.first()
+        # Get the version - either specific version or primary (latest)
+        if version_id:
+            primary_version = model.versions.filter(id=version_id).first()
+            if not primary_version:
+                return Response(
+                    {"error": f"Version with ID {version_id} not found for this model"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            # Fall back to primary (latest) version
+            primary_version = model.versions.filter(is_latest=True).first()
+            if not primary_version:
+                primary_version = model.versions.first()
 
         if not primary_version:
             return Response(

@@ -337,7 +337,11 @@ class AIModelClient(BaseAPIClient):
         return self.delete(f"/api/aimodels/{model_id}/")
 
     def call_model(
-        self, model_id: str, input_text: str, parameters: Optional[Dict[str, Any]] = None
+        self,
+        model_id: str,
+        input_text: str,
+        parameters: Optional[Dict[str, Any]] = None,
+        version_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Call an AI model with input text using the appropriate client (API or HuggingFace).
@@ -346,6 +350,7 @@ class AIModelClient(BaseAPIClient):
             model_id: UUID of the AI model
             input_text: Input text to process
             parameters: Optional parameters for the model call (temperature, max_tokens, etc.)
+            version_id: Optional specific version ID to call (defaults to primary/latest version)
 
         Returns:
             Dictionary containing model response:
@@ -358,13 +363,24 @@ class AIModelClient(BaseAPIClient):
                 ...
             }
         """
+        payload: Dict[str, Any] = {
+            "input_text": input_text,
+            "parameters": parameters or {},
+        }
+        if version_id is not None:
+            payload["version_id"] = version_id
+
         return self.post(
             f"/api/aimodels/{model_id}/call/",
-            json_data={"input_text": input_text, "parameters": parameters or {}},
+            json_data=payload,
         )
 
     def call_model_async(
-        self, model_id: str, input_text: str, parameters: Optional[Dict[str, Any]] = None
+        self,
+        model_id: str,
+        input_text: str,
+        parameters: Optional[Dict[str, Any]] = None,
+        version_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Call an AI model asynchronously (returns task ID for long-running operations).
@@ -373,6 +389,7 @@ class AIModelClient(BaseAPIClient):
             model_id: UUID of the AI model
             input_text: Input text to process
             parameters: Optional parameters for the model call
+            version_id: Optional specific version ID to call (defaults to primary/latest version)
 
         Returns:
             Dictionary containing task information:
@@ -382,9 +399,16 @@ class AIModelClient(BaseAPIClient):
                 "model_id": str
             }
         """
+        payload: Dict[str, Any] = {
+            "input_text": input_text,
+            "parameters": parameters or {},
+        }
+        if version_id is not None:
+            payload["version_id"] = version_id
+
         return self.post(
             f"/api/aimodels/{model_id}/call-async/",
-            json_data={"input_text": input_text, "parameters": parameters or {}},
+            json_data=payload,
         )
 
     # ==================== Version Management ====================
