@@ -9,6 +9,7 @@ from api.schema.schema import schema
 from api.views import (
     aimodel_detail,
     aimodel_execution,
+    auditor,
     auth,
     download,
     generate_dynamic_chart,
@@ -32,6 +33,17 @@ urlpatterns = [
     path("auth/keycloak/login/", auth.KeycloakLoginView.as_view(), name="keycloak_login"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("auth/user/info/", auth.UserInfoView.as_view(), name="user_info"),
+    # Auditor management endpoints
+    path(
+        "organizations/<str:organization_id>/auditors/",
+        auditor.OrganizationAuditorsView.as_view(),
+        name="organization_auditors",
+    ),
+    path(
+        "users/search-by-email/",
+        auditor.SearchUserByEmailView.as_view(),
+        name="search_user_by_email",
+    ),
     # API endpoints
     path("search/dataset/", search_dataset.SearchDataset.as_view(), name="search_dataset"),
     path("search/usecase/", search_usecase.SearchUseCase.as_view(), name="search_usecase"),
