@@ -82,8 +82,6 @@ class AIModel(models.Model):
         blank=True,
         related_name="ai_models",
     )
-    # API Configuration
-    # Endpoints are stored in separate ModelEndpoint table for flexibility
 
     # Model Capabilities
     supports_streaming = models.BooleanField(default=False)
