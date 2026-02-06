@@ -92,12 +92,18 @@ class AIModel(models.Model):
     )
     supported_languages = models.JSONField(
         default=list,
+        blank=True,
+        null=True,
         help_text="List of supported language codes (e.g., ['en', 'es', 'fr'])",
     )
 
     # Input/Output Schema
-    input_schema = models.JSONField(default=dict, help_text="Expected input format and parameters")
-    output_schema = models.JSONField(default=dict, help_text="Expected output format")
+    input_schema = models.JSONField(
+        default=dict, blank=True, null=True, help_text="Expected input format and parameters"
+    )
+    output_schema = models.JSONField(
+        default=dict, blank=True, null=True, help_text="Expected output format"
+    )
 
     # Metadata
     tags = models.ManyToManyField("api.Tag", blank=True)
@@ -105,6 +111,8 @@ class AIModel(models.Model):
     geographies = models.ManyToManyField("api.Geography", blank=True, related_name="ai_models")
     metadata = models.JSONField(
         default=dict,
+        blank=True,
+        null=True,
         help_text="Additional metadata (training data info, limitations, etc.)",
     )
 
