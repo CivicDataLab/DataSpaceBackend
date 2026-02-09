@@ -120,10 +120,10 @@ class TypeAIModel(BaseType):
     user: Optional["TypeUser"]
     supports_streaming: bool
     max_tokens: Optional[int]
-    supported_languages: strawberry.scalars.JSON
-    input_schema: strawberry.scalars.JSON
-    output_schema: strawberry.scalars.JSON
-    metadata: strawberry.scalars.JSON
+    supported_languages: Optional[strawberry.scalars.JSON]
+    input_schema: Optional[strawberry.scalars.JSON]
+    output_schema: Optional[strawberry.scalars.JSON]
+    metadata: Optional[strawberry.scalars.JSON]
     status: AIModelStatusEnum
     is_public: bool
     is_active: bool
@@ -287,10 +287,10 @@ class TypeAIModelVersion(BaseType):
     version_notes: Optional[str]
     supports_streaming: bool
     max_tokens: Optional[int]
-    supported_languages: strawberry.scalars.JSON
-    input_schema: strawberry.scalars.JSON
-    output_schema: strawberry.scalars.JSON
-    metadata: strawberry.scalars.JSON
+    supported_languages: Optional[strawberry.scalars.JSON]
+    input_schema: Optional[strawberry.scalars.JSON]
+    output_schema: Optional[strawberry.scalars.JSON]
+    metadata: Optional[strawberry.scalars.JSON]
     status: AIModelStatusEnum
     lifecycle_stage: AIModelLifecycleStageEnum
     is_latest: bool
