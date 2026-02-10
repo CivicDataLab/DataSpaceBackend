@@ -59,6 +59,7 @@ class AIModelAdmin(admin.ModelAdmin):
     list_filter = (
         "provider",
         "model_type",
+        "domain",
         "status",
         "is_public",
         "is_active",
@@ -85,7 +86,7 @@ class AIModelAdmin(admin.ModelAdmin):
             "Schema",
             {"fields": ("input_schema", "output_schema"), "classes": ("collapse",)},
         ),
-        ("Metadata", {"fields": ("tags", "metadata"), "classes": ("collapse",)}),
+        ("Metadata", {"fields": ("tags", "domain", "metadata"), "classes": ("collapse",)}),
         ("Status & Visibility", {"fields": ("status", "is_public", "is_active")}),
         (
             "Performance Metrics",

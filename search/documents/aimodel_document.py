@@ -54,6 +54,7 @@ class AIModelDocument(Document):
 
     # Model configuration
     model_type = fields.KeywordField()
+    domain = fields.KeywordField()
 
     # Status and visibility
     status = fields.KeywordField()

@@ -1,6 +1,6 @@
 """GraphQL schema for AI Model."""
 
-# mypy: disable-error-code=union-attr
+# mypy: disable-error-code="union-attr,misc"
 
 import datetime
 from typing import List, Optional
@@ -27,6 +27,7 @@ from api.types.type_aimodel import (
     AIModelVersionOrder,
     EndpointAuthTypeEnum,
     EndpointHTTPMethodEnum,
+    PromptDomainEnum,
     TypeAIModel,
     TypeAIModelVersion,
     TypeModelEndpoint,
@@ -95,6 +96,7 @@ class CreateAIModelInput:
     tags: Optional[List[str]] = None
     sectors: Optional[List[str]] = None
     geographies: Optional[List[int]] = None
+    domain: Optional[PromptDomainEnum] = None
     metadata: Optional[strawberry.scalars.JSON] = None
     is_public: bool = False
 
@@ -119,6 +121,7 @@ class UpdateAIModelInput:
     tags: Optional[List[str]] = None
     sectors: Optional[List[str]] = None
     geographies: Optional[List[int]] = None
+    domain: Optional[PromptDomainEnum] = None
     metadata: Optional[strawberry.scalars.JSON] = None
     is_public: Optional[bool] = None
     is_active: Optional[bool] = None
@@ -441,6 +444,7 @@ class Mutation:
                 supported_languages=supported_languages,
                 input_schema=input_schema,
                 output_schema=output_schema,
+                domain=input.domain if input.domain else None,
                 metadata=metadata,
                 is_public=input.is_public,
                 status="REGISTERED",
@@ -518,6 +522,8 @@ class Mutation:
             model.input_schema = input.input_schema
         if input.output_schema is not None:
             model.output_schema = input.output_schema
+        if input.domain is not None:
+            model.domain = input.domain
         if input.metadata is not None:
             model.metadata = input.metadata
         if input.is_public is not None:

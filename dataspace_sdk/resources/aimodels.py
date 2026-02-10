@@ -17,6 +17,7 @@ class AIModelClient(BaseAPIClient):
         status: Optional[str] = None,
         model_type: Optional[str] = None,
         provider: Optional[str] = None,
+        domain: Optional[str] = None,
         sort: Optional[str] = None,
         page: int = 1,
         page_size: int = 10,
@@ -32,6 +33,7 @@ class AIModelClient(BaseAPIClient):
             status: Filter by status (ACTIVE, INACTIVE, etc.)
             model_type: Filter by model type (LLM, VISION, etc.)
             provider: Filter by provider (OPENAI, ANTHROPIC, etc.)
+            domain: Filter by domain (HEALTHCARE, EDUCATION, etc.)
             sort: Sort order (recent, alphabetical)
             page: Page number (1-indexed)
             page_size: Number of results per page
@@ -58,6 +60,8 @@ class AIModelClient(BaseAPIClient):
             params["model_type"] = model_type
         if provider:
             params["provider"] = provider
+        if domain:
+            params["domain"] = domain
         if sort:
             params["sort"] = sort
 
@@ -94,6 +98,7 @@ class AIModelClient(BaseAPIClient):
                 displayName
                 description
                 modelType
+                domain
                 status
                 isPublic
                 createdAt
@@ -207,6 +212,7 @@ class AIModelClient(BaseAPIClient):
                 displayName
                 description
                 modelType
+                domain
                 status
                 isPublic
                 createdAt

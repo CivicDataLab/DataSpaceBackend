@@ -1,8 +1,8 @@
 """API view for AI Model detail."""
 
+import logging
 from typing import Any, Dict, List, Optional
 
-import logging
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
@@ -11,8 +11,8 @@ from rest_framework.views import APIView
 
 from api.models.AIModel import AIModel, ModelEndpoint
 
-
 logger = logging.getLogger(__name__)
+
 
 class ModelEndpointSerializer(serializers.ModelSerializer):
     """Serializer for Model Endpoint."""
@@ -59,6 +59,7 @@ class AIModelDetailSerializer(serializers.ModelSerializer):
             "tags",
             "sectors",
             "geographies",
+            "domain",
             "metadata",
             "status",
             "is_public",

@@ -103,6 +103,7 @@ class AIModelDocumentSerializer(serializers.ModelSerializer):
             "is_individual_model",
             "has_active_endpoints",
             "endpoint_count",
+            "domain",
             "version_count",
             "lifecycle_stage",
             "all_providers",
@@ -154,6 +155,7 @@ class SearchAIModel(PaginatedElasticSearchAPIView):
             "supports_streaming": "terms",
             "lifecycle_stage": "terms",
             "all_providers": "terms",
+            "domain": "terms",
         }
 
         return searchable_fields, aggregations
@@ -208,6 +210,7 @@ class SearchAIModel(PaginatedElasticSearchAPIView):
                 "supported_languages",
                 "lifecycle_stage",
                 "all_providers",
+                "domain",
             ]:
                 # Handle single or multi-value filters
                 filter_values = filters[filter_key].split(",")

@@ -12,6 +12,7 @@ from api.utils.enums import (
     EndpointAuthType,
     EndpointHTTPMethod,
     HFModelClass,
+    PromptDomain,
 )
 
 User = get_user_model()
@@ -107,6 +108,13 @@ class AIModel(models.Model):
     tags = models.ManyToManyField("api.Tag", blank=True)
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="ai_models")
     geographies = models.ManyToManyField("api.Geography", blank=True, related_name="ai_models")
+    domain = models.CharField(
+        max_length=200,
+        choices=PromptDomain.choices,
+        blank=True,
+        null=True,
+        help_text="Domain or category (e.g., healthcare, education, legal)",
+    )
     metadata = models.JSONField(
         default=dict,
         blank=True,

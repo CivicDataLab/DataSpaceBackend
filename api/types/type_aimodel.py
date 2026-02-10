@@ -26,6 +26,7 @@ from api.utils.enums import (
     EndpointAuthType,
     EndpointHTTPMethod,
     HFModelClass,
+    PromptDomain,
 )
 from authorization.types import TypeUser
 
@@ -41,6 +42,7 @@ EndpointHTTPMethodEnum = strawberry.enum(EndpointHTTPMethod)  # type: ignore
 AIModelFrameworkEnum = strawberry.enum(AIModelFramework)  # type: ignore
 HFModelClassEnum = strawberry.enum(HFModelClass)  # type: ignore
 AIModelLifecycleStageEnum = strawberry.enum(AIModelLifecycleStage)  # type: ignore
+PromptDomainEnum = strawberry.enum(PromptDomain)  # type: ignore
 
 
 @strawberry.type
@@ -83,6 +85,7 @@ class AIModelFilter:
     status: Optional[AIModelStatusEnum]
     model_type: Optional[AIModelTypeEnum]
     provider: Optional[AIModelProviderEnum]
+    domain: Optional[PromptDomainEnum]
     is_public: Optional[bool]
     is_active: Optional[bool]
 
@@ -123,6 +126,7 @@ class TypeAIModel(BaseType):
     supported_languages: Optional[strawberry.scalars.JSON]
     input_schema: Optional[strawberry.scalars.JSON]
     output_schema: Optional[strawberry.scalars.JSON]
+    domain: Optional[PromptDomainEnum]
     metadata: Optional[strawberry.scalars.JSON]
     status: AIModelStatusEnum
     is_public: bool
