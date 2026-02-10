@@ -56,7 +56,14 @@ class Resource(models.Model):
     version = models.CharField(max_length=50, default="v1.0")
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        self.slug = slugify(self.name)
+        if not self.slug:
+            base_slug = slugify(self.name)
+            slug = base_slug
+            counter = 1
+            while Resource.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
@@ -64,9 +71,7 @@ class Resource(models.Model):
 
 
 class ResourceFileDetails(models.Model):
-    resource = models.OneToOneField(
-        Resource, on_delete=models.CASCADE, null=False, blank=False
-    )
+    resource = models.OneToOneField(Resource, on_delete=models.CASCADE, null=False, blank=False)
     file = models.FileField(upload_to="resources/", max_length=300)
     size = models.FloatField(blank=True, null=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -84,9 +89,7 @@ class ResourceDataTable(models.Model):
     """Model to store indexed CSV data for a resource."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    resource = models.OneToOneField(
-        Resource, on_delete=models.CASCADE, null=False, blank=False
-    )
+    resource = models.OneToOneField(Resource, on_delete=models.CASCADE, null=False, blank=False)
     table_name = models.CharField(max_length=255, unique=True)
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
@@ -109,9 +112,7 @@ class ResourceDataTable(models.Model):
 
 
 class ResourceVersion(models.Model):
-    resource = models.ForeignKey(
-        Resource, on_delete=models.CASCADE, related_name="versions"
-    )
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name="versions")
     version_number = models.CharField(max_length=50)
     commit_hash = models.CharField(max_length=64, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -167,9 +168,9 @@ def version_resource_with_dvc(sender, instance: ResourceFileDetails, created, **
                 return
 
             # Get the latest version
-            last_version: Optional[ResourceVersion] = (
-                instance.resource.versions.order_by("-created_at").first()
-            )
+            last_version: Optional[ResourceVersion] = instance.resource.versions.order_by(
+                "-created_at"
+            ).first()
 
             # Handle case when there are no versions yet
             if last_version is None:
@@ -193,9 +194,7 @@ def version_resource_with_dvc(sender, instance: ResourceFileDetails, created, **
                         # Use DVC to get the previous version
                         try:
                             # Try to checkout the previous version using DVC
-                            rel_path = Path(instance.file.path).relative_to(
-                                settings.DVC_REPO_PATH
-                            )
+                            rel_path = Path(instance.file.path).relative_to(settings.DVC_REPO_PATH)
                             tag_name = f"{instance.resource.name}-{last_version.version_number}"
 
                             # Save current file to temp location
@@ -245,9 +244,7 @@ def version_resource_with_dvc(sender, instance: ResourceFileDetails, created, **
 
             # Update using DVC
             dvc_file = dvc.track_resource(instance.file.path, chunked=use_chunked)
-            message = (
-                f"Update resource: {instance.resource.name} to version {new_version}"
-            )
+            message = f"Update resource: {instance.resource.name} to version {new_version}"
             dvc.commit_version(dvc_file, message)
             dvc.tag_version(f"{instance.resource.name}-{new_version}")
 
