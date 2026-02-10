@@ -308,10 +308,8 @@ class Query:
                 if user.is_superuser:
                     queryset = AIModel.objects.all()
                 else:
-                    # For authenticated users, show their models and public models
-                    queryset = AIModel.objects.filter(user=user) | AIModel.objects.filter(
-                        is_public=True, is_active=True
-                    )
+                    # For authenticated users, show their models
+                    queryset = AIModel.objects.filter(user=user, organization=None)
             else:
                 # For non-authenticated users, only show public active models
                 queryset = AIModel.objects.filter(is_public=True, is_active=True)
