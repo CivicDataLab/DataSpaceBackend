@@ -187,6 +187,22 @@ class DataSpaceClient:
         """
         return self._auth.is_authenticated()
 
+    def set_organization(self, organization_id: str) -> None:
+        """
+        Set the organization header for all subsequent API requests.
+
+        The DataSpace backend reads the 'organization' header to scope
+        queries to a specific organization.
+
+        Args:
+            organization_id: Organization ID to include in requests
+        """
+        self.datasets.default_headers["organization"] = organization_id
+        self.aimodels.default_headers["organization"] = organization_id
+        self.usecases.default_headers["organization"] = organization_id
+        self.sectors.default_headers["organization"] = organization_id
+        self.auditors.default_headers["organization"] = organization_id
+
     @property
     def user(self) -> Optional[dict]:
         """

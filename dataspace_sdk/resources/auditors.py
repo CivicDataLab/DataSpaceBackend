@@ -25,10 +25,13 @@ class AuditorClient:
         """
         self._base_url = base_url.rstrip("/")
         self._auth = auth_client
+        self.default_headers: Dict[str, str] = {}
 
     def _get_headers(self) -> Dict[str, str]:
         """Get request headers with authentication."""
         headers = {"Content-Type": "application/json"}
+        if self.default_headers:
+            headers.update(self.default_headers)
         if self._auth and self._auth.access_token:
             headers["Authorization"] = f"Bearer {self._auth.access_token}"
         return headers
