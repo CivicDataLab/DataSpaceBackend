@@ -40,9 +40,7 @@ class CustomHttpRequest(HttpRequest):
 
 
 class ContextMiddleware:
-    def __init__(
-        self, get_response: Callable[[CustomHttpRequest], HttpResponse]
-    ) -> None:
+    def __init__(self, get_response: Callable[[CustomHttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
 
     def __call__(self, request: CustomHttpRequest) -> HttpResponse:
@@ -71,7 +69,10 @@ class ContextMiddleware:
             if organization_slug is None:
                 organization: Optional[Organization] = None
             else:
-                organization = get_object_or_404(Organization, slug=organization_slug)
+                try:
+                    organization = Organization.objects.get(slug=organization_slug)
+                except Organization.DoesNotExist:
+                    organization = get_object_or_404(Organization, id=organization_slug)
             if dataspace_slug is None:
                 dataspace: Optional[DataSpace] = None
             else:
