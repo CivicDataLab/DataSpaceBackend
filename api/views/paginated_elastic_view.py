@@ -47,9 +47,7 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
         """Get search instance."""
         if hasattr(self.document_class, "search"):
             return self.document_class.search()  # type: ignore
-        raise AttributeError(
-            f"{self.document_class.__name__} does not have a search method"
-        )
+        raise AttributeError(f"{self.document_class.__name__} does not have a search method")
 
     def get(self, request: HttpRequest) -> Response:
         """Handle GET request and return paginated search results."""
@@ -99,10 +97,10 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                 aggregations.pop("metadata")
                 for agg in metadata_aggregations:
                     label: str = agg["key"]["metadata_label"]
-                value: str = agg["key"].get("metadata_value", "")
-                if label not in aggregations:
-                    aggregations[label] = {}
-                aggregations[label][value] = agg["doc_count"]
+                    value: str = agg["key"].get("metadata_value", "")
+                    if label not in aggregations:
+                        aggregations[label] = {}
+                    aggregations[label][value] = agg["doc_count"]
 
             if "catalogs" in aggregations:
                 aggregations.pop("catalogs")
@@ -170,9 +168,7 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                     aggregations["running_status"][agg["key"]] = agg["doc_count"]
 
             if "is_individual_usecase" in aggregations:
-                is_individual_usecase_agg = aggregations["is_individual_usecase"][
-                    "buckets"
-                ]
+                is_individual_usecase_agg = aggregations["is_individual_usecase"]["buckets"]
                 aggregations.pop("is_individual_usecase")
                 aggregations["is_individual_usecase"] = {}
                 for agg in is_individual_usecase_agg:
