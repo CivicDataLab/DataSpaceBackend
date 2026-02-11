@@ -91,8 +91,8 @@ class AIModelClient(BaseAPIClient):
             Dictionary containing AI model information
         """
         query = """
-        query GetAIModel($id: UUID!) {
-            aiModel(id: $id) {
+        query GetAIModel($id: Int!) {
+            getAiModel(modelId: $id) {
                 id
                 name
                 displayName
@@ -171,7 +171,7 @@ class AIModelClient(BaseAPIClient):
             "/api/graphql",
             json_data={
                 "query": query,
-                "variables": {"id": model_id},
+                "variables": {"id": int(model_id)},
             },
         )
 
@@ -180,7 +180,7 @@ class AIModelClient(BaseAPIClient):
 
             raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
 
-        result: Dict[str, Any] = response.get("data", {}).get("aiModel", {})
+        result: Dict[str, Any] = response.get("data", {}).get("getAiModel", {})
         return result
 
     def list_all(
