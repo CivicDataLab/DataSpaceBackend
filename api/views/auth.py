@@ -101,6 +101,7 @@ class UserInfoView(views.APIView):
                         "homepage": org.organization.homepage,  # type: ignore[attr-defined]
                         "created": org.organization.created,  # type: ignore[attr-defined]
                         "updated": org.organization.modified,  # type: ignore[attr-defined]
+                        "slug": org.organization.slug,  # type: ignore[attr-defined]
                     }
                     for org in user.organizationmembership_set.all()  # type: ignore[union-attr, arg-type]
                 ],
