@@ -56,7 +56,7 @@ class TestAIModelClient(unittest.TestCase):
         """Test get AI model by ID using GraphQL."""
         mock_post.return_value = {
             "data": {
-                "aiModel": {
+                "getAiModel": {
                     "id": "123",
                     "displayName": "Test Model",
                     "description": "A test model",
