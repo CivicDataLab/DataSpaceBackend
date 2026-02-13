@@ -91,7 +91,7 @@ pandas-stubs==2.2.0.240218  # Matched with pandas version
 deepdiff==6.7.1  # For intelligent version detection
 
 # Logging
-structlog==24.1.0  # Downgraded for better compatibility
+structlog==25.4.0  # Downgraded for better compatibility
 
 # Development and Debugging
 ipython==8.22.1
