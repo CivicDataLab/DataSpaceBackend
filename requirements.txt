@@ -21,7 +21,7 @@ gunicorn==23.0.0
 grpcio==1.62.1
 idna==3.6
 importlib-metadata==6.11.0
-numpy==1.26.4
+numpy==2.3.3
 opentelemetry-api==1.23.0
 opentelemetry-exporter-otlp==1.23.0
 opentelemetry-exporter-otlp-proto-common==1.23.0
