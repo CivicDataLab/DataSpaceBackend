@@ -332,7 +332,6 @@ class UnifiedSearch(APIView):
                 result["title"] = ""
             if "description" not in result:
                 result["description"] = ""
-            # AIModel uses created_at/updated_at
             if "created_at" in result:
                 result["created"] = result["created_at"]
             if "updated_at" in result:
@@ -343,16 +342,20 @@ class UnifiedSearch(APIView):
             if "title" not in result:
                 result["title"] = ""
         elif result["type"] == "publisher":
-            # For publishers, use 'name' as title and handle description
             if "name" in result:
                 result["title"] = result.get("name", "")
             if "bio" in result and result.get("bio"):
                 result["description"] = result.get("bio", "")
             elif "description" not in result or not result.get("description"):
                 result["description"] = ""
-            # Ensure status field exists (publishers don't have traditional status)
             if "status" not in result:
                 result["status"] = "active"
+            if "tags" not in result:
+                result["tags"] = []
+            if "sectors" not in result or result.get("sectors") is None:
+                result["sectors"] = []
+            if "geographies" not in result:
+                result["geographies"] = []
         else:  # dataset
             if "title" not in result:
                 result["title"] = ""
@@ -409,7 +412,6 @@ class UnifiedSearch(APIView):
         if hasattr(response, "aggregations"):
             aggs_dict = response.aggregations.to_dict()
 
-            # Process types aggregation
             if "types" in aggs_dict:
                 aggregations["types"] = {}
                 for bucket in aggs_dict["types"]["buckets"]:
@@ -428,7 +430,6 @@ class UnifiedSearch(APIView):
                             aggregations["types"]["publisher"] = 0
                         aggregations["types"]["publisher"] += bucket["doc_count"]
 
-            # Process other aggregations
             for agg_name in ["tags", "sectors", "geographies", "status"]:
                 if agg_name in aggs_dict:
                     aggregations[agg_name] = {}
@@ -450,10 +451,8 @@ class UnifiedSearch(APIView):
                 "types", "dataset,usecase,aimodel,collaborative,publisher"
             )  # Which entity types to search
 
-            # Parse entity types
             types_list = [t.strip() for t in entity_types.split(",")]
 
-            # Handle filters
             filters: Dict[str, str] = {}
             for key, values in request.GET.lists():
                 if key not in ["query", "page", "size", "types"]:
