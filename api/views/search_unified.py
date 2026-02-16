@@ -1,12 +1,10 @@
 """Unified search view that searches across datasets, usecases, and aimodels."""
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple
 
 import structlog
-from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Q as ESQ
 from elasticsearch_dsl import Search
-from elasticsearch_dsl.connections import connections
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -21,7 +19,9 @@ from search.documents import (
     AIModelDocument,
     CollaborativeDocument,
     DatasetDocument,
+    OrganizationPublisherDocument,
     UseCaseDocument,
+    UserPublisherDocument,
 )
 
 logger = structlog.get_logger(__name__)
@@ -31,7 +31,9 @@ class UnifiedSearchResultSerializer(serializers.Serializer):
     """Serializer for unified search results."""
 
     id = serializers.CharField()
-    type = serializers.CharField()  # 'dataset', 'usecase', 'aimodel', or 'collaborative'
+    type = (
+        serializers.CharField()
+    )  # 'dataset', 'usecase', 'aimodel', 'collaborative', or 'publisher'
     title = serializers.CharField()
     description = serializers.CharField()
     slug = serializers.CharField(required=False)
@@ -84,6 +86,18 @@ class UnifiedSearchResultSerializer(serializers.Serializer):
     started_on = serializers.DateTimeField(required=False)
     completed_on = serializers.DateTimeField(required=False)
 
+    # Publisher specific
+    publisher_type = serializers.CharField(required=False)  # 'organization' or 'user'
+    published_datasets_count = serializers.IntegerField(required=False)
+    published_usecases_count = serializers.IntegerField(required=False)
+    members_count = serializers.IntegerField(required=False)
+    contributed_sectors_count = serializers.IntegerField(required=False)
+    homepage = serializers.CharField(required=False)
+    bio = serializers.CharField(required=False)
+    profile_picture = serializers.CharField(required=False)
+    username = serializers.CharField(required=False)
+    full_name = serializers.CharField(required=False)
+
 
 class UnifiedSearch(APIView):
     """View for unified search across datasets, usecases, and aimodels."""
@@ -122,6 +136,16 @@ class UnifiedSearch(APIView):
             )
             index_names.append(collaborative_index)
 
+        if "publisher" in types_list:
+            org_publisher_index = settings.ELASTICSEARCH_INDEX_NAMES.get(
+                "search.documents.publisher_document.OrganizationPublisherDocument",
+                "organization_publisher",
+            )
+            user_publisher_index = settings.ELASTICSEARCH_INDEX_NAMES.get(
+                "search.documents.publisher_document.UserPublisherDocument", "user_publisher"
+            )
+            index_names.extend([org_publisher_index, user_publisher_index])
+
         return index_names
 
     def _build_unified_query(self, query: str) -> ESQ:
@@ -134,16 +158,16 @@ class UnifiedSearch(APIView):
             ESQ(
                 "multi_match",
                 query=query,
-                fields=["title^3", "name^3", "display_name^3"],
+                fields=["title^3", "name^3", "display_name^3", "full_name^3"],
                 fuzziness="AUTO",
             ),
             ESQ(
                 "multi_match",
                 query=query,
-                fields=["description^2", "summary^2"],
+                fields=["description^2", "summary^2", "bio^2"],
                 fuzziness="AUTO",
             ),
-            ESQ("multi_match", query=query, fields=["tags^2"], fuzziness="AUTO"),
+            ESQ("multi_match", query=query, fields=["tags^2", "sectors^2"], fuzziness="AUTO"),
         ]
 
         # Type-specific nested queries
@@ -288,6 +312,8 @@ class UnifiedSearch(APIView):
             result["type"] = "aimodel"
         elif "collaborative" in index_name:
             result["type"] = "collaborative"
+        elif "publisher" in index_name:
+            result["type"] = "publisher"
         else:
             result["type"] = "unknown"
 
@@ -316,6 +342,17 @@ class UnifiedSearch(APIView):
                 result["description"] = result.get("summary", "")
             if "title" not in result:
                 result["title"] = ""
+        elif result["type"] == "publisher":
+            # For publishers, use 'name' as title and handle description
+            if "name" in result:
+                result["title"] = result.get("name", "")
+            if "bio" in result and result.get("bio"):
+                result["description"] = result.get("bio", "")
+            elif "description" not in result or not result.get("description"):
+                result["description"] = ""
+            # Ensure status field exists (publishers don't have traditional status)
+            if "status" not in result:
+                result["status"] = "active"
         else:  # dataset
             if "title" not in result:
                 result["title"] = ""
@@ -385,6 +422,11 @@ class UnifiedSearch(APIView):
                         aggregations["types"]["aimodel"] = bucket["doc_count"]
                     elif "collaborative" in index_name:
                         aggregations["types"]["collaborative"] = bucket["doc_count"]
+                    elif "publisher" in index_name:
+                        # Combine both organization and user publisher counts
+                        if "publisher" not in aggregations["types"]:
+                            aggregations["types"]["publisher"] = 0
+                        aggregations["types"]["publisher"] += bucket["doc_count"]
 
             # Process other aggregations
             for agg_name in ["tags", "sectors", "geographies", "status"]:
@@ -405,7 +447,7 @@ class UnifiedSearch(APIView):
             page: int = int(request.GET.get("page", 1))
             size: int = int(request.GET.get("size", 10))
             entity_types: str = request.GET.get(
-                "types", "dataset,usecase,aimodel,collaborative"
+                "types", "dataset,usecase,aimodel,collaborative,publisher"
             )  # Which entity types to search
 
             # Parse entity types

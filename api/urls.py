@@ -16,6 +16,7 @@ from api.views import (
     search_aimodel,
     search_collaborative,
     search_dataset,
+    search_publisher,
     search_unified,
     search_usecase,
     trending_datasets,
@@ -55,6 +56,7 @@ urlpatterns = [
         name="search_collaborative",
     ),
     path("search/unified/", search_unified.UnifiedSearch.as_view(), name="search_unified"),
+    path("search/publisher/", search_publisher.SearchPublisher.as_view(), name="search_publisher"),
     path(
         "aimodels/<model_id>/",
         aimodel_detail.AIModelDetailView.as_view(),
