@@ -14,9 +14,15 @@ from rest_framework.views import APIView
 
 from api.models import Dataset, Geography, Metadata, UseCase
 from api.models.AIModel import AIModel
+from api.models.Collaborative import Collaborative
 from api.utils.telemetry_utils import trace_method
 from DataSpace import settings
-from search.documents import AIModelDocument, DatasetDocument, UseCaseDocument
+from search.documents import (
+    AIModelDocument,
+    CollaborativeDocument,
+    DatasetDocument,
+    UseCaseDocument,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -25,7 +31,7 @@ class UnifiedSearchResultSerializer(serializers.Serializer):
     """Serializer for unified search results."""
 
     id = serializers.CharField()
-    type = serializers.CharField()  # 'dataset', 'usecase', or 'aimodel'
+    type = serializers.CharField()  # 'dataset', 'usecase', 'aimodel', or 'collaborative'
     title = serializers.CharField()
     description = serializers.CharField()
     slug = serializers.CharField(required=False)
@@ -102,6 +108,12 @@ class UnifiedSearch(APIView):
             )
             index_names.append(aimodel_index)
 
+        if "collaborative" in types_list:
+            collaborative_index = settings.ELASTICSEARCH_INDEX_NAMES.get(
+                "search.documents.collaborative_document", "collaborative"
+            )
+            index_names.append(collaborative_index)
+
         return index_names
 
     def _build_unified_query(self, query: str) -> ESQ:
@@ -172,6 +184,43 @@ class UnifiedSearch(APIView):
             ]
         )
 
+        # Collaborative nested fields
+        common_queries.extend(
+            [
+                ESQ(
+                    "nested",
+                    path="datasets",
+                    query=ESQ(
+                        "multi_match",
+                        query=query,
+                        fields=["datasets.title", "datasets.description"],
+                        fuzziness="AUTO",
+                    ),
+                    ignore_unmapped=True,
+                ),
+                ESQ(
+                    "nested",
+                    path="use_cases",
+                    query=ESQ(
+                        "multi_match",
+                        query=query,
+                        fields=["use_cases.title", "use_cases.summary"],
+                        fuzziness="AUTO",
+                    ),
+                    ignore_unmapped=True,
+                ),
+                ESQ(
+                    "nested",
+                    path="contributors",
+                    query=ESQ(
+                        "match",
+                        **{"contributors.name": {"query": query, "fuzziness": "AUTO"}},
+                    ),
+                    ignore_unmapped=True,
+                ),
+            ]
+        )
+
         # Organization and user (common across types)
         common_queries.extend(
             [
@@ -187,9 +236,7 @@ class UnifiedSearch(APIView):
                 ESQ(
                     "nested",
                     path="user",
-                    query=ESQ(
-                        "match", **{"user.name": {"query": query, "fuzziness": "AUTO"}}
-                    ),
+                    query=ESQ("match", **{"user.name": {"query": query, "fuzziness": "AUTO"}}),
                     ignore_unmapped=True,
                 ),
             ]
@@ -209,9 +256,7 @@ class UnifiedSearch(APIView):
 
         if "geographies" in filters:
             filter_values = filters["geographies"].split(",")
-            filter_values = Geography.get_geography_names_with_descendants(
-                filter_values
-            )
+            filter_values = Geography.get_geography_names_with_descendants(filter_values)
             search = search.filter("terms", **{"geographies.raw": filter_values})
 
         if "status" in filters:
@@ -233,6 +278,8 @@ class UnifiedSearch(APIView):
             result["type"] = "usecase"
         elif "aimodel" in index_name:
             result["type"] = "aimodel"
+        elif "collaborative" in index_name:
+            result["type"] = "collaborative"
         else:
             result["type"] = "unknown"
 
@@ -256,6 +303,11 @@ class UnifiedSearch(APIView):
                 result["created"] = result["created_at"]
             if "updated_at" in result:
                 result["modified"] = result["updated_at"]
+        elif result["type"] == "collaborative":
+            if "summary" in result:
+                result["description"] = result.get("summary", "")
+            if "title" not in result:
+                result["title"] = ""
         else:  # dataset
             if "title" not in result:
                 result["title"] = ""
@@ -323,6 +375,8 @@ class UnifiedSearch(APIView):
                         aggregations["types"]["usecase"] = bucket["doc_count"]
                     elif "aimodel" in index_name:
                         aggregations["types"]["aimodel"] = bucket["doc_count"]
+                    elif "collaborative" in index_name:
+                        aggregations["types"]["collaborative"] = bucket["doc_count"]
 
             # Process other aggregations
             for agg_name in ["tags", "sectors", "geographies", "status"]:
@@ -331,11 +385,7 @@ class UnifiedSearch(APIView):
                     for bucket in aggs_dict[agg_name]["buckets"]:
                         aggregations[agg_name][bucket["key"]] = bucket["doc_count"]
 
-        total = (
-            response.hits.total.value
-            if hasattr(response.hits.total, "value")
-            else len(results)
-        )
+        total = response.hits.total.value if hasattr(response.hits.total, "value") else len(results)
 
         return results, total, aggregations
 
@@ -347,7 +397,7 @@ class UnifiedSearch(APIView):
             page: int = int(request.GET.get("page", 1))
             size: int = int(request.GET.get("size", 10))
             entity_types: str = request.GET.get(
-                "types", "dataset,usecase,aimodel"
+                "types", "dataset,usecase,aimodel,collaborative"
             )  # Which entity types to search
 
             # Parse entity types
@@ -383,9 +433,7 @@ class UnifiedSearch(APIView):
             self.logger.error("unified_search_error", error=str(e), exc_info=True)
             return Response({"error": "An internal error has occurred."}, status=500)
 
-    def _build_aggregations(
-        self, results: List[Dict[str, Any]]
-    ) -> Dict[str, Dict[str, int]]:
+    def _build_aggregations(self, results: List[Dict[str, Any]]) -> Dict[str, Dict[str, int]]:
         """Build aggregations from results."""
         aggregations: Dict[str, Dict[str, int]] = {
             "types": {},
@@ -398,9 +446,7 @@ class UnifiedSearch(APIView):
         for result in results:
             # Count by type
             result_type = result.get("type", "unknown")
-            aggregations["types"][result_type] = (
-                aggregations["types"].get(result_type, 0) + 1
-            )
+            aggregations["types"][result_type] = aggregations["types"].get(result_type, 0) + 1
 
             # Count by tags
             for tag in result.get("tags", []):
@@ -408,9 +454,7 @@ class UnifiedSearch(APIView):
 
             # Count by sectors
             for sector in result.get("sectors", []):
-                aggregations["sectors"][sector] = (
-                    aggregations["sectors"].get(sector, 0) + 1
-                )
+                aggregations["sectors"][sector] = aggregations["sectors"].get(sector, 0) + 1
 
             # Count by geographies
             for geography in result.get("geographies", []):
