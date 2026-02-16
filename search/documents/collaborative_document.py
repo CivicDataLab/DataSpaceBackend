@@ -152,6 +152,7 @@ class CollaborativeDocument(Document):
     platform_url = fields.TextField(analyzer=ngram_analyser)
     started_on = fields.DateField()
     completed_on = fields.DateField()
+    dataset_count = fields.IntegerField()
 
     def prepare_metadata(self, instance: Collaborative) -> List[Dict[str, Any]]:
         processed_metadata: List[Dict[str, Any]] = []
@@ -254,6 +255,9 @@ class CollaborativeDocument(Document):
         if instance.cover_image:
             return str(instance.cover_image.path.replace("/code/files/", ""))
         return ""
+
+    def prepare_dataset_count(self, instance: Collaborative) -> int:
+        return instance.datasets.count()
 
     def should_index_object(self, obj: Collaborative) -> bool:
         return obj.status == CollaborativeStatus.PUBLISHED
