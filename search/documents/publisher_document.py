@@ -8,9 +8,6 @@ from authorization.models import User
 from DataSpace import settings
 from search.documents.analysers import html_strip, ngram_analyser
 
-INDEX = Index(settings.ELASTICSEARCH_INDEX_NAMES[__name__])
-INDEX.settings(number_of_shards=1, number_of_replicas=0)
-
 
 class PublisherDocument(Document):
     """Elasticsearch document for Publisher (Organization and User) models."""
@@ -321,9 +318,12 @@ class PublisherDocument(Document):
         return publishers if publishers else None
 
 
-@INDEX.doc_type
 class OrganizationPublisherDocument(PublisherDocument):
     """Organization-specific publisher document."""
+
+    class Index:
+        name = settings.ELASTICSEARCH_INDEX_NAMES[f"{__name__}.OrganizationPublisherDocument"]
+        settings = {"number_of_shards": 1, "number_of_replicas": 0}
 
     class Django:
         """Django model configuration."""
@@ -343,9 +343,12 @@ class OrganizationPublisherDocument(PublisherDocument):
         ]
 
 
-@INDEX.doc_type
 class UserPublisherDocument(PublisherDocument):
     """User-specific publisher document."""
+
+    class Index:
+        name = settings.ELASTICSEARCH_INDEX_NAMES[f"{__name__}.UserPublisherDocument"]
+        settings = {"number_of_shards": 1, "number_of_replicas": 0}
 
     class Django:
         """Django model configuration."""
