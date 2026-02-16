@@ -58,8 +58,6 @@ class PublisherDocument(Document):
 
     # Common metadata
     slug = fields.KeywordField()
-    created = fields.DateField()
-    modified = fields.DateField()
 
     # Computed fields
     published_datasets_count = fields.IntegerField()
@@ -108,6 +106,17 @@ class PublisherDocument(Document):
                 if profile_picture and hasattr(profile_picture, "url")
                 else ""
             )
+
+    def prepare_profile_picture(self, instance: Union[Organization, User]) -> str:
+        """Prepare profile picture URL for users."""
+        if isinstance(instance, User):
+            profile_picture = getattr(instance, "profile_picture", None)
+            return (
+                str(profile_picture.url)
+                if profile_picture and hasattr(profile_picture, "url")
+                else ""
+            )
+        return ""
 
     def prepare_slug(self, instance: Union[Organization, User]) -> str:
         """Prepare slug field."""
@@ -323,6 +332,8 @@ class OrganizationPublisherDocument(PublisherDocument):
 
         fields = [
             "id",
+            "created",
+            "modified",
         ]
 
         related_models = [
@@ -343,6 +354,8 @@ class UserPublisherDocument(PublisherDocument):
 
         fields = [
             "id",
+            "date_joined",
+            "last_login",
         ]
 
         related_models = [
