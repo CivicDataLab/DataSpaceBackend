@@ -14,6 +14,7 @@ from api.views import (
     download,
     generate_dynamic_chart,
     search_aimodel,
+    search_collaborative,
     search_dataset,
     search_unified,
     search_usecase,
@@ -48,6 +49,11 @@ urlpatterns = [
     path("search/dataset/", search_dataset.SearchDataset.as_view(), name="search_dataset"),
     path("search/usecase/", search_usecase.SearchUseCase.as_view(), name="search_usecase"),
     path("search/aimodel/", search_aimodel.SearchAIModel.as_view(), name="search_aimodel"),
+    path(
+        "search/collaborative/",
+        search_collaborative.SearchCollaborative.as_view(),
+        name="search_collaborative",
+    ),
     path("search/unified/", search_unified.UnifiedSearch.as_view(), name="search_unified"),
     path(
         "aimodels/<model_id>/",
