@@ -76,6 +76,14 @@ class UnifiedSearchResultSerializer(serializers.Serializer):
     provider = serializers.CharField(required=False)
     is_individual_model = serializers.BooleanField(required=False)
 
+    # Collaborative specific
+    is_individual_collaborative = serializers.BooleanField(required=False)
+    website = serializers.CharField(required=False)
+    contact_email = serializers.CharField(required=False)
+    platform_url = serializers.CharField(required=False)
+    started_on = serializers.DateTimeField(required=False)
+    completed_on = serializers.DateTimeField(required=False)
+
 
 class UnifiedSearch(APIView):
     """View for unified search across datasets, usecases, and aimodels."""
