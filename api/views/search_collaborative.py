@@ -2,6 +2,7 @@ import ast
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import structlog
+from django.core.cache import cache
 from elasticsearch_dsl import A
 from elasticsearch_dsl import Q as ESQ
 from elasticsearch_dsl import Search
@@ -13,6 +14,8 @@ from api.models import Collaborative, CollaborativeMetadata, Geography, Metadata
 from api.utils.telemetry_utils import trace_method
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
 from search.documents import CollaborativeDocument
+
+METADATA_CACHE_TTL = 60 * 30  # 30 minutes
 
 logger = structlog.get_logger(__name__)
 
@@ -147,6 +150,12 @@ class SearchCollaborative(PaginatedElasticSearchAPIView):
         attributes={"component": "search_collaborative"},
     )
     def get_searchable_and_aggregations(self) -> Tuple[List[str], Dict[str, str]]:
+        cached: Optional[Tuple[List[str], Dict[str, str]]] = cache.get(
+            "collaborative_search_metadata_config"
+        )
+        if cached:
+            return cached
+
         searchable_fields = [
             "title",
             "summary",
@@ -173,7 +182,9 @@ class SearchCollaborative(PaginatedElasticSearchAPIView):
         for metadata in filterable_metadata:
             aggregations[f"metadata.{metadata.label}"] = "terms"  # type: ignore
 
-        return searchable_fields, aggregations
+        result = (searchable_fields, aggregations)
+        cache.set("collaborative_search_metadata_config", result, timeout=METADATA_CACHE_TTL)
+        return result
 
     @trace_method(name="add_aggregations", attributes={"component": "search_collaborative"})
     def add_aggregations(self, search: Search) -> Search:
@@ -189,8 +200,17 @@ class SearchCollaborative(PaginatedElasticSearchAPIView):
                 )
 
         if aggregate_fields:
-            metadata_qs = Metadata.objects.filter(filterable=True)
-            filterable_metadata = [str(meta.label) for meta in metadata_qs]  # type: ignore
+            filterable_metadata: List[str] = (
+                cache.get("collaborative_filterable_metadata_labels") or []
+            )
+            if not filterable_metadata:
+                metadata_qs = Metadata.objects.filter(filterable=True)
+                filterable_metadata = [str(meta.label) for meta in metadata_qs]  # type: ignore
+                cache.set(
+                    "collaborative_filterable_metadata_labels",
+                    filterable_metadata,
+                    timeout=METADATA_CACHE_TTL,
+                )
 
             metadata_bucket = search.aggs.bucket("metadata", "nested", path="metadata")
             composite_agg = A(
@@ -277,8 +297,15 @@ class SearchCollaborative(PaginatedElasticSearchAPIView):
 
     @trace_method(name="add_filters", attributes={"component": "search_collaborative"})
     def add_filters(self, filters: Dict[str, str], search: Search) -> Search:
-        non_filter_metadata = Metadata.objects.filter(filterable=False).all()
-        excluded_labels: List[str] = [e.label for e in non_filter_metadata]  # type: ignore
+        excluded_labels: List[str] = cache.get("collaborative_non_filter_metadata_labels") or []
+        if not excluded_labels:
+            non_filter_metadata = Metadata.objects.filter(filterable=False).all()
+            excluded_labels = [e.label for e in non_filter_metadata]  # type: ignore
+            cache.set(
+                "collaborative_non_filter_metadata_labels",
+                excluded_labels,
+                timeout=METADATA_CACHE_TTL,
+            )
 
         for filter in filters:
             if filter in excluded_labels:

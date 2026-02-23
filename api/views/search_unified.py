@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Tuple
 
 import structlog
+from django.core.cache import cache
 from elasticsearch_dsl import Q as ESQ
 from elasticsearch_dsl import Search
 from rest_framework import serializers
@@ -13,6 +14,7 @@ from rest_framework.views import APIView
 from api.models import Dataset, Geography, Metadata, UseCase
 from api.models.AIModel import AIModel
 from api.models.Collaborative import Collaborative
+from api.signals.dataset_signals import SEARCH_CACHE_VERSION_KEY
 from api.utils.telemetry_utils import trace_method
 from DataSpace import settings
 from search.documents import (
@@ -440,10 +442,27 @@ class UnifiedSearch(APIView):
 
         return results, total, aggregations
 
+    def _generate_unified_cache_key(self, request: Any) -> str:
+        """Generate a unique cache key for unified search based on request parameters."""
+        params: Dict[str, str] = {
+            "query": request.GET.get("query", ""),
+            "page": request.GET.get("page", "1"),
+            "size": request.GET.get("size", "10"),
+            "types": request.GET.get("types", "dataset,usecase,aimodel,collaborative,publisher"),
+            "filters": str(sorted(request.GET.dict().items())),
+            "version": str(cache.get(SEARCH_CACHE_VERSION_KEY, 0)),
+        }
+        return f"unified_search:{hash(frozenset(params.items()))}"
+
     @trace_method(name="get", attributes={"component": "unified_search"})
     def get(self, request: Any) -> Response:
         """Handle GET request and return unified search results."""
         try:
+            cache_key = self._generate_unified_cache_key(request)
+            cached_result = cache.get(cache_key)
+            if cached_result:
+                return Response(cached_result)
+
             query: str = request.GET.get("query", "")
             page: int = int(request.GET.get("page", 1))
             size: int = int(request.GET.get("size", 10))
@@ -475,6 +494,8 @@ class UnifiedSearch(APIView):
                 "aggregations": aggregations,
                 "types_searched": types_list,
             }
+
+            cache.set(cache_key, result, timeout=3600)
 
             return Response(result)
 

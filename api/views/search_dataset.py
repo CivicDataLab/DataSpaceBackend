@@ -2,6 +2,7 @@ import ast
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union, cast
 
 import structlog
+from django.core.cache import cache
 from elasticsearch_dsl import A
 from elasticsearch_dsl import Q as ESQ
 from elasticsearch_dsl import Search
@@ -13,6 +14,8 @@ from api.models import Dataset, DatasetMetadata, Geography, Metadata
 from api.utils.telemetry_utils import trace_method, track_metrics
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
 from search.documents import DatasetDocument
+
+METADATA_CACHE_TTL = 60 * 30  # 30 minutes
 
 logger = structlog.get_logger(__name__)
 
@@ -147,6 +150,12 @@ class SearchDataset(PaginatedElasticSearchAPIView):
     )
     def get_searchable_and_aggregations(self) -> Tuple[List[str], Dict[str, str]]:
         """Get searchable fields and aggregations for the search."""
+        cached: Optional[Tuple[List[str], Dict[str, str]]] = cache.get(
+            "dataset_search_metadata_config"
+        )
+        if cached:
+            return cached
+
         enabled_metadata = Metadata.objects.filter(enabled=True).all()
         searchable_fields: List[str] = []
         searchable_fields.extend(
@@ -170,7 +179,9 @@ class SearchDataset(PaginatedElasticSearchAPIView):
         for metadata in enabled_metadata:  # type: Metadata
             if metadata.filterable:
                 aggregations[f"metadata.{metadata.label}"] = "terms"
-        return searchable_fields, aggregations
+        result = (searchable_fields, aggregations)
+        cache.set("dataset_search_metadata_config", result, timeout=METADATA_CACHE_TTL)
+        return result
 
     @trace_method(name="add_aggregations", attributes={"component": "search_dataset"})
     def add_aggregations(self, search: Search) -> Search:
@@ -248,8 +259,13 @@ class SearchDataset(PaginatedElasticSearchAPIView):
     @trace_method(name="add_filters", attributes={"component": "search_dataset"})
     def add_filters(self, filters: Dict[str, str], search: Search) -> Search:
         """Add filters to the search query."""
-        non_filter_metadata = Metadata.objects.filter(filterable=False).all()
-        excluded_labels: List[str] = [e.label for e in non_filter_metadata]  # type: ignore
+        excluded_labels: List[str] = cache.get("dataset_non_filter_metadata_labels") or []
+        if not excluded_labels:
+            non_filter_metadata = Metadata.objects.filter(filterable=False).all()
+            excluded_labels = [e.label for e in non_filter_metadata]  # type: ignore
+            cache.set(
+                "dataset_non_filter_metadata_labels", excluded_labels, timeout=METADATA_CACHE_TTL
+            )
 
         for filter in filters:
             if filter in excluded_labels:
