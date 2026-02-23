@@ -1,8 +1,10 @@
+import hashlib
 from typing import Any, Callable, Dict, List, Optional, cast
 
 import structlog
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
+from django.core.cache import cache
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.utils.functional import SimpleLazyObject
@@ -15,6 +17,14 @@ from api.utils.keycloak_utils import keycloak_manager
 from authorization.models import User
 
 logger = structlog.getLogger(__name__)
+
+TOKEN_CACHE_TTL = 60 * 5  # 5 minutes
+
+
+def _get_token_cache_key(token: str) -> str:
+    """Return a safe Redis key derived from the token without storing the raw token."""
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    return f"auth_token:{token_hash}"
 
 
 def get_user_from_keycloak_token(request: HttpRequest) -> User:
@@ -59,6 +69,17 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
             logger.debug("No token found, returning anonymous user")
             return cast(User, AnonymousUser())
 
+        # Check cache before doing any validation or DB work
+        cache_key = _get_token_cache_key(token)
+        cached_user_id = cache.get(cache_key)
+        if cached_user_id:
+            try:
+                user = User.objects.get(id=cached_user_id)
+                logger.debug(f"Returning cached authenticated user: {user.username}")
+                return user
+            except User.DoesNotExist:
+                cache.delete(cache_key)
+
         # Log token details for debugging
         logger.debug(f"Processing token of length: {len(token)}")
         logger.debug(f"Token type: {type(token)}")
@@ -80,6 +101,7 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
                 logger.debug(f"Valid Django JWT token for user_id: {user_id}")
                 try:
                     user = User.objects.get(id=user_id)
+                    cache.set(cache_key, user.id, timeout=TOKEN_CACHE_TTL)
                     logger.debug(f"Successfully authenticated user via Django JWT: {user.username}")
                     return user
                 except User.DoesNotExist:
@@ -130,6 +152,7 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
             logger.warning("User synchronization failed, returning anonymous user")
             return cast(User, AnonymousUser())
 
+        cache.set(cache_key, synced_user.id, timeout=TOKEN_CACHE_TTL)
         logger.debug(
             f"Successfully authenticated user: {synced_user.username} (ID: {synced_user.id})"
         )
