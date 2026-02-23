@@ -3,6 +3,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
+from django.core.cache import cache
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
@@ -10,6 +11,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.models.AIModel import AIModel, ModelEndpoint
+
+AIMODEL_DETAIL_CACHE_TTL = 60 * 15  # 15 minutes
 
 logger = logging.getLogger(__name__)
 
@@ -119,11 +122,17 @@ class AIModelDetailView(APIView):
     def get(self, request: Request, model_id: str) -> Response:
         """Get AI model details."""
         try:
+            cache_key = f"aimodel_detail:{model_id}"
+            cached = cache.get(cache_key)
+            if cached:
+                return Response(cached)
+
             model = AIModel.objects.prefetch_related(
                 "tags", "sectors", "geographies", "endpoints", "organization", "user"
             ).get(id=model_id)
 
             serializer = AIModelDetailSerializer(model)
+            cache.set(cache_key, serializer.data, timeout=AIMODEL_DETAIL_CACHE_TTL)
             return Response(serializer.data)
 
         except AIModel.DoesNotExist:
