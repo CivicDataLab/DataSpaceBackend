@@ -3,6 +3,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
+from django.core.cache import cache
 from django.db import transaction
 from rest_framework import status, views
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +12,8 @@ from rest_framework.response import Response
 
 from api.models import Organization
 from authorization.models import OrganizationMembership, Role, User
+
+ROLE_CACHE_TTL = 60 * 60  # 1 hour
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +49,16 @@ class OrganizationAuditorsView(views.APIView):
 
     def _get_auditor_role(self) -> Optional[Role]:
         """Get the auditor role."""
+        cached_id = cache.get("role_id:auditor")
+        if cached_id:
+            try:
+                return Role.objects.get(pk=cached_id)
+            except Role.DoesNotExist:
+                cache.delete("role_id:auditor")
         try:
-            return Role.objects.get(name="auditor")
+            role = Role.objects.get(name="auditor")
+            cache.set("role_id:auditor", role.pk, timeout=ROLE_CACHE_TTL)
+            return role
         except Role.DoesNotExist:
             logger.error("Auditor role not found. Please run migrations.")
             return None
