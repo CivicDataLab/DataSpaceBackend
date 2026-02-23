@@ -56,9 +56,8 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
             cache_key = self._generate_cache_key(request)
             cached_result: Optional[Dict[str, Any]] = cache.get(cache_key)
 
-            # TODO: Fix cache issues on different model updates
-            # if cached_result:
-            #     return Response(cached_result)
+            if cached_result:
+                return Response(cached_result)
 
             # Original search logic
             query: str = request.GET.get("query", "")
