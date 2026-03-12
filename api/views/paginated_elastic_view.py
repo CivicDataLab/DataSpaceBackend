@@ -189,6 +189,7 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
     def _generate_cache_key(self, request: HttpRequest) -> str:
         """Generate a unique cache key based on request parameters and cache version."""
         params: Dict[str, str] = {
+            "document_type": self.document_class.__name__,
             "query": request.GET.get("query", ""),
             "page": request.GET.get("page", "1"),
             "size": request.GET.get("size", "10"),
