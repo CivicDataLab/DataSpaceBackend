@@ -53,6 +53,7 @@ target-version = ['py38', 'py39', 'py310', 'py311']
 include = '\.pyi?$'
 
 [tool.mypy]
+
 python_version = "0.4.19"
 warn_return_any = true
 warn_unused_configs = true

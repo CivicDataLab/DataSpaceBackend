@@ -16,6 +16,7 @@ with open("docs/sdk/README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="dataspace-sdk",
+
     version=version["__version__"],
     author="CivicDataLab",
     author_email="tech@civicdatalab.in",
