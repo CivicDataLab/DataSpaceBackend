@@ -86,6 +86,92 @@ class DatasetStatus(models.TextChoices):
     ARCHIVED = "ARCHIVED"
 
 
+class DatasetType(models.TextChoices):
+    DATA = "DATA"
+    PROMPT = "PROMPT"
+
+
+class PromptTaskType(models.TextChoices):
+    TEXT_GENERATION = "TEXT_GENERATION"
+    TEXT_CLASSIFICATION = "TEXT_CLASSIFICATION"
+    QUESTION_ANSWERING = "QUESTION_ANSWERING"
+    SUMMARIZATION = "SUMMARIZATION"
+    TRANSLATION = "TRANSLATION"
+    SENTIMENT_ANALYSIS = "SENTIMENT_ANALYSIS"
+    NAMED_ENTITY_RECOGNITION = "NAMED_ENTITY_RECOGNITION"
+    CODE_GENERATION = "CODE_GENERATION"
+    CONVERSATION = "CONVERSATION"
+    INSTRUCTION_FOLLOWING = "INSTRUCTION_FOLLOWING"
+    REASONING = "REASONING"
+    CREATIVE_WRITING = "CREATIVE_WRITING"
+    DATA_EXTRACTION = "DATA_EXTRACTION"
+    OTHER = "OTHER"
+
+
+class PromptPurpose(models.TextChoices):
+    RESEARCH = "RESEARCH"
+    EDUCATION = "EDUCATION"
+    EVALUATION = "EVALUATION"
+    OTHER = "OTHER"
+
+
+class PromptDomain(models.TextChoices):
+    HEALTHCARE = "HEALTHCARE"
+    EDUCATION = "EDUCATION"
+    LEGAL = "LEGAL"
+    FINANCE = "FINANCE"
+    AGRICULTURE = "AGRICULTURE"
+    ENVIRONMENT = "ENVIRONMENT"
+    GOVERNMENT = "GOVERNMENT"
+    TECHNOLOGY = "TECHNOLOGY"
+    SCIENCE = "SCIENCE"
+    SOCIAL_SERVICES = "SOCIAL_SERVICES"
+    TRANSPORTATION = "TRANSPORTATION"
+    ENERGY = "ENERGY"
+    GENERAL = "GENERAL"
+    OTHER = "OTHER"
+
+
+class PromptFormat(models.TextChoices):
+    INSTRUCTION = "INSTRUCTION"
+    CHAT = "CHAT"
+    COMPLETION = "COMPLETION"
+    FEW_SHOT = "FEW_SHOT"
+    CHAIN_OF_THOUGHT = "CHAIN_OF_THOUGHT"
+    ZERO_SHOT = "ZERO_SHOT"
+    OTHER = "OTHER"
+
+
+class TargetLanguage(models.TextChoices):
+    ENGLISH = "ENGLISH"
+    HINDI = "HINDI"
+    TAMIL = "TAMIL"
+    TELUGU = "TELUGU"
+    BENGALI = "BENGALI"
+    MARATHI = "MARATHI"
+    GUJARATI = "GUJARATI"
+    KANNADA = "KANNADA"
+    MALAYALAM = "MALAYALAM"
+    PUNJABI = "PUNJABI"
+    ODIA = "ODIA"
+    ASSAMESE = "ASSAMESE"
+    URDU = "URDU"
+    OTHER = "OTHER"
+
+
+class TargetModelType(models.TextChoices):
+    GPT = "GPT"
+    LLAMA = "LLAMA"
+    MISTRAL = "MISTRAL"
+    GEMINI = "GEMINI"
+    CLAUDE = "CLAUDE"
+    FALCON = "FALCON"
+    BLOOM = "BLOOM"
+    INDIC_LLM = "INDIC_LLM"
+    CUSTOM = "CUSTOM"
+    OTHER = "OTHER"
+
+
 class DatasetAccessType(models.TextChoices):
     PUBLIC = "PUBLIC"
     PRIVATE = "PRIVATE"
@@ -169,6 +255,7 @@ class AIModelType(models.TextChoices):
 
 
 class AIModelStatus(models.TextChoices):
+    DRAFT = "DRAFT"
     REGISTERED = "REGISTERED"
     VALIDATING = "VALIDATING"
     ACTIVE = "ACTIVE"
@@ -186,6 +273,16 @@ class AIModelProvider(models.TextChoices):
     LLAMA_CUSTOM = "LLAMA_CUSTOM"
     CUSTOM = "CUSTOM"
     HUGGINGFACE = "HUGGINGFACE"
+
+
+class AIModelLifecycleStage(models.TextChoices):
+    DEVELOPMENT = "DEVELOPMENT", "Development"
+    TESTING = "TESTING", "Testing"
+    BETA = "BETA", "Beta Testing"
+    STAGING = "STAGING", "Staging"
+    PRODUCTION = "PRODUCTION", "Production"
+    DEPRECATED = "DEPRECATED", "Deprecated"
+    RETIRED = "RETIRED", "Retired"
 
 
 class AIModelFramework(models.TextChoices):

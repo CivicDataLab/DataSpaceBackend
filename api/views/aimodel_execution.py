@@ -3,9 +3,8 @@ API views for AI model execution.
 Handles model inference requests via ModelAPIClient and ModelHFClient.
 """
 
-from typing import Any
-
 import logging
+from typing import Any
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -66,14 +65,45 @@ def call_aimodel(request: Request, model_id: str) -> Response:
             )
 
         parameters = request.data.get("parameters", {})
+        version_id = request.data.get("version_id")
+
+        # Get the version - either specific version or primary (latest)
+        if version_id:
+            primary_version = model.versions.filter(id=version_id).first()
+            if not primary_version:
+                return Response(
+                    {"error": f"Version with ID {version_id} not found for this model"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            # Fall back to primary (latest) version
+            primary_version = model.versions.filter(is_latest=True).first()
+            if not primary_version:
+                primary_version = model.versions.first()
+
+        if not primary_version:
+            return Response(
+                {"error": "No version found for this model"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        primary_provider = primary_version.providers.filter(is_primary=True, is_active=True).first()
+        if not primary_provider:
+            primary_provider = primary_version.providers.filter(is_active=True).first()
+
+        if not primary_provider:
+            return Response(
+                {"error": "No active provider found for this model"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Route to appropriate client based on provider
         result: Any
-        if model.provider == "HUGGINGFACE":
-            hf_client = ModelHFClient(model)
+        if primary_provider.provider == "HUGGINGFACE":
+            hf_client = ModelHFClient(primary_provider)
             result = hf_client.call(input_text)
         else:
-            api_client = ModelAPIClient(model)
+            api_client = ModelAPIClient(primary_provider)
             result = api_client.call(input_text, parameters)
 
         return Response(result, status=status.HTTP_200_OK)

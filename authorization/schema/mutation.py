@@ -15,6 +15,7 @@ from api.schema.base_mutation import (
     MutationResponse,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.keycloak_utils import keycloak_manager
 from authorization.models import OrganizationMembership, Role, User
 from authorization.permissions import IsAuthenticated
 from authorization.schema.inputs import (
@@ -34,12 +35,9 @@ logger = structlog.getLogger(__name__)
 @strawberry.type
 class Mutation:
     @strawberry.mutation(permission_classes=[IsAuthenticated])
-    @trace_resolver(
-        name="update_user", attributes={"component": "user", "operation": "mutation"}
-    )
+    @trace_resolver(name="update_user", attributes={"component": "user", "operation": "mutation"})
     def update_user(self, info: Info, input: UpdateUserInput) -> TypeUser:
         """Update user details and sync with Keycloak."""
-        from authorization.keycloak import keycloak_manager
 
         user = info.context.user
 
@@ -139,9 +137,7 @@ class Mutation:
                     user=user, organization=organization
                 )
                 # If we get here, the membership exists
-                raise DjangoValidationError(
-                    "User is already a member of this organization."
-                )
+                raise DjangoValidationError("User is already a member of this organization.")
             except OrganizationMembership.DoesNotExist:
                 # Membership doesn't exist, so create it
                 membership = OrganizationMembership.objects.create(
@@ -211,13 +207,9 @@ class Mutation:
             organization = info.context.context.get("organization")
 
             # Check if the membership already exists
-            membership = OrganizationMembership.objects.get(
-                user=user, organization=organization
-            )
+            membership = OrganizationMembership.objects.get(user=user, organization=organization)
             membership.delete()
-            return SuccessResponse(
-                success=True, message="User removed from organization"
-            )
+            return SuccessResponse(success=True, message="User removed from organization")
         except User.DoesNotExist:
             raise DjangoValidationError(f"User with ID {input.user_id} does not exist.")
         except Role.DoesNotExist:
@@ -270,8 +262,6 @@ class Mutation:
         )
 
         if result:
-            return SuccessResponse(
-                success=True, message="Permission assigned successfully"
-            )
+            return SuccessResponse(success=True, message="Permission assigned successfully")
         else:
             return SuccessResponse(success=False, message="Failed to assign permission")

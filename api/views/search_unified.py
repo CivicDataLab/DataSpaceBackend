@@ -1,12 +1,11 @@
 """Unified search view that searches across datasets, usecases, and aimodels."""
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple
 
 import structlog
-from elasticsearch import Elasticsearch
+from django.core.cache import cache
 from elasticsearch_dsl import Q as ESQ
 from elasticsearch_dsl import Search
-from elasticsearch_dsl.connections import connections
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -14,9 +13,18 @@ from rest_framework.views import APIView
 
 from api.models import Dataset, Geography, Metadata, UseCase
 from api.models.AIModel import AIModel
+from api.models.Collaborative import Collaborative
+from api.signals.dataset_signals import SEARCH_CACHE_VERSION_KEY
 from api.utils.telemetry_utils import trace_method
 from DataSpace import settings
-from search.documents import AIModelDocument, DatasetDocument, UseCaseDocument
+from search.documents import (
+    AIModelDocument,
+    CollaborativeDocument,
+    DatasetDocument,
+    OrganizationPublisherDocument,
+    UseCaseDocument,
+    UserPublisherDocument,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -25,7 +33,9 @@ class UnifiedSearchResultSerializer(serializers.Serializer):
     """Serializer for unified search results."""
 
     id = serializers.CharField()
-    type = serializers.CharField()  # 'dataset', 'usecase', or 'aimodel'
+    type = (
+        serializers.CharField()
+    )  # 'dataset', 'usecase', 'aimodel', 'collaborative', or 'publisher'
     title = serializers.CharField()
     description = serializers.CharField()
     slug = serializers.CharField(required=False)
@@ -70,6 +80,26 @@ class UnifiedSearchResultSerializer(serializers.Serializer):
     provider = serializers.CharField(required=False)
     is_individual_model = serializers.BooleanField(required=False)
 
+    # Collaborative specific
+    is_individual_collaborative = serializers.BooleanField(required=False)
+    website = serializers.CharField(required=False)
+    contact_email = serializers.CharField(required=False)
+    platform_url = serializers.CharField(required=False)
+    started_on = serializers.DateTimeField(required=False)
+    completed_on = serializers.DateTimeField(required=False)
+
+    # Publisher specific
+    publisher_type = serializers.CharField(required=False)  # 'organization' or 'user'
+    published_datasets_count = serializers.IntegerField(required=False)
+    published_usecases_count = serializers.IntegerField(required=False)
+    members_count = serializers.IntegerField(required=False)
+    contributed_sectors_count = serializers.IntegerField(required=False)
+    homepage = serializers.CharField(required=False)
+    bio = serializers.CharField(required=False)
+    profile_picture = serializers.CharField(required=False)
+    username = serializers.CharField(required=False)
+    full_name = serializers.CharField(required=False)
+
 
 class UnifiedSearch(APIView):
     """View for unified search across datasets, usecases, and aimodels."""
@@ -102,6 +132,22 @@ class UnifiedSearch(APIView):
             )
             index_names.append(aimodel_index)
 
+        if "collaborative" in types_list:
+            collaborative_index = settings.ELASTICSEARCH_INDEX_NAMES.get(
+                "search.documents.collaborative_document", "collaborative"
+            )
+            index_names.append(collaborative_index)
+
+        if "publisher" in types_list:
+            org_publisher_index = settings.ELASTICSEARCH_INDEX_NAMES.get(
+                "search.documents.publisher_document.OrganizationPublisherDocument",
+                "organization_publisher",
+            )
+            user_publisher_index = settings.ELASTICSEARCH_INDEX_NAMES.get(
+                "search.documents.publisher_document.UserPublisherDocument", "user_publisher"
+            )
+            index_names.extend([org_publisher_index, user_publisher_index])
+
         return index_names
 
     def _build_unified_query(self, query: str) -> ESQ:
@@ -114,16 +160,16 @@ class UnifiedSearch(APIView):
             ESQ(
                 "multi_match",
                 query=query,
-                fields=["title^3", "name^3", "display_name^3"],
+                fields=["title^3", "name^3", "display_name^3", "full_name^3"],
                 fuzziness="AUTO",
             ),
             ESQ(
                 "multi_match",
                 query=query,
-                fields=["description^2", "summary^2"],
+                fields=["description^2", "summary^2", "bio^2"],
                 fuzziness="AUTO",
             ),
-            ESQ("multi_match", query=query, fields=["tags^2"], fuzziness="AUTO"),
+            ESQ("multi_match", query=query, fields=["tags^2", "sectors^2"], fuzziness="AUTO"),
         ]
 
         # Type-specific nested queries
@@ -172,6 +218,43 @@ class UnifiedSearch(APIView):
             ]
         )
 
+        # Collaborative nested fields
+        common_queries.extend(
+            [
+                ESQ(
+                    "nested",
+                    path="datasets",
+                    query=ESQ(
+                        "multi_match",
+                        query=query,
+                        fields=["datasets.title", "datasets.description"],
+                        fuzziness="AUTO",
+                    ),
+                    ignore_unmapped=True,
+                ),
+                ESQ(
+                    "nested",
+                    path="use_cases",
+                    query=ESQ(
+                        "multi_match",
+                        query=query,
+                        fields=["use_cases.title", "use_cases.summary"],
+                        fuzziness="AUTO",
+                    ),
+                    ignore_unmapped=True,
+                ),
+                ESQ(
+                    "nested",
+                    path="contributors",
+                    query=ESQ(
+                        "match",
+                        **{"contributors.name": {"query": query, "fuzziness": "AUTO"}},
+                    ),
+                    ignore_unmapped=True,
+                ),
+            ]
+        )
+
         # Organization and user (common across types)
         common_queries.extend(
             [
@@ -187,9 +270,7 @@ class UnifiedSearch(APIView):
                 ESQ(
                     "nested",
                     path="user",
-                    query=ESQ(
-                        "match", **{"user.name": {"query": query, "fuzziness": "AUTO"}}
-                    ),
+                    query=ESQ("match", **{"user.name": {"query": query, "fuzziness": "AUTO"}}),
                     ignore_unmapped=True,
                 ),
             ]
@@ -209,9 +290,7 @@ class UnifiedSearch(APIView):
 
         if "geographies" in filters:
             filter_values = filters["geographies"].split(",")
-            filter_values = Geography.get_geography_names_with_descendants(
-                filter_values
-            )
+            filter_values = Geography.get_geography_names_with_descendants(filter_values)
             search = search.filter("terms", **{"geographies.raw": filter_values})
 
         if "status" in filters:
@@ -233,6 +312,10 @@ class UnifiedSearch(APIView):
             result["type"] = "usecase"
         elif "aimodel" in index_name:
             result["type"] = "aimodel"
+        elif "collaborative" in index_name:
+            result["type"] = "collaborative"
+        elif "publisher" in index_name:
+            result["type"] = "publisher"
         else:
             result["type"] = "unknown"
 
@@ -251,11 +334,30 @@ class UnifiedSearch(APIView):
                 result["title"] = ""
             if "description" not in result:
                 result["description"] = ""
-            # AIModel uses created_at/updated_at
             if "created_at" in result:
                 result["created"] = result["created_at"]
             if "updated_at" in result:
                 result["modified"] = result["updated_at"]
+        elif result["type"] == "collaborative":
+            if "summary" in result:
+                result["description"] = result.get("summary", "")
+            if "title" not in result:
+                result["title"] = ""
+        elif result["type"] == "publisher":
+            if "name" in result:
+                result["title"] = result.get("name", "")
+            if "bio" in result and result.get("bio"):
+                result["description"] = result.get("bio", "")
+            elif "description" not in result or not result.get("description"):
+                result["description"] = ""
+            if "status" not in result:
+                result["status"] = "active"
+            if "tags" not in result:
+                result["tags"] = []
+            if "sectors" not in result or result.get("sectors") is None:
+                result["sectors"] = []
+            if "geographies" not in result:
+                result["geographies"] = []
         else:  # dataset
             if "title" not in result:
                 result["title"] = ""
@@ -312,7 +414,6 @@ class UnifiedSearch(APIView):
         if hasattr(response, "aggregations"):
             aggs_dict = response.aggregations.to_dict()
 
-            # Process types aggregation
             if "types" in aggs_dict:
                 aggregations["types"] = {}
                 for bucket in aggs_dict["types"]["buckets"]:
@@ -323,37 +424,54 @@ class UnifiedSearch(APIView):
                         aggregations["types"]["usecase"] = bucket["doc_count"]
                     elif "aimodel" in index_name:
                         aggregations["types"]["aimodel"] = bucket["doc_count"]
+                    elif "collaborative" in index_name:
+                        aggregations["types"]["collaborative"] = bucket["doc_count"]
+                    elif "publisher" in index_name:
+                        # Combine both organization and user publisher counts
+                        if "publisher" not in aggregations["types"]:
+                            aggregations["types"]["publisher"] = 0
+                        aggregations["types"]["publisher"] += bucket["doc_count"]
 
-            # Process other aggregations
             for agg_name in ["tags", "sectors", "geographies", "status"]:
                 if agg_name in aggs_dict:
                     aggregations[agg_name] = {}
                     for bucket in aggs_dict[agg_name]["buckets"]:
                         aggregations[agg_name][bucket["key"]] = bucket["doc_count"]
 
-        total = (
-            response.hits.total.value
-            if hasattr(response.hits.total, "value")
-            else len(results)
-        )
+        total = response.hits.total.value if hasattr(response.hits.total, "value") else len(results)
 
         return results, total, aggregations
+
+    def _generate_unified_cache_key(self, request: Any) -> str:
+        """Generate a unique cache key for unified search based on request parameters."""
+        params: Dict[str, str] = {
+            "query": request.GET.get("query", ""),
+            "page": request.GET.get("page", "1"),
+            "size": request.GET.get("size", "10"),
+            "types": request.GET.get("types", "dataset,usecase,aimodel,collaborative,publisher"),
+            "filters": str(sorted(request.GET.dict().items())),
+            "version": str(cache.get(SEARCH_CACHE_VERSION_KEY, 0)),
+        }
+        return f"unified_search:{hash(frozenset(params.items()))}"
 
     @trace_method(name="get", attributes={"component": "unified_search"})
     def get(self, request: Any) -> Response:
         """Handle GET request and return unified search results."""
         try:
+            cache_key = self._generate_unified_cache_key(request)
+            cached_result = cache.get(cache_key)
+            if cached_result:
+                return Response(cached_result)
+
             query: str = request.GET.get("query", "")
             page: int = int(request.GET.get("page", 1))
             size: int = int(request.GET.get("size", 10))
             entity_types: str = request.GET.get(
-                "types", "dataset,usecase,aimodel"
+                "types", "dataset,usecase,aimodel,collaborative,publisher"
             )  # Which entity types to search
 
-            # Parse entity types
             types_list = [t.strip() for t in entity_types.split(",")]
 
-            # Handle filters
             filters: Dict[str, str] = {}
             for key, values in request.GET.lists():
                 if key not in ["query", "page", "size", "types"]:
@@ -377,15 +495,15 @@ class UnifiedSearch(APIView):
                 "types_searched": types_list,
             }
 
+            cache.set(cache_key, result, timeout=3600)
+
             return Response(result)
 
         except Exception as e:
             self.logger.error("unified_search_error", error=str(e), exc_info=True)
             return Response({"error": "An internal error has occurred."}, status=500)
 
-    def _build_aggregations(
-        self, results: List[Dict[str, Any]]
-    ) -> Dict[str, Dict[str, int]]:
+    def _build_aggregations(self, results: List[Dict[str, Any]]) -> Dict[str, Dict[str, int]]:
         """Build aggregations from results."""
         aggregations: Dict[str, Dict[str, int]] = {
             "types": {},
@@ -398,9 +516,7 @@ class UnifiedSearch(APIView):
         for result in results:
             # Count by type
             result_type = result.get("type", "unknown")
-            aggregations["types"][result_type] = (
-                aggregations["types"].get(result_type, 0) + 1
-            )
+            aggregations["types"][result_type] = aggregations["types"].get(result_type, 0) + 1
 
             # Count by tags
             for tag in result.get("tags", []):
@@ -408,9 +524,7 @@ class UnifiedSearch(APIView):
 
             # Count by sectors
             for sector in result.get("sectors", []):
-                aggregations["sectors"][sector] = (
-                    aggregations["sectors"].get(sector, 0) + 1
-                )
+                aggregations["sectors"][sector] = aggregations["sectors"].get(sector, 0) + 1
 
             # Count by geographies
             for geography in result.get("geographies", []):

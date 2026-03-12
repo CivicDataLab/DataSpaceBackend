@@ -47,9 +47,7 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
         """Get search instance."""
         if hasattr(self.document_class, "search"):
             return self.document_class.search()  # type: ignore
-        raise AttributeError(
-            f"{self.document_class.__name__} does not have a search method"
-        )
+        raise AttributeError(f"{self.document_class.__name__} does not have a search method")
 
     def get(self, request: HttpRequest) -> Response:
         """Handle GET request and return paginated search results."""
@@ -58,9 +56,8 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
             cache_key = self._generate_cache_key(request)
             cached_result: Optional[Dict[str, Any]] = cache.get(cache_key)
 
-            # TODO: Fix cache issues on different model updates
-            # if cached_result:
-            #     return Response(cached_result)
+            if cached_result:
+                return Response(cached_result)
 
             # Original search logic
             query: str = request.GET.get("query", "")
@@ -99,10 +96,10 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                 aggregations.pop("metadata")
                 for agg in metadata_aggregations:
                     label: str = agg["key"]["metadata_label"]
-                value: str = agg["key"].get("metadata_value", "")
-                if label not in aggregations:
-                    aggregations[label] = {}
-                aggregations[label][value] = agg["doc_count"]
+                    value: str = agg["key"].get("metadata_value", "")
+                    if label not in aggregations:
+                        aggregations[label] = {}
+                    aggregations[label][value] = agg["doc_count"]
 
             if "catalogs" in aggregations:
                 aggregations.pop("catalogs")
@@ -170,9 +167,7 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                     aggregations["running_status"][agg["key"]] = agg["doc_count"]
 
             if "is_individual_usecase" in aggregations:
-                is_individual_usecase_agg = aggregations["is_individual_usecase"][
-                    "buckets"
-                ]
+                is_individual_usecase_agg = aggregations["is_individual_usecase"]["buckets"]
                 aggregations.pop("is_individual_usecase")
                 aggregations["is_individual_usecase"] = {}
                 for agg in is_individual_usecase_agg:
@@ -194,6 +189,7 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
     def _generate_cache_key(self, request: HttpRequest) -> str:
         """Generate a unique cache key based on request parameters and cache version."""
         params: Dict[str, str] = {
+            "document_type": self.document_class.__name__,
             "query": request.GET.get("query", ""),
             "page": request.GET.get("page", "1"),
             "size": request.GET.get("size", "10"),

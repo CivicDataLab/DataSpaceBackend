@@ -1,7 +1,7 @@
 """
 Hugging Face Client for running local or remote model inference.
-Supports both pipeline-based and model-class-based inference,
-and integrates with Django model management (AIModel).
+Supports both pipeline-based and model-class-based inference.
+Works with VersionProvider configuration.
 """
 
 import time
@@ -24,15 +24,36 @@ from transformers import (  # type: ignore
     pipeline,
 )
 
-from api.models import AIModel
+from api.models.AIModelVersion import VersionProvider
 
 
 class ModelHFClient:
-    """Client for interacting with Hugging Face models."""
+    """Client for interacting with Hugging Face models via VersionProvider configuration."""
 
-    def __init__(self, model: AIModel):
-        self.model = model
+    def __init__(self, provider: VersionProvider):
+        """
+        Initialize the HuggingFace client with a VersionProvider.
+
+        Args:
+            provider: VersionProvider instance with HuggingFace configuration
+        """
+        self.provider = provider
+        self.version = provider.version
+        self.model = provider.version.ai_model
         self.device = self._get_device()
+
+        # Validate provider type
+        if provider.provider != "HUGGINGFACE":
+            raise ValueError(
+                f"ModelHFClient requires HUGGINGFACE provider, got {provider.provider}"
+            )
+
+        # Validate model ID is set
+        if not provider.provider_model_id:
+            raise ValueError(
+                f"No provider_model_id configured for HuggingFace provider on model {self.model.name}"
+            )
+
         self.model_map = {
             "AutoModelForCausalLM": AutoModelForCausalLM,
             "AutoModelForSeq2SeqLM": AutoModelForSeq2SeqLM,
@@ -60,36 +81,57 @@ class ModelHFClient:
         """Select device (0 for GPU if available, else CPU)."""
         return 0 if torch.cuda.is_available() else -1
 
+    def _get_torch_dtype(self) -> Any:
+        """Get torch dtype based on provider configuration."""
+        dtype_map = {
+            "auto": "auto",
+            "float16": torch.float16,
+            "float32": torch.float32,
+            "bfloat16": torch.bfloat16,
+        }
+        dtype_str = self.provider.hf_torch_dtype or "auto"
+        if dtype_str == "auto":
+            return torch.float16 if torch.cuda.is_available() else torch.float32
+        return dtype_map.get(dtype_str, torch.float32)
+
     def _load_pipeline(self) -> Any:
         """Initialize a Hugging Face pipeline."""
+        framework = self.provider.framework or "pt"
         return pipeline(
             task=self.task_map.get(self.model.model_type, "text-generation"),
-            model=self.model.provider_model_id,
-            framework="pt",
+            model=self.provider.provider_model_id,
+            framework=framework,
             device=self.device,
-            trust_remote_code=True,
-            use_auth_token=self.model.hf_auth_token or None,
+            trust_remote_code=self.provider.hf_trust_remote_code,
+            token=self.provider.hf_auth_token or None,
         )
 
     def _load_model_and_tokenizer(self) -> Tuple[Any, Any]:
         """Load model and tokenizer for manual inference."""
         tokenizer = AutoTokenizer.from_pretrained(
-            self.model.provider_model_id,
-            trust_remote_code=True,
-            use_auth_token=self.model.hf_auth_token or None,
+            self.provider.provider_model_id,
+            trust_remote_code=self.provider.hf_trust_remote_code,
+            token=self.provider.hf_auth_token or None,
         )
 
         model_class = self.model_map.get(
-            self.model.hf_model_class or "AutoModelForCausalLM", AutoModelForCausalLM
+            self.provider.hf_model_class or "AutoModelForCausalLM", AutoModelForCausalLM
         )
-        model = model_class.from_pretrained(
-            pretrained_model_name_or_path=self.model.provider_model_id,
-            trust_remote_code=True,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-            use_auth_token=self.model.hf_auth_token or None,
-            attn_implementation=self.model.hf_attn_implementation,
-            device_map="auto",
-        )
+
+        # Build model loading kwargs
+        model_kwargs: Dict[str, Any] = {
+            "pretrained_model_name_or_path": self.provider.provider_model_id,
+            "trust_remote_code": self.provider.hf_trust_remote_code,
+            "torch_dtype": self._get_torch_dtype(),
+            "token": self.provider.hf_auth_token or None,
+            "device_map": self.provider.hf_device_map or "auto",
+        }
+
+        # Add attention implementation if specified
+        if self.provider.hf_attn_implementation:
+            model_kwargs["attn_implementation"] = self.provider.hf_attn_implementation
+
+        model = model_class.from_pretrained(**model_kwargs)
 
         return model, tokenizer
 
@@ -109,26 +151,20 @@ class ModelHFClient:
         return decoded_text
 
     async def _update_success(self) -> None:
-        """Update endpoint statistics for successful inference."""
+        """Update provider statistics for successful inference."""
 
         def _update() -> None:
-            endpoint = self.model.get_primary_endpoint()
-            if endpoint:
-                endpoint.total_requests += 1
-                endpoint.last_success_at = timezone.now()
-                endpoint.save(update_fields=["total_requests", "last_success_at"])
+            self.provider.updated_at = timezone.now()
+            self.provider.save(update_fields=["updated_at"])
 
         await sync_to_async(_update)()
 
     async def _update_failure(self) -> None:
-        """Update endpoint statistics for failed inference."""
+        """Update provider statistics for failed inference."""
 
         def _update() -> None:
-            endpoint = self.model.get_primary_endpoint()
-            if endpoint:
-                endpoint.failed_requests += 1
-                endpoint.last_failure_at = timezone.now()
-                endpoint.save(update_fields=["failed_requests", "last_failure_at"])
+            self.provider.updated_at = timezone.now()
+            self.provider.save(update_fields=["updated_at"])
 
         await sync_to_async(_update)()
 
@@ -136,11 +172,11 @@ class ModelHFClient:
     async def call_async(self, input_text: str) -> Dict[str, Any]:
         """
         Run asynchronous inference on the model.
-        Supports both pipeline and manual model modes.
+        Supports both pipeline and manual model modes based on provider configuration.
         """
         start_time = time.time()
         try:
-            if self.model.hf_use_pipeline:
+            if self.provider.hf_use_pipeline:
                 pipe = self._load_pipeline()
                 result = pipe(input_text)
                 output_text = result if isinstance(result, str) else str(result)
@@ -155,8 +191,8 @@ class ModelHFClient:
                 "success": True,
                 "output": output_text,
                 "latency_ms": latency_ms,
-                "provider": "HuggingFace",
-                "model_id": self.model.provider_model_id,
+                "provider": self.provider.provider,
+                "model_id": self.provider.provider_model_id,
             }
 
         except Exception as e:
@@ -165,8 +201,8 @@ class ModelHFClient:
                 "success": False,
                 "error": str(e),
                 "latency_ms": (time.time() - start_time) * 1000,
-                "provider": "HuggingFace",
-                "model_id": self.model.provider_model_id,
+                "provider": self.provider.provider,
+                "model_id": self.provider.provider_model_id,
             }
 
     def call(self, input_text: str) -> Dict[str, Any]:

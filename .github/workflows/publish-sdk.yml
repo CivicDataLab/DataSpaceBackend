@@ -23,6 +23,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          ref: ${{ github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -35,13 +36,30 @@ jobs:
           pip install build twine
           pip install -e ".[dev]"
 
-      - name: Update version in setup.py
+      - name: Update version in __version__.py
         run: |
-          sed -i "s/version=\".*\"/version=\"${{ inputs.version }}\"/" setup.py
+          echo '"""Version information for DataSpace SDK."""' > dataspace_sdk/__version__.py
+          echo "" >> dataspace_sdk/__version__.py
+          echo "__version__ = \"${{ inputs.version }}\"" >> dataspace_sdk/__version__.py
 
-      - name: Update version in pyproject.toml
+      - name: Update version in pyproject.toml (if exists)
         run: |
-          sed -i "s/version = \".*\"/version = \"${{ inputs.version }}\"/" pyproject.toml
+          if [ -f pyproject.toml ]; then
+            sed -i "s/version = \".*\"/version = \"${{ inputs.version }}\"/" pyproject.toml
+          fi
+
+      - name: Commit and push version changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add dataspace_sdk/__version__.py
+          if [ -f pyproject.toml ]; then git add pyproject.toml; fi
+          git commit -m "Bump SDK version to ${{ inputs.version }}" || echo "No changes to commit"
+
+          # Get current branch name
+          BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
+          echo "Pushing to branch: $BRANCH_NAME"
+          git push origin $BRANCH_NAME || echo "No changes to push"
 
       - name: Run tests
         run: |
@@ -64,14 +82,6 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           twine upload dist/*
-
-      - name: Commit version changes
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add setup.py pyproject.toml
-          git commit -m "Bump version to ${{ inputs.version }}" || echo "No changes to commit"
-          git push || echo "No changes to push"
 
       - name: Create GitHub Release
         uses: actions/create-release@v1

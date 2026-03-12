@@ -17,6 +17,7 @@ class AIModelClient(BaseAPIClient):
         status: Optional[str] = None,
         model_type: Optional[str] = None,
         provider: Optional[str] = None,
+        domain: Optional[str] = None,
         sort: Optional[str] = None,
         page: int = 1,
         page_size: int = 10,
@@ -32,6 +33,7 @@ class AIModelClient(BaseAPIClient):
             status: Filter by status (ACTIVE, INACTIVE, etc.)
             model_type: Filter by model type (LLM, VISION, etc.)
             provider: Filter by provider (OPENAI, ANTHROPIC, etc.)
+            domain: Filter by domain (HEALTHCARE, EDUCATION, etc.)
             sort: Sort order (recent, alphabetical)
             page: Page number (1-indexed)
             page_size: Number of results per page
@@ -58,10 +60,12 @@ class AIModelClient(BaseAPIClient):
             params["model_type"] = model_type
         if provider:
             params["provider"] = provider
+        if domain:
+            params["domain"] = domain
         if sort:
             params["sort"] = sort
 
-        return self.get("/api/search/aimodel/", params=params)
+        return super().get("/api/search/aimodel/", params=params)
 
     def get_by_id(self, model_id: str) -> Dict[str, Any]:
         """
@@ -73,7 +77,8 @@ class AIModelClient(BaseAPIClient):
         Returns:
             Dictionary containing AI model information
         """
-        return self.get(f"/api/aimodels/{model_id}/")
+        # Use parent class get method with full endpoint path
+        return super().get(f"/api/aimodels/{model_id}/")
 
     def get_by_id_graphql(self, model_id: str) -> Dict[str, Any]:
         """
@@ -86,26 +91,14 @@ class AIModelClient(BaseAPIClient):
             Dictionary containing AI model information
         """
         query = """
-        query GetAIModel($id: UUID!) {
-            aiModel(id: $id) {
+        query GetAIModel($id: Int!) {
+            getAiModel(modelId: $id) {
                 id
                 name
                 displayName
                 description
                 modelType
-                provider
-                version
-                providerModelId
-                hfUsePipeline
-                hfAuthToken
-                hfModelClass
-                hfAttnImplementation
-                framework
-                supportsStreaming
-                maxTokens
-                supportedLanguages
-                inputSchema
-                outputSchema
+                domain
                 status
                 isPublic
                 createdAt
@@ -126,13 +119,49 @@ class AIModelClient(BaseAPIClient):
                     id
                     name
                 }
-                endpoints {
+                versions {
                     id
-                    name
-                    url
-                    httpMethod
-                    authType
-                    isActive
+                    version
+                    versionNotes
+                    lifecycleStage
+                    isLatest
+                    supportsStreaming
+                    maxTokens
+                    supportedLanguages
+                    inputSchema
+                    outputSchema
+                    status
+                    createdAt
+                    updatedAt
+                    publishedAt
+                    providers {
+                        id
+                        provider
+                        providerModelId
+                        isPrimary
+                        isActive
+                        # API Configuration
+                        apiEndpointUrl
+                        apiHttpMethod
+                        apiTimeoutSeconds
+                        apiAuthType
+                        apiAuthHeaderName
+                        apiKey
+                        apiKeyPrefix
+                        apiHeaders
+                        apiRequestTemplate
+                        apiResponsePath
+                        # HuggingFace Configuration
+                        hfUsePipeline
+                        hfAuthToken
+                        hfModelClass
+                        hfAttnImplementation
+                        hfTrustRemoteCode
+                        hfTorchDtype
+                        hfDeviceMap
+                        framework
+                        config
+                    }
                 }
             }
         }
@@ -142,7 +171,7 @@ class AIModelClient(BaseAPIClient):
             "/api/graphql",
             json_data={
                 "query": query,
-                "variables": {"id": model_id},
+                "variables": {"id": int(model_id)},
             },
         )
 
@@ -151,7 +180,7 @@ class AIModelClient(BaseAPIClient):
 
             raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
 
-        result: Dict[str, Any] = response.get("data", {}).get("aiModel", {})
+        result: Dict[str, Any] = response.get("data", {}).get("getAiModel", {})
         return result
 
     def list_all(
@@ -183,8 +212,7 @@ class AIModelClient(BaseAPIClient):
                 displayName
                 description
                 modelType
-                provider
-                version
+                domain
                 status
                 isPublic
                 createdAt
@@ -196,6 +224,28 @@ class AIModelClient(BaseAPIClient):
                 tags {
                     id
                     value
+                }
+                sectors {
+                    id
+                    name
+                    slug
+                }
+                geographies {
+                    id
+                    name
+                }
+                versions {
+                    id
+                    version
+                    lifecycleStage
+                    isLatest
+                    status
+                    providers {
+                        id
+                        provider
+                        providerModelId
+                        isPrimary
+                    }
                 }
             }
         }
@@ -293,7 +343,11 @@ class AIModelClient(BaseAPIClient):
         return self.delete(f"/api/aimodels/{model_id}/")
 
     def call_model(
-        self, model_id: str, input_text: str, parameters: Optional[Dict[str, Any]] = None
+        self,
+        model_id: str,
+        input_text: str,
+        parameters: Optional[Dict[str, Any]] = None,
+        version_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Call an AI model with input text using the appropriate client (API or HuggingFace).
@@ -302,6 +356,7 @@ class AIModelClient(BaseAPIClient):
             model_id: UUID of the AI model
             input_text: Input text to process
             parameters: Optional parameters for the model call (temperature, max_tokens, etc.)
+            version_id: Optional specific version ID to call (defaults to primary/latest version)
 
         Returns:
             Dictionary containing model response:
@@ -314,13 +369,24 @@ class AIModelClient(BaseAPIClient):
                 ...
             }
         """
+        payload: Dict[str, Any] = {
+            "input_text": input_text,
+            "parameters": parameters or {},
+        }
+        if version_id is not None:
+            payload["version_id"] = version_id
+
         return self.post(
             f"/api/aimodels/{model_id}/call/",
-            json_data={"input_text": input_text, "parameters": parameters or {}},
+            json_data=payload,
         )
 
     def call_model_async(
-        self, model_id: str, input_text: str, parameters: Optional[Dict[str, Any]] = None
+        self,
+        model_id: str,
+        input_text: str,
+        parameters: Optional[Dict[str, Any]] = None,
+        version_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Call an AI model asynchronously (returns task ID for long-running operations).
@@ -329,6 +395,7 @@ class AIModelClient(BaseAPIClient):
             model_id: UUID of the AI model
             input_text: Input text to process
             parameters: Optional parameters for the model call
+            version_id: Optional specific version ID to call (defaults to primary/latest version)
 
         Returns:
             Dictionary containing task information:
@@ -338,7 +405,624 @@ class AIModelClient(BaseAPIClient):
                 "model_id": str
             }
         """
+        payload: Dict[str, Any] = {
+            "input_text": input_text,
+            "parameters": parameters or {},
+        }
+        if version_id is not None:
+            payload["version_id"] = version_id
+
         return self.post(
             f"/api/aimodels/{model_id}/call-async/",
-            json_data={"input_text": input_text, "parameters": parameters or {}},
+            json_data=payload,
         )
+
+    # ==================== Version Management ====================
+
+    def get_versions(self, model_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all versions for an AI model.
+
+        Args:
+            model_id: ID of the AI model
+
+        Returns:
+            List of version dictionaries
+        """
+        query = """
+        query GetModelVersions($filters: AIModelFilter) {
+            aiModels(filters: $filters) {
+                versions {
+                    id
+                    version
+                    versionNotes
+                    lifecycleStage
+                    isLatest
+                    supportsStreaming
+                    maxTokens
+                    supportedLanguages
+                    status
+                    createdAt
+                    updatedAt
+                    publishedAt
+                    providers {
+                        id
+                        provider
+                        providerModelId
+                        isPrimary
+                        isActive
+                    }
+                }
+            }
+        }
+        """
+
+        response = self.post(
+            "/api/graphql",
+            json_data={
+                "query": query,
+                "variables": {"filters": {"id": model_id}},
+            },
+        )
+
+        if "errors" in response:
+            from dataspace_sdk.exceptions import DataSpaceAPIError
+
+            raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
+
+        models = response.get("data", {}).get("aiModels", [])
+        if models:
+            result: List[Dict[str, Any]] = models[0].get("versions", [])
+            return result
+        return []
+
+    def create_version(
+        self,
+        model_id: int,
+        version: str,
+        lifecycle_stage: str = "DEVELOPMENT",
+        is_latest: bool = False,
+        copy_from_version_id: Optional[int] = None,
+        version_notes: Optional[str] = None,
+        supports_streaming: bool = False,
+        max_tokens: Optional[int] = None,
+        supported_languages: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create a new version for an AI model.
+
+        Args:
+            model_id: ID of the AI model
+            version: Version string (e.g., "1.0", "2.1")
+            lifecycle_stage: One of DEVELOPMENT, TESTING, BETA, STAGING, PRODUCTION, DEPRECATED, RETIRED
+            is_latest: Whether this should be the primary version
+            copy_from_version_id: Optional version ID to copy providers from
+            version_notes: Optional notes about this version
+            supports_streaming: Whether this version supports streaming
+            max_tokens: Maximum tokens supported
+            supported_languages: List of supported language codes
+
+        Returns:
+            Dictionary containing created version information
+        """
+        mutation = """
+        mutation CreateAIModelVersion($input: CreateAIModelVersionInput!) {
+            createAiModelVersion(input: $input) {
+                success
+                data {
+                    id
+                    version
+                    lifecycleStage
+                    isLatest
+                    status
+                }
+                errors
+            }
+        }
+        """
+
+        input_data: Dict[str, Any] = {
+            "modelId": model_id,
+            "version": version,
+            "lifecycleStage": lifecycle_stage,
+            "isLatest": is_latest,
+            "supportsStreaming": supports_streaming,
+        }
+
+        if copy_from_version_id:
+            input_data["copyFromVersionId"] = copy_from_version_id
+        if version_notes:
+            input_data["versionNotes"] = version_notes
+        if max_tokens:
+            input_data["maxTokens"] = max_tokens
+        if supported_languages:
+            input_data["supportedLanguages"] = supported_languages
+
+        response = self.post(
+            "/api/graphql",
+            json_data={
+                "query": mutation,
+                "variables": {"input": input_data},
+            },
+        )
+
+        if "errors" in response:
+            from dataspace_sdk.exceptions import DataSpaceAPIError
+
+            raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
+
+        result: Dict[str, Any] = response.get("data", {}).get("createAiModelVersion", {})
+        return result
+
+    def update_version(
+        self,
+        version_id: int,
+        version: Optional[str] = None,
+        lifecycle_stage: Optional[str] = None,
+        is_latest: Optional[bool] = None,
+        version_notes: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Update an AI model version.
+
+        Args:
+            version_id: ID of the version to update
+            version: New version string
+            lifecycle_stage: New lifecycle stage
+            is_latest: Whether this should be the primary version
+            version_notes: New version notes
+            status: New status
+
+        Returns:
+            Dictionary containing updated version information
+        """
+        mutation = """
+        mutation UpdateAIModelVersion($input: UpdateAIModelVersionInput!) {
+            updateAiModelVersion(input: $input) {
+                success
+                data {
+                    id
+                    version
+                    lifecycleStage
+                    isLatest
+                    status
+                }
+                errors
+            }
+        }
+        """
+
+        input_data: Dict[str, Any] = {"id": version_id}
+
+        if version is not None:
+            input_data["version"] = version
+        if lifecycle_stage is not None:
+            input_data["lifecycleStage"] = lifecycle_stage
+        if is_latest is not None:
+            input_data["isLatest"] = is_latest
+        if version_notes is not None:
+            input_data["versionNotes"] = version_notes
+        if status is not None:
+            input_data["status"] = status
+
+        response = self.post(
+            "/api/graphql",
+            json_data={
+                "query": mutation,
+                "variables": {"input": input_data},
+            },
+        )
+
+        if "errors" in response:
+            from dataspace_sdk.exceptions import DataSpaceAPIError
+
+            raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
+
+        result: Dict[str, Any] = response.get("data", {}).get("updateAiModelVersion", {})
+        return result
+
+    # ==================== Provider Management ====================
+
+    def get_version_providers(self, version_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all providers for a specific version.
+
+        Args:
+            version_id: ID of the version
+
+        Returns:
+            List of provider dictionaries
+        """
+        query = """
+        query GetVersionProviders($versionId: Int!) {
+            aiModelVersion(id: $versionId) {
+                providers {
+                    id
+                    provider
+                    providerModelId
+                    isPrimary
+                    isActive
+                    # API Configuration
+                    apiEndpointUrl
+                    apiHttpMethod
+                    apiTimeoutSeconds
+                    apiAuthType
+                    apiAuthHeaderName
+                    apiKey
+                    apiKeyPrefix
+                    apiHeaders
+                    apiRequestTemplate
+                    apiResponsePath
+                    # HuggingFace Configuration
+                    hfUsePipeline
+                    hfAuthToken
+                    hfModelClass
+                    hfAttnImplementation
+                    hfTrustRemoteCode
+                    hfTorchDtype
+                    hfDeviceMap
+                    framework
+                    config
+                }
+            }
+        }
+        """
+
+        response = self.post(
+            "/api/graphql",
+            json_data={
+                "query": query,
+                "variables": {"versionId": version_id},
+            },
+        )
+
+        if "errors" in response:
+            from dataspace_sdk.exceptions import DataSpaceAPIError
+
+            raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
+
+        version_data = response.get("data", {}).get("aiModelVersion", {})
+        result: List[Dict[str, Any]] = version_data.get("providers", []) if version_data else []
+        return result
+
+    def create_provider(
+        self,
+        version_id: int,
+        provider: str,
+        provider_model_id: str,
+        is_primary: bool = False,
+        # API Configuration
+        api_endpoint_url: Optional[str] = None,
+        api_http_method: str = "POST",
+        api_timeout_seconds: int = 60,
+        api_auth_type: str = "BEARER",
+        api_auth_header_name: str = "Authorization",
+        api_key: Optional[str] = None,
+        api_key_prefix: str = "Bearer",
+        api_headers: Optional[Dict[str, str]] = None,
+        api_request_template: Optional[Dict[str, Any]] = None,
+        api_response_path: Optional[str] = None,
+        # HuggingFace Configuration
+        hf_use_pipeline: bool = False,
+        hf_model_class: Optional[str] = None,
+        hf_auth_token: Optional[str] = None,
+        hf_attn_implementation: Optional[str] = None,
+        hf_trust_remote_code: bool = True,
+        hf_torch_dtype: Optional[str] = "auto",
+        hf_device_map: Optional[str] = "auto",
+        framework: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create a new provider for a version.
+
+        Args:
+            version_id: ID of the version
+            provider: Provider type (OPENAI, LLAMA_OLLAMA, LLAMA_TOGETHER, LLAMA_REPLICATE,
+                     LLAMA_CUSTOM, CUSTOM, HUGGINGFACE)
+            provider_model_id: Model ID at the provider (e.g., "gpt-4", "meta-llama/Llama-2-7b")
+            is_primary: Whether this is the primary provider
+            api_endpoint_url: Full URL for the API endpoint
+            api_http_method: HTTP method (POST, GET)
+            api_timeout_seconds: Request timeout in seconds
+            api_auth_type: Authentication type (BEARER, API_KEY, BASIC, OAUTH2, CUSTOM, NONE)
+            api_auth_header_name: Header name for authentication
+            api_key: API key or token
+            api_key_prefix: Prefix for the API key (e.g., "Bearer")
+            api_headers: Additional headers as dict
+            api_request_template: Request body template as dict
+            api_response_path: JSON path to extract response text
+            hf_use_pipeline: For HuggingFace - whether to use pipeline API
+            hf_model_class: For HuggingFace - model class (e.g., "AutoModelForCausalLM")
+            hf_auth_token: For HuggingFace - auth token for gated models
+            hf_attn_implementation: For HuggingFace - attention implementation
+            hf_trust_remote_code: For HuggingFace - trust remote code
+            hf_torch_dtype: For HuggingFace - torch dtype (auto, float16, bfloat16)
+            hf_device_map: For HuggingFace - device map (auto, cuda, cpu)
+            framework: Framework (pt, tf)
+            config: Additional configuration
+
+        Returns:
+            Dictionary containing created provider information
+        """
+        mutation = """
+        mutation CreateVersionProvider($input: CreateVersionProviderInput!) {
+            createVersionProvider(input: $input) {
+                success
+                data {
+                    id
+                    provider
+                    providerModelId
+                    isPrimary
+                    isActive
+                }
+                errors
+            }
+        }
+        """
+
+        input_data: Dict[str, Any] = {
+            "versionId": version_id,
+            "provider": provider,
+            "providerModelId": provider_model_id,
+            "isPrimary": is_primary,
+            # API Configuration
+            "apiHttpMethod": api_http_method,
+            "apiTimeoutSeconds": api_timeout_seconds,
+            "apiAuthType": api_auth_type,
+            "apiAuthHeaderName": api_auth_header_name,
+            "apiKeyPrefix": api_key_prefix,
+            # HuggingFace Configuration
+            "hfUsePipeline": hf_use_pipeline,
+            "hfTrustRemoteCode": hf_trust_remote_code,
+        }
+
+        # Optional API fields
+        if api_endpoint_url:
+            input_data["apiEndpointUrl"] = api_endpoint_url
+        if api_key:
+            input_data["apiKey"] = api_key
+        if api_headers:
+            input_data["apiHeaders"] = api_headers
+        if api_request_template:
+            input_data["apiRequestTemplate"] = api_request_template
+        if api_response_path:
+            input_data["apiResponsePath"] = api_response_path
+
+        # Optional HuggingFace fields
+        if hf_model_class:
+            input_data["hfModelClass"] = hf_model_class
+        if hf_auth_token:
+            input_data["hfAuthToken"] = hf_auth_token
+        if hf_attn_implementation:
+            input_data["hfAttnImplementation"] = hf_attn_implementation
+        if hf_torch_dtype:
+            input_data["hfTorchDtype"] = hf_torch_dtype
+        if hf_device_map:
+            input_data["hfDeviceMap"] = hf_device_map
+        if framework:
+            input_data["framework"] = framework
+        if config:
+            input_data["config"] = config
+
+        response = self.post(
+            "/api/graphql",
+            json_data={
+                "query": mutation,
+                "variables": {"input": input_data},
+            },
+        )
+
+        if "errors" in response:
+            from dataspace_sdk.exceptions import DataSpaceAPIError
+
+            raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
+
+        result: Dict[str, Any] = response.get("data", {}).get("createVersionProvider", {})
+        return result
+
+    def update_provider(
+        self,
+        provider_id: int,
+        provider_model_id: Optional[str] = None,
+        is_primary: Optional[bool] = None,
+        # API Configuration
+        api_endpoint_url: Optional[str] = None,
+        api_http_method: Optional[str] = None,
+        api_timeout_seconds: Optional[int] = None,
+        api_auth_type: Optional[str] = None,
+        api_auth_header_name: Optional[str] = None,
+        api_key: Optional[str] = None,
+        api_key_prefix: Optional[str] = None,
+        api_headers: Optional[Dict[str, str]] = None,
+        api_request_template: Optional[Dict[str, Any]] = None,
+        api_response_path: Optional[str] = None,
+        # HuggingFace Configuration
+        hf_use_pipeline: Optional[bool] = None,
+        hf_model_class: Optional[str] = None,
+        hf_auth_token: Optional[str] = None,
+        hf_attn_implementation: Optional[str] = None,
+        hf_trust_remote_code: Optional[bool] = None,
+        hf_torch_dtype: Optional[str] = None,
+        hf_device_map: Optional[str] = None,
+        framework: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Update a provider.
+
+        Args:
+            provider_id: ID of the provider to update
+            provider_model_id: New model ID at the provider
+            is_primary: Whether this is the primary provider
+            api_endpoint_url: Full URL for the API endpoint
+            api_http_method: HTTP method (POST, GET)
+            api_timeout_seconds: Request timeout in seconds
+            api_auth_type: Authentication type (BEARER, API_KEY, BASIC, OAUTH2, CUSTOM, NONE)
+            api_auth_header_name: Header name for authentication
+            api_key: API key or token
+            api_key_prefix: Prefix for the API key (e.g., "Bearer")
+            api_headers: Additional headers as dict
+            api_request_template: Request body template as dict
+            api_response_path: JSON path to extract response text
+            hf_use_pipeline: For HuggingFace - whether to use pipeline API
+            hf_model_class: For HuggingFace - model class
+            hf_auth_token: For HuggingFace - auth token
+            hf_attn_implementation: For HuggingFace - attention implementation
+            hf_trust_remote_code: For HuggingFace - trust remote code
+            hf_torch_dtype: For HuggingFace - torch dtype
+            hf_device_map: For HuggingFace - device map
+            framework: Framework (pt, tf)
+            config: Additional configuration
+
+        Returns:
+            Dictionary containing updated provider information
+        """
+        mutation = """
+        mutation UpdateVersionProvider($input: UpdateVersionProviderInput!) {
+            updateVersionProvider(input: $input) {
+                success
+                data {
+                    id
+                    provider
+                    providerModelId
+                    isPrimary
+                    isActive
+                }
+                errors
+            }
+        }
+        """
+
+        input_data: Dict[str, Any] = {"id": provider_id}
+
+        if provider_model_id is not None:
+            input_data["providerModelId"] = provider_model_id
+        if is_primary is not None:
+            input_data["isPrimary"] = is_primary
+        # API Configuration
+        if api_endpoint_url is not None:
+            input_data["apiEndpointUrl"] = api_endpoint_url
+        if api_http_method is not None:
+            input_data["apiHttpMethod"] = api_http_method
+        if api_timeout_seconds is not None:
+            input_data["apiTimeoutSeconds"] = api_timeout_seconds
+        if api_auth_type is not None:
+            input_data["apiAuthType"] = api_auth_type
+        if api_auth_header_name is not None:
+            input_data["apiAuthHeaderName"] = api_auth_header_name
+        if api_key is not None:
+            input_data["apiKey"] = api_key
+        if api_key_prefix is not None:
+            input_data["apiKeyPrefix"] = api_key_prefix
+        if api_headers is not None:
+            input_data["apiHeaders"] = api_headers
+        if api_request_template is not None:
+            input_data["apiRequestTemplate"] = api_request_template
+        if api_response_path is not None:
+            input_data["apiResponsePath"] = api_response_path
+        # HuggingFace Configuration
+        if hf_use_pipeline is not None:
+            input_data["hfUsePipeline"] = hf_use_pipeline
+        if hf_model_class is not None:
+            input_data["hfModelClass"] = hf_model_class
+        if hf_auth_token is not None:
+            input_data["hfAuthToken"] = hf_auth_token
+        if hf_attn_implementation is not None:
+            input_data["hfAttnImplementation"] = hf_attn_implementation
+        if hf_trust_remote_code is not None:
+            input_data["hfTrustRemoteCode"] = hf_trust_remote_code
+        if hf_torch_dtype is not None:
+            input_data["hfTorchDtype"] = hf_torch_dtype
+        if hf_device_map is not None:
+            input_data["hfDeviceMap"] = hf_device_map
+        if framework is not None:
+            input_data["framework"] = framework
+        if config is not None:
+            input_data["config"] = config
+
+        response = self.post(
+            "/api/graphql",
+            json_data={
+                "query": mutation,
+                "variables": {"input": input_data},
+            },
+        )
+
+        if "errors" in response:
+            from dataspace_sdk.exceptions import DataSpaceAPIError
+
+            raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
+
+        result: Dict[str, Any] = response.get("data", {}).get("updateVersionProvider", {})
+        return result
+
+    def delete_provider(self, provider_id: int) -> Dict[str, Any]:
+        """
+        Delete a provider.
+
+        Args:
+            provider_id: ID of the provider to delete
+
+        Returns:
+            Dictionary containing deletion response
+        """
+        mutation = """
+        mutation DeleteVersionProvider($providerId: Int!) {
+            deleteVersionProvider(providerId: $providerId) {
+                success
+                errors
+            }
+        }
+        """
+
+        response = self.post(
+            "/api/graphql",
+            json_data={
+                "query": mutation,
+                "variables": {"providerId": provider_id},
+            },
+        )
+
+        if "errors" in response:
+            from dataspace_sdk.exceptions import DataSpaceAPIError
+
+            raise DataSpaceAPIError(f"GraphQL error: {response['errors']}")
+
+        result: Dict[str, Any] = response.get("data", {}).get("deleteVersionProvider", {})
+        return result
+
+    # ==================== Helper Methods ====================
+
+    def get_primary_version(self, model_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get the primary (latest) version for an AI model.
+
+        Args:
+            model_id: ID of the AI model
+
+        Returns:
+            Dictionary containing the primary version, or None if no versions exist
+        """
+        versions = self.get_versions(model_id)
+        for version in versions:
+            if version.get("isLatest"):
+                return version
+        return versions[0] if versions else None
+
+    def get_primary_provider(self, version_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get the primary provider for a version.
+
+        Args:
+            version_id: ID of the version
+
+        Returns:
+            Dictionary containing the primary provider, or None if no providers exist
+        """
+        providers = self.get_version_providers(version_id)
+        for provider in providers:
+            if provider.get("isPrimary"):
+                return provider
+        return providers[0] if providers else None

@@ -6,8 +6,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from api.utils.keycloak_utils import keycloak_manager
 from authorization.consent import UserConsent
-from authorization.keycloak import keycloak_manager
 from authorization.models import User
 from authorization.serializers import UserConsentSerializer
 from authorization.services import AuthorizationService
@@ -62,9 +62,7 @@ class KeycloakLoginView(views.APIView):
         logger.info(f"Syncing user with Keycloak ID: {user_info.get('sub')}")
         user = keycloak_manager.sync_user_from_keycloak(user_info, roles, organizations)
         if not user:
-            logger.error(
-                f"Failed to sync user with Keycloak ID: {user_info.get('sub')}"
-            )
+            logger.error(f"Failed to sync user with Keycloak ID: {user_info.get('sub')}")
             return Response(
                 {"error": "Failed to synchronize user information"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -176,9 +174,7 @@ class UserConsentView(APIView):
                 user=request.user, activity_tracking_enabled=False  # type: ignore[misc]
             )
 
-        serializer = UserConsentSerializer(
-            consent, data=request.data, context={"request": request}
-        )
+        serializer = UserConsentSerializer(consent, data=request.data, context={"request": request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)

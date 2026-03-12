@@ -1,5 +1,6 @@
 from api.models.AccessModel import AccessModel, AccessModelResource
 from api.models.AIModel import AIModel, ModelAPIKey, ModelEndpoint
+from api.models.AIModelVersion import AIModelVersion, VersionProvider
 from api.models.Catalog import Catalog
 from api.models.Collaborative import Collaborative
 from api.models.CollaborativeMetadata import CollaborativeMetadata
@@ -12,6 +13,8 @@ from api.models.DataSpace import DataSpace
 from api.models.Geography import Geography
 from api.models.Metadata import Metadata
 from api.models.Organization import Organization
+from api.models.PromptDataset import PromptDataset
+from api.models.PromptResource import PromptResource
 from api.models.Resource import (
     Resource,
     ResourceDataTable,

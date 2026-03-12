@@ -32,9 +32,12 @@ class KeycloakLoginView(views.APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # Get user roles and organizations from the token
-        roles = keycloak_manager.get_user_roles(keycloak_token)
-        organizations = keycloak_manager.get_user_organizations(keycloak_token)
+        # Get token introspection data for roles and organizations
+        token_info = keycloak_manager.keycloak_openid.introspect(keycloak_token)
+
+        # Get user roles and organizations from the token introspection data
+        roles = keycloak_manager.get_user_roles_from_token_info(token_info)
+        organizations = keycloak_manager.get_user_organizations_from_token_info(token_info)
 
         # Sync the user information with our database
         user = keycloak_manager.sync_user_from_keycloak(user_info, roles, organizations)
@@ -93,6 +96,12 @@ class UserInfoView(views.APIView):
                         "id": org.organization.id,  # type: ignore[attr-defined]
                         "name": org.organization.name,  # type: ignore[attr-defined]
                         "role": org.role.name,  # type: ignore[attr-defined]
+                        "description": org.organization.description,  # type: ignore[attr-defined]
+                        "logo": org.organization.logo.url if org.organization.logo else None,  # type: ignore[attr-defined]
+                        "homepage": org.organization.homepage,  # type: ignore[attr-defined]
+                        "created": org.organization.created,  # type: ignore[attr-defined]
+                        "updated": org.organization.modified,  # type: ignore[attr-defined]
+                        "slug": org.organization.slug,  # type: ignore[attr-defined]
                     }
                     for org in user.organizationmembership_set.all()  # type: ignore[union-attr, arg-type]
                 ],

@@ -25,6 +25,7 @@ class BaseAPIClient:
         """
         self.base_url = base_url.rstrip("/")
         self.auth_client = auth_client
+        self.default_headers: Dict[str, str] = {}
 
     def _get_headers(self, additional_headers: Optional[Dict[str, str]] = None) -> Dict[str, str]:
         """
@@ -37,6 +38,9 @@ class BaseAPIClient:
             Dictionary of headers
         """
         headers = {"Content-Type": "application/json"}
+
+        if self.default_headers:
+            headers.update(self.default_headers)
 
         if self.auth_client and self.auth_client.is_authenticated():
             headers["Authorization"] = f"Bearer {self.auth_client.access_token}"

@@ -5,7 +5,7 @@ from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.request import Request
 
-from authorization.keycloak import keycloak_manager
+from api.utils.keycloak_utils import keycloak_manager
 from authorization.models import User
 
 
@@ -41,20 +41,37 @@ class KeycloakAuthentication(BaseAuthentication):
 
         # Ensure we have a subject ID in the token
         if not user_info.get("sub"):
-            raise AuthenticationFailed(
-                "Token validation succeeded but missing subject ID"
-            )
+            raise AuthenticationFailed("Token validation succeeded but missing subject ID")
 
+        # Check if this is a Django JWT (already validated user) or Keycloak token
+        # Django JWTs have 'user_id' in the payload, Keycloak tokens don't
+        from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+        from rest_framework_simplejwt.tokens import AccessToken
+
+        try:
+            # Try to decode as Django JWT
+            access_token = AccessToken(token)  # type: ignore[arg-type]
+            user_id = access_token.get("user_id")
+
+            if user_id:
+                # This is a Django JWT - user is already synced, just get from DB
+                user = User.objects.get(id=user_id)
+                return (user, token)
+        except (TokenError, InvalidToken, User.DoesNotExist):
+            # Not a Django JWT or user not found, continue with Keycloak flow
+            pass
+
+        # This is a Keycloak token - sync the user
         # Get user roles and organizations from the token
         roles = keycloak_manager.get_user_roles(token)
         organizations = keycloak_manager.get_user_organizations(token)
 
         # Sync the user information with our database
-        user = keycloak_manager.sync_user_from_keycloak(user_info, roles, organizations)
-        if not user:
+        synced_user = keycloak_manager.sync_user_from_keycloak(user_info, roles, organizations)
+        if not synced_user:
             raise AuthenticationFailed("Failed to synchronize user information")
 
-        return (user, token)
+        return (synced_user, token)
 
     def authenticate_header(self, request: Request) -> str:
         """

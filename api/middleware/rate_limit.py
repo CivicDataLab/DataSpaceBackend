@@ -1,7 +1,9 @@
 import logging
+import os
 import time
 from typing import Any, Callable, Optional, cast
 
+from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse
 from redis.exceptions import RedisError
@@ -9,12 +11,32 @@ from redis.exceptions import RedisError
 logger = logging.getLogger(__name__)
 
 
+def get_whitelisted_ips() -> set[str]:
+    """Get the set of whitelisted IPs from settings or environment variable.
+
+    Can be configured via:
+    - RATE_LIMIT_WHITELIST_IPS in Django settings (list)
+    - RATE_LIMIT_WHITELIST_IPS environment variable (comma-separated string)
+    """
+    # First check Django settings
+    whitelist = getattr(settings, "RATE_LIMIT_WHITELIST_IPS", None)
+    if whitelist:
+        return set(whitelist)
+
+    # Fall back to environment variable
+    env_whitelist = os.environ.get("RATE_LIMIT_WHITELIST_IPS", "")
+    if env_whitelist:
+        return {ip.strip() for ip in env_whitelist.split(",") if ip.strip()}
+
+    return set()
+
+
 class HttpResponseTooManyRequests(HttpResponse):
     status_code = 429
 
 
 def rate_limit_middleware(
-    get_response: Callable[[HttpRequest], HttpResponse]
+    get_response: Callable[[HttpRequest], HttpResponse],
 ) -> Callable[[HttpRequest], HttpResponse]:
     """Rate limiting middleware that uses a simple cache-based counter."""
 
@@ -78,10 +100,18 @@ def rate_limit_middleware(
             return True  # Allow request on unexpected error
 
     def middleware(request: HttpRequest) -> HttpResponse:
+        client_ip = get_client_ip(request)
+        whitelisted_ips = get_whitelisted_ips()
+
+        # Skip rate limiting for whitelisted IPs
+        if client_ip in whitelisted_ips:
+            logger.debug(f"Skipping rate limit for whitelisted IP: {client_ip}")
+            return get_response(request)
+
         if not check_rate_limit(request):
             logger.warning(
                 f"Rate limited - Method: {request.method}, "
-                f"Path: {request.path}, IP: {get_client_ip(request)}"
+                f"Path: {request.path}, IP: {client_ip}"
             )
             return HttpResponseTooManyRequests()
 

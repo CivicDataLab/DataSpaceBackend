@@ -22,11 +22,14 @@ from authorization.keycloak_settings import *
 
 from .cache_settings import *
 
-env = environ.Env(DEBUG=(bool, False))
-DEBUG = env.bool("DEBUG", default=True)
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load .env file FIRST, before reading any env variables
+env = environ.Env(DEBUG=(bool, False))
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
+
+DEBUG = env.bool("DEBUG", default=True)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
@@ -274,6 +277,9 @@ ELASTICSEARCH_INDEX_NAMES = {
     "search.documents.dataset_document": "dataset",
     "search.documents.usecase_document": "usecase",
     "search.documents.aimodel_document": "aimodel",
+    "search.documents.collaborative_document": "collaborative",
+    "search.documents.publisher_document.OrganizationPublisherDocument": "organization_publisher",
+    "search.documents.publisher_document.UserPublisherDocument": "user_publisher",
 }
 
 
@@ -301,9 +307,7 @@ REST_FRAMEWORK = {
 
 # Swagger Settings
 SWAGGER_SETTINGS = {
-    "SECURITY_DEFINITIONS": {
-        "Bearer": {"type": "apiKey", "name": "Authorization", "in": "header"}
-    }
+    "SECURITY_DEFINITIONS": {"Bearer": {"type": "apiKey", "name": "Authorization", "in": "header"}}
 }
 
 # Structured Logging Configuration
@@ -370,17 +374,11 @@ OTEL_EXPORTER_OTLP_PROTOCOL = "grpc"
 
 # OpenTelemetry Sampling Configuration
 OTEL_TRACES_SAMPLER = "parentbased_traceidratio"
-OTEL_TRACES_SAMPLER_ARG = os.getenv(
-    "OTEL_TRACES_SAMPLER_ARG", "1.0"
-)  # Sample 100% in dev
+OTEL_TRACES_SAMPLER_ARG = os.getenv("OTEL_TRACES_SAMPLER_ARG", "1.0")  # Sample 100% in dev
 
 # OpenTelemetry Metrics Configuration
-OTEL_METRIC_EXPORT_INTERVAL_MILLIS = int(
-    os.getenv("OTEL_METRIC_EXPORT_INTERVAL_MILLIS", "30000")
-)
-OTEL_METRIC_EXPORT_TIMEOUT_MILLIS = int(
-    os.getenv("OTEL_METRIC_EXPORT_TIMEOUT_MILLIS", "30000")
-)
+OTEL_METRIC_EXPORT_INTERVAL_MILLIS = int(os.getenv("OTEL_METRIC_EXPORT_INTERVAL_MILLIS", "30000"))
+OTEL_METRIC_EXPORT_TIMEOUT_MILLIS = int(os.getenv("OTEL_METRIC_EXPORT_TIMEOUT_MILLIS", "30000"))
 
 # OpenTelemetry Instrumentation Configuration
 OTEL_PYTHON_DJANGO_INSTRUMENT = True

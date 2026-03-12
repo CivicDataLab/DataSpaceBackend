@@ -12,6 +12,7 @@ from api.utils.enums import (
     EndpointAuthType,
     EndpointHTTPMethod,
     HFModelClass,
+    PromptDomain,
 )
 
 User = get_user_model()
@@ -82,8 +83,6 @@ class AIModel(models.Model):
         blank=True,
         related_name="ai_models",
     )
-    # API Configuration
-    # Endpoints are stored in separate ModelEndpoint table for flexibility
 
     # Model Capabilities
     supports_streaming = models.BooleanField(default=False)
@@ -92,19 +91,34 @@ class AIModel(models.Model):
     )
     supported_languages = models.JSONField(
         default=list,
+        blank=True,
+        null=True,
         help_text="List of supported language codes (e.g., ['en', 'es', 'fr'])",
     )
 
     # Input/Output Schema
-    input_schema = models.JSONField(default=dict, help_text="Expected input format and parameters")
-    output_schema = models.JSONField(default=dict, help_text="Expected output format")
+    input_schema = models.JSONField(
+        default=dict, blank=True, null=True, help_text="Expected input format and parameters"
+    )
+    output_schema = models.JSONField(
+        default=dict, blank=True, null=True, help_text="Expected output format"
+    )
 
     # Metadata
     tags = models.ManyToManyField("api.Tag", blank=True)
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="ai_models")
     geographies = models.ManyToManyField("api.Geography", blank=True, related_name="ai_models")
+    domain = models.CharField(
+        max_length=200,
+        choices=PromptDomain.choices,
+        blank=True,
+        null=True,
+        help_text="Domain or category (e.g., healthcare, education, legal)",
+    )
     metadata = models.JSONField(
         default=dict,
+        blank=True,
+        null=True,
         help_text="Additional metadata (training data info, limitations, etc.)",
     )
 
