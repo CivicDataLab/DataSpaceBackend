@@ -10,8 +10,9 @@ processors:
   batch:
 
 exporters:
-  logging:
-    loglevel: warn
+  # 'logging' is replaced by 'debug'
+  debug:
+    verbosity: normal # 'normal' is equivalent to the old 'info'/'warn' levels
   otlp/elastic:
     endpoint: "apm-server:8200"
     tls:
@@ -26,9 +27,9 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      exporters: [logging, otlp/elastic]
-      processors: [batch]
+      processors: [memory_limiter, batch] # Added memory_limiter to the pipeline
+      exporters: [debug, otlp/elastic]
     metrics:
       receivers: [otlp]
-      exporters: [logging, otlp/elastic]
-      processors: [batch]
+      processors: [memory_limiter, batch] # Added memory_limiter to the pipeline
+      exporters: [debug, otlp/elastic]
