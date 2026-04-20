@@ -62,7 +62,7 @@ class Collaborative(models.Model):
     platform_url = models.URLField(blank=True, null=True)
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        if self.title:
+        if self.title and not self.slug:
             self.slug = slugify(cast(str, self.title))
         super().save(*args, **kwargs)
 
