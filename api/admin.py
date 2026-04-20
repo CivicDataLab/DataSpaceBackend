@@ -1,8 +1,6 @@
 from django.contrib import admin
 
 from api.models import (
-    AccessModel,
-    AccessModelResource,
     AIModel,
     AIModelVersion,
     Catalog,
@@ -404,22 +402,6 @@ class ModelAPIKeyAdmin(admin.ModelAdmin):
         ),
     )
 
-
-# ---------------------------------------------------------------------------
-# Access control
-# ---------------------------------------------------------------------------
-
-@admin.register(AccessModel)
-class AccessModelAdmin(admin.ModelAdmin):
-    list_display = ("name", "created", "modified")
-    search_fields = ("name",)
-
-
-@admin.register(AccessModelResource)
-class AccessModelResourceAdmin(admin.ModelAdmin):
-    list_display = ("access_model", "resource")
-    list_filter = ("access_model",)
-    search_fields = ("access_model__name", "resource__title")
 
 
 # ---------------------------------------------------------------------------
