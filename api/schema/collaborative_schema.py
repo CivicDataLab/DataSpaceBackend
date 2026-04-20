@@ -78,6 +78,7 @@ class CollaborativeInputPartial:
     logo: Optional[Upload] = strawberry.field(default=None)
     cover_image: Optional[Upload] = strawberry.field(default=None)
     title: Optional[str] = None
+    slug: Optional[str] = None
     summary: Optional[str] = None
     platform_url: Optional[str] = None
     tags: Optional[List[str]] = None
@@ -426,6 +427,10 @@ class Mutation:
             if data.title.strip() == "":
                 raise ValueError("Title cannot be empty.")
             collaborative.title = data.title.strip()
+        if data.slug is not None:
+            if data.slug.strip() == "":
+                raise ValueError("Slug cannot be empty.")
+            collaborative.slug = data.slug.strip()
         if data.summary is not None:
             collaborative.summary = data.summary.strip()
         if data.platform_url is not None:
