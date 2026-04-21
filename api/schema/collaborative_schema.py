@@ -3,6 +3,7 @@
 # mypy: disable-error-code=operator
 
 import datetime
+import re
 import uuid
 from typing import List, Optional
 
@@ -428,9 +429,14 @@ class Mutation:
                 raise ValueError("Title cannot be empty.")
             collaborative.title = data.title.strip()
         if data.slug is not None:
-            if data.slug.strip() == "":
+            slug = data.slug.strip()
+            if slug == "":
                 raise ValueError("Slug cannot be empty.")
-            collaborative.slug = data.slug.strip()
+            if not re.match(r"^[a-z0-9]+(?:-[a-z0-9]+)*$", slug):
+                raise ValueError(
+                    "Slug must be lowercase and contain only alphanumeric characters and hyphens."
+                )
+            collaborative.slug = slug
         if data.summary is not None:
             collaborative.summary = data.summary.strip()
         if data.platform_url is not None:
