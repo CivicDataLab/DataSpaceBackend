@@ -27,11 +27,14 @@ class AuthorizationService:
             List of dictionaries containing organization info and user's role
         """
         # Use explicit type annotation for the queryset result
-        memberships = OrganizationMembership.objects.filter(
-            user_id=user_id
-        ).select_related(
+        memberships = OrganizationMembership.objects.filter(user_id=user_id).select_related(
             "organization", "role"
         )  # type: ignore[attr-defined]
+
+        logger.info(
+            f"Getting organizations for user_id={user_id}, found {memberships.count()} memberships"
+        )
+
         return [
             {
                 "id": membership.organization.id,  # type: ignore[attr-defined]
@@ -59,9 +62,7 @@ class AuthorizationService:
             List of dictionaries containing dataset info and user's role
         """
         # Use explicit type annotation for the queryset result
-        dataset_permissions = DatasetPermission.objects.filter(
-            user_id=user_id
-        ).select_related(
+        dataset_permissions = DatasetPermission.objects.filter(user_id=user_id).select_related(
             "dataset", "role"
         )  # type: ignore[attr-defined]
         return [
@@ -80,9 +81,7 @@ class AuthorizationService:
         ]
 
     @staticmethod
-    def check_organization_permission(
-        user_id: int, organization_id: int, operation: str
-    ) -> bool:
+    def check_organization_permission(user_id: int, organization_id: int, operation: str) -> bool:
         """
         Check if a user has permission to perform an operation on an organization.
 
@@ -120,9 +119,7 @@ class AuthorizationService:
             return False
 
     @staticmethod
-    def check_dataset_permission(
-        user_id: int, dataset_id: Union[int, str], operation: str
-    ) -> bool:
+    def check_dataset_permission(user_id: int, dataset_id: Union[int, str], operation: str) -> bool:
         """
         Check if a user has permission to perform an operation on a dataset.
         Checks both organization-level and dataset-specific permissions.

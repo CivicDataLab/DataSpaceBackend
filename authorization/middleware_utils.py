@@ -1,18 +1,30 @@
+import hashlib
 from typing import Any, Callable, Dict, List, Optional, cast
 
 import structlog
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
+from django.core.cache import cache
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.utils.functional import SimpleLazyObject
 from rest_framework.request import Request
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.tokens import AccessToken
 
 from api.utils.debug_utils import debug_auth_headers, debug_token_validation
-from authorization.keycloak import keycloak_manager
+from api.utils.keycloak_utils import keycloak_manager
 from authorization.models import User
 
 logger = structlog.getLogger(__name__)
+
+TOKEN_CACHE_TTL = 60 * 5  # 5 minutes
+
+
+def _get_token_cache_key(token: str) -> str:
+    """Return a safe Redis key derived from the token without storing the raw token."""
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    return f"auth_token:{token_hash}"
 
 
 def get_user_from_keycloak_token(request: HttpRequest) -> User:
@@ -50,14 +62,23 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
                 # Use the raw header value, but check if it might be a raw token
                 # (no 'Bearer ' prefix but still a valid JWT format)
                 token = auth_header
-                logger.debug(
-                    f"Using raw Authorization header as token, length: {len(token)}"
-                )
+                logger.debug(f"Using raw Authorization header as token, length: {len(token)}")
 
         # If no token found, return anonymous user
         if not token:
             logger.debug("No token found, returning anonymous user")
             return cast(User, AnonymousUser())
+
+        # Check cache before doing any validation or DB work
+        cache_key = _get_token_cache_key(token)
+        cached_user_id = cache.get(cache_key)
+        if cached_user_id:
+            try:
+                user = User.objects.get(id=cached_user_id)
+                logger.debug(f"Returning cached authenticated user: {user.username}")
+                return user
+            except User.DoesNotExist:
+                cache.delete(cache_key)
 
         # Log token details for debugging
         logger.debug(f"Processing token of length: {len(token)}")
@@ -70,7 +91,29 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
         # For debugging, print the raw token
         logger.debug(f"Raw token: {token}")
 
+        # First, try to validate as Django JWT token
         try:
+            logger.debug("Attempting to validate as Django JWT token")
+            access_token = AccessToken(token)
+            user_id = access_token.get("user_id")
+
+            if user_id:
+                logger.debug(f"Valid Django JWT token for user_id: {user_id}")
+                try:
+                    user = User.objects.get(id=user_id)
+                    cache.set(cache_key, user.id, timeout=TOKEN_CACHE_TTL)
+                    logger.debug(f"Successfully authenticated user via Django JWT: {user.username}")
+                    return user
+                except User.DoesNotExist:
+                    logger.warning(f"User with id {user_id} not found in database")
+        except (TokenError, InvalidToken) as e:
+            logger.debug(f"Not a valid Django JWT token: {e}, trying Keycloak validation")
+        except Exception as e:
+            logger.debug(f"Error validating Django JWT: {e}, trying Keycloak validation")
+
+        # If Django JWT validation failed, try Keycloak token validation
+        try:
+            logger.debug("Attempting to validate as Keycloak token")
             # Try direct validation without any complex logic
             user_info = keycloak_manager.validate_token(token)
 
@@ -91,14 +134,10 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
             return cast(User, AnonymousUser())
 
         # Log the user info for debugging
-        logger.debug(
-            f"User info from token: {user_info.keys() if user_info else 'None'}"
-        )
+        logger.debug(f"User info from token: {user_info.keys() if user_info else 'None'}")
         logger.debug(f"User sub: {user_info.get('sub', 'None')}")
         logger.debug(f"User email: {user_info.get('email', 'None')}")
-        logger.debug(
-            f"User preferred_username: {user_info.get('preferred_username', 'None')}"
-        )
+        logger.debug(f"User preferred_username: {user_info.get('preferred_username', 'None')}")
 
         # Get user roles and organizations from the token
         roles = keycloak_manager.get_user_roles(token)
@@ -108,18 +147,19 @@ def get_user_from_keycloak_token(request: HttpRequest) -> User:
         logger.debug(f"User organizations from token: {organizations}")
 
         # Sync the user information with our database
-        user = keycloak_manager.sync_user_from_keycloak(user_info, roles, organizations)
-        if not user:
+        synced_user = keycloak_manager.sync_user_from_keycloak(user_info, roles, organizations)
+        if not synced_user:
             logger.warning("User synchronization failed, returning anonymous user")
             return cast(User, AnonymousUser())
 
+        cache.set(cache_key, synced_user.id, timeout=TOKEN_CACHE_TTL)
         logger.debug(
-            f"Successfully authenticated user: {user.username} (ID: {user.id})"
+            f"Successfully authenticated user: {synced_user.username} (ID: {synced_user.id})"
         )
 
         # Return the authenticated user
-        logger.debug(f"Returning authenticated user: {user.username}")
-        return user
+        logger.debug(f"Returning authenticated user: {synced_user.username}")
+        return synced_user
     except Exception as e:
         logger.error(f"Error in get_user_from_keycloak_token: {str(e)}")
         return cast(User, AnonymousUser())

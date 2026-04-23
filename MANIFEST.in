@@ -1,0 +1,6 @@
+include docs/sdk/README.md
+include docs/sdk/QUICKSTART.md
+include docs/sdk/DEVELOPMENT.md
+include LICENSE
+recursive-include dataspace_sdk *.py
+recursive-include examples *.py

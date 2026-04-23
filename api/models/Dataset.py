@@ -5,7 +5,12 @@ from django.db import models
 from django.db.models import Sum
 from django.utils.text import slugify
 
-from api.utils.enums import DatasetAccessType, DatasetLicense, DatasetStatus
+from api.utils.enums import (
+    DatasetAccessType,
+    DatasetLicense,
+    DatasetStatus,
+    DatasetType,
+)
 
 if TYPE_CHECKING:
     from api.models.DataSpace import DataSpace
@@ -59,9 +64,7 @@ class Dataset(models.Model):
         max_length=50, default=DatasetStatus.DRAFT, choices=DatasetStatus.choices
     )
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="datasets")
-    geographies = models.ManyToManyField(
-        "api.Geography", blank=True, related_name="datasets"
-    )
+    geographies = models.ManyToManyField("api.Geography", blank=True, related_name="datasets")
     access_type = models.CharField(
         max_length=50,
         default=DatasetAccessType.PUBLIC,
@@ -71,6 +74,11 @@ class Dataset(models.Model):
         max_length=50,
         default=DatasetLicense.CC_BY_4_0_ATTRIBUTION,
         choices=DatasetLicense.choices,
+    )
+    dataset_type = models.CharField(
+        max_length=50,
+        default=DatasetType.DATA,
+        choices=DatasetType.choices,
     )
 
     def save(self, *args: Any, **kwargs: Any) -> None:
@@ -138,10 +146,7 @@ class Dataset(models.Model):
     @property
     def download_count(self) -> int:
         return (
-            self.resources.aggregate(total_downloads=Sum("download_count"))[
-                "total_downloads"
-            ]
-            or 0
+            self.resources.aggregate(total_downloads=Sum("download_count"))["total_downloads"] or 0
         )
 
     @property
@@ -176,9 +181,7 @@ class Dataset(models.Model):
             return float(base_score) * 0.1
 
         # Calculate recency factor (more recent = higher score)
-        recent_downloads = (
-            recent_resources.aggregate(total=Sum("download_count"))["total"] or 0
-        )
+        recent_downloads = recent_resources.aggregate(total=Sum("download_count"))["total"] or 0
 
         # Calculate trending score: base score + (recent downloads * recency factor)
         recency_factor = 2.0  # Weight for recent downloads

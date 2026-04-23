@@ -86,6 +86,92 @@ class DatasetStatus(models.TextChoices):
     ARCHIVED = "ARCHIVED"
 
 
+class DatasetType(models.TextChoices):
+    DATA = "DATA"
+    PROMPT = "PROMPT"
+
+
+class PromptTaskType(models.TextChoices):
+    TEXT_GENERATION = "TEXT_GENERATION"
+    TEXT_CLASSIFICATION = "TEXT_CLASSIFICATION"
+    QUESTION_ANSWERING = "QUESTION_ANSWERING"
+    SUMMARIZATION = "SUMMARIZATION"
+    TRANSLATION = "TRANSLATION"
+    SENTIMENT_ANALYSIS = "SENTIMENT_ANALYSIS"
+    NAMED_ENTITY_RECOGNITION = "NAMED_ENTITY_RECOGNITION"
+    CODE_GENERATION = "CODE_GENERATION"
+    CONVERSATION = "CONVERSATION"
+    INSTRUCTION_FOLLOWING = "INSTRUCTION_FOLLOWING"
+    REASONING = "REASONING"
+    CREATIVE_WRITING = "CREATIVE_WRITING"
+    DATA_EXTRACTION = "DATA_EXTRACTION"
+    OTHER = "OTHER"
+
+
+class PromptPurpose(models.TextChoices):
+    RESEARCH = "RESEARCH"
+    EDUCATION = "EDUCATION"
+    EVALUATION = "EVALUATION"
+    OTHER = "OTHER"
+
+
+class PromptDomain(models.TextChoices):
+    HEALTHCARE = "HEALTHCARE"
+    EDUCATION = "EDUCATION"
+    LEGAL = "LEGAL"
+    FINANCE = "FINANCE"
+    AGRICULTURE = "AGRICULTURE"
+    ENVIRONMENT = "ENVIRONMENT"
+    GOVERNMENT = "GOVERNMENT"
+    TECHNOLOGY = "TECHNOLOGY"
+    SCIENCE = "SCIENCE"
+    SOCIAL_SERVICES = "SOCIAL_SERVICES"
+    TRANSPORTATION = "TRANSPORTATION"
+    ENERGY = "ENERGY"
+    GENERAL = "GENERAL"
+    OTHER = "OTHER"
+
+
+class PromptFormat(models.TextChoices):
+    INSTRUCTION = "INSTRUCTION"
+    CHAT = "CHAT"
+    COMPLETION = "COMPLETION"
+    FEW_SHOT = "FEW_SHOT"
+    CHAIN_OF_THOUGHT = "CHAIN_OF_THOUGHT"
+    ZERO_SHOT = "ZERO_SHOT"
+    OTHER = "OTHER"
+
+
+class TargetLanguage(models.TextChoices):
+    ENGLISH = "ENGLISH"
+    HINDI = "HINDI"
+    TAMIL = "TAMIL"
+    TELUGU = "TELUGU"
+    BENGALI = "BENGALI"
+    MARATHI = "MARATHI"
+    GUJARATI = "GUJARATI"
+    KANNADA = "KANNADA"
+    MALAYALAM = "MALAYALAM"
+    PUNJABI = "PUNJABI"
+    ODIA = "ODIA"
+    ASSAMESE = "ASSAMESE"
+    URDU = "URDU"
+    OTHER = "OTHER"
+
+
+class TargetModelType(models.TextChoices):
+    GPT = "GPT"
+    LLAMA = "LLAMA"
+    MISTRAL = "MISTRAL"
+    GEMINI = "GEMINI"
+    CLAUDE = "CLAUDE"
+    FALCON = "FALCON"
+    BLOOM = "BLOOM"
+    INDIC_LLM = "INDIC_LLM"
+    CUSTOM = "CUSTOM"
+    OTHER = "OTHER"
+
+
 class DatasetAccessType(models.TextChoices):
     PUBLIC = "PUBLIC"
     PRIVATE = "PRIVATE"
@@ -153,3 +239,78 @@ class AggregateType(models.TextChoices):
 class OrganizationRelationshipType(models.TextChoices):
     SUPPORTER = "SUPPORTER"
     PARTNER = "PARTNER"
+
+
+class AIModelType(models.TextChoices):
+    TRANSLATION = "TRANSLATION"
+    TEXT_GENERATION = "TEXT_GENERATION"
+    SUMMARIZATION = "SUMMARIZATION"
+    QUESTION_ANSWERING = "QUESTION_ANSWERING"
+    SENTIMENT_ANALYSIS = "SENTIMENT_ANALYSIS"
+    TEXT_CLASSIFICATION = "TEXT_CLASSIFICATION"
+    NAMED_ENTITY_RECOGNITION = "NAMED_ENTITY_RECOGNITION"
+    TEXT_TO_SPEECH = "TEXT_TO_SPEECH"
+    SPEECH_TO_TEXT = "SPEECH_TO_TEXT"
+    OTHER = "OTHER"
+
+
+class AIModelStatus(models.TextChoices):
+    DRAFT = "DRAFT"
+    REGISTERED = "REGISTERED"
+    VALIDATING = "VALIDATING"
+    ACTIVE = "ACTIVE"
+    AUDITING = "AUDITING"
+    APPROVED = "APPROVED"
+    FLAGGED = "FLAGGED"
+    DEPRECATED = "DEPRECATED"
+
+
+class AIModelProvider(models.TextChoices):
+    OPENAI = "OPENAI"
+    LLAMA_OLLAMA = "LLAMA_OLLAMA"
+    LLAMA_TOGETHER = "LLAMA_TOGETHER"
+    LLAMA_REPLICATE = "LLAMA_REPLICATE"
+    LLAMA_CUSTOM = "LLAMA_CUSTOM"
+    CUSTOM = "CUSTOM"
+    HUGGINGFACE = "HUGGINGFACE"
+
+
+class AIModelLifecycleStage(models.TextChoices):
+    DEVELOPMENT = "DEVELOPMENT", "Development"
+    TESTING = "TESTING", "Testing"
+    BETA = "BETA", "Beta Testing"
+    STAGING = "STAGING", "Staging"
+    PRODUCTION = "PRODUCTION", "Production"
+    DEPRECATED = "DEPRECATED", "Deprecated"
+    RETIRED = "RETIRED", "Retired"
+
+
+class AIModelFramework(models.TextChoices):
+    PYTORCH = "pt", "PyTorch"
+    TENSORFLOW = "tf", "TensorFlow"
+
+
+class HFModelClass(models.TextChoices):
+    CAUSAL_LM = "AutoModelForCausalLM", "Causal Language Modeling Head"
+    SEQ2SEQ_LM = "AutoModelForSeq2SeqLM", "Sequence-To-Sequence Language Modeling Head"
+    SEQUENCE_CLASSIFICATION = "AutoModelForSequenceClassification", "Sequence Classification Head"
+    NEXT_SENTENCE_PREDICTION = "AutoModelForNextSentencePrediction", "Next Sentence Prediction Head"
+    MULTIPLE_CHOICE = "AutoModelForMultipleChoice", "Multiple Choice Head"
+    TOKEN_CLASSIFICATION = "AutoModelForTokenClassification", "Token Classification Head"
+    QUESTION_ANSWERING = "AutoModelForQuestionAnswering", "Question Answering Head"
+    MASKED_LM = "AutoModelForMaskedLM", "Masked Language Modeling Head"
+
+
+class EndpointHTTPMethod(models.TextChoices):
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+
+
+class EndpointAuthType(models.TextChoices):
+    BEARER = "BEARER"
+    API_KEY = "API_KEY"
+    BASIC = "BASIC"
+    OAUTH2 = "OAUTH2"
+    CUSTOM = "CUSTOM"
+    NONE = "NONE"

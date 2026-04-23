@@ -147,9 +147,11 @@ cython_debug/
 # IDE
 .vscode/
 .idea/
+.windsurf/
 
-#Resources upload folder
-resources/
+#Resources upload folder (but not SDK resources)
+/resources/
+!/dataspace_sdk/resources/
 
 #local env file
 .env
@@ -159,3 +161,10 @@ authorization/migrations/*
 
 # AWS files
 aws/.env.*
+
+#Public files
+files/public/*
+
+#dvc files
+dvc
+dvc/*

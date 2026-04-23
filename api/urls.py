@@ -7,10 +7,17 @@ from strawberry.django.views import AsyncGraphQLView, GraphQLView
 
 from api.schema.schema import schema
 from api.views import (
+    aimodel_detail,
+    aimodel_execution,
+    auditor,
     auth,
     download,
     generate_dynamic_chart,
+    search_aimodel,
+    search_collaborative,
     search_dataset,
+    search_publisher,
+    search_unified,
     search_usecase,
     trending_datasets,
 )
@@ -25,17 +32,45 @@ from api.views.activity import (
 
 urlpatterns = [
     # Authentication endpoints
-    path(
-        "auth/keycloak/login/", auth.KeycloakLoginView.as_view(), name="keycloak_login"
-    ),
+    path("auth/keycloak/login/", auth.KeycloakLoginView.as_view(), name="keycloak_login"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("auth/user/info/", auth.UserInfoView.as_view(), name="user_info"),
-    # API endpoints
+    # Auditor management endpoints
     path(
-        "search/dataset/", search_dataset.SearchDataset.as_view(), name="search_dataset"
+        "organizations/<str:organization_id>/auditors/",
+        auditor.OrganizationAuditorsView.as_view(),
+        name="organization_auditors",
     ),
     path(
-        "search/usecase/", search_usecase.SearchUseCase.as_view(), name="search_usecase"
+        "users/search-by-email/",
+        auditor.SearchUserByEmailView.as_view(),
+        name="search_user_by_email",
+    ),
+    # API endpoints
+    path("search/dataset/", search_dataset.SearchDataset.as_view(), name="search_dataset"),
+    path("search/usecase/", search_usecase.SearchUseCase.as_view(), name="search_usecase"),
+    path("search/aimodel/", search_aimodel.SearchAIModel.as_view(), name="search_aimodel"),
+    path(
+        "search/collaborative/",
+        search_collaborative.SearchCollaborative.as_view(),
+        name="search_collaborative",
+    ),
+    path("search/unified/", search_unified.UnifiedSearch.as_view(), name="search_unified"),
+    path("search/publisher/", search_publisher.SearchPublisher.as_view(), name="search_publisher"),
+    path(
+        "aimodels/<model_id>/",
+        aimodel_detail.AIModelDetailView.as_view(),
+        name="aimodel_detail",
+    ),
+    path(
+        "aimodels/<model_id>/call/",
+        aimodel_execution.call_aimodel,
+        name="aimodel_call",
+    ),
+    path(
+        "aimodels/<model_id>/call-async/",
+        aimodel_execution.call_aimodel_async,
+        name="aimodel_call_async",
     ),
     path(
         "trending/datasets/",

@@ -1,16 +1,17 @@
 from typing import List, Optional
 
+from django.core.cache import cache
 from django.db import models
 
 from api.utils.enums import GeoTypes
+
+GEOGRAPHY_CACHE_TTL = 60 * 60 * 6  # 6 hours
 
 
 class Geography(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=75, unique=True)
-    code = models.CharField(
-        max_length=100, null=True, blank=True, unique=False, default=""
-    )
+    code = models.CharField(max_length=100, null=True, blank=True, unique=False, default="")
     type = models.CharField(max_length=20, choices=GeoTypes.choices)
     parent_id = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True, default=None
@@ -37,9 +38,7 @@ class Geography(models.Model):
         return descendants
 
     @classmethod
-    def get_geography_names_with_descendants(
-        cls, geography_names: List[str]
-    ) -> List[str]:
+    def get_geography_names_with_descendants(cls, geography_names: List[str]) -> List[str]:
         """
         Given a list of geography names, return all names including their descendants.
         This is a helper method for filtering that expands parent geographies to include children.
@@ -50,6 +49,11 @@ class Geography(models.Model):
         Returns:
             List of geography names including all descendants
         """
+        cache_key = f"geo_descendants:{':'.join(sorted(geography_names))}"
+        cached: Optional[List[str]] = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         all_names = set()
 
         for name in geography_names:
@@ -60,7 +64,9 @@ class Geography(models.Model):
                 # If geography doesn't exist, just add the name as-is
                 all_names.add(name)
 
-        return list(all_names)
+        result = list(all_names)
+        cache.set(cache_key, result, timeout=GEOGRAPHY_CACHE_TTL)
+        return result
 
     class Meta:
         db_table = "geography"

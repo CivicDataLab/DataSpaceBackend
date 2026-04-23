@@ -2,6 +2,7 @@ import ast
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union, cast
 
 import structlog
+from django.core.cache import cache
 from elasticsearch_dsl import A
 from elasticsearch_dsl import Q as ESQ
 from elasticsearch_dsl import Search
@@ -13,6 +14,8 @@ from api.models import Geography, Metadata, UseCase, UseCaseMetadata
 from api.utils.telemetry_utils import trace_method, track_metrics
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
 from search.documents import UseCaseDocument
+
+METADATA_CACHE_TTL = 60 * 30  # 30 minutes
 
 logger = structlog.get_logger(__name__)
 
@@ -144,9 +147,7 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
         super().__init__(**kwargs)
         self.searchable_fields: List[str]
         self.aggregations: Dict[str, str]
-        self.searchable_fields, self.aggregations = (
-            self.get_searchable_and_aggregations()
-        )
+        self.searchable_fields, self.aggregations = self.get_searchable_and_aggregations()
         self.logger = structlog.get_logger(__name__)
 
     @trace_method(
@@ -155,6 +156,12 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
     )
     def get_searchable_and_aggregations(self) -> Tuple[List[str], Dict[str, str]]:
         """Get searchable fields and aggregations for the search."""
+        cached: Optional[Tuple[List[str], Dict[str, str]]] = cache.get(
+            "usecase_search_metadata_config"
+        )
+        if cached:
+            return cached
+
         searchable_fields = [
             "title",
             "summary",
@@ -181,7 +188,9 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
         for metadata in filterable_metadata:
             aggregations[f"metadata.{metadata.label}"] = "terms"  # type: ignore
 
-        return searchable_fields, aggregations
+        result = (searchable_fields, aggregations)
+        cache.set("usecase_search_metadata_config", result, timeout=METADATA_CACHE_TTL)
+        return result
 
     @trace_method(name="add_aggregations", attributes={"component": "search_usecase"})
     def add_aggregations(self, search: Search) -> Search:
@@ -199,18 +208,21 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
                 )
 
         if aggregate_fields:
-            metadata_qs = Metadata.objects.filter(filterable=True)
-            filterable_metadata = [str(meta.label) for meta in metadata_qs]  # type: ignore
+            filterable_metadata: List[str] = cache.get("usecase_filterable_metadata_labels") or []
+            if not filterable_metadata:
+                metadata_qs = Metadata.objects.filter(filterable=True)
+                filterable_metadata = [str(meta.label) for meta in metadata_qs]  # type: ignore
+                cache.set(
+                    "usecase_filterable_metadata_labels",
+                    filterable_metadata,
+                    timeout=METADATA_CACHE_TTL,
+                )
 
             metadata_bucket = search.aggs.bucket("metadata", "nested", path="metadata")
             composite_agg = A(
                 "composite",
                 sources=[
-                    {
-                        "metadata_label": {
-                            "terms": {"field": "metadata.metadata_item.label"}
-                        }
-                    },
+                    {"metadata_label": {"terms": {"field": "metadata.metadata_item.label"}}},
                     {"metadata_value": {"terms": {"field": "metadata.value"}}},
                 ],
                 size=10000,
@@ -219,13 +231,7 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
                 "filter",
                 {  # type: ignore[arg-type]
                     "bool": {
-                        "must": [
-                            {
-                                "terms": {
-                                    "metadata.metadata_item.label": filterable_metadata
-                                }
-                            }
-                        ]
+                        "must": [{"terms": {"metadata.metadata_item.label": filterable_metadata}}]
                     }
                 },
             )
@@ -235,12 +241,8 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
 
         return search
 
-    @trace_method(
-        name="generate_q_expression", attributes={"component": "search_usecase"}
-    )
-    def generate_q_expression(
-        self, query: str
-    ) -> Optional[Union[ESQuery, List[ESQuery]]]:
+    @trace_method(name="generate_q_expression", attributes={"component": "search_usecase"})
+    def generate_q_expression(self, query: str) -> Optional[Union[ESQuery, List[ESQuery]]]:
         """Generate Elasticsearch Query expression."""
         if query:
             queries: List[ESQuery] = []
@@ -256,9 +258,7 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
                                     ESQ("wildcard", **{field: {"value": f"*{query}*"}}),
                                     ESQ(
                                         "fuzzy",
-                                        **{
-                                            field: {"value": query, "fuzziness": "AUTO"}
-                                        },
+                                        **{field: {"value": query, "fuzziness": "AUTO"}},
                                     ),
                                 ],
                             ),
@@ -281,18 +281,14 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
                                     ESQ("wildcard", **{field: {"value": f"*{query}*"}}),
                                     ESQ(
                                         "fuzzy",
-                                        **{
-                                            field: {"value": query, "fuzziness": "AUTO"}
-                                        },
+                                        **{field: {"value": query, "fuzziness": "AUTO"}},
                                     ),
                                 ],
                             ),
                         )
                     )
                 else:
-                    queries.append(
-                        ESQ("fuzzy", **{field: {"value": query, "fuzziness": "AUTO"}})
-                    )
+                    queries.append(ESQ("fuzzy", **{field: {"value": query, "fuzziness": "AUTO"}}))
         else:
             queries = [ESQ("match_all")]
 
@@ -301,8 +297,13 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
     @trace_method(name="add_filters", attributes={"component": "search_usecase"})
     def add_filters(self, filters: Dict[str, str], search: Search) -> Search:
         """Add filters to the search query."""
-        non_filter_metadata = Metadata.objects.filter(filterable=False).all()
-        excluded_labels: List[str] = [e.label for e in non_filter_metadata]  # type: ignore
+        excluded_labels: List[str] = cache.get("usecase_non_filter_metadata_labels") or []
+        if not excluded_labels:
+            non_filter_metadata = Metadata.objects.filter(filterable=False).all()
+            excluded_labels = [e.label for e in non_filter_metadata]  # type: ignore
+            cache.set(
+                "usecase_non_filter_metadata_labels", excluded_labels, timeout=METADATA_CACHE_TTL
+            )
 
         for filter in filters:
             if filter in excluded_labels:
@@ -335,9 +336,7 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
                 search = search.filter(
                     "nested",
                     path="metadata",
-                    query={
-                        "bool": {"must": {"term": {f"metadata.value": filters[filter]}}}
-                    },
+                    query={"bool": {"must": {"term": {f"metadata.value": filters[filter]}}}},
                 )
         return search
 
