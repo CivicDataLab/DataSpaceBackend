@@ -14,8 +14,9 @@ from django.core.asgi import get_asgi_application
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "DataSpace.settings")
 
 # Initialize OpenTelemetry before application
-from api.telemetry import setup_telemetry
+if os.getenv("TELEMETRY_URL"):
+    from api.telemetry import setup_telemetry
 
-setup_telemetry()  # Initialize telemetry for ASGI application
+    setup_telemetry()  # Initialize telemetry for ASGI application
 
 application = get_asgi_application()

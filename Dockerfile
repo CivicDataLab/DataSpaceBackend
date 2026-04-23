@@ -60,5 +60,5 @@ EXPOSE 8000
 # Make entrypoint script executable
 RUN chmod +x /code/docker-entrypoint.sh
 
-ENTRYPOINT ["/code/docker-entrypoint.sh"]
+ENTRYPOINT ["bash","/code/docker-entrypoint.sh"]
 CMD ["uvicorn", "DataSpace.asgi:application", "--host", "0.0.0.0", "--port", "8000"]
