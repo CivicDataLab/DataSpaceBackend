@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, cast
 
 from django.db import models
+from django.core.validators import RegexValidator
 from django.utils.text import slugify
 
 if TYPE_CHECKING:
@@ -11,6 +12,12 @@ if TYPE_CHECKING:
 
 from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from api.utils.file_paths import _use_case_directory_path
+
+
+slug_validator = RegexValidator(
+    regex=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
+    message="Slug must be lowercase and contain only alphanumeric characters and hyphens.",
+)
 
 
 class Collaborative(models.Model):
@@ -27,7 +34,9 @@ class Collaborative(models.Model):
     modified = models.DateTimeField(auto_now=True)
     website = models.URLField(blank=True)
     contact_email = models.EmailField(blank=True, null=True)
-    slug = models.SlugField(max_length=75, null=True, blank=True, unique=True)
+    slug = models.SlugField(
+        max_length=75, null=True, blank=True, unique=True, validators=[slug_validator]
+    )
     user = models.ForeignKey("authorization.User", on_delete=models.CASCADE)
     organization = models.ForeignKey(
         "api.Organization", on_delete=models.CASCADE, null=True, blank=True
@@ -64,6 +73,7 @@ class Collaborative(models.Model):
     def save(self, *args: Any, **kwargs: Any) -> None:
         if self.title and not self.slug:
             self.slug = slugify(cast(str, self.title))
+        self.full_clean()
         super().save(*args, **kwargs)
 
     @property
