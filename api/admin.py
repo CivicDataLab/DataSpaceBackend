@@ -1,4 +1,7 @@
 from django.contrib import admin
+from django import forms
+from django.db import connection, IntegrityError
+
 
 from api.models import (
     AIModel,
@@ -219,9 +222,9 @@ class PromptResourceAdmin(admin.ModelAdmin):
     search_fields = ("resource__name",)
 
 
-# ---------------------------------------------------------------------------
-# AIModel & related
-# ---------------------------------------------------------------------------
+class AIModelForm(forms.ModelForm):
+    id = forms.IntegerField(required=False)  # makes id editable
+
 
 class ModelEndpointInline(admin.TabularInline):
     model = ModelEndpoint
@@ -231,7 +234,9 @@ class ModelEndpointInline(admin.TabularInline):
 
 @admin.register(AIModel)
 class AIModelAdmin(admin.ModelAdmin):
+    form = AIModelForm
     list_display = (
+        "id",
         "display_name",
         "name",
         "provider",
@@ -256,7 +261,7 @@ class AIModelAdmin(admin.ModelAdmin):
     fieldsets = (
         (
             "Basic Information",
-            {"fields": ("name", "display_name", "version", "description")},
+            {"fields": ("id", "name", "display_name", "version", "description")},   # ← id added here
         ),
         (
             "Model Configuration",
@@ -294,7 +299,31 @@ class AIModelAdmin(admin.ModelAdmin):
         ),
     )
 
+    def save_model(self, request, obj, form, change):
+        """
+        Allow changing the primary key ('id') by running a raw UPDATE.
+        """
+        if change and 'id' in form.changed_data:
+            old_pk = form.initial['id']          # the id when the form was opened
+            new_pk = form.cleaned_data['id']      # the new id the user entered
 
+            # Prevent duplicate key error – check if new_pk already exists
+            if AIModel.objects.filter(pk=new_pk).exclude(pk=old_pk).exists():
+                raise IntegrityError(f"Primary key {new_pk} already exists.")
+
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    f"UPDATE {AIModel._meta.db_table} SET id = %s WHERE id = %s",
+                    [new_pk, old_pk]
+                )
+            # Update the in‑memory object’s pk so the admin redirect works correctly
+            obj.pk = new_pk
+            # No need to call save() again – the update is already applied.
+        else:
+            # Normal save (create or update without pk change)
+            super().save_model(request, obj, form, change)
+
+    
 @admin.register(AIModelVersion)
 class AIModelVersionAdmin(admin.ModelAdmin):
     list_display = ("ai_model", "version", "status", "created_at")

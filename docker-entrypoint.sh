@@ -53,10 +53,10 @@ python manage.py makemigrations --noinput
 echo "Running migrations..."
 python manage.py migrate --noinput
 
-# Create superuser if needed
-if [ "$DJANGO_SUPERUSER_USERNAME" ] && [ "$DJANGO_SUPERUSER_PASSWORD" ] && [ "$DJANGO_SUPERUSER_EMAIL" ]; then
-    echo "Creating superuser..."
-    python manage.py createsuperuser --noinput
+# Create superuser if needed (ignore failure, e.g. if already exists)
+if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ] && [ -n "$DJANGO_SUPERUSER_EMAIL" ]; then
+    echo "Creating superuser (if not exists)..."
+    python manage.py createsuperuser --noinput 2>/dev/null || echo "Superuser already exists or creation skipped"
 fi
 
 # Collect static files
