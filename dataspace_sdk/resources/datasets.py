@@ -1,6 +1,6 @@
 """Dataset resource client for DataSpace SDK."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 from dataspace_sdk.base import BaseAPIClient
 
@@ -605,3 +605,176 @@ class DatasetClient(BaseAPIClient):
 
         result: Dict[str, Any] = response.get("data", {}).get("updatePromptMetadata", {})
         return result
+
+    # ------------------------------------------------------------------
+    # Indexed data access (data_db)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _build_data_params(
+        filters: Optional[Dict[str, Any]],
+        columns: Optional[List[str]],
+        order_by: Optional[List[str]],
+        limit: int,
+        offset: int,
+        count: Optional[bool],
+    ) -> Dict[str, Any]:
+        """Translate Pythonic kwargs into the ``GET /data/`` query-string form.
+
+        ``filters`` is a flat dict using the same ``col`` / ``col__op`` keys as
+        the server. List values are passed through (requests will emit one
+        ``key=v`` pair per entry, used by ``__in`` / ``__nin``).
+        """
+        params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
+        if columns:
+            params["columns"] = ",".join(columns)
+        if order_by:
+            params["order_by"] = ",".join(order_by)
+        if count is not None:
+            params["count"] = "true" if count else "false"
+        if filters:
+            for k, v in filters.items():
+                if isinstance(v, (list, tuple)):
+                    params[k] = list(v)
+                elif isinstance(v, bool):
+                    params[k] = "true" if v else "false"
+                else:
+                    params[k] = v
+        return params
+
+    def get_resource_data(
+        self,
+        resource_id: str,
+        filters: Optional[Dict[str, Any]] = None,
+        columns: Optional[List[str]] = None,
+        order_by: Optional[List[str]] = None,
+        limit: int = 100,
+        offset: int = 0,
+        count: bool = True,
+    ) -> Dict[str, Any]:
+        """Fetch indexed (saved in ``data_db``) data for a single resource.
+
+        Args:
+            resource_id: UUID of the resource (must have an indexed table).
+            filters: Column-level filters. Keys are either ``"col"`` (equality)
+                or ``"col__op"`` where op is one of: ``eq, ne, gt, gte, lt,
+                lte, in, nin, contains, icontains, startswith, istartswith,
+                endswith, iendswith, isnull, notnull``.
+            columns: Subset of columns to project. ``None`` returns all.
+            order_by: Columns to sort by. Prefix with ``-`` for DESC.
+            limit: Max rows to return (server caps at 10000).
+            offset: Number of rows to skip.
+            count: If ``True``, the response includes total matching row count.
+
+        Returns:
+            A dict with ``columns``, ``rows``, ``total``, ``limit``,
+            ``offset``, ``available_columns``, ``resource_id``,
+            ``dataset_id``, and ``max_limit``.
+        """
+        params = self._build_data_params(filters, columns, order_by, limit, offset, count)
+        return self.get(f"/api/resources/{resource_id}/data/", params=params)
+
+    def get_dataset_data(
+        self,
+        dataset_id: str,
+        resource_id: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        columns: Optional[List[str]] = None,
+        order_by: Optional[List[str]] = None,
+        limit: int = 100,
+        offset: int = 0,
+        count: bool = True,
+    ) -> Dict[str, Any]:
+        """Fetch indexed data for a dataset.
+
+        By default operates on the dataset's first indexed (tabular) resource.
+        Pass ``resource_id`` to target a specific resource within the dataset.
+        Filtering / column / ordering semantics are identical to
+        :meth:`get_resource_data`.
+        """
+        params = self._build_data_params(filters, columns, order_by, limit, offset, count)
+        if resource_id:
+            params["resource_id"] = resource_id
+        return self.get(f"/api/datasets/{dataset_id}/data/", params=params)
+
+    def get_prompt_data(
+        self,
+        dataset_id: str,
+        resource_id: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        columns: Optional[List[str]] = None,
+        order_by: Optional[List[str]] = None,
+        limit: int = 100,
+        offset: int = 0,
+        count: bool = True,
+        prompt_contains: Optional[str] = None,
+        response_contains: Optional[str] = None,
+        min_length: Optional[int] = None,
+        max_length: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Fetch indexed data for a PROMPT-typed dataset.
+
+        Same generic semantics as :meth:`get_dataset_data`, plus prompt-aware
+        shorthands that automatically map to the underlying prompt/response/
+        length columns when present:
+
+        Args:
+            prompt_contains: Substring (case-insensitive) match on the prompt
+                column (auto-detects ``prompt``/``input``/``instruction``/
+                ``question``).
+            response_contains: Substring match on the response column
+                (auto-detects ``response``/``completion``/``answer``/
+                ``output``).
+            min_length / max_length: Bounds on the length column
+                (auto-detects ``length``/``prompt_length``/``tokens``/
+                ``token_count``).
+
+        The response includes ``prompt_column``, ``response_column``, and
+        ``length_column`` indicating what was auto-detected.
+        """
+        params = self._build_data_params(filters, columns, order_by, limit, offset, count)
+        if resource_id:
+            params["resource_id"] = resource_id
+        if prompt_contains is not None:
+            params["prompt_contains"] = prompt_contains
+        if response_contains is not None:
+            params["response_contains"] = response_contains
+        if min_length is not None:
+            params["min_length"] = int(min_length)
+        if max_length is not None:
+            params["max_length"] = int(max_length)
+        return self.get(f"/api/datasets/{dataset_id}/prompts/", params=params)
+
+    def iter_resource_data(
+        self,
+        resource_id: str,
+        filters: Optional[Dict[str, Any]] = None,
+        columns: Optional[List[str]] = None,
+        order_by: Optional[List[str]] = None,
+        batch_size: int = 1000,
+    ) -> Iterator[Dict[str, Any]]:
+        """Yield rows as dicts, paging through the entire filtered result set.
+
+        Each yielded item is a ``{column: value}`` mapping. ``batch_size`` is
+        capped at 10000 by the server.
+        """
+        offset = 0
+        while True:
+            page = self.get_resource_data(
+                resource_id=resource_id,
+                filters=filters,
+                columns=columns,
+                order_by=order_by,
+                limit=batch_size,
+                offset=offset,
+                count=False,
+            )
+            cols: List[str] = page.get("columns", []) or []
+            rows: List[List[Any]] = page.get("rows", []) or []
+            if not rows:
+                return
+            for row in rows:
+                yield dict(zip(cols, row))
+            if len(rows) < batch_size:
+                return
+            offset += len(rows)

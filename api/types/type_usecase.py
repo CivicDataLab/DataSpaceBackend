@@ -1,3 +1,5 @@
+# mypy: disable-error-code="valid-type"
+
 from typing import List, Optional
 
 import strawberry
@@ -64,9 +66,7 @@ class TypeUseCase(BaseType):
         description="URL of the platform where this use case is published"
     )
 
-    @strawberry.field(
-        description="Check if this use case is created by an individual user."
-    )
+    @strawberry.field(description="Check if this use case is created by an individual user.")
     def is_individual_usecase(self) -> bool:
         """Check if this use case is created by an individual user."""
         return self.organization is None
@@ -83,9 +83,7 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field(
-        description="Get the count of datasets associated with this use case."
-    )
+    @strawberry.field(description="Get the count of datasets associated with this use case.")
     def dataset_count(self: "TypeUseCase", info: Info) -> int:
         """Get the count of datasets associated with this use case."""
         try:
@@ -170,9 +168,7 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field(
-        description="Get organization relationships associated with this use case."
-    )
+    @strawberry.field(description="Get organization relationships associated with this use case.")
     def organization_relationships(
         self,
     ) -> Optional[List["TypeUseCaseOrganizationRelationship"]]:
@@ -219,9 +215,7 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field(
-        description="Get Usecase dashboard associated with this use case."
-    )
+    @strawberry.field(description="Get Usecase dashboard associated with this use case.")
     def usecase_dashboard(self) -> Optional[List["TypeUseCaseDashboard"]]:
         """Get Usecase dashboard associated with this use case."""
         try:

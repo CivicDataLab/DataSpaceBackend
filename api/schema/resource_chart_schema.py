@@ -1,3 +1,5 @@
+# mypy: disable-error-code=valid-type
+
 import datetime
 import uuid
 from typing import Any, Dict, List, Optional
@@ -19,16 +21,12 @@ AggregateTypeEnum = strawberry.enum(AggregateType)
 @strawberry.type(name="Query")
 class Query:
     @strawberry_django.field
-    def charts_details(
-        self, info: Info, dataset_id: uuid.UUID
-    ) -> List[TypeResourceChart]:
+    def charts_details(self, info: Info, dataset_id: uuid.UUID) -> List[TypeResourceChart]:
         charts = ResourceChartDetails.objects.filter(resource__dataset_id=dataset_id)
         return [TypeResourceChart.from_django(chart) for chart in charts]
 
     @strawberry_django.field
-    def resource_chart(
-        self, info: Info, chart_details_id: uuid.UUID
-    ) -> TypeResourceChart:
+    def resource_chart(self, info: Info, chart_details_id: uuid.UUID) -> TypeResourceChart:
         chart = ResourceChartDetails.objects.get(id=chart_details_id)
         return TypeResourceChart.from_django(chart)
 
@@ -188,14 +186,10 @@ def _update_chart_fields(
                     if value:  # Only process if list is not empty
                         options[field_name] = [
                             {
-                                "field": ResourceSchema.objects.get(
-                                    id=column.field_name
-                                ),
+                                "field": ResourceSchema.objects.get(id=column.field_name),
                                 "label": column.label,
                                 "color": column.color,
-                                "value_mapping": _update_value_mapping(
-                                    column.value_mapping
-                                ),
+                                "value_mapping": _update_value_mapping(column.value_mapping),
                             }
                             for column in value
                         ]
@@ -295,9 +289,7 @@ class Mutation:
             )
         ],
     )
-    def edit_resource_chart(
-        self, info: Info, chart_input: ResourceChartInput
-    ) -> TypeResourceChart:
+    def edit_resource_chart(self, info: Info, chart_input: ResourceChartInput) -> TypeResourceChart:
         if not chart_input.chart_id:
             chart = ResourceChartDetails()
         else:

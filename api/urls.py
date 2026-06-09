@@ -11,6 +11,7 @@ from api.views import (
     aimodel_execution,
     auditor,
     auth,
+    dataset_data,
     download,
     generate_dynamic_chart,
     search_aimodel,
@@ -76,6 +77,21 @@ urlpatterns = [
         "trending/datasets/",
         trending_datasets.TrendingDatasets.as_view(),
         name="trending_datasets",
+    ),
+    path(
+        "resources/<uuid:resource_id>/data/",
+        dataset_data.ResourceDataView.as_view(),
+        name="resource_data",
+    ),
+    path(
+        "datasets/<uuid:dataset_id>/data/",
+        dataset_data.DatasetDataView.as_view(),
+        name="dataset_data",
+    ),
+    path(
+        "datasets/<uuid:dataset_id>/prompts/",
+        dataset_data.PromptDatasetDataView.as_view(),
+        name="prompt_dataset_data",
     ),
     # Single, simple GraphQL endpoint with no redirects
     path(
