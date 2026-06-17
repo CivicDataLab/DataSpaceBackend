@@ -186,9 +186,15 @@ class DatasetClient(BaseAPIClient):
                 resources {
                     id
                     name
+                    noOfEntries
                     fileDetails {
                         format
                         size
+                    }
+                    schema {
+                        format
+                        description
+                        fieldName
                     }
                     promptDetails {
                         promptFormat
