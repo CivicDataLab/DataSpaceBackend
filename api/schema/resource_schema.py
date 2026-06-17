@@ -3,6 +3,7 @@ import uuid
 from enum import Enum
 
 # mypy: disable-error-code=operator
+# mypy: disable-error-code=valid-type
 from typing import List, Optional
 
 import strawberry
@@ -111,9 +112,7 @@ class Query:
 
     @strawberry_django.field
     @trace_resolver(name="get_dataset_resources", attributes={"component": "resource"})
-    def dataset_resources(
-        self, info: Info, dataset_id: uuid.UUID
-    ) -> List[TypeResource]:
+    def dataset_resources(self, info: Info, dataset_id: uuid.UUID) -> List[TypeResource]:
         """Get resources for a dataset."""
         resources = Resource.objects.filter(dataset_id=dataset_id)
         return [TypeResource.from_django(resource) for resource in resources]
@@ -162,23 +161,17 @@ def _reset_file_resource_schema(resource: Resource) -> None:
     data_table = index_resource_data(resource)
 
 
-def _update_file_resource_schema(
-    resource: Resource, updated_schema: List[SchemaUpdate]
-) -> None:
+def _update_file_resource_schema(resource: Resource, updated_schema: List[SchemaUpdate]) -> None:
     """Update file resource schema and re-index if necessary."""
     # Check if we need to re-index after schema update
     format_changes = False
 
     # Update schema fields
-    existing_schema: QuerySet[ResourceSchema] = ResourceSchema.objects.filter(
-        resource=resource
-    )
+    existing_schema: QuerySet[ResourceSchema] = ResourceSchema.objects.filter(resource=resource)
 
     for schema in existing_schema:  # type: ResourceSchema
         try:
-            schema_change = next(
-                item for item in updated_schema if item.id == str(schema.id)
-            )
+            schema_change = next(item for item in updated_schema if item.id == str(schema.id))
             # Check if format is changing, which might require re-indexing
             if schema.format != schema_change.format.value:
                 format_changes = True
@@ -188,9 +181,7 @@ def _update_file_resource_schema(
             schema.format = schema_change.format.value
             schema.save()
 
-            logger.info(
-                f"Updated schema field {schema.field_name} for resource {resource.id}"
-            )
+            logger.info(f"Updated schema field {schema.field_name} for resource {resource.id}")
         except StopIteration:
             continue
 
@@ -210,12 +201,8 @@ def _update_resource_preview_details(
     if file_resource_input.preview_details:
         # If preview_details already exists, update it
         if preview_details:
-            preview_details.is_all_entries = (
-                file_resource_input.preview_details.is_all_entries
-            )
-            preview_details.start_entry = (
-                file_resource_input.preview_details.start_entry
-            )
+            preview_details.is_all_entries = file_resource_input.preview_details.is_all_entries
+            preview_details.start_entry = file_resource_input.preview_details.start_entry
             preview_details.end_entry = file_resource_input.preview_details.end_entry
             preview_details.save()
         # Otherwise, create a new one
@@ -260,9 +247,9 @@ class Mutation:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
         for file in file_resource_input.files:
-            resource = Resource.objects.create(name=file.name, dataset=dataset)
+            resource = Resource.objects.create(name=file.name, dataset=dataset)  # type: ignore[attr-defined]
             ResourceFileDetails.objects.create(
-                file=file, size=file.size, resource=resource
+                file=file, size=file.size, resource=resource  # type: ignore[attr-defined]
             )
             _validate_file_details_and_update_format(resource)
             _create_file_resource_schema(resource)
@@ -305,11 +292,7 @@ class Mutation:
                     "resource_id": str(result.id),
                     "resource_name": result.name,
                     "updated_fields": {
-                        "name": (
-                            file_resource_input.name
-                            if file_resource_input.name
-                            else None
-                        ),
+                        "name": (file_resource_input.name if file_resource_input.name else None),
                         "description": (
                             file_resource_input.description
                             if file_resource_input.description is not None
@@ -317,8 +300,7 @@ class Mutation:
                         ),
                         "preview_enabled": file_resource_input.preview_enabled,
                         "file_updated": file_resource_input.file is not None,
-                        "preview_details_updated": file_resource_input.preview_details
-                        is not None,
+                        "preview_details_updated": file_resource_input.preview_details is not None,
                     },
                 },
             )
@@ -332,9 +314,7 @@ class Mutation:
         try:
             resource = Resource.objects.get(id=file_resource_input.id)
         except Resource.DoesNotExist as e:
-            raise ValueError(
-                f"Resource with ID {file_resource_input.id} does not exist."
-            )
+            raise ValueError(f"Resource with ID {file_resource_input.id} does not exist.")
 
         if file_resource_input.name:
             resource.name = file_resource_input.name
@@ -347,12 +327,12 @@ class Mutation:
             file_details = getattr(resource, "resourcefiledetails", None)
             if file_details:
                 file_details.file = file_resource_input.file
-                file_details.size = file_resource_input.file.size
+                file_details.size = file_resource_input.file.size  # type: ignore[attr-defined]
                 file_details.save()
             else:
                 ResourceFileDetails.objects.create(
                     file=file_resource_input.file,
-                    size=file_resource_input.file.size,
+                    size=file_resource_input.file.size,  # type: ignore[attr-defined]
                     resource=resource,
                 )
             _validate_file_details_and_update_format(resource)
@@ -364,9 +344,7 @@ class Mutation:
         return TypeResource.from_django(resource)
 
     @strawberry_django.mutation(handle_django_errors=True)
-    @trace_resolver(
-        name="update_file_resource_schema", attributes={"component": "resource"}
-    )
+    @trace_resolver(name="update_file_resource_schema", attributes={"component": "resource"})
     def update_file_resource_schema(
         self, info: Info, schema_update_input: SchemaUpdateInput
     ) -> TypeResource:
@@ -374,20 +352,14 @@ class Mutation:
         try:
             resource = Resource.objects.get(id=schema_update_input.resource)
         except Resource.DoesNotExist as e:
-            raise ValueError(
-                f"Resource with ID {schema_update_input.resource} does not exist."
-            )
+            raise ValueError(f"Resource with ID {schema_update_input.resource} does not exist.")
 
         _update_file_resource_schema(resource, schema_update_input.updates)
         return TypeResource.from_django(resource)
 
     @strawberry_django.mutation(handle_django_errors=True)
-    @trace_resolver(
-        name="reset_file_resource_schema", attributes={"component": "resource"}
-    )
-    def reset_file_resource_schema(
-        self, info: Info, resource_id: uuid.UUID
-    ) -> TypeResource:
+    @trace_resolver(name="reset_file_resource_schema", attributes={"component": "resource"})
+    def reset_file_resource_schema(self, info: Info, resource_id: uuid.UUID) -> TypeResource:
         """Reset file resource schema."""
         try:
             resource = Resource.objects.get(id=resource_id)
@@ -434,9 +406,7 @@ class Mutation:
         ],
     )
     @trace_resolver(name="create_major_version", attributes={"component": "resource"})
-    def create_major_version(
-        self, info: Info, input: CreateMajorVersionInput
-    ) -> TypeResource:
+    def create_major_version(self, info: Info, input: CreateMajorVersionInput) -> TypeResource:
         """Create a major version for a resource.
 
         This should be used when significant changes are made to the resource data structure,
@@ -462,9 +432,7 @@ class Mutation:
             new_version = "v1.0.0"
         else:
             # Increment major version
-            new_version = _increment_version(
-                last_version.version_number, increment_type="major"
-            )
+            new_version = _increment_version(last_version.version_number, increment_type="major")
 
         # Initialize DVC manager
         dvc = DVCManager(settings.DVC_REPO_PATH)

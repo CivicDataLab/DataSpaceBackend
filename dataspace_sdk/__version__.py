@@ -1,3 +1,3 @@
 """Version information for DataSpace SDK."""
 
-__version__ = "0.4.19"
+__version__ = "0.5.02"

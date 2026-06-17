@@ -1,3 +1,5 @@
+# mypy: disable-error-code="valid-type"
+
 """GraphQL types for AI Model."""
 
 import uuid

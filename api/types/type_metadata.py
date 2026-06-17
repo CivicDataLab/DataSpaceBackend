@@ -1,3 +1,5 @@
+# mypy: disable-error-code="valid-type"
+
 from enum import Enum
 from typing import List, Optional
 
