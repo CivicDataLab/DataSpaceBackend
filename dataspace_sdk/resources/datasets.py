@@ -363,6 +363,12 @@ class DatasetClient(BaseAPIClient):
                         format
                         size
                     }
+                    schema {
+                        format
+                        description
+                        fieldName
+                    }
+                    noOfEntries
                     promptDetails {
                         promptFormat
                         hasSystemPrompt
@@ -442,12 +448,18 @@ class DatasetClient(BaseAPIClient):
                         format
                         size
                     }
+                    schema {
+                        format
+                        description
+                        fieldName
+                    }
                     promptDetails {
                         promptFormat
                         hasSystemPrompt
                         hasExampleResponses
                         promptCount
                     }
+                    noOfEntries
                 }
             }
         }
