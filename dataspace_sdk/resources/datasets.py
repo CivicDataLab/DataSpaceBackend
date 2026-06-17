@@ -169,6 +169,7 @@ class DatasetClient(BaseAPIClient):
                 license
                 created
                 updated
+                datasetType
                 organization {
                     id
                     name
@@ -176,6 +177,31 @@ class DatasetClient(BaseAPIClient):
                 tags {
                     id
                     value
+                }
+                sectors {
+                    id
+                    name
+                }
+                promptMetadata
+                resources {
+                    id
+                    name
+                    noOfEntries
+                    fileDetails {
+                        format
+                        size
+                    }
+                    schema {
+                        format
+                        description
+                        fieldName
+                    }
+                    promptDetails {
+                        promptFormat
+                        hasSystemPrompt
+                        hasExampleResponses
+                        promptCount
+                    }
                 }
             }
         }
