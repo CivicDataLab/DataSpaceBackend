@@ -1,5 +1,3 @@
-# mypy: disable-error-code="valid-type"
-
 """GraphQL type for UseCase-Organization relationship."""
 
 from typing import Optional

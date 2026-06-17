@@ -168,5 +168,3 @@ files/public/*
 #dvc files
 dvc
 dvc/*
-
-.DS_Store

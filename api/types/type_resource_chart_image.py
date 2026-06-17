@@ -1,5 +1,3 @@
-# mypy: disable-error-code="valid-type"
-
 from typing import Optional
 
 import strawberry

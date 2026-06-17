@@ -1,5 +1,4 @@
 # mypy: disable-error-code=union-attr
-# mypy: disable-error-code=valid-type
 import datetime
 import uuid
 from typing import Any, List, Optional, Union

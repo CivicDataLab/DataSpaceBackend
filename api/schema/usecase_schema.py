@@ -1,7 +1,6 @@
 """Schema definitions for use cases."""
 
 # mypy: disable-error-code=operator
-# mypy: disable-error-code=valid-type
 
 import datetime
 import uuid
@@ -169,14 +168,18 @@ class Query:
         return TypeUseCase.from_django_list(results)
 
     @strawberry_django.field
-    @trace_resolver(name="get_datasets_by_use_case", attributes={"component": "usecase"})
+    @trace_resolver(
+        name="get_datasets_by_use_case", attributes={"component": "usecase"}
+    )
     def dataset_by_use_case(self, info: Info, use_case_id: str) -> list[TypeDataset]:
         """Get datasets by use case."""
         queryset = Dataset.objects.filter(usecase__id=use_case_id)
         return TypeDataset.from_django_list(queryset)
 
     @strawberry_django.field
-    @trace_resolver(name="get_contributors_by_use_case", attributes={"component": "usecase"})
+    @trace_resolver(
+        name="get_contributors_by_use_case", attributes={"component": "usecase"}
+    )
     def contributors_by_use_case(self, info: Info, use_case_id: str) -> list[TypeUser]:
         """Get contributors by use case."""
         try:
@@ -191,7 +194,9 @@ class Query:
 def _update_usecase_tags(usecase: UseCase, tags: List[str]) -> None:
     usecase.tags.clear()
     for tag in tags:
-        usecase.tags.add(Tag.objects.get_or_create(defaults={"value": tag}, value__iexact=tag)[0])
+        usecase.tags.add(
+            Tag.objects.get_or_create(defaults={"value": tag}, value__iexact=tag)[0]
+        )
     usecase.save()
 
 
@@ -235,7 +240,9 @@ def _add_update_usecase_metadata(
             metadata_field = Metadata.objects.get(id=metadata_input_item.id)
             if not metadata_field.enabled:
                 _delete_existing_metadata(usecase)
-                raise ValueError(f"Metadata with ID {metadata_input_item.id} is not enabled.")
+                raise ValueError(
+                    f"Metadata with ID {metadata_input_item.id} is not enabled."
+                )
             uc_metadata = UseCaseMetadata(
                 usecase=usecase,
                 metadata_item=metadata_field,
@@ -244,7 +251,9 @@ def _add_update_usecase_metadata(
             uc_metadata.save()
         except Metadata.DoesNotExist:
             _delete_existing_metadata(usecase)
-            raise ValueError(f"Metadata with ID {metadata_input_item.id} does not exist.")
+            raise ValueError(
+                f"Metadata with ID {metadata_input_item.id} does not exist."
+            )
 
 
 @trace_resolver(name="delete_existing_metadata", attributes={"component": "usecase"})
@@ -320,7 +329,10 @@ class Mutation:
                             else None
                         ),
                         "sectors": (
-                            [str(sector_id) for sector_id in update_metadata_input.sectors]
+                            [
+                                str(sector_id)
+                                for sector_id in update_metadata_input.sectors
+                            ]
                             if update_metadata_input.sectors
                             else []
                         ),
@@ -383,7 +395,10 @@ class Mutation:
             usecase.started_on = data.started_on
         if data.completed_on is not None and data.completed_on is not strawberry.UNSET:
             usecase.completed_on = data.completed_on
-        if data.running_status is not None and data.running_status is not strawberry.UNSET:
+        if (
+            data.running_status is not None
+            and data.running_status is not strawberry.UNSET
+        ):
             usecase.running_status = data.running_status
         if data.logo is not None and data.logo is not strawberry.UNSET:
             usecase.logo = data.logo
@@ -395,7 +410,9 @@ class Mutation:
         extensions=[
             TrackActivity(
                 verb="deleted",
-                get_data=lambda info, use_case_id, **kwargs: {"usecase_id": use_case_id},
+                get_data=lambda info, use_case_id, **kwargs: {
+                    "usecase_id": use_case_id
+                },
             )
         ],
     )
@@ -593,7 +610,9 @@ class Mutation:
                 get_data=lambda result, use_case_id, user_ids, **kwargs: {
                     "usecase_id": use_case_id,
                     "usecase_title": result.title,
-                    "updated_fields": {"contributors": [str(user_id) for user_id in user_ids]},
+                    "updated_fields": {
+                        "contributors": [str(user_id) for user_id in user_ids]
+                    },
                 },
             )
         ],

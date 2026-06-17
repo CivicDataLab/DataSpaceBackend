@@ -1,5 +1,3 @@
-# mypy: disable-error-code="valid-type"
-
 from typing import List, Optional
 
 import strawberry
@@ -67,7 +65,9 @@ class TypeCollaborative(BaseType):
         description="URL of the platform where this collaborative is published"
     )
 
-    @strawberry.field(description="Check if this collaborative is created by an individual user.")
+    @strawberry.field(
+        description="Check if this collaborative is created by an individual user."
+    )
     def is_individual_collaborative(self) -> bool:
         """Check if this collaborative is created by an individual user."""
         return self.organization is None
@@ -106,7 +106,9 @@ class TypeCollaborative(BaseType):
         except Exception:
             return []
 
-    @strawberry.field(description="Get the count of datasets associated with this collaborative.")
+    @strawberry.field(
+        description="Get the count of datasets associated with this collaborative."
+    )
     def dataset_count(self: "TypeCollaborative", info: Info) -> int:
         """Get the count of datasets associated with this collaborative."""
         try:
@@ -114,7 +116,9 @@ class TypeCollaborative(BaseType):
         except Exception:
             return 0
 
-    @strawberry.field(description="Get the count of use cases associated with this collaborative.")
+    @strawberry.field(
+        description="Get the count of use cases associated with this collaborative."
+    )
     def use_case_count(self: "TypeCollaborative", info: Info) -> int:
         """Get the count of use cases associated with this collaborative."""
         try:
@@ -177,7 +181,9 @@ class TypeCollaborative(BaseType):
         except Exception:
             return []
 
-    @strawberry.field(description="Get contributors associated with this collaborative.")
+    @strawberry.field(
+        description="Get contributors associated with this collaborative."
+    )
     def contributors(self) -> Optional[List["TypeUser"]]:
         """Get contributors associated with this collaborative."""
         try:
@@ -203,7 +209,9 @@ class TypeCollaborative(BaseType):
         except Exception:
             return []
 
-    @strawberry.field(description="Get supporting organizations for this collaborative.")
+    @strawberry.field(
+        description="Get supporting organizations for this collaborative."
+    )
     def supporting_organizations(self) -> Optional[List["TypeOrganization"]]:
         """Get supporting organizations for this collaborative."""
         try:
