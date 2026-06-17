@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dataspace-sdk"
-version = "0.4.19"
+version = "0.5.02"
 description = "Python SDK for DataSpace API"
 readme = "docs/sdk/README.md"
 requires-python = ">=3.8"
@@ -54,7 +54,7 @@ include = '\.pyi?$'
 
 [tool.mypy]
 
-python_version = "0.4.19"
+python_version = "0.5.02"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
