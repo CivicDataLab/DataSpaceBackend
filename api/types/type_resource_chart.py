@@ -1,5 +1,3 @@
-# mypy: disable-error-code="valid-type"
-
 import json
 import uuid
 from datetime import datetime
@@ -316,7 +314,9 @@ class TypeResourceChart(BaseType):
                 point_size=options_dict.get("point_size"),
                 # Geospatial Map Chart options
                 geospatial_field=(
-                    ensure_type(options_dict.get("geospatial_field"), TypeResourceSchema)
+                    ensure_type(
+                        options_dict.get("geospatial_field"), TypeResourceSchema
+                    )
                     if options_dict.get("geospatial_field")
                     else None
                 ),
@@ -332,7 +332,9 @@ class TypeResourceChart(BaseType):
             return [
                 FilterType(
                     column=(
-                        ensure_type(f["column"], TypeResourceSchema) if f.get("column") else None
+                        ensure_type(f["column"], TypeResourceSchema)
+                        if f.get("column")
+                        else None
                     ),
                     operator=f["operator"],
                     value=f["value"],
@@ -350,7 +352,9 @@ class TypeResourceChart(BaseType):
             return None
 
         # Convert chart to JSON-serializable format
-        chart_options = chart_instance.dump_options_with_quotes() if chart_instance else None
+        chart_options = (
+            chart_instance.dump_options_with_quotes() if chart_instance else None
+        )
         if not chart_options:
             return None
 

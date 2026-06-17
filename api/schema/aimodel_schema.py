@@ -1,9 +1,9 @@
 """GraphQL schema for AI Model."""
 
-# mypy: disable-error-code="union-attr,misc,valid-type"
+# mypy: disable-error-code="union-attr,misc"
 
 import datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 import strawberry
 import strawberry_django
@@ -419,14 +419,14 @@ class Mutation:
         description = input.description or ""
 
         # Prepare supported_languages
-        supported_languages: List[str] = input.supported_languages or []
+        supported_languages = input.supported_languages or []
 
         # Prepare schemas
-        input_schema: Any = input.input_schema or {}
-        output_schema: Any = input.output_schema or {}
+        input_schema = input.input_schema or {}
+        output_schema = input.output_schema or {}
 
         # Prepare metadata
-        metadata: Any = input.metadata or {}
+        metadata = input.metadata or {}
 
         try:
             model = AIModel.objects.create(
@@ -802,7 +802,7 @@ class Mutation:
             ai_model=model,
             version=input.version,
             version_notes=input.version_notes or "",
-            lifecycle_stage=input.lifecycle_stage.value if input.lifecycle_stage else "DEVELOPMENT",  # type: ignore[attr-defined]
+            lifecycle_stage=input.lifecycle_stage.value if input.lifecycle_stage else "DEVELOPMENT",  # type: ignore[misc]
             supports_streaming=input.supports_streaming,
             max_tokens=input.max_tokens,
             supported_languages=input.supported_languages or [],

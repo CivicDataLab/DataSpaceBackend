@@ -1,5 +1,3 @@
-# mypy: disable-error-code="valid-type"
-
 import uuid
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
@@ -51,7 +49,9 @@ class EditAccessModelInput:
 @strawberry.type(name="Query")
 class Query:
     @strawberry_django.field
-    def access_model_resources(self, info: Info, dataset_id: uuid.UUID) -> List[TypeAccessModel]:
+    def access_model_resources(
+        self, info: Info, dataset_id: uuid.UUID
+    ) -> List[TypeAccessModel]:
         models = AccessModel.objects.filter(dataset_id=dataset_id)
         return [TypeAccessModel.from_django(model) for model in models]
 
@@ -88,12 +88,16 @@ def _add_update_access_model_resources(
         try:
             dataset_resource = Resource.objects.get(id=resource_input.resource)
         except Resource.DoesNotExist as e:
-            raise ValueError(f"Resource with ID {resource_input.resource} does not exist.")
+            raise ValueError(
+                f"Resource with ID {resource_input.resource} does not exist."
+            )
 
         access_model_resource = AccessModelResource.objects.create(
             access_model=access_model, resource=dataset_resource
         )
-        _add_resource_fields(access_model_resource, dataset_resource, resource_input.fields)
+        _add_resource_fields(
+            access_model_resource, dataset_resource, resource_input.fields
+        )
 
 
 def _update_access_model_fields(
@@ -118,13 +122,15 @@ class Mutation:
         try:
             dataset = Dataset.objects.get(id=access_model_input.dataset)
         except Dataset.DoesNotExist:
-            raise ValueError(f"Dataset with ID {access_model_input.dataset} does not exist.")
+            raise ValueError(
+                f"Dataset with ID {access_model_input.dataset} does not exist."
+            )
 
         access_model = AccessModel.objects.create(
             dataset=dataset,
             name=access_model_input.name,
             description=access_model_input.description,
-            type=access_model_input.type.value,  # type: ignore[attr-defined]
+            type=access_model_input.type.value,
         )
 
         _update_access_model_fields(access_model, access_model_input)
@@ -139,11 +145,15 @@ class Mutation:
             try:
                 dataset = Dataset.objects.get(id=access_model_input.dataset)
             except Dataset.DoesNotExist as e:
-                raise ValueError(f"Dataset with ID {access_model_input.dataset} does not exist.")
+                raise ValueError(
+                    f"Dataset with ID {access_model_input.dataset} does not exist."
+                )
             access_model = AccessModel.objects.create(dataset=dataset)
         else:
             try:
-                access_model = AccessModel.objects.get(id=access_model_input.access_model_id)
+                access_model = AccessModel.objects.get(
+                    id=access_model_input.access_model_id
+                )
             except AccessModel.DoesNotExist as e:
                 raise ValueError(
                     f"Access Model with ID {access_model_input.access_model_id} does not exist."
