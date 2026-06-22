@@ -16,7 +16,7 @@ elastic-transport==8.13.0
 elasticsearch==8.13.0
 elasticsearch-dsl==8.12.0
 googleapis-common-protos==1.65.0
-graphql-core==3.2.3
+graphql-core==3.2.11
 gunicorn==23.0.0
 grpcio==1.68.1
 idna==3.6
@@ -40,10 +40,10 @@ opentelemetry-semantic-conventions==0.49b2
 opentelemetry-util-http==0.49b2
 packaging==24.0
 pandas==2.2.2
-openpyxl==3.1.2  # For Excel file support
+openpyxl==3.1.5  # For Excel file support
 odfpy==1.4.1  # For ODS file support
 pyarrow==15.0.0  # For Parquet and Feather file support
-xlrd==2.0.1  # For Excel file support
+xlrd==2.0.2  # For Excel file support
 pillow==10.4.0
 protobuf==5.28.3
 pydantic==2.9.2
@@ -55,7 +55,7 @@ python-dotenv==1.1.1
 python-magic==0.4.27
 pytz==2024.1
 requests==2.31.0
-sqlalchemy==2.0.39
+sqlalchemy==2.0.51
 six==1.16.0
 sqlparse==0.4.4
 strawberry-graphql==0.235.2
@@ -98,8 +98,8 @@ structlog==24.1.0
 ipython==8.22.1
 
 # API Documentation
-drf-yasg==1.21.7
-drf-yasg[validation]==1.21.7
+drf-yasg==1.21.15
+drf-yasg[validation]==1.21.15
 djangorestframework-simplejwt==5.3.1
 
 # Keycloak Integration
