@@ -188,7 +188,8 @@ def version_resource_with_dvc(sender, instance: ResourceFileDetails, created, **
                     # Create a temporary directory for the previous version
                     with tempfile.TemporaryDirectory() as temp_dir:
                         # Get the previous version file path
-                        prev_file_name = f"prev_version_{instance.resource.id}.{instance.file.name.split('.')[-1]}"
+                        file_ext = instance.file.name.split(".")[-1] if instance.file.name else ""
+                        prev_file_name = f"prev_version_{instance.resource.id}.{file_ext}"
                         prev_file_path = os.path.join(temp_dir, prev_file_name)
 
                         # Use DVC to get the previous version

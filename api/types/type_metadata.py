@@ -25,7 +25,7 @@ class ValidatorType(Enum):
 class MetadataFilter:
     """Filter for metadata."""
 
-    model: metadata_models
+    model: MetadataModels
     enabled: bool
 
 
@@ -35,7 +35,7 @@ class TypeMetadata(BaseType):
 
     id: auto
     label: auto
-    model: metadata_models
+    model: MetadataModels
     type: auto
     enabled: auto
     validator: List[ValidatorType]

@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand, CommandParser
 from django.db import transaction
 
 from api.models.Resource import Resource, ResourceDataTable
-from api.utils.data_indexing import index_resource_data
+from api.utils.data_indexing import INDEXED_FORMATS, index_resource_data
 
 logger = structlog.get_logger("dataspace.commands.update_dataindex")
 
@@ -51,9 +51,7 @@ class Command(BaseCommand):
                 resource_id = uuid.UUID(resource_id_str)
             except ValueError:
                 self.stdout.write(
-                    self.style.ERROR(
-                        f"Invalid UUID format for resource-id: {resource_id_str}"
-                    )
+                    self.style.ERROR(f"Invalid UUID format for resource-id: {resource_id_str}")
                 )
                 return
 
@@ -62,9 +60,7 @@ class Command(BaseCommand):
                 dataset_id = uuid.UUID(dataset_id_str)
             except ValueError:
                 self.stdout.write(
-                    self.style.ERROR(
-                        f"Invalid UUID format for dataset-id: {dataset_id_str}"
-                    )
+                    self.style.ERROR(f"Invalid UUID format for dataset-id: {dataset_id_str}")
                 )
                 return
 
@@ -106,10 +102,10 @@ class Command(BaseCommand):
 
                 # Skip resources that aren't CSV files
                 file_details = resource.resourcefiledetails
-                if not file_details or not file_details.format.lower() == "csv":
+                if not file_details or file_details.format.lower() not in INDEXED_FORMATS:
                     self.stdout.write(
                         self.style.WARNING(
-                            f"[{i}/{total_resources}] Skipping resource {resource.id} - Not a CSV file"
+                            f"[{i}/{total_resources}] Skipping resource {resource.id} - Format not indexable"
                         )
                     )
                     skipped_count += 1
@@ -163,9 +159,7 @@ class Command(BaseCommand):
         # Print summary
         elapsed_time = time.time() - start_time
         self.stdout.write(
-            self.style.SUCCESS(
-                f"\nDataindex update completed in {elapsed_time:.2f} seconds"
-            )
+            self.style.SUCCESS(f"\nDataindex update completed in {elapsed_time:.2f} seconds")
         )
         self.stdout.write(f"Total resources processed: {total_resources}")
         self.stdout.write(f"Successful updates: {success_count}")

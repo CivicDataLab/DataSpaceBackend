@@ -16,6 +16,12 @@ logger = structlog.get_logger("dataspace.data_indexing")
 DATA_DB = "data_db"  # This should match the connection name in settings.py
 
 
+# Formats indexed into ResourceDataTable (queryable via get_row_count)
+INDEXED_FORMATS = {"csv", "xls", "xlsx", "ods", "parquet", "feather", "json", "tsv"}
+# Formats counted by parsing the file directly (not indexed into DB)
+FILE_COUNT_FORMATS = {"yml", "yaml", "xml"}
+
+
 def get_sql_type(pandas_dtype: str) -> str:
     """Convert pandas dtype to SQL type."""
     if "int" in pandas_dtype:
@@ -372,6 +378,42 @@ def get_row_count(resource: Resource) -> int:
 
         error_tb = traceback.format_exc()
         logger.error(f"Error getting row count for resource {resource.id}:\n{str(e)}\n{error_tb}")
+        return 0
+
+
+def get_entry_count_from_file(resource: Resource) -> int:
+    """Count entries in yml/yaml/xml files by parsing the file directly."""
+    try:
+        file_details = getattr(resource, "resourcefiledetails", None)
+        if not file_details:
+            return 0
+
+        fmt = file_details.format.lower()
+        filepath = file_details.file.path
+
+        if fmt in ("yml", "yaml"):
+            import yaml
+
+            with open(filepath, "r") as f:
+                data = yaml.safe_load(f)
+            if isinstance(data, list):
+                return len(data)
+            if isinstance(data, dict):
+                for v in data.values():
+                    if isinstance(v, list):
+                        return len(v)
+                return len(data)
+            return 0
+
+        if fmt == "xml":
+            import xml.etree.ElementTree as ET
+
+            root = ET.parse(filepath).getroot()
+            return len(list(root))
+
+        return 0
+    except Exception as e:
+        logger.error(f"Error counting entries from file for resource {resource.id}: {str(e)}")
         return 0
 
 
