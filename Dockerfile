@@ -40,6 +40,8 @@ RUN apt-get update && \
         libxss1 \
         libxtst6 \
         lsb-release \
+        chromium \
+        chromium-driver \
         xdg-utils && \
     rm -rf /var/lib/apt/lists/*
 
@@ -49,6 +51,7 @@ COPY . /code/
 
 RUN pip install psycopg2-binary uvicorn
 RUN pip install -r requirements.txt
+RUN curl -s https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js -o /code/echarts.min.js
 
 # Create healthcheck script
 RUN echo '#!/bin/bash\nset -e\npython -c "import sys; import django; django.setup(); sys.exit(0)"' > /code/healthcheck.sh \
