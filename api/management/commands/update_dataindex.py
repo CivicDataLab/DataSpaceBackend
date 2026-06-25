@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand, CommandParser
 from django.db import transaction
 
 from api.models.Resource import Resource, ResourceDataTable
-from api.utils.data_indexing import index_resource_data
+from api.utils.data_indexing import INDEXED_FORMATS, index_resource_data
 
 logger = structlog.get_logger("dataspace.commands.update_dataindex")
 
@@ -104,12 +104,12 @@ class Command(BaseCommand):
                     skipped_count += 1
                     continue
 
-                # Skip resources that aren't CSV files
+                # Skip resources that aren't in a supported indexed format
                 file_details = resource.resourcefiledetails
-                if not file_details or not file_details.format.lower() == "csv":
+                if not file_details or file_details.format.lower() not in INDEXED_FORMATS:
                     self.stdout.write(
                         self.style.WARNING(
-                            f"[{i}/{total_resources}] Skipping resource {resource.id} - Not a CSV file"
+                            f"[{i}/{total_resources}] Skipping resource {resource.id} - Format not indexable"
                         )
                     )
                     skipped_count += 1
