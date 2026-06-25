@@ -42,6 +42,7 @@ async def create_chart_details(
         )
 
     # Handle y-axis columns with configurations
+    y_axis_columns = []
     if y_axis_configs := request_details.get("y_axis_column", []):
         y_axis_columns = []
         for config in y_axis_configs:
