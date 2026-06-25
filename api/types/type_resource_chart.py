@@ -1,6 +1,8 @@
 # mypy: disable-error-code="valid-type"
 
 import json
+from pyecharts.globals import CurrentConfig
+CurrentConfig.ONLINE_HOST = "file:///code/"
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Type, TypedDict, TypeVar, Union, cast
