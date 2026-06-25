@@ -20,7 +20,13 @@ from api.types.type_file_details import TypeFileDetails
 from api.types.type_preview_data import PreviewData
 from api.types.type_prompt_resource_details import TypePromptResourceDetails
 from api.types.type_resource_metadata import TypeResourceMetadata
-from api.utils.data_indexing import get_preview_data, get_row_count
+from api.utils.data_indexing import (
+    FILE_COUNT_FORMATS,
+    INDEXED_FORMATS,
+    get_entry_count_from_file,
+    get_preview_data,
+    get_row_count,
+)
 from api.utils.graphql_telemetry import trace_resolver
 
 logger = structlog.get_logger(__name__)
@@ -177,14 +183,26 @@ class TypeResource(BaseType):
             if not file_details:
                 return 0
 
-            if not hasattr(file_details, "format") or file_details.format.lower() != "csv":
+            if not hasattr(file_details, "format"):
                 return 0
 
-            try:
-                return get_row_count(self)  # type: ignore
-            except Exception as row_count_error:
-                logger.error(f"Error in get_row_count: {str(row_count_error)}")
-                return 0
+            fmt = file_details.format.lower()
+
+            if fmt in INDEXED_FORMATS:
+                try:
+                    return get_row_count(self)  # type: ignore
+                except Exception as row_count_error:
+                    logger.error(f"Error in get_row_count: {str(row_count_error)}")
+                    return 0
+
+            if fmt in FILE_COUNT_FORMATS:
+                try:
+                    return get_entry_count_from_file(self)  # type: ignore
+                except Exception as file_count_error:
+                    logger.error(f"Error in get_entry_count_from_file: {str(file_count_error)}")
+                    return 0
+
+            return 0
         except Exception as e:
             logger.error(f"Error getting number of entries: {str(e)}")
             return 0
