@@ -42,7 +42,7 @@ packaging==24.0
 pandas==2.2.2
 openpyxl==3.1.2  # For Excel file support
 odfpy==1.4.1  # For ODS file support
-pyarrow==15.0.0  # For Parquet and Feather file support
+pyarrow==23.0.1  # For Parquet and Feather file support
 xlrd==2.0.1  # For Excel file support
 pillow==10.4.0
 protobuf==5.28.3
