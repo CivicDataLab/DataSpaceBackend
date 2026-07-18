@@ -46,7 +46,7 @@ from authorization.models import User
 from authorization.types import TypeUser
 
 
-@strawberry_django.input(UseCase, fields="__all__", exclude=["datasets", "slug"])
+@strawberry_django.input(UseCase, fields="__all__", exclude=["datasets", "publications", "slug"])
 class UseCaseInput:
     """Input type for use case creation."""
 
@@ -72,7 +72,7 @@ class UpdateUseCaseMetadataInput:
 use_case_running_status = strawberry.enum(UseCaseRunningStatus)  # type: ignore
 
 
-@strawberry_django.partial(UseCase, fields="__all__", exclude=["datasets"])
+@strawberry_django.partial(UseCase, fields="__all__", exclude=["datasets", "publications"])
 class UseCaseInputPartial:
     """Input type for use case updates."""
 

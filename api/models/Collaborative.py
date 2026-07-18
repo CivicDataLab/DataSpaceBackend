@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, cast
 
-from django.db import models
 from django.core.validators import RegexValidator
+from django.db import models
 from django.utils.text import slugify
 
 if TYPE_CHECKING:
@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 
 from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from api.utils.file_paths import _use_case_directory_path
-
 
 slug_validator = RegexValidator(
     regex=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
@@ -47,15 +46,12 @@ class Collaborative(models.Model):
         choices=CollaborativeStatus.choices,
     )
     datasets = models.ManyToManyField("api.Dataset", blank=True)
+    publications = models.ManyToManyField("api.Publication", blank=True)
     use_cases = models.ManyToManyField("api.UseCase", blank=True)
     tags = models.ManyToManyField("api.Tag", blank=True)
-    sectors = models.ManyToManyField(
-        "api.Sector", blank=True, related_name="collaboratives"
-    )
+    sectors = models.ManyToManyField("api.Sector", blank=True, related_name="collaboratives")
     sdgs = models.ManyToManyField("api.SDG", blank=True, related_name="collaboratives")
-    geographies = models.ManyToManyField(
-        "api.Geography", blank=True, related_name="collaboratives"
-    )
+    geographies = models.ManyToManyField("api.Geography", blank=True, related_name="collaboratives")
     contributors = models.ManyToManyField(
         "authorization.User", blank=True, related_name="contributed_collaboratives"
     )
