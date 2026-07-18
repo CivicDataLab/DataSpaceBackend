@@ -36,6 +36,11 @@ def extract_video_id(url: Optional[str]) -> Optional[str]:
         return None
 
     parsed = urlparse(url.strip())
+    # Reject anything that isn't a plain http(s) link — a matching host on a
+    # ``javascript:`` scheme (e.g. ``javascript://youtube.com/watch?v=...``)
+    # must never pass, or it becomes a stored-XSS vector when rendered.
+    if parsed.scheme not in ("http", "https"):
+        return None
     host = (parsed.hostname or "").lower()
     if host not in _YOUTUBE_HOSTS:
         return None

@@ -277,6 +277,7 @@ ELASTICSEARCH_INDEX_NAMES = {
     "search.documents.dataset_document": "dataset",
     "search.documents.usecase_document": "usecase",
     "search.documents.aimodel_document": "aimodel",
+    "search.documents.publication_document": "publication",
     "search.documents.collaborative_document": "collaborative",
     "search.documents.publisher_document.OrganizationPublisherDocument": "organization_publisher",
     "search.documents.publisher_document.UserPublisherDocument": "user_publisher",

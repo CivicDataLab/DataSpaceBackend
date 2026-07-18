@@ -30,6 +30,9 @@ class TestExtractVideoId:
             "https://www.youtube.com/watch?v=tooShort",
             "",
             None,
+            # A matching host on a dangerous scheme must never pass (stored XSS).
+            f"javascript://youtube.com/watch?v={VIDEO_ID}",
+            f"data://youtu.be/{VIDEO_ID}",
         ],
     )
     def test_rejects_non_youtube_or_malformed(self, url):
