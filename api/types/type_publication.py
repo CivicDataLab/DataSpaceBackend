@@ -18,8 +18,37 @@ from api.types.base_type import BaseType
 from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
 from api.types.type_sector import TypeSector
-from api.utils.enums import DatasetLicense, PublicationBlockType, PublicationStatus
+from api.utils.enums import (
+    CollaborativeStatus,
+    DatasetLicense,
+    PublicationBlockType,
+    PublicationStatus,
+    UseCaseStatus,
+)
 from authorization.types import TypeUser
+
+
+def _caller_can_see_links(info: Info, publication: Publication) -> bool:
+    """Whether the caller may see where a resource is linked (owner / org / superuser).
+
+    The 'linked to N' flag is the owner's view; outsiders (including anonymous
+    visitors to a public resource) must not learn which projects reference it.
+    """
+    user = getattr(info.context, "user", None)
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_superuser:
+        return True
+    if publication.user and publication.user == user:
+        return True
+    if publication.organization:
+        from authorization.models import OrganizationMembership
+
+        return OrganizationMembership.objects.filter(
+            user=user, organization=publication.organization
+        ).exists()
+    return False
+
 
 # Fields are enumerated on every type below — never ``fields="__all__"`` — so a
 # future column is never silently published.
@@ -128,10 +157,15 @@ class TypePublication(BaseType):
 
     @strawberry.field
     def blocks(self, info: Info) -> List["TypePublicationBlock"]:
-        """Ordered content blocks of this resource."""
+        """Ordered content blocks of this resource.
+
+        ``PublicationBlock`` orders by ``position`` in its Meta, so ``.all()`` is
+        already position-ordered and reuses the listing's prefetch cache — an
+        explicit ``.order_by`` here would re-query and reintroduce an N+1.
+        """
         try:
             instance = cast(Publication, self)
-            return TypePublicationBlock.from_django_list(instance.blocks.all().order_by("position"))
+            return TypePublicationBlock.from_django_list(instance.blocks.all())
         except (AttributeError, Publication.DoesNotExist):
             return []
 
@@ -141,11 +175,20 @@ class TypePublication(BaseType):
         return self.organization is None
 
     @strawberry.field
-    def linked_usecases(self) -> List["TypeLinkedReference"]:
-        """Use Cases this resource is linked into (owner's 'linked to N' flag)."""
+    def linked_usecases(self, info: Info) -> List["TypeLinkedReference"]:
+        """Use Cases this resource is linked into — the owner's 'linked to N' flag.
+
+        Only the owner / org members may see this, and only published projects
+        are named, so a private draft (possibly in another org that linked this
+        public resource) never leaks its title through here.
+        """
         try:
             instance = cast(Publication, self)
-            usecases: List[UseCase] = list(instance.usecase_set.all())  # type: ignore[attr-defined]
+            if not _caller_can_see_links(info, instance):
+                return []
+            usecases: List[UseCase] = list(
+                UseCase.objects.filter(publications=instance, status=UseCaseStatus.PUBLISHED)
+            )
             return [
                 TypeLinkedReference(id=str(uc.id), title=uc.title or "", slug=uc.slug or "")
                 for uc in usecases
@@ -154,11 +197,17 @@ class TypePublication(BaseType):
             return []
 
     @strawberry.field
-    def linked_collaboratives(self) -> List["TypeLinkedReference"]:
-        """Collaboratives this resource is linked into (owner's 'linked to N' flag)."""
+    def linked_collaboratives(self, info: Info) -> List["TypeLinkedReference"]:
+        """Collaboratives this resource is linked into — the owner's 'linked to N' flag."""
         try:
             instance = cast(Publication, self)
-            collabs: List[Collaborative] = list(instance.collaborative_set.all())  # type: ignore[attr-defined]
+            if not _caller_can_see_links(info, instance):
+                return []
+            collabs: List[Collaborative] = list(
+                Collaborative.objects.filter(
+                    publications=instance, status=CollaborativeStatus.PUBLISHED
+                )
+            )
             return [
                 TypeLinkedReference(
                     id=str(collab.id), title=collab.title or "", slug=collab.slug or ""
@@ -169,10 +218,18 @@ class TypePublication(BaseType):
             return []
 
     @strawberry.field
-    def linked_count(self) -> int:
-        """Total Use Cases + Collaboratives this resource is linked into."""
+    def linked_count(self, info: Info) -> int:
+        """Published Use Cases + Collaboratives this resource is linked into (owner only)."""
         try:
             instance = cast(Publication, self)
-            return instance.usecase_set.count() + instance.collaborative_set.count()  # type: ignore[attr-defined]
+            if not _caller_can_see_links(info, instance):
+                return 0
+            usecases = UseCase.objects.filter(
+                publications=instance, status=UseCaseStatus.PUBLISHED
+            ).count()
+            collabs = Collaborative.objects.filter(
+                publications=instance, status=CollaborativeStatus.PUBLISHED
+            ).count()
+            return usecases + collabs
         except (AttributeError, Publication.DoesNotExist):
             return 0

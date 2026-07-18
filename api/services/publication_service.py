@@ -153,12 +153,22 @@ def apply_publication_update(
     """
     errors: dict[str, List[str]] = {}
 
+    # A provided required field must not be explicitly blanked.
     if title is not None:
-        publication.title = title
+        if not title.strip():
+            errors["title"] = ["Title cannot be empty."]
+        else:
+            publication.title = title
     if description is not None:
-        publication.description = description
+        if not description.strip():
+            errors["description"] = ["Description cannot be empty."]
+        else:
+            publication.description = description
     if authors is not None:
-        publication.authors = authors
+        if not [a for a in authors if a and a.strip()]:
+            errors["authors"] = ["At least one author is required."]
+        else:
+            publication.authors = authors
     if publication_date is not None:
         publication.publication_date = publication_date
     if external_source_link is not None:
@@ -220,7 +230,14 @@ def get_scoped_publications(
     if include_public:
         queryset = queryset | Publication.objects.filter(status=PublicationStatus.PUBLISHED)
 
-    return queryset.order_by("-modified").distinct()
+    # Prefetch the relations the listing/card resolvers touch so a page of N
+    # resources stays a bounded number of queries, not one-per-row.
+    return (
+        queryset.select_related("resource_type", "organization", "user")
+        .prefetch_related("sectors", "geographies", "blocks")
+        .order_by("-modified")
+        .distinct()
+    )
 
 
 def is_publication_published(publication: Publication) -> bool:

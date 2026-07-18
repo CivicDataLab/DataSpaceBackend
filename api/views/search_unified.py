@@ -483,7 +483,7 @@ class UnifiedSearch(APIView):
             page: int = int(request.GET.get("page", 1))
             size: int = int(request.GET.get("size", 10))
             entity_types: str = request.GET.get(
-                "types", "dataset,usecase,aimodel,collaborative,publisher"
+                "types", "dataset,usecase,aimodel,publication,collaborative,publisher"
             )  # Which entity types to search
 
             types_list = [t.strip() for t in entity_types.split(",")]
