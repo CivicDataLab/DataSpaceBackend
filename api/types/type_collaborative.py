@@ -22,10 +22,15 @@ from api.types.type_collaborative_organization import (
 from api.types.type_dataset import TypeDataset, TypeTag
 from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
+from api.types.type_publication import TypePublication
 from api.types.type_sdg import TypeSDG
 from api.types.type_sector import TypeSector
 from api.types.type_usecase import TypeUseCase
-from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
+from api.utils.enums import (
+    CollaborativeStatus,
+    OrganizationRelationshipType,
+    PublicationStatus,
+)
 from authorization.types import TypeUser
 
 collaborative_status = strawberry.enum(CollaborativeStatus)  # type: ignore
@@ -92,6 +97,18 @@ class TypeCollaborative(BaseType):
             if not queryset.exists():
                 return []
             return TypeDataset.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field(description="Get published resources linked to this collaborative.")
+    def publications(self) -> Optional[List["TypePublication"]]:
+        """Get published resources linked to this collaborative (drafts hidden)."""
+        try:
+            # Only published resources render — an unpublished one drops out.
+            queryset = self.publications.filter(  # type: ignore
+                status=PublicationStatus.PUBLISHED
+            ).order_by("-modified")
+            return TypePublication.from_django_list(queryset)
         except Exception:
             return []
 

@@ -29,6 +29,10 @@ from api.models import (
     UseCase,
 )
 from api.schema.extensions import TrackActivity, TrackModelActivity
+from api.services.publication_linking import (
+    get_linkable_publication,
+    published_publications,
+)
 from api.types.type_collaborative import (
     CollaborativeFilter,
     CollaborativeOrder,
@@ -530,6 +534,65 @@ class Mutation:
             raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
         collaborative.datasets.set(datasets)
+        collaborative.save()
+        return TypeCollaborative.from_django(collaborative)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def add_publication_to_collaborative(
+        self, info: Info, collaborative_id: str, publication_id: uuid.UUID
+    ) -> TypeCollaborative:
+        """Link a published resource to a collaborative (only PUBLISHED linkable)."""
+        # Reject a missing or draft resource before touching the link.
+        publication = get_linkable_publication(publication_id)
+
+        try:
+            collaborative = Collaborative.objects.get(id=collaborative_id)
+        except Collaborative.DoesNotExist:
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
+
+        if collaborative.status != CollaborativeStatus.DRAFT:
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
+
+        collaborative.publications.add(publication)
+        collaborative.save()
+        return TypeCollaborative.from_django(collaborative)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def remove_publication_from_collaborative(
+        self, info: Info, collaborative_id: str, publication_id: uuid.UUID
+    ) -> TypeCollaborative:
+        """Unlink a resource from a collaborative."""
+        try:
+            collaborative = Collaborative.objects.get(id=collaborative_id)
+        except Collaborative.DoesNotExist:
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
+
+        if collaborative.status != CollaborativeStatus.DRAFT:
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
+
+        collaborative.publications.remove(publication_id)  # type: ignore[arg-type]
+        collaborative.save()
+        return TypeCollaborative.from_django(collaborative)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="update_collaborative_publications",
+        attributes={"component": "collaborative", "operation": "mutation"},
+    )
+    def update_collaborative_publications(
+        self, info: Info, collaborative_id: str, publication_ids: List[uuid.UUID]
+    ) -> TypeCollaborative:
+        """Set the linked resources — only published ones are attached."""
+        try:
+            collaborative = Collaborative.objects.get(id=collaborative_id)
+        except Collaborative.DoesNotExist:
+            raise ValueError(f"Collaborative with ID {collaborative_id} doesn't exist")
+
+        if collaborative.status != CollaborativeStatus.DRAFT:
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
+
+        # Attach only the published resources among the given ids.
+        collaborative.publications.set(published_publications(publication_ids))
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
 

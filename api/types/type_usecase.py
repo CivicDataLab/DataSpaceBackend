@@ -19,12 +19,17 @@ from api.types.base_type import BaseType
 from api.types.type_dataset import TypeDataset, TypeTag
 from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
+from api.types.type_publication import TypePublication
 from api.types.type_sdg import TypeSDG
 from api.types.type_sector import TypeSector
 from api.types.type_usecase_dashboard import TypeUseCaseDashboard
 from api.types.type_usecase_metadata import TypeUseCaseMetadata
 from api.types.type_usecase_organization import TypeUseCaseOrganizationRelationship
-from api.utils.enums import OrganizationRelationshipType, UseCaseStatus
+from api.utils.enums import (
+    OrganizationRelationshipType,
+    PublicationStatus,
+    UseCaseStatus,
+)
 from authorization.types import TypeUser
 
 use_case_status = strawberry.enum(UseCaseStatus)  # type: ignore
@@ -90,6 +95,16 @@ class TypeUseCase(BaseType):
             return self.datasets.count()  # type: ignore
         except Exception:
             return 0
+
+    @strawberry.field(description="Get published resources linked to this use case.")
+    def publications(self) -> Optional[List["TypePublication"]]:
+        """Get published resources linked to this use case (drafts hidden)."""
+        try:
+            # Only published resources render — an unpublished one drops out.
+            queryset = self.publications.filter(status=PublicationStatus.PUBLISHED)  # type: ignore
+            return TypePublication.from_django_list(queryset)
+        except Exception:
+            return []
 
     @strawberry.field(description="Get publishers associated with this use case.")
     def publishers(self) -> Optional[List["TypeOrganization"]]:

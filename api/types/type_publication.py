@@ -7,7 +7,13 @@ import strawberry_django
 from strawberry.enum import EnumType
 from strawberry.types import Info
 
-from api.models import Publication, PublicationBlock, ResourceType
+from api.models import (
+    Collaborative,
+    Publication,
+    PublicationBlock,
+    ResourceType,
+    UseCase,
+)
 from api.types.base_type import BaseType
 from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
@@ -20,6 +26,19 @@ from authorization.types import TypeUser
 publication_status: EnumType = strawberry.enum(PublicationStatus)  # type: ignore
 publication_block_type: EnumType = strawberry.enum(PublicationBlockType)  # type: ignore
 publication_license: EnumType = strawberry.enum(DatasetLicense)  # type: ignore
+
+
+@strawberry.type
+class TypeLinkedReference:
+    """A lightweight pointer to a Use Case / Collaborative a resource is linked into.
+
+    Kept minimal (id / title / slug) so ``TypePublication`` can name where it's
+    linked without importing the heavier Use Case / Collaborative types.
+    """
+
+    id: str
+    title: str
+    slug: str
 
 
 @strawberry_django.type(ResourceType)
@@ -120,3 +139,40 @@ class TypePublication(BaseType):
     def is_individual_publication(self) -> bool:
         """True when owned by an individual rather than an organization."""
         return self.organization is None
+
+    @strawberry.field
+    def linked_usecases(self) -> List["TypeLinkedReference"]:
+        """Use Cases this resource is linked into (owner's 'linked to N' flag)."""
+        try:
+            instance = cast(Publication, self)
+            usecases: List[UseCase] = list(instance.usecase_set.all())  # type: ignore[attr-defined]
+            return [
+                TypeLinkedReference(id=str(uc.id), title=uc.title or "", slug=uc.slug or "")
+                for uc in usecases
+            ]
+        except (AttributeError, Publication.DoesNotExist):
+            return []
+
+    @strawberry.field
+    def linked_collaboratives(self) -> List["TypeLinkedReference"]:
+        """Collaboratives this resource is linked into (owner's 'linked to N' flag)."""
+        try:
+            instance = cast(Publication, self)
+            collabs: List[Collaborative] = list(instance.collaborative_set.all())  # type: ignore[attr-defined]
+            return [
+                TypeLinkedReference(
+                    id=str(collab.id), title=collab.title or "", slug=collab.slug or ""
+                )
+                for collab in collabs
+            ]
+        except (AttributeError, Publication.DoesNotExist):
+            return []
+
+    @strawberry.field
+    def linked_count(self) -> int:
+        """Total Use Cases + Collaboratives this resource is linked into."""
+        try:
+            instance = cast(Publication, self)
+            return instance.usecase_set.count() + instance.collaborative_set.count()  # type: ignore[attr-defined]
+        except (AttributeError, Publication.DoesNotExist):
+            return 0
