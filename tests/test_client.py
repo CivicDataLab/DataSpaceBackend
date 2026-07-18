@@ -20,7 +20,13 @@ class TestDataSpaceClient(unittest.TestCase):
         self.assertIsNotNone(self.client._auth)
         self.assertIsNotNone(self.client.datasets)
         self.assertIsNotNone(self.client.aimodels)
+        self.assertIsNotNone(self.client.publications)
         self.assertIsNotNone(self.client.usecases)
+
+    def test_set_organization_scopes_publications(self) -> None:
+        """set_organization must set the org header on the publications client too."""
+        self.client.set_organization("org-123")
+        self.assertEqual(self.client.publications.default_headers["organization"], "org-123")
 
     @patch("dataspace_sdk.client.AuthClient.login")
     def test_login(self, mock_login: MagicMock) -> None:
