@@ -481,6 +481,14 @@ def _resolve_publication_id(kwargs: Any) -> Optional[Any]:
         payload = kwargs.get(input_key)
         if payload is not None and getattr(payload, "id", None):
             return payload.id
+    # Block-scoped mutations pass a block id — resolve to its parent publication.
+    block_id = kwargs.get("block_id")
+    if block_id:
+        from api.models import PublicationBlock
+
+        block = PublicationBlock.objects.filter(id=block_id).first()
+        if block:
+            return block.publication_id
     return None
 
 

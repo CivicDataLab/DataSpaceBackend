@@ -426,3 +426,81 @@ class TestReadGating:
 
         statuses = [row["status"] for row in result.data["publications"]]
         assert statuses == ["PUBLISHED"]
+
+
+# --------------------------------------------------------------------------- #
+# Content-block mutations (wiring + cross-org gate)
+# --------------------------------------------------------------------------- #
+ADD_YOUTUBE = """
+mutation AddYt($id: UUID!, $url: String!) {
+  addPublicationYoutubeBlock(publicationId: $id, youtubeUrl: $url) {
+    success
+    data { id blockType youtubeVideoId position }
+  }
+}
+"""
+
+REMOVE_BLOCK = """
+mutation RemoveBlock($blockId: UUID!) {
+  removePublicationBlock(blockId: $blockId) { success data }
+}
+"""
+
+
+@pytest.mark.django_db
+class TestBlockMutations:
+    def test_org_member_adds_youtube_block(self, org_a_admin, org_a, resource_type):
+        publication = _make_publication(org_a_admin, org_a, resource_type)
+
+        result = run(
+            ADD_YOUTUBE,
+            ctx(org_a_admin, org_a),
+            {"id": str(publication.id), "url": "https://youtu.be/dQw4w9WgXcQ"},
+        )
+
+        payload = result.data["addPublicationYoutubeBlock"]
+        assert payload["success"] is True
+        assert payload["data"]["youtubeVideoId"] == "dQw4w9WgXcQ"
+        assert publication.blocks.count() == 1
+
+    def test_invalid_youtube_url_is_rejected(self, org_a_admin, org_a, resource_type):
+        publication = _make_publication(org_a_admin, org_a, resource_type)
+
+        result = run(
+            ADD_YOUTUBE,
+            ctx(org_a_admin, org_a),
+            {"id": str(publication.id), "url": "https://vimeo.com/1"},
+        )
+
+        assert result.data["addPublicationYoutubeBlock"]["success"] is False
+        assert publication.blocks.count() == 0
+
+    def test_other_org_cannot_add_block(
+        self, org_a_admin, org_b_admin, org_a, org_b, resource_type
+    ):
+        publication = _make_publication(org_a_admin, org_a, resource_type)
+
+        result = run(
+            ADD_YOUTUBE,
+            ctx(org_b_admin, org_b),
+            {"id": str(publication.id), "url": "https://youtu.be/dQw4w9WgXcQ"},
+        )
+
+        assert result.data["addPublicationYoutubeBlock"]["success"] is False
+        assert publication.blocks.count() == 0
+
+    def test_other_org_cannot_remove_block(
+        self, org_a_admin, org_b_admin, org_a, org_b, resource_type
+    ):
+        publication = _make_publication(org_a_admin, org_a, resource_type)
+        block = publication.blocks.create(
+            position=0,
+            block_type="YOUTUBE",
+            youtube_url="https://youtu.be/dQw4w9WgXcQ",
+            youtube_video_id="dQw4w9WgXcQ",
+        )
+
+        result = run(REMOVE_BLOCK, ctx(org_b_admin, org_b), {"blockId": str(block.id)})
+
+        assert result.data["removePublicationBlock"]["success"] is False
+        assert publication.blocks.filter(id=block.id).exists()

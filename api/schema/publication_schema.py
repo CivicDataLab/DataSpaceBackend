@@ -16,10 +16,18 @@ from typing import List, Optional
 import strawberry
 import strawberry_django
 from django.core.exceptions import ValidationError as DjangoValidationError
+from strawberry.file_uploads import Upload
 from strawberry.types import Info
 
-from api.models import Publication
+from api.models import Publication, PublicationBlock
 from api.schema.base_mutation import BaseMutation, MutationResponse
+from api.services.publication_blocks import (
+    add_file_block,
+    add_youtube_block,
+    remove_block,
+    reorder_blocks,
+    replace_block_file,
+)
 from api.services.publication_service import (
     apply_publication_update,
     create_publication,
@@ -32,6 +40,7 @@ from api.types.type_publication import (
     PublicationFilter,
     PublicationOrder,
     TypePublication,
+    TypePublicationBlock,
     publication_license,
 )
 from api.utils.enums import PublicationStatus
@@ -266,6 +275,85 @@ class Mutation:
         publication.delete()
         return MutationResponse.success_response(True)
 
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[ChangePublicationPermission],
+        trace_name="add_publication_file_block",
+        trace_attributes={"component": "publication"},
+    )
+    def add_publication_file_block(
+        self, info: Info, publication_id: uuid.UUID, file: Upload
+    ) -> MutationResponse[TypePublicationBlock]:
+        """Append an uploaded file as the next content block (validated server-side)."""
+        publication = _get_publication_or_raise(publication_id)
+
+        # Validate + store the file as the last block.
+        block = add_file_block(publication, file)
+        return MutationResponse.success_response(TypePublicationBlock.from_django(block))
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[ChangePublicationPermission],
+        trace_name="add_publication_youtube_block",
+        trace_attributes={"component": "publication"},
+    )
+    def add_publication_youtube_block(
+        self, info: Info, publication_id: uuid.UUID, youtube_url: str
+    ) -> MutationResponse[TypePublicationBlock]:
+        """Append a YouTube link as the next content block (validated server-side)."""
+        publication = _get_publication_or_raise(publication_id)
+
+        # Validate the url + extract its video id, then store the block.
+        block = add_youtube_block(publication, youtube_url)
+        return MutationResponse.success_response(TypePublicationBlock.from_django(block))
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[ChangePublicationPermission],
+        trace_name="replace_publication_block_file",
+        trace_attributes={"component": "publication"},
+    )
+    def replace_publication_block_file(
+        self, info: Info, block_id: uuid.UUID, file: Upload
+    ) -> MutationResponse[TypePublicationBlock]:
+        """Swap a file block's file, deleting the old one from disk."""
+        block = _get_block_or_raise(block_id)
+
+        # Replace in place — same block id, old file removed.
+        block = replace_block_file(block, file)
+        return MutationResponse.success_response(TypePublicationBlock.from_django(block))
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[ChangePublicationPermission],
+        trace_name="remove_publication_block",
+        trace_attributes={"component": "publication"},
+    )
+    def remove_publication_block(self, info: Info, block_id: uuid.UUID) -> MutationResponse[bool]:
+        """Remove a content block and renumber the rest contiguously."""
+        block = _get_block_or_raise(block_id)
+
+        # Delete + renumber siblings; the signal removes the file from disk.
+        remove_block(block)
+        return MutationResponse.success_response(True)
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[ChangePublicationPermission],
+        trace_name="reorder_publication_blocks",
+        trace_attributes={"component": "publication"},
+    )
+    def reorder_publication_blocks(
+        self, info: Info, publication_id: uuid.UUID, block_ids: List[uuid.UUID]
+    ) -> MutationResponse[TypePublication]:
+        """Set the content blocks' order to the given block-id sequence."""
+        publication = _get_publication_or_raise(publication_id)
+
+        # Reassign positions to match the requested order.
+        reorder_blocks(publication, block_ids)
+        publication.refresh_from_db()
+        return MutationResponse.success_response(TypePublication.from_django(publication))
+
 
 def _get_publication_or_raise(publication_id: uuid.UUID) -> Publication:
     """Load a publication by id or raise a clean validation error."""
@@ -273,3 +361,11 @@ def _get_publication_or_raise(publication_id: uuid.UUID) -> Publication:
         return Publication.objects.get(id=publication_id)
     except Publication.DoesNotExist:
         raise DjangoValidationError(f"Resource with id {publication_id} does not exist.")
+
+
+def _get_block_or_raise(block_id: uuid.UUID) -> PublicationBlock:
+    """Load a content block by id or raise a clean validation error."""
+    try:
+        return PublicationBlock.objects.get(id=block_id)
+    except PublicationBlock.DoesNotExist:
+        raise DjangoValidationError(f"Content block {block_id} does not exist.")
