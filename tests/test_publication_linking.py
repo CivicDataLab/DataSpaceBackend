@@ -173,6 +173,18 @@ class TestLinkedCountAndCrossOrg:
         uc1.publications.remove(pub)
         assert pub.usecase_set.count() + pub.collaborative_set.count() == 2
 
+    def test_unrelated_user_cannot_link_to_someone_elses_use_case(self, user, resource_type):
+        # IDOR guard: a caller who neither owns nor has an editor role on the use
+        # case cannot change its links, even with a valid published resource.
+        owner = user
+        stranger = User.objects.create(username="stranger", keycloak_id="stranger")
+        uc = _use_case(owner)
+        pub = _publication(owner, resource_type, status=PublicationStatus.PUBLISHED)
+
+        run(ADD_TO_UC, stranger, {"ucId": str(uc.id), "pubId": str(pub.id)})
+
+        assert uc.publications.count() == 0  # link refused
+
     def test_cross_org_link_is_allowed(self, resource_type):
         # A UC in org B may link a PUBLISHED resource owned by org A — the one
         # intentional cross-org path; do not deny it.

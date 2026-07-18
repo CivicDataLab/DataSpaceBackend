@@ -30,6 +30,7 @@ from api.models import (
 )
 from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.services.publication_linking import (
+    assert_can_manage_links,
     get_linkable_publication,
     published_publications,
 )
@@ -550,6 +551,9 @@ class Mutation:
         except Collaborative.DoesNotExist:
             raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
+        # Only the collaborative's owner / org editors may change its links.
+        assert_can_manage_links(info.context.user, collaborative.user, collaborative.organization)
+
         if collaborative.status != CollaborativeStatus.DRAFT:
             raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
@@ -566,6 +570,9 @@ class Mutation:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
             raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
+
+        # Only the collaborative's owner / org editors may change its links.
+        assert_can_manage_links(info.context.user, collaborative.user, collaborative.organization)
 
         if collaborative.status != CollaborativeStatus.DRAFT:
             raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
@@ -587,6 +594,9 @@ class Mutation:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
             raise ValueError(f"Collaborative with ID {collaborative_id} doesn't exist")
+
+        # Only the collaborative's owner / org editors may change its links.
+        assert_can_manage_links(info.context.user, collaborative.user, collaborative.organization)
 
         if collaborative.status != CollaborativeStatus.DRAFT:
             raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")

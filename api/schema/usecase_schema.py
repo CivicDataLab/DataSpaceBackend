@@ -30,6 +30,7 @@ from api.models import (
 )
 from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.services.publication_linking import (
+    assert_can_manage_links,
     get_linkable_publication,
     published_publications,
 )
@@ -493,6 +494,9 @@ class Mutation:
         except UseCase.DoesNotExist:
             raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
 
+        # Only the use case's owner / org editors may change its links.
+        assert_can_manage_links(info.context.user, use_case.user, use_case.organization)
+
         if use_case.status != UseCaseStatus.DRAFT:
             raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
 
@@ -509,6 +513,9 @@ class Mutation:
             use_case = UseCase.objects.get(id=use_case_id)
         except UseCase.DoesNotExist:
             raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+
+        # Only the use case's owner / org editors may change its links.
+        assert_can_manage_links(info.context.user, use_case.user, use_case.organization)
 
         if use_case.status != UseCaseStatus.DRAFT:
             raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
@@ -530,6 +537,9 @@ class Mutation:
             use_case = UseCase.objects.get(id=use_case_id)
         except UseCase.DoesNotExist:
             raise ValueError(f"Use Case with ID {use_case_id} doesn't exist")
+
+        # Only the use case's owner / org editors may change its links.
+        assert_can_manage_links(info.context.user, use_case.user, use_case.organization)
 
         if use_case.status != UseCaseStatus.DRAFT:
             raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")

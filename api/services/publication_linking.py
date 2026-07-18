@@ -36,3 +36,29 @@ def published_publications(publication_ids: List[Any]) -> List[Publication]:
     return list(
         Publication.objects.filter(id__in=publication_ids, status=PublicationStatus.PUBLISHED)
     )
+
+
+def assert_can_manage_links(user: Any, owner_user: Any, organization: Any) -> None:
+    """Raise unless the caller may edit this Use Case / Collaborative's links.
+
+    Editing links changes the container, so it needs the container's own
+    authorization: its owner, or an org member with the change role (superusers
+    always). This is independent of the linked resource, so the intentional
+    cross-org affordance — org B's use case linking org A's published resource —
+    still works: the caller is authorized on *their own* use case.
+    """
+    if getattr(user, "is_superuser", False):
+        return
+    if not getattr(user, "is_authenticated", False):
+        raise ValueError("Authentication required.")
+    if owner_user and owner_user == user:
+        return
+    if organization:
+        from authorization.models import OrganizationMembership
+
+        membership = OrganizationMembership.objects.filter(
+            user=user, organization=organization
+        ).first()
+        if membership and membership.role.can_change:
+            return
+    raise ValueError("You don't have permission to modify this.")
