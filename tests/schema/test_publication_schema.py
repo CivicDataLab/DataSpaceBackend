@@ -504,3 +504,16 @@ class TestBlockMutations:
 
         assert result.data["removePublicationBlock"]["success"] is False
         assert publication.blocks.filter(id=block.id).exists()
+
+
+RESOURCE_TYPES = "query { resourceTypes { id name isActive } }"
+
+
+@pytest.mark.django_db
+class TestResourceTypesQuery:
+    def test_lists_only_active_types_sorted(self, resource_type, inactive_type):
+        result = run(RESOURCE_TYPES, ctx(AnonymousUser()))
+
+        assert result.errors is None
+        names = [t["name"] for t in result.data["resourceTypes"]]
+        assert names == ["Report"]  # active only; "Retired" excluded

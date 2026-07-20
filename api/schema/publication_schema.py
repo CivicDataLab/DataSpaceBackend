@@ -19,7 +19,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from strawberry.file_uploads import Upload
 from strawberry.types import Info
 
-from api.models import Publication, PublicationBlock
+from api.models import Publication, PublicationBlock, ResourceType
 from api.schema.base_mutation import BaseMutation, MutationResponse
 from api.services.publication_blocks import (
     add_file_block,
@@ -41,6 +41,7 @@ from api.types.type_publication import (
     PublicationOrder,
     TypePublication,
     TypePublicationBlock,
+    TypeResourceType,
     publication_license,
 )
 from api.utils.enums import PublicationStatus
@@ -88,6 +89,14 @@ class UpdatePublicationInput:
 @strawberry.type(name="Query")
 class Query:
     """Queries for publications."""
+
+    @strawberry.field
+    @trace_resolver(name="get_resource_types", attributes={"component": "publication"})
+    def resource_types(self, info: Info) -> List[TypeResourceType]:
+        """List the active Resource Types for a create/edit form's dropdown."""
+        return TypeResourceType.from_django_list(
+            ResourceType.objects.filter(is_active=True).order_by("name")
+        )
 
     @strawberry.field(
         permission_classes=[AllowPublishedPublications],  # type: ignore[list-item]
