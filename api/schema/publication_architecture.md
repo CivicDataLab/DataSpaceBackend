@@ -1,6 +1,6 @@
 # Publications (UI "Resource") — backend
 
-> Part of feature: **resources** · siblings: `DataSpaceFrontend/app/[locale]/(user)/publications/architecture.md` (frontend slice — to be created with the FE phases)
+> Part of feature: **resources** · siblings: `DataSpaceFrontend/app/[locale]/(user)/publications/architecture.md` (frontend slice)
 
 ## Overview
 
@@ -111,5 +111,6 @@ n/a — all assertions are deterministic.
 - **Preview fidelity:** slide decks / DOCX / PPT are download-only (only PDF + YouTube render inline).
 - **No versioning** for re-uploaded block files (in-place replace).
 - **The dataset link trio's pre-existing IDOR** (no container-authorization check) is not fixed here — only the new publication trio is authorized. Follow-up: apply `assert_can_manage_links` to the dataset trio too.
+- **Frontend is implemented** (see the sibling FE doc). Its Layer 6 browser flows and the visual checklist are written but not yet walked (agents don't run a visual pass on their own) — run on request.
 - **The list resolver trusts the request's `organization` header without a membership check** — a faithful mirror of the existing dataset/aimodel/usecase list resolvers and the shared middleware (`api/utils/middleware.py`, which still carries a `# TODO: resolve auth_token`). This feature follows the platform pattern; if org membership is not enforced on that header upstream, a signed-in user could list another org's drafts by setting the header. The correct fix is at the shared middleware layer (so all entities are fixed together), not per-endpoint — deliberately **not** patched here to avoid divergence and false security. Flagged for a platform-level decision.
 - **Frontend (Phases 7–8), the two Layer 5 journey scripts, and the FE architecture doc are not yet implemented** — the backend is complete and shippable; the UI is the remaining slice.
