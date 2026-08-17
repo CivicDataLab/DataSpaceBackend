@@ -39,13 +39,12 @@ while True:
         time.sleep(2)
 END
 
-# Ensure migrations directory exists with proper permissions
-echo "Ensuring migrations directory exists..."
-mkdir -p /code/api/migrations
-chmod -R 777 /code/api/migrations
-touch /code/api/migrations/__init__.py
-
-# Run migrations
+# Run migrations. In the ECS pipeline this also runs earlier as an explicit
+# one-off task before this service is deployed (see deploy-to-ecs.yml) so a
+# broken migration fails the deploy loudly and visibly instead of surfacing
+# only once containers are already shipping; this call is then a no-op
+# (migrate is idempotent). Kept here unconditionally too, since this same
+# entrypoint/image is what `docker compose up` uses for local dev.
 echo "Running migrations..."
 python manage.py migrate --noinput
 
