@@ -103,13 +103,33 @@ jobs:
           container-name: dataspace
           image: ${{ steps.build-image.outputs.image }}
 
-      - name: Deploy main application ECS task definition
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      - name: Get running service's network configuration
+        id: network-config
+        run: |
+          NETWORK_CONFIG=$(aws ecs describe-services \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "${{ secrets.ECS_SERVICE }}" \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration' \
+            --output json)
+          {
+            echo "subnets=$(echo "$NETWORK_CONFIG" | jq -r '.subnets | join(",")')"
+            echo "security_groups=$(echo "$NETWORK_CONFIG" | jq -r '.securityGroups | join(",")')"
+            echo "assign_public_ip=$(echo "$NETWORK_CONFIG" | jq -r '.assignPublicIp')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run migrations, then deploy the ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.task-def-app.outputs.task-definition }}
           service: ${{ secrets.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
+          run-task: true
+          run-task-container-overrides: '[{"name":"dataspace","command":["python","manage.py","migrate","--noinput"]}]'
+          run-task-subnets: ${{ steps.network-config.outputs.subnets }}
+          run-task-security-groups: ${{ steps.network-config.outputs.security_groups }}
+          run-task-assign-public-IP: ${{ steps.network-config.outputs.assign_public_ip }}
+          wait-for-task-stopped: true
 
   deploy-otel:
     name: Deploy OpenTelemetry Collector
