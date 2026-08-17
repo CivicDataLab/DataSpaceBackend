@@ -61,6 +61,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: development
     needs: deploy-infrastructure
+    outputs:
+      previous_task_def_arn: ${{ steps.previous-task-def.outputs.arn }}
 
     steps:
       - name: Checkout
@@ -103,6 +105,17 @@ jobs:
           container-name: dataspace
           image: ${{ steps.build-image.outputs.image }}
 
+      - name: Capture currently-running task definition (for rollback)
+        id: previous-task-def
+        run: |
+          ARN=$(aws ecs describe-services \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "${{ secrets.ECS_SERVICE }}" \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          echo "Currently running: $ARN"
+          echo "arn=$ARN" >> "$GITHUB_OUTPUT"
+
       - name: Get running service's network configuration
         id: network-config
         run: |
@@ -130,6 +143,21 @@ jobs:
           run-task-security-groups: ${{ steps.network-config.outputs.security_groups }}
           run-task-assign-public-IP: ${{ steps.network-config.outputs.assign_public_ip }}
           wait-for-task-stopped: true
+
+  smoke-tests:
+    name: Smoke Tests
+    needs: deploy-app
+    uses: CivicDataLab/CivicDataSpace-test/.github/workflows/run-smoke.yml@CI
+    with:
+      api_base_url: ${{ vars.DEV_API_BASE_URL }}
+      deployed_sha: ${{ github.sha }}
+      min_passed: 1
+    secrets:
+      HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
+      TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
 
   deploy-otel:
     name: Deploy OpenTelemetry Collector
