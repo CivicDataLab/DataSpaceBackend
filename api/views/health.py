@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict
 
 import requests
@@ -141,6 +142,7 @@ def health_check(request: HttpRequest) -> JsonResponse:
     data = {
         "status": "healthy" if overall_status else "unhealthy",
         "services": status,
+        "git_sha": os.environ.get("GIT_COMMIT_SHA", "unknown"),
     }
 
-    return JsonResponse(data)
+    return JsonResponse(data, status=200 if overall_status else 503)
