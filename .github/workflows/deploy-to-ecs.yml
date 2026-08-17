@@ -159,6 +159,44 @@ jobs:
       TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
       TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
 
+  rollback-on-smoke-failure:
+    name: Rollback on Smoke Failure
+    runs-on: ubuntu-latest
+    environment: development
+    needs: [deploy-app, smoke-tests]
+    if: failure() && needs.deploy-app.result == 'success'
+    timeout-minutes: 15
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Restore the previously-running task definition
+        run: |
+          PREVIOUS_ARN="${{ needs.deploy-app.outputs.previous_task_def_arn }}"
+          if [ -z "$PREVIOUS_ARN" ]; then
+            echo "::error::No previous task definition was captured -- nothing to roll back to. This is expected on a service's very first deploy."
+            exit 1
+          fi
+          echo "Rolling back to: $PREVIOUS_ARN"
+          aws ecs update-service \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --service "${{ secrets.ECS_SERVICE }}" \
+            --task-definition "$PREVIOUS_ARN" \
+            --force-new-deployment
+          aws ecs wait services-stable \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "${{ secrets.ECS_SERVICE }}"
+
+      - name: Mark this run as failed despite successful rollback
+        run: |
+          echo "::error::Smoke tests failed after deploy. Rolled back to the previous task definition -- migrations applied by this deploy were NOT reverted. Check what ran via the 'Run migrations, then deploy' step's logs before re-deploying."
+          exit 1
+
   deploy-otel:
     name: Deploy OpenTelemetry Collector
     runs-on: ubuntu-latest
