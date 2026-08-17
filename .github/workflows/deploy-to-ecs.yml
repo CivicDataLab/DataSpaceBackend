@@ -61,7 +61,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: development
     needs: deploy-infrastructure
-    if: always() # Run even if infrastructure deployment is skipped
 
     steps:
       - name: Checkout
