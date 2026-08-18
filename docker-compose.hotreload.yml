@@ -1,0 +1,9 @@
+# Opt-in overlay for local development: bind-mounts the working tree and
+# runs uvicorn with --reload. Not used in any deployed environment.
+#
+# Usage: docker compose -f docker-compose.yml -f docker-compose.hotreload.yml up --build
+services:
+  backend:
+    command: uvicorn DataSpace.asgi:application --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/code
