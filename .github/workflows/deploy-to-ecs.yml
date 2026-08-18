@@ -27,7 +27,6 @@ jobs:
     name: Deploy Infrastructure
     runs-on: ubuntu-latest
     environment: development
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.modified, 'aws/cloudformation')
 
     steps:
       - name: Checkout
@@ -62,7 +61,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: development
     needs: deploy-infrastructure
-    if: always() # Run even if infrastructure deployment is skipped
+    outputs:
+      previous_task_def_arn: ${{ steps.previous-task-def.outputs.arn }}
 
     steps:
       - name: Checkout
@@ -105,13 +105,97 @@ jobs:
           container-name: dataspace
           image: ${{ steps.build-image.outputs.image }}
 
-      - name: Deploy main application ECS task definition
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      - name: Capture currently-running task definition (for rollback)
+        id: previous-task-def
+        run: |
+          ARN=$(aws ecs describe-services \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "${{ secrets.ECS_SERVICE }}" \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          echo "Currently running: $ARN"
+          echo "arn=$ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Get running service's network configuration
+        id: network-config
+        run: |
+          NETWORK_CONFIG=$(aws ecs describe-services \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "${{ secrets.ECS_SERVICE }}" \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration' \
+            --output json)
+          {
+            echo "subnets=$(echo "$NETWORK_CONFIG" | jq -r '.subnets | join(",")')"
+            echo "security_groups=$(echo "$NETWORK_CONFIG" | jq -r '.securityGroups | join(",")')"
+            echo "assign_public_ip=$(echo "$NETWORK_CONFIG" | jq -r '.assignPublicIp')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run migrations, then deploy the ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.task-def-app.outputs.task-definition }}
           service: ${{ secrets.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
+          run-task: true
+          run-task-container-overrides: '[{"name":"dataspace","command":["python","manage.py","migrate","--noinput"]}]'
+          run-task-subnets: ${{ steps.network-config.outputs.subnets }}
+          run-task-security-groups: ${{ steps.network-config.outputs.security_groups }}
+          run-task-assign-public-IP: ${{ steps.network-config.outputs.assign_public_ip }}
+          wait-for-task-stopped: true
+
+  smoke-tests:
+    name: Smoke Tests
+    needs: deploy-app
+    uses: CivicDataLab/CivicDataSpace-test/.github/workflows/run-smoke.yml@CI
+    with:
+      api_base_url: ${{ vars.DEV_API_BASE_URL }}
+      deployed_sha: ${{ github.sha }}
+      min_passed: 1
+    secrets:
+      HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
+      TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+
+  rollback-on-smoke-failure:
+    name: Rollback on Smoke Failure
+    runs-on: ubuntu-latest
+    environment: development
+    needs: [deploy-app, smoke-tests]
+    if: failure() && needs.deploy-app.result == 'success'
+    timeout-minutes: 15
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Restore the previously-running task definition
+        run: |
+          PREVIOUS_ARN="${{ needs.deploy-app.outputs.previous_task_def_arn }}"
+          if [ -z "$PREVIOUS_ARN" ]; then
+            echo "::error::No previous task definition was captured -- nothing to roll back to. This is expected on a service's very first deploy."
+            exit 1
+          fi
+          echo "Rolling back to: $PREVIOUS_ARN"
+          aws ecs update-service \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --service "${{ secrets.ECS_SERVICE }}" \
+            --task-definition "$PREVIOUS_ARN" \
+            --force-new-deployment
+          aws ecs wait services-stable \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "${{ secrets.ECS_SERVICE }}"
+
+      - name: Mark this run as failed despite successful rollback
+        run: |
+          echo "::error::Smoke tests failed after deploy. Rolled back to the previous task definition -- migrations applied by this deploy were NOT reverted. Check what ran via the 'Run migrations, then deploy' step's logs before re-deploying."
+          exit 1
 
   deploy-otel:
     name: Deploy OpenTelemetry Collector
