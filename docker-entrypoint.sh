@@ -45,10 +45,6 @@ mkdir -p /code/api/migrations
 chmod -R 777 /code/api/migrations
 touch /code/api/migrations/__init__.py
 
-# Run makemigrations first to ensure migration files are created
-echo "Running makemigrations..."
-python manage.py makemigrations --noinput
-
 # Run migrations
 echo "Running migrations..."
 python manage.py migrate --noinput
