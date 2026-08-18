@@ -27,7 +27,6 @@ jobs:
     name: Deploy Infrastructure
     runs-on: ubuntu-latest
     environment: development
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.modified, 'aws/cloudformation')
 
     steps:
       - name: Checkout
@@ -62,7 +61,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: development
     needs: deploy-infrastructure
-    if: always() # Run even if infrastructure deployment is skipped
 
     steps:
       - name: Checkout
