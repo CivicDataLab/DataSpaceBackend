@@ -170,3 +170,6 @@ dvc
 dvc/*
 
 .DS_Store
+
+# Git worktrees for feature branches
+.worktrees/

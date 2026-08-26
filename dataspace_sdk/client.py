@@ -6,6 +6,7 @@ from dataspace_sdk.auth import AuthClient
 from dataspace_sdk.resources.aimodels import AIModelClient
 from dataspace_sdk.resources.auditors import AuditorClient
 from dataspace_sdk.resources.datasets import DatasetClient
+from dataspace_sdk.resources.publications import PublicationClient
 from dataspace_sdk.resources.sectors import SectorClient
 from dataspace_sdk.resources.usecases import UseCaseClient
 
@@ -65,6 +66,7 @@ class DataSpaceClient:
         # Initialize resource clients
         self.datasets = DatasetClient(self.base_url, self._auth)
         self.aimodels = AIModelClient(self.base_url, self._auth)
+        self.publications = PublicationClient(self.base_url, self._auth)
         self.usecases = UseCaseClient(self.base_url, self._auth)
         self.sectors = SectorClient(self.base_url, self._auth)
         self.auditors = AuditorClient(self.base_url, self._auth)
@@ -199,6 +201,7 @@ class DataSpaceClient:
         """
         self.datasets.default_headers["organization"] = organization_id
         self.aimodels.default_headers["organization"] = organization_id
+        self.publications.default_headers["organization"] = organization_id
         self.usecases.default_headers["organization"] = organization_id
         self.sectors.default_headers["organization"] = organization_id
         self.auditors.default_headers["organization"] = organization_id

@@ -29,6 +29,11 @@ from api.models import (
     UseCaseOrganizationRelationship,
 )
 from api.schema.extensions import TrackActivity, TrackModelActivity
+from api.services.publication_linking import (
+    assert_can_manage_links,
+    get_linkable_publication,
+    published_publications,
+)
 from api.types.type_dataset import TypeDataset
 from api.types.type_organization import TypeOrganization
 from api.types.type_usecase import TypeUseCase, UseCaseFilter, UseCaseOrder
@@ -46,7 +51,7 @@ from authorization.models import User
 from authorization.types import TypeUser
 
 
-@strawberry_django.input(UseCase, fields="__all__", exclude=["datasets", "slug"])
+@strawberry_django.input(UseCase, fields="__all__", exclude=["datasets", "publications", "slug"])
 class UseCaseInput:
     """Input type for use case creation."""
 
@@ -72,7 +77,7 @@ class UpdateUseCaseMetadataInput:
 use_case_running_status = strawberry.enum(UseCaseRunningStatus)  # type: ignore
 
 
-@strawberry_django.partial(UseCase, fields="__all__", exclude=["datasets"])
+@strawberry_django.partial(UseCase, fields="__all__", exclude=["datasets", "publications"])
 class UseCaseInputPartial:
     """Input type for use case updates."""
 
@@ -473,6 +478,74 @@ class Mutation:
             raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
 
         use_case.datasets.set(datasets)
+        use_case.save()
+        return TypeUseCase.from_django(use_case)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def add_publication_to_use_case(
+        self, info: Info, use_case_id: str, publication_id: uuid.UUID
+    ) -> TypeUseCase:
+        """Link a published resource to a use case (only PUBLISHED are linkable)."""
+        # Reject a missing or draft resource before touching the link.
+        publication = get_linkable_publication(publication_id)
+
+        try:
+            use_case = UseCase.objects.get(id=use_case_id)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+
+        # Only the use case's owner / org editors may change its links.
+        assert_can_manage_links(info.context.user, use_case.user, use_case.organization)
+
+        if use_case.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
+
+        use_case.publications.add(publication)
+        use_case.save()
+        return TypeUseCase.from_django(use_case)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def remove_publication_from_use_case(
+        self, info: Info, use_case_id: str, publication_id: uuid.UUID
+    ) -> TypeUseCase:
+        """Unlink a resource from a use case."""
+        try:
+            use_case = UseCase.objects.get(id=use_case_id)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+
+        # Only the use case's owner / org editors may change its links.
+        assert_can_manage_links(info.context.user, use_case.user, use_case.organization)
+
+        if use_case.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
+
+        use_case.publications.remove(publication_id)  # type: ignore[arg-type]
+        use_case.save()
+        return TypeUseCase.from_django(use_case)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="update_usecase_publications",
+        attributes={"component": "usecase", "operation": "mutation"},
+    )
+    def update_usecase_publications(
+        self, info: Info, use_case_id: str, publication_ids: List[uuid.UUID]
+    ) -> TypeUseCase:
+        """Set the linked resources — only published ones are attached."""
+        try:
+            use_case = UseCase.objects.get(id=use_case_id)
+        except UseCase.DoesNotExist:
+            raise ValueError(f"Use Case with ID {use_case_id} doesn't exist")
+
+        # Only the use case's owner / org editors may change its links.
+        assert_can_manage_links(info.context.user, use_case.user, use_case.organization)
+
+        if use_case.status != UseCaseStatus.DRAFT:
+            raise ValueError(f"UseCase with ID {use_case_id} is not in draft status.")
+
+        # Attach only the published resources among the given ids.
+        use_case.publications.set(published_publications(publication_ids))
         use_case.save()
         return TypeUseCase.from_django(use_case)
 

@@ -29,6 +29,11 @@ from api.models import (
     UseCase,
 )
 from api.schema.extensions import TrackActivity, TrackModelActivity
+from api.services.publication_linking import (
+    assert_can_manage_links,
+    get_linkable_publication,
+    published_publications,
+)
 from api.types.type_collaborative import (
     CollaborativeFilter,
     CollaborativeOrder,
@@ -47,7 +52,9 @@ from authorization.models import User
 from authorization.types import TypeUser
 
 
-@strawberry_django.input(Collaborative, fields="__all__", exclude=["datasets", "slug"])
+@strawberry_django.input(
+    Collaborative, fields="__all__", exclude=["datasets", "publications", "slug"]
+)
 class CollaborativeInput:
     """Input type for collaborative creation."""
 
@@ -70,7 +77,7 @@ class UpdateCollaborativeMetadataInput:
     geographies: Optional[List[int]]
 
 
-@strawberry_django.partial(Collaborative, fields="__all__", exclude=["datasets"])
+@strawberry_django.partial(Collaborative, fields="__all__", exclude=["datasets", "publications"])
 class CollaborativeInputPartial:
     """Input type for collaborative updates."""
 
@@ -99,9 +106,7 @@ class Query:
         pagination=True,
         order=CollaborativeOrder,
     )
-    @trace_resolver(
-        name="get_collaboratives", attributes={"component": "collaborative"}
-    )
+    @trace_resolver(name="get_collaboratives", attributes={"component": "collaborative"})
     def collaboratives(
         self,
         info: Info,
@@ -119,9 +124,7 @@ class Query:
         elif user.is_authenticated:
             queryset = Collaborative.objects.filter(user=user)
         else:
-            queryset = Collaborative.objects.filter(
-                status=CollaborativeStatus.PUBLISHED
-            )
+            queryset = Collaborative.objects.filter(status=CollaborativeStatus.PUBLISHED)
 
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
@@ -136,9 +139,7 @@ class Query:
         return TypeCollaborative.from_django_list(queryset)
 
     @strawberry_django.field
-    @trace_resolver(
-        name="get_published_collaboratives", attributes={"component": "collaborative"}
-    )
+    @trace_resolver(name="get_published_collaboratives", attributes={"component": "collaborative"})
     def published_collaboratives(
         self,
         info: Info,
@@ -173,12 +174,8 @@ class Query:
         return TypeCollaborative.from_django_list(results)
 
     @strawberry_django.field
-    @trace_resolver(
-        name="get_datasets_by_collaborative", attributes={"component": "collaborative"}
-    )
-    def dataset_by_collaborative(
-        self, info: Info, collaborative_id: str
-    ) -> list[TypeDataset]:
+    @trace_resolver(name="get_datasets_by_collaborative", attributes={"component": "collaborative"})
+    def dataset_by_collaborative(self, info: Info, collaborative_id: str) -> list[TypeDataset]:
         """Get datasets by collaborative."""
         queryset = Dataset.objects.filter(collaborative__id=collaborative_id)
         return TypeDataset.from_django_list(queryset)
@@ -188,18 +185,14 @@ class Query:
         name="get_contributors_by_collaborative",
         attributes={"component": "collaborative"},
     )
-    def contributors_by_collaborative(
-        self, info: Info, collaborative_id: str
-    ) -> list[TypeUser]:
+    def contributors_by_collaborative(self, info: Info, collaborative_id: str) -> list[TypeUser]:
         """Get contributors by collaborative."""
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
             contributors = collaborative.contributors.all()
             return TypeUser.from_django_list(contributors)
         except Collaborative.DoesNotExist:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} does not exist."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
     @strawberry_django.field
     @trace_resolver(
@@ -214,9 +207,7 @@ class Query:
             raise ValueError(f"Collaborative with slug {slug} does not exist.")
 
 
-@trace_resolver(
-    name="update_collaborative_tags", attributes={"component": "collaborative"}
-)
+@trace_resolver(name="update_collaborative_tags", attributes={"component": "collaborative"})
 def _update_collaborative_tags(collaborative: Collaborative, tags: List[str]) -> None:
     collaborative.tags.clear()
     for tag in tags:
@@ -226,24 +217,16 @@ def _update_collaborative_tags(collaborative: Collaborative, tags: List[str]) ->
     collaborative.save()
 
 
-@trace_resolver(
-    name="update_collaborative_sectors", attributes={"component": "collaborative"}
-)
-def _update_collaborative_sectors(
-    collaborative: Collaborative, sectors: List[uuid.UUID]
-) -> None:
+@trace_resolver(name="update_collaborative_sectors", attributes={"component": "collaborative"})
+def _update_collaborative_sectors(collaborative: Collaborative, sectors: List[uuid.UUID]) -> None:
     sectors_objs = Sector.objects.filter(id__in=sectors)
     collaborative.sectors.clear()
     collaborative.sectors.add(*sectors_objs)
     collaborative.save()
 
 
-@trace_resolver(
-    name="update_collaborative_sdgs", attributes={"component": "collaborative"}
-)
-def _update_collaborative_sdgs(
-    collaborative: Collaborative, sdgs: List[uuid.UUID]
-) -> None:
+@trace_resolver(name="update_collaborative_sdgs", attributes={"component": "collaborative"})
+def _update_collaborative_sdgs(collaborative: Collaborative, sdgs: List[uuid.UUID]) -> None:
     sdgs_objs = SDG.objects.filter(id__in=sdgs)
     collaborative.sdgs.clear()
     collaborative.sdgs.add(*sdgs_objs)
@@ -265,9 +248,7 @@ def _add_update_collaborative_metadata(
             metadata_field = Metadata.objects.get(id=metadata_input_item.id)
             if not metadata_field.enabled:
                 _delete_existing_metadata(collaborative)
-                raise ValueError(
-                    f"Metadata with ID {metadata_input_item.id} is not enabled."
-                )
+                raise ValueError(f"Metadata with ID {metadata_input_item.id} is not enabled.")
             uc_metadata = CollaborativeMetadata(
                 collaborative=collaborative,
                 metadata_item=metadata_field,
@@ -276,19 +257,13 @@ def _add_update_collaborative_metadata(
             uc_metadata.save()
         except Metadata.DoesNotExist:
             _delete_existing_metadata(collaborative)
-            raise ValueError(
-                f"Metadata with ID {metadata_input_item.id} does not exist."
-            )
+            raise ValueError(f"Metadata with ID {metadata_input_item.id} does not exist.")
 
 
-@trace_resolver(
-    name="delete_existing_metadata", attributes={"component": "collaborative"}
-)
+@trace_resolver(name="delete_existing_metadata", attributes={"component": "collaborative"})
 def _delete_existing_metadata(collaborative: Collaborative) -> None:
     try:
-        existing_metadata = CollaborativeMetadata.objects.filter(
-            collaborative=collaborative
-        )
+        existing_metadata = CollaborativeMetadata.objects.filter(collaborative=collaborative)
         existing_metadata.delete()
     except CollaborativeMetadata.DoesNotExist:
         pass
@@ -357,10 +332,7 @@ class Mutation:
                             else None
                         ),
                         "sectors": (
-                            [
-                                str(sector_id)
-                                for sector_id in update_metadata_input.sectors
-                            ]
+                            [str(sector_id) for sector_id in update_metadata_input.sectors]
                             if update_metadata_input.sectors
                             else []
                         ),
@@ -381,14 +353,10 @@ class Mutation:
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} does not exist."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
         if update_metadata_input.tags is not None:
             _update_collaborative_tags(collaborative, update_metadata_input.tags)
@@ -397,9 +365,7 @@ class Mutation:
         if update_metadata_input.sdgs is not None:
             _update_collaborative_sdgs(collaborative, update_metadata_input.sdgs)
         if update_metadata_input.geographies is not None:
-            _update_collaborative_geographies(
-                collaborative, update_metadata_input.geographies
-            )
+            _update_collaborative_geographies(collaborative, update_metadata_input.geographies)
         return TypeCollaborative.from_django(collaborative)
 
     @strawberry_django.mutation(handle_django_errors=False)
@@ -414,14 +380,10 @@ class Mutation:
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} does not exist."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
         if data.title is not None:
             if data.title.strip() == "":
@@ -466,9 +428,7 @@ class Mutation:
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} does not exist."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
         collaborative.delete()
         return True
 
@@ -485,14 +445,10 @@ class Mutation:
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} does not exist."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
         collaborative.datasets.add(dataset)
         collaborative.save()
@@ -511,14 +467,10 @@ class Mutation:
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} does not exist."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
         collaborative.use_cases.add(usecase)
         collaborative.save()
@@ -536,14 +488,10 @@ class Mutation:
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} does not exist."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
         collaborative.datasets.remove(dataset)
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
@@ -560,14 +508,10 @@ class Mutation:
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} does not exist."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
         collaborative.use_cases.remove(usecase)
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
@@ -588,11 +532,77 @@ class Mutation:
             raise ValueError(f"Collaborative with ID {collaborative_id} doesn't exist")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
         collaborative.datasets.set(datasets)
+        collaborative.save()
+        return TypeCollaborative.from_django(collaborative)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def add_publication_to_collaborative(
+        self, info: Info, collaborative_id: str, publication_id: uuid.UUID
+    ) -> TypeCollaborative:
+        """Link a published resource to a collaborative (only PUBLISHED linkable)."""
+        # Reject a missing or draft resource before touching the link.
+        publication = get_linkable_publication(publication_id)
+
+        try:
+            collaborative = Collaborative.objects.get(id=collaborative_id)
+        except Collaborative.DoesNotExist:
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
+
+        # Only the collaborative's owner / org editors may change its links.
+        assert_can_manage_links(info.context.user, collaborative.user, collaborative.organization)
+
+        if collaborative.status != CollaborativeStatus.DRAFT:
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
+
+        collaborative.publications.add(publication)
+        collaborative.save()
+        return TypeCollaborative.from_django(collaborative)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    def remove_publication_from_collaborative(
+        self, info: Info, collaborative_id: str, publication_id: uuid.UUID
+    ) -> TypeCollaborative:
+        """Unlink a resource from a collaborative."""
+        try:
+            collaborative = Collaborative.objects.get(id=collaborative_id)
+        except Collaborative.DoesNotExist:
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
+
+        # Only the collaborative's owner / org editors may change its links.
+        assert_can_manage_links(info.context.user, collaborative.user, collaborative.organization)
+
+        if collaborative.status != CollaborativeStatus.DRAFT:
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
+
+        collaborative.publications.remove(publication_id)  # type: ignore[arg-type]
+        collaborative.save()
+        return TypeCollaborative.from_django(collaborative)
+
+    @strawberry_django.mutation(handle_django_errors=True)
+    @trace_resolver(
+        name="update_collaborative_publications",
+        attributes={"component": "collaborative", "operation": "mutation"},
+    )
+    def update_collaborative_publications(
+        self, info: Info, collaborative_id: str, publication_ids: List[uuid.UUID]
+    ) -> TypeCollaborative:
+        """Set the linked resources — only published ones are attached."""
+        try:
+            collaborative = Collaborative.objects.get(id=collaborative_id)
+        except Collaborative.DoesNotExist:
+            raise ValueError(f"Collaborative with ID {collaborative_id} doesn't exist")
+
+        # Only the collaborative's owner / org editors may change its links.
+        assert_can_manage_links(info.context.user, collaborative.user, collaborative.organization)
+
+        if collaborative.status != CollaborativeStatus.DRAFT:
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
+
+        # Attach only the published resources among the given ids.
+        collaborative.publications.set(published_publications(publication_ids))
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
 
@@ -612,9 +622,7 @@ class Mutation:
             raise ValueError(f"Collaborative with ID {collaborative_id} doesn't exist")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
         collaborative.use_cases.set(use_cases)
         collaborative.save()
@@ -636,9 +644,7 @@ class Mutation:
         name="publish_collaborative",
         attributes={"component": "collaborative", "operation": "mutation"},
     )
-    def publish_collaborative(
-        self, info: Info, collaborative_id: str
-    ) -> TypeCollaborative:
+    def publish_collaborative(self, info: Info, collaborative_id: str) -> TypeCollaborative:
         """Publish a collaborative."""
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
@@ -665,9 +671,7 @@ class Mutation:
         name="unpublish_collaborative",
         attributes={"component": "collaborative", "operation": "mutation"},
     )
-    def unpublish_collaborative(
-        self, info: Info, collaborative_id: str
-    ) -> TypeCollaborative:
+    def unpublish_collaborative(self, info: Info, collaborative_id: str) -> TypeCollaborative:
         """Un-publish a collaborative."""
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
@@ -696,14 +700,10 @@ class Mutation:
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} does not exist."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
         collaborative.contributors.add(user)
         collaborative.save()
@@ -727,14 +727,10 @@ class Mutation:
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} does not exist."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
         collaborative.contributors.remove(user)
         collaborative.save()
@@ -749,9 +745,7 @@ class Mutation:
                 get_data=lambda result, collaborative_id, user_ids, **kwargs: {
                     "collaborative_id": collaborative_id,
                     "collaborative_title": result.title,
-                    "updated_fields": {
-                        "contributors": [str(user_id) for user_id in user_ids]
-                    },
+                    "updated_fields": {"contributors": [str(user_id) for user_id in user_ids]},
                 },
             )
         ],
@@ -771,9 +765,7 @@ class Mutation:
             raise ValueError(f"Collaborative with ID {collaborative_id} doesn't exist")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
         collaborative.contributors.set(users)
         collaborative.save()
@@ -797,22 +789,16 @@ class Mutation:
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} does not exist."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
         # Create or get the relationship
-        relationship, created = (
-            CollaborativeOrganizationRelationship.objects.get_or_create(
-                collaborative=collaborative,
-                organization=organization,
-                relationship_type=OrganizationRelationshipType.SUPPORTER,
-            )
+        relationship, created = CollaborativeOrganizationRelationship.objects.get_or_create(
+            collaborative=collaborative,
+            organization=organization,
+            relationship_type=OrganizationRelationshipType.SUPPORTER,
         )
 
         return TypeCollaborativeOrganizationRelationship.from_django(relationship)
@@ -858,22 +844,16 @@ class Mutation:
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} does not exist."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
         # Create or get the relationship
-        relationship, created = (
-            CollaborativeOrganizationRelationship.objects.get_or_create(
-                collaborative=collaborative,
-                organization=organization,
-                relationship_type=OrganizationRelationshipType.PARTNER,
-            )
+        relationship, created = CollaborativeOrganizationRelationship.objects.get_or_create(
+            collaborative=collaborative,
+            organization=organization,
+            relationship_type=OrganizationRelationshipType.PARTNER,
         )
 
         return TypeCollaborativeOrganizationRelationship.from_django(relationship)
@@ -937,19 +917,13 @@ class Mutation:
         try:
             collaborative = Collaborative.objects.get(id=collaborative_id)
         except Collaborative.DoesNotExist:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} does not exist."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
         if collaborative.status != CollaborativeStatus.DRAFT:
-            raise ValueError(
-                f"Collaborative with ID {collaborative_id} is not in draft status."
-            )
+            raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
 
         # Clear existing relationships
-        CollaborativeOrganizationRelationship.objects.filter(
-            collaborative=collaborative
-        ).delete()
+        CollaborativeOrganizationRelationship.objects.filter(collaborative=collaborative).delete()
 
         # Add supporter organizations
         supporter_orgs = Organization.objects.filter(id__in=supporter_organization_ids)

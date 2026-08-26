@@ -71,6 +71,12 @@ ELASTICSEARCH_DSL = {
     "default": {"hosts": "localhost:9200"},
 }
 
+# Deterministic layers must never reach a real cluster. The default real-time
+# signal processor tries to push to Elasticsearch whenever a model (or a
+# related model, e.g. User/Geography) is saved, which errors without a live
+# cluster. Swap in the no-op processor so DB tests stay hermetic.
+ELASTICSEARCH_DSL_SIGNAL_PROCESSOR = "django_elasticsearch_dsl.signals.BaseSignalProcessor"
+
 # Disable real Keycloak calls in tests.
 KEYCLOAK_SERVER_URL = "http://localhost:8080"
 KEYCLOAK_REALM = "test"

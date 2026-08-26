@@ -14,9 +14,11 @@ from api.views import (
     dataset_data,
     download,
     generate_dynamic_chart,
+    publication_download_view,
     search_aimodel,
     search_collaborative,
     search_dataset,
+    search_publication,
     search_publisher,
     search_unified,
     search_usecase,
@@ -51,6 +53,11 @@ urlpatterns = [
     path("search/dataset/", search_dataset.SearchDataset.as_view(), name="search_dataset"),
     path("search/usecase/", search_usecase.SearchUseCase.as_view(), name="search_usecase"),
     path("search/aimodel/", search_aimodel.SearchAIModel.as_view(), name="search_aimodel"),
+    path(
+        "search/publication/",
+        search_publication.SearchPublication.as_view(),
+        name="search_publication",
+    ),
     path(
         "search/collaborative/",
         search_collaborative.SearchCollaborative.as_view(),
@@ -107,6 +114,11 @@ urlpatterns = [
     re_path(  # type: ignore
         r"download/(?P<type>resource|access_resource|chart|chart_image)/(?P<id>[0-9a-f]{8}\-[0-9a-f]{4}\-4[0-9a-f]{3}\-[89ab][0-9a-f]{3}\-[0-9a-f]{12})",
         download,
+    ),
+    path(
+        "publications/blocks/<uuid:block_id>/download/",
+        publication_download_view.publication_block_download,
+        name="publication_block_download",
     ),
     re_path(  # type: ignore
         r"generate-dynamic-chart/(?P<resource_id>[0-9a-f]{8}\-[0-9a-f]{4}\-4[0-9a-f]{3}\-[89ab][0-9a-f]{3}\-[0-9a-f]{12})",

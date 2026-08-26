@@ -75,3 +75,15 @@ def _catalog_directory_path(catalog: Any, filename: str) -> str:
     catalog_name = catalog.name
     _, extension = os.path.splitext(filename)
     return f"files/catalog/{catalog_name}/{extension[1:]}/{filename}"
+
+
+def _publication_block_directory_path(block: Any, filename: str) -> str:
+    """
+    Create a directory path to store a publication content-block file.
+
+    Files are namespaced under the parent publication's id so a draft's
+    files live in their own folder and are easy to clean up on delete.
+    """
+    publication_id = block.publication_id
+    unique_name = f"{uuid.uuid4().hex}_{filename}"
+    return f"files/public/publications/{publication_id}/{unique_name}"

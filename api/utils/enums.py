@@ -192,6 +192,16 @@ class UseCaseStatus(models.TextChoices):
     ARCHIVED = "ARCHIVED"
 
 
+class PublicationStatus(models.TextChoices):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+
+
+class PublicationBlockType(models.TextChoices):
+    FILE = "FILE"
+    YOUTUBE = "YOUTUBE"
+
+
 class CollaborativeStatus(models.TextChoices):
     DRAFT = "DRAFT"
     PUBLISHED = "PUBLISHED"

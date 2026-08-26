@@ -5,8 +5,12 @@ from rest_framework import permissions
 from strawberry.permission import BasePermission
 from strawberry.types import Info
 
-from api.models import Dataset, Organization
+from api.models import Dataset, Organization, Publication
+from api.utils.enums import PublicationStatus
 from authorization.models import DatasetPermission, OrganizationMembership, Role
+
+# Roles that may publish/unpublish and edit an org-owned publication, by name.
+PUBLICATION_MANAGER_ROLE_NAMES = ["admin", "editor", "owner"]
 
 
 # REST Framework Permissions
@@ -53,9 +57,7 @@ class HasOrganizationRole(permissions.BasePermission):
             return True
 
         # For organization-specific endpoints
-        org_id = request.query_params.get("organization") or request.data.get(
-            "organization"
-        )
+        org_id = request.query_params.get("organization") or request.data.get("organization")
         if org_id:
             return OrganizationMembership.objects.filter(
                 user=request.user, organization_id=org_id
@@ -204,9 +206,7 @@ class HasOrganizationRoleGraphQL(BasePermission):  # type: ignore[misc]
             organization_id = kwargs.get("organization_id")
             # Also check if organization is in the context
             organization = None
-            if hasattr(info.context, "context") and isinstance(
-                info.context.context, dict
-            ):
+            if hasattr(info.context, "context") and isinstance(info.context.context, dict):
                 organization = info.context.context.get("organization")
 
             if organization_id:
@@ -316,9 +316,7 @@ class DatasetPermissionGraphQL(HasOrganizationRoleGraphQL):  # type: ignore[misc
                 return True
 
             try:
-                dataset_perm = DatasetPermission.objects.get(
-                    user=request.user, dataset=source
-                )
+                dataset_perm = DatasetPermission.objects.get(user=request.user, dataset=source)
                 role = dataset_perm.role
                 return self._check_role_permission(role)
             except DatasetPermission.DoesNotExist:
@@ -458,3 +456,169 @@ class PublishDatasetPermission(BasePermission):
 
         except Dataset.DoesNotExist:
             return False
+
+
+# ---------------------------------------------------------------------------
+# Publication (UI "Resource") permissions
+#
+# Mirrors Dataset's dedicated permission classes rather than AIModel's inline
+# per-resolver role checks. Publication has no per-object share model, so the
+# share-model fallback is dropped; the individual-owner branch is kept so an
+# org-less publication's owner isn't denied.
+# ---------------------------------------------------------------------------
+
+
+def _resolve_publication_id(kwargs: Any) -> Optional[Any]:
+    """Pull the target publication's id out of a mutation's arguments.
+
+    Publish/unpublish/delete pass ``publication_id`` directly; update passes an
+    input object carrying the id on ``.id``.
+    """
+    publication_id = kwargs.get("publication_id")
+    if publication_id:
+        return publication_id
+    for input_key in ("input", "update_input"):
+        payload = kwargs.get(input_key)
+        if payload is not None and getattr(payload, "id", None):
+            return payload.id
+    # Block-scoped mutations pass a block id — resolve to its parent publication.
+    block_id = kwargs.get("block_id")
+    if block_id:
+        from api.models import PublicationBlock
+
+        block = PublicationBlock.objects.filter(id=block_id).first()
+        if block:
+            return block.publication_id
+    return None
+
+
+def _user_manages_publication(user: Any, publication: Publication, operation: str) -> bool:
+    """Whether a user may perform ``operation`` on a publication.
+
+    Owner (individual publications) always may; for org-owned publications the
+    caller must be a member whose role grants the operation (``publish`` and
+    ``change``/``delete`` map to the role's name / boolean flags).
+    """
+    if user.is_superuser:
+        return True
+    if publication.user and publication.user == user:
+        return True
+    if not publication.organization:
+        return False
+
+    membership = OrganizationMembership.objects.filter(
+        user=user, organization=publication.organization
+    ).first()
+    if not membership:
+        return False
+
+    role = membership.role
+    if operation == "publish":
+        return role.name in PUBLICATION_MANAGER_ROLE_NAMES
+    if operation == "delete":
+        return role.can_delete
+    return role.can_change
+
+
+class PublicationPermissionGraphQL(BasePermission):  # type: ignore[misc]
+    """Base publication mutation permission — keys on the publication id in kwargs."""
+
+    message = "You don't have permission to modify this resource"
+    operation = "change"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        user = info.context.user
+        if not getattr(user, "is_authenticated", False):
+            return False
+
+        publication_id = _resolve_publication_id(kwargs)
+        if not publication_id:
+            return False
+
+        try:
+            publication = Publication.objects.get(id=publication_id)
+        except Publication.DoesNotExist:
+            return False
+
+        return _user_manages_publication(user, publication, self.operation)
+
+
+class ChangePublicationPermission(PublicationPermissionGraphQL):
+    operation = "change"
+
+
+class DeletePublicationPermission(PublicationPermissionGraphQL):
+    message = "You don't have permission to delete this resource"
+    operation = "delete"
+
+
+class PublishPublicationPermission(PublicationPermissionGraphQL):
+    message = "You don't have permission to publish this resource"
+    operation = "publish"
+
+
+class CreatePublicationPermission(BasePermission):  # type: ignore[misc]
+    """Permission for creating a publication — mirrors CreateDatasetPermission.
+
+    Any authenticated user may create an individual publication; creating inside
+    an organization context requires the ``add`` role in that organization.
+    """
+
+    message = "You don't have permission to create a resource"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        user = info.context.user
+        if not getattr(user, "is_authenticated", False):
+            return False
+
+        organization = info.context.context.get("organization")
+        if organization:
+            membership = OrganizationMembership.objects.filter(
+                user=user, organization=organization
+            ).first()
+            return bool(membership and membership.role.can_add)
+
+        return True
+
+
+class AllowPublishedPublications(BasePermission):  # type: ignore[misc]
+    """Read gate for a single publication — mirrors AllowPublishedDatasets.
+
+    A PUBLISHED publication is world-readable; a DRAFT is visible only to the
+    owner, org members with view access, or a superuser.
+    """
+
+    message = "You need to be authenticated to access non-published resources"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        request = info.context
+        publication_id = kwargs.get("publication_id")
+
+        if publication_id:
+            try:
+                publication = Publication.objects.get(id=publication_id)
+            except Publication.DoesNotExist:
+                return True  # Let the resolver return a clean not-found.
+
+            if publication.status == PublicationStatus.PUBLISHED.value:
+                return True
+
+            user = request.user
+            if not user.is_authenticated:
+                return False
+            if user.is_superuser:
+                return True
+            if publication.user and publication.user == user:
+                return True
+            if publication.organization:
+                membership = OrganizationMembership.objects.filter(
+                    user=user, organization=publication.organization
+                ).first()
+                return bool(membership and membership.role.can_view)
+            return False
+
+        # No id in kwargs (e.g. object source) — published is public, else auth.
+        if hasattr(source, "status"):
+            if source.status == PublicationStatus.PUBLISHED.value:
+                return True
+        return bool(getattr(request, "user", None) and request.user.is_authenticated)
