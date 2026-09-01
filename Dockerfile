@@ -51,6 +51,13 @@ RUN apt-get update && \
 WORKDIR /code
 COPY . /code/
 
+# LOGGING in DataSpace/settings.py writes to logs/dataex.log -- Django's
+# logging.config never creates the parent directory itself, so any fresh
+# container without this (no pre-existing volume/manual mkdir) fails on
+# django.setup() with FileNotFoundError before any command can even run,
+# including manage.py check and the healthcheck.sh script below.
+RUN mkdir -p /code/logs
+
 RUN pip install psycopg2-binary uvicorn
 RUN pip install -r requirements.txt
 RUN curl -s https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js -o /code/echarts.min.js
