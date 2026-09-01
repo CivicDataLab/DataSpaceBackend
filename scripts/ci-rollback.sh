@@ -22,18 +22,19 @@ fi
 
 # finalize-deploy is the only pruner and it did not run, so the
 # previous image should still be local. Pull is a safety net.
-# See ci-deploy.sh for why this retries -- GHCR's toomanyrequests can
-# briefly fire right after a push.
+# See ci-deploy.sh for why this retries as patiently as it does --
+# GHCR's toomanyrequests turned out to be a sustained account-level
+# quota, not a brief burst, in live testing.
 docker image inspect "$PREV_REF" >/dev/null 2>&1 || {
   echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-  for attempt in 1 2 3 4 5; do
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
     docker pull "$PREV_REF" && break
-    if [ "$attempt" -eq 5 ]; then
-      echo "::error::docker pull failed after 5 attempts."
+    if [ "$attempt" -eq 10 ]; then
+      echo "::error::docker pull failed after 10 attempts."
       exit 1
     fi
-    echo "pull attempt $attempt failed, retrying in 5s..."
-    sleep 5
+    echo "pull attempt $attempt failed, retrying in 30s..."
+    sleep 30
   done
 }
 

@@ -59,17 +59,20 @@ esac
 printf "%s" "$PREV_REF" > .deploy/previous_image
 
 # --- pull the new image ----------------------------------------
-# GHCR's toomanyrequests can briefly fire right after a push (seen live,
-# retry-after under 100ms each time) -- a bare single pull is flaky here.
+# GHCR's toomanyrequests kept firing on every one of 5 attempts 5s apart
+# (~25s total) in live testing despite each error reporting a sub-second
+# retry-after -- that points to a sustained account-level quota, not a
+# brief burst, so this is deliberately patient: 10 attempts, 30s apart,
+# ~5 minutes of runway before giving up.
 echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-for attempt in 1 2 3 4 5; do
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
   docker pull "$IMAGE_REF" && break
-  if [ "$attempt" -eq 5 ]; then
-    echo "::error::docker pull failed after 5 attempts."
+  if [ "$attempt" -eq 10 ]; then
+    echo "::error::docker pull failed after 10 attempts."
     exit 1
   fi
-  echo "pull attempt $attempt failed, retrying in 5s..."
-  sleep 5
+  echo "pull attempt $attempt failed, retrying in 30s..."
+  sleep 30
 done
 printf "DATASPACE_IMAGE=%s\n" "$IMAGE_REF" > .deploy/image.env
 

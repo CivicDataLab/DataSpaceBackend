@@ -118,11 +118,14 @@ jobs:
 
       - name: Sanity-check the built image
         # Cheap, real gate: catches import errors and bad settings before
-        # anything touches the host. Retries: GHCR's toomanyrequests can
-        # briefly fire right after a push (seen live -- retry-after was
-        # under 500ms both times), so a bare single attempt is flaky here.
+        # anything touches the host. Retries: GHCR's toomanyrequests kept
+        # firing on every one of 5 attempts 5s apart (~25s total) in live
+        # testing despite each error reporting a sub-second retry-after --
+        # that points to a sustained account-level quota, not a brief
+        # burst, so this is deliberately patient: 10 attempts, 30s apart,
+        # ~5 minutes of runway before giving up.
         run: |
-          for attempt in 1 2 3 4 5; do
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
             if docker run --rm \
               -e SECRET_KEY=ci-sanity-check-not-a-real-key \
               -e URL_WHITELIST=http://localhost \
@@ -132,10 +135,10 @@ jobs:
               manage.py check; then
               exit 0
             fi
-            echo "attempt $attempt failed, retrying in 5s..."
-            sleep 5
+            echo "attempt $attempt failed, retrying in 30s..."
+            sleep 30
           done
-          echo "::error::Sanity check failed after 5 attempts."
+          echo "::error::Sanity check failed after 10 attempts."
           exit 1
 
   deploy:
@@ -143,7 +146,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment: development
-    timeout-minutes: 15
+    # 30m, not 15: ci-deploy.sh's own pull retry loop alone can now take
+    # up to ~5 minutes (see its header comment) before even reaching
+    # migrate/collectstatic/the health-check loop.
+    timeout-minutes: 30
     # packages: read -- GITHUB_TOKEN needs this explicitly granted to pull
     # from GHCR; it isn't covered by the repo's default token permissions.
     permissions:
@@ -177,6 +183,9 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           script_stop: true
+          # 20m, not the action's 10m default: ci-deploy.sh's own pull
+          # retry loop alone can take up to ~5 minutes.
+          command_timeout: 20m
           # sudo: docker/docker compose require it on this host (confirmed
           # passwordless -- sudo -n succeeds non-interactively).
           script: cd "$HOME/${{ env.DEPLOY_PATH }}" && sudo bash scripts/ci-deploy.sh "${{ needs.build.outputs.image_ref }}" "${{ vars.HEALTH_CHECK_URL || 'http://127.0.0.1:8000/health/' }}" "${{ github.actor }}"
@@ -213,7 +222,9 @@ jobs:
     if: failure() && needs.deploy.result == 'success'
     runs-on: ubuntu-latest
     environment: development
-    timeout-minutes: 15
+    # 30m, not 15: ci-rollback.sh's pull-if-not-local fallback can now
+    # take up to ~5 minutes on its own retry loop.
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: read
@@ -240,6 +251,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           script_stop: true
+          command_timeout: 20m
           script: cd "$HOME/${{ env.DEPLOY_PATH }}" && sudo bash scripts/ci-rollback.sh "${{ vars.HEALTH_CHECK_URL || 'http://127.0.0.1:8000/health/' }}" "${{ github.actor }}"
 
       - name: Mark this run as failed
