@@ -118,15 +118,25 @@ jobs:
 
       - name: Sanity-check the built image
         # Cheap, real gate: catches import errors and bad settings before
-        # anything touches the host.
+        # anything touches the host. Retries: GHCR's toomanyrequests can
+        # briefly fire right after a push (seen live -- retry-after was
+        # under 500ms both times), so a bare single attempt is flaky here.
         run: |
-          docker run --rm \
-            -e SECRET_KEY=ci-sanity-check-not-a-real-key \
-            -e URL_WHITELIST=http://localhost \
-            -e DB_ENGINE=django.db.backends.sqlite3 \
-            --entrypoint python \
-            "${{ steps.ref.outputs.image_ref }}" \
-            manage.py check
+          for attempt in 1 2 3 4 5; do
+            if docker run --rm \
+              -e SECRET_KEY=ci-sanity-check-not-a-real-key \
+              -e URL_WHITELIST=http://localhost \
+              -e DB_ENGINE=django.db.backends.sqlite3 \
+              --entrypoint python \
+              "${{ steps.ref.outputs.image_ref }}" \
+              manage.py check; then
+              exit 0
+            fi
+            echo "attempt $attempt failed, retrying in 5s..."
+            sleep 5
+          done
+          echo "::error::Sanity check failed after 5 attempts."
+          exit 1
 
   deploy:
     name: Deploy to EC2
