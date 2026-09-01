@@ -1,0 +1,253 @@
+# Dev CD pipeline: build once in CI, deploy that exact artifact, verify it
+# with real API tests, and roll the image back automatically if verification
+# fails.
+#
+#   build -> deploy -> smoke-tests -> { rollback-on-smoke-failure | finalize }
+#
+# Deploys are pinned to an immutable digest, never a tag: `dev` is a moving
+# pointer, so "roll back to the previous dev tag" is not a thing you can
+# express. The host records the digest it was running before each deploy in
+# .deploy/previous_image, which is what makes cross-job rollback possible at
+# all (rollback runs on a different runner, so no shell state survives).
+#
+# MIGRATIONS ARE NOT ROLLED BACK. A rollback restores the previous image and
+# says so loudly; the schema stays forward. Migrations must therefore be
+# written additively / backward-compatibly, so the previous image can still
+# run against the newer schema. This is a policy constraint on how you write
+# migrations, not something this pipeline can enforce for you.
+#
+# The target host is not a standalone checkout of this repo -- it's the
+# DataExBackend submodule inside the separate CivicDataLab/DataExchange
+# superproject, already running its own self-contained compose project
+# there (confirmed via `docker ps` compose labels: project=dataexbackend,
+# workdir=~/DataExchange/DataExBackend). This pipeline only ever touches
+# that directory; it never touches the DataExchange repo or its top-level
+# compose file.
+#
+# Several structural choices here mirror ParakhAPI's proven dev CD pipeline
+# (deploy-parakh-api-dev.yml in CivicDataLab/ParakhAI-Backend) -- see the
+# notes at each site before "simplifying" them. In particular:
+# appleboy/ssh-action's inline multi-line `script:` input was found there to
+# reproducibly fail with a spurious "syntax error near unexpected token ';'"
+# for reasons never fully root-caused (confirmed the script text itself was
+# valid bash both locally and on the real target host every time -- the
+# corruption happened somewhere in the action's own transport). scp-action
+# never had that problem. So no SSH step here ever carries more than a
+# single trivial invocation line; all real logic lives in scripts/ci-*.sh,
+# shipped as files.
+
+name: Deploy Backend to Dev EC2
+
+on:
+  push:
+    branches: ['dev']
+  workflow_dispatch:
+    inputs:
+      force_smoke_failure:
+        description: "Deliberately fail the smoke gate, to exercise the rollback path. Testing only."
+        type: boolean
+        required: false
+        default: false
+
+# Queue overlapping deploys rather than cancelling: a cancelled run mid-deploy
+# could leave .deploy/ state and the running containers disagreeing.
+concurrency:
+  group: dataspace-backend-dev-deploy
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: civicdatalab/dataspacebackend
+  DEPLOY_PATH: ${{ vars.DEPLOY_PATH || 'DataExchange/DataExBackend' }}
+
+jobs:
+  build:
+    name: Build and push image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_ref: ${{ steps.ref.outputs.image_ref }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: |
+            GIT_COMMIT_SHA=${{ github.sha }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Pin image reference by digest
+        id: ref
+        run: |
+          echo "image_ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+      - name: Sanity-check the built image
+        # Cheap, real gate: catches import errors and bad settings before
+        # anything touches the host.
+        run: |
+          docker run --rm \
+            -e SECRET_KEY=ci-sanity-check-not-a-real-key \
+            -e URL_WHITELIST=http://localhost \
+            -e DB_ENGINE=django.db.backends.sqlite3 \
+            --entrypoint python \
+            "${{ steps.ref.outputs.image_ref }}" \
+            manage.py check
+
+  deploy:
+    name: Deploy to EC2
+    needs: build
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 15
+    # packages: read -- GITHUB_TOKEN needs this explicitly granted to pull
+    # from GHCR; it isn't covered by the repo's default token permissions.
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Write GHCR token file
+        run: printf '%s' "${{ secrets.GITHUB_TOKEN }}" > .ghcr_token
+
+      # Ship the compose files rather than relying on the DataExBackend
+      # submodule pointer inside the separate DataExchange repo -- bumping
+      # that pointer is a change to a different, shared repo and out of
+      # scope here. Shipping the file directly keeps this pipeline
+      # self-contained.
+      - name: Ship deploy files to host
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ vars.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          source: docker-compose.yml,docker-compose.hotreload.yml,scripts/ci-deploy.sh,.ghcr_token
+          target: ${{ env.DEPLOY_PATH }}
+
+      - name: Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ vars.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          script_stop: true
+          # sudo: docker/docker compose require it on this host (confirmed
+          # passwordless -- sudo -n succeeds non-interactively).
+          script: cd "$HOME/${{ env.DEPLOY_PATH }}" && sudo bash scripts/ci-deploy.sh "${{ needs.build.outputs.image_ref }}" "${{ vars.HEALTH_CHECK_URL || 'http://127.0.0.1:8000/health/' }}" "${{ github.actor }}"
+
+  smoke-tests:
+    name: Smoke Tests
+    needs: deploy
+    # No `environment:` here -- GitHub rejects the entire workflow file at
+    # parse time if a `uses:` job declares one. Consequence: this job also
+    # cannot see environment-scoped vars, which is why api_base_url comes
+    # from a repo-level var.
+    uses: CivicDataLab/CivicDataSpace-test/.github/workflows/run-smoke.yml@CI
+    with:
+      api_base_url: ${{ vars.DEV_API_BASE_URL }}
+      # An obviously-wrong sentinel SHA fails the reusable workflow's own
+      # deployed-SHA-vs-live-/health/ assertion on purpose, for the
+      # force_smoke_failure test path.
+      deployed_sha: ${{ (inputs.force_smoke_failure == true && 'forced-failure-sentinel') || github.sha }}
+      min_passed: ${{ inputs.force_smoke_failure && 999 || 1 }}
+    secrets:
+      HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
+      TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+
+  rollback-on-smoke-failure:
+    name: Rollback (smoke tests failed)
+    # `deploy` must be in needs: for needs.deploy.result to resolve here.
+    needs: [deploy, smoke-tests]
+    # failure()/success() builtins rather than needs.smoke-tests.result --
+    # both are false on cancellation, which is the behaviour we want;
+    # if: always() would ignore cancellation entirely.
+    if: failure() && needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Write GHCR token file
+        run: printf '%s' "${{ secrets.GITHUB_TOKEN }}" > .ghcr_token
+
+      - name: Ship rollback files to host
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ vars.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          source: scripts/ci-rollback.sh,.ghcr_token
+          target: ${{ env.DEPLOY_PATH }}
+
+      - name: Restore previous image
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ vars.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          script_stop: true
+          script: cd "$HOME/${{ env.DEPLOY_PATH }}" && sudo bash scripts/ci-rollback.sh "${{ vars.HEALTH_CHECK_URL || 'http://127.0.0.1:8000/health/' }}" "${{ github.actor }}"
+
+      - name: Mark this run as failed
+        # The mitigation succeeded, but the run must still read RED -- a bad
+        # deploy that silently self-heals is a bad deploy nobody investigates.
+        run: |
+          echo "::error::Smoke tests failed after deploy; the image was rolled back. Migrations were NOT reverted -- see the rollback step's log."
+          exit 1
+
+  finalize-deploy:
+    name: Finalize Deploy
+    needs: [deploy, smoke-tests]
+    if: success()
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Ship finalize script to host
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ vars.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          source: scripts/ci-finalize.sh
+          target: ${{ env.DEPLOY_PATH }}
+
+      - name: Prune to current + previous image
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ vars.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          script_stop: true
+          script: cd "$HOME/${{ env.DEPLOY_PATH }}" && sudo bash scripts/ci-finalize.sh

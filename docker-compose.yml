@@ -1,12 +1,10 @@
 
 services:
   backend:
+    image: ${DATASPACE_IMAGE:-dataspace-backend:local}
     build: .
     env_file: .env
     container_name: "DataSpace"
-    command: uvicorn DataSpace.asgi:application --host 0.0.0.0 --port 8000 --reload
-    volumes:
-      - .:/code
     ports:
       - "8000:8000"
     depends_on:
@@ -26,6 +24,21 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  # One-off management commands (migrations, etc.) against the deployed
+  # image, without touching the running `backend` container. No
+  # container_name, so `docker compose run` can spin up a fresh instance
+  # even while `backend` is up. Never starts on a plain `up`.
+  release:
+    image: ${DATASPACE_IMAGE:-dataspace-backend:local}
+    build: .
+    env_file: .env
+    profiles: ["release"]
+    depends_on:
+      backend_db:
+        condition: service_healthy
+    entrypoint: ["python", "manage.py"]
+    command: ["migrate", "--noinput"]
 
   backend_db:
     image: "postgres:14.4"
