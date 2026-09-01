@@ -59,8 +59,18 @@ esac
 printf "%s" "$PREV_REF" > .deploy/previous_image
 
 # --- pull the new image ----------------------------------------
+# GHCR's toomanyrequests can briefly fire right after a push (seen live,
+# retry-after under 100ms each time) -- a bare single pull is flaky here.
 echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-docker pull "$IMAGE_REF"
+for attempt in 1 2 3 4 5; do
+  docker pull "$IMAGE_REF" && break
+  if [ "$attempt" -eq 5 ]; then
+    echo "::error::docker pull failed after 5 attempts."
+    exit 1
+  fi
+  echo "pull attempt $attempt failed, retrying in 5s..."
+  sleep 5
+done
 printf "DATASPACE_IMAGE=%s\n" "$IMAGE_REF" > .deploy/image.env
 
 COMPOSE="docker compose -f docker-compose.yml --env-file .env --env-file .deploy/image.env"
