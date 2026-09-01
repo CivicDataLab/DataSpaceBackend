@@ -64,7 +64,7 @@ jobs:
   build:
     name: Build and push image
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
@@ -101,8 +101,15 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          # mode=min (the default), not max: this Dockerfile is single-stage
+          # (no multi-stage FROM ... AS builder), so mode=max's extra
+          # intermediate-stage caching buys nothing here -- it only added a
+          # slow cache-export step that got stuck writing one large layer
+          # (chromium + apt packages) and blew the job's timeout on the
+          # first (cold-cache) run, even though the actual image build and
+          # push had already completed successfully by that point.
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha
 
       - name: Pin image reference by digest
         id: ref
