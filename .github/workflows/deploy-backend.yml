@@ -118,13 +118,16 @@ jobs:
 
       - name: Sanity-check the built image
         # Cheap, real gate: catches import errors and bad settings before
-        # anything touches the host. Retries: GHCR's toomanyrequests kept
-        # firing on every one of 5 attempts 5s apart (~25s total) in live
-        # testing despite each error reporting a sub-second retry-after --
-        # that points to a sustained account-level quota, not a brief
-        # burst, so this is deliberately patient: 10 attempts, 30s apart,
-        # ~5 minutes of runway before giving up.
+        # anything touches the host. Live testing showed every layer
+        # downloading successfully every single retry, with toomanyrequests
+        # firing right after the LAST layer completes (the final
+        # manifest/config fetch) -- consistently, even across 10 attempts
+        # 30s apart. That pattern looks like GHCR hasn't finished settling
+        # a just-pushed manifest yet, not a generic quota, so this waits
+        # up front before the first attempt rather than only reacting
+        # after failures.
         run: |
+          sleep 90
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
             if docker run --rm \
               -e SECRET_KEY=ci-sanity-check-not-a-real-key \
