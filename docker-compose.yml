@@ -5,6 +5,16 @@ services:
     build: .
     env_file: .env
     container_name: "DataSpace"
+    volumes:
+      # User-uploaded media (MEDIA_ROOT = BASE_DIR/files/public). This is
+      # persistent data, not code -- it lives on the host and cannot be
+      # baked into the image. Dropping the old `.:/code` bind mount for the
+      # image-based deploy removed the app's only access to it, so every
+      # file field lookup (e.g. an organization logo's `size`) raised
+      # FileNotFoundError and errored the GraphQL queries the dashboard
+      # depends on. Mount only this subtree, never the whole tree -- a
+      # full `.:/code` mount would shadow the deployed image.
+      - ./files:/code/files
     ports:
       - "8000:8000"
     depends_on:
@@ -34,6 +44,10 @@ services:
     build: .
     env_file: .env
     profiles: ["release"]
+    volumes:
+      # Same media mount as `backend` -- management commands run here too
+      # and some of them touch uploaded files.
+      - ./files:/code/files
     depends_on:
       backend_db:
         condition: service_healthy
