@@ -131,8 +131,14 @@ def health_check(request: HttpRequest) -> JsonResponse:
             current_span.set_attribute("telemetry.status", "unhealthy")
             current_span.set_attribute("telemetry.error", str(e))
 
-    # Overall status
-    overall_status = all(service["status"] == "healthy" for service in status.values())
+    # Overall status: database/elasticsearch/redis are required for the app
+    # to actually serve requests. telemetry is observability-only (this
+    # deployment topology deliberately runs without otel-collector) and is
+    # reported above for visibility, but must not gate 200 vs 503 -- a
+    # health check that fails a deploy because optional tracing
+    # infrastructure isn't running is a false negative.
+    required_services = ("database", "elasticsearch", "redis")
+    overall_status = all(status[name]["status"] == "healthy" for name in required_services)
 
     if current_span:
         current_span.set_attribute(
