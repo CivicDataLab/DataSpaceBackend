@@ -158,6 +158,10 @@ jobs:
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
       TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
       TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+      # api-smoke authenticates against Keycloak via ROPC. `dataspace` is a
+      # confidential client, so without this the token request returns 401
+      # and the job fails its preflight.
+      KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
 
   rollback-on-smoke-failure:
     name: Rollback on Smoke Failure
