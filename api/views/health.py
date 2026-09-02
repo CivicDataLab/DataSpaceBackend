@@ -100,36 +100,52 @@ def health_check(request: HttpRequest) -> JsonResponse:
             current_span.set_attribute("redis.status", "unhealthy")
             current_span.set_attribute("redis.error", str(e))
 
-    # Check OpenTelemetry collector
-    try:
-        # Extract host and port from TELEMETRY_URL
-        telemetry_url = settings.TELEMETRY_URL.replace("http://", "").replace(
-            "https://", ""
-        )
-        host = telemetry_url.split(":")[0]
-        # Use default health check port 13133 instead of gRPC port
-        health_url = f"http://{host}:13133/health"  # OpenTelemetry collector health check endpoint
-
-        response = requests.get(health_url, timeout=5)
-        if response.status_code == 200:
-            status["telemetry"] = {
-                "status": "healthy",
-                "message": "Successfully connected to OpenTelemetry collector",
-            }
-            if current_span:
-                current_span.set_attribute("telemetry.status", "healthy")
-        else:
-            raise Exception(f"Health check returned status code {response.status_code}")
-
-    except Exception as e:
-        logger.error("Telemetry health check failed", error=str(e))
+    # Check OpenTelemetry collector, but only when telemetry is actually
+    # configured. DataSpace/settings.py gives TELEMETRY_URL a hardcoded
+    # otel-collector default even when the env var is unset, so without this
+    # guard a deployment that deliberately runs no collector (as this one
+    # does) probes a host that cannot resolve and logs an ERROR on every
+    # single health check -- roughly every 30s, forever, for something
+    # optional.
+    if not os.environ.get("TELEMETRY_URL"):
         status["telemetry"] = {
-            "status": "unhealthy",
-            "message": f"Failed to connect to OpenTelemetry collector: {str(e)}",
+            "status": "not_configured",
+            "message": "TELEMETRY_URL is unset; no OpenTelemetry collector expected",
         }
         if current_span:
-            current_span.set_attribute("telemetry.status", "unhealthy")
-            current_span.set_attribute("telemetry.error", str(e))
+            current_span.set_attribute("telemetry.status", "not_configured")
+    else:
+        try:
+            # Extract host and port from TELEMETRY_URL
+            telemetry_url = settings.TELEMETRY_URL.replace("http://", "").replace(
+                "https://", ""
+            )
+            host = telemetry_url.split(":")[0]
+            # Use default health check port 13133 instead of gRPC port
+            health_url = f"http://{host}:13133/health"  # OpenTelemetry collector health check endpoint
+
+            response = requests.get(health_url, timeout=5)
+            if response.status_code == 200:
+                status["telemetry"] = {
+                    "status": "healthy",
+                    "message": "Successfully connected to OpenTelemetry collector",
+                }
+                if current_span:
+                    current_span.set_attribute("telemetry.status", "healthy")
+            else:
+                raise Exception(
+                    f"Health check returned status code {response.status_code}"
+                )
+
+        except Exception as e:
+            logger.error("Telemetry health check failed", error=str(e))
+            status["telemetry"] = {
+                "status": "unhealthy",
+                "message": f"Failed to connect to OpenTelemetry collector: {str(e)}",
+            }
+            if current_span:
+                current_span.set_attribute("telemetry.status", "unhealthy")
+                current_span.set_attribute("telemetry.error", str(e))
 
     # Overall status: database/elasticsearch/redis are required for the app
     # to actually serve requests. telemetry is observability-only (this
