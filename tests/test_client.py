@@ -91,5 +91,26 @@ class TestDataSpaceClient(unittest.TestCase):
         self.assertIsNone(self.client.user)
 
 
+class TestClientForwardsBasePath(unittest.TestCase):
+    """The regression this covers: AuthClient grew keycloak_base_path but
+    DataSpaceClient did not forward it, so no public consumer could ever set
+    it -- constructing DataSpaceClient(..., keycloak_base_path="") silently
+    behaved the same as not passing it at all.
+    """
+
+    def test_default_matches_auth_client_default(self) -> None:
+        client = DataSpaceClient(base_url="https://api.test.com", keycloak_url="https://kc.test.com", keycloak_realm="DataSpace")
+        self.assertEqual(client._auth._realm_url(), "https://kc.test.com/auth/realms/DataSpace")
+
+    def test_root_path_is_forwarded(self) -> None:
+        client = DataSpaceClient(
+            base_url="https://api.test.com",
+            keycloak_url="https://kc.test.com",
+            keycloak_realm="DataSpace",
+            keycloak_base_path="",
+        )
+        self.assertEqual(client._auth._realm_url(), "https://kc.test.com/realms/DataSpace")
+
+
 if __name__ == "__main__":
     unittest.main()
