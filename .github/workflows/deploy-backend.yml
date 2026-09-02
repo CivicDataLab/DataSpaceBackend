@@ -149,10 +149,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment: development
-    # 30m, not 15: ci-deploy.sh's own pull retry loop alone can now take
-    # up to ~5 minutes (see its header comment) before even reaching
-    # migrate/collectstatic/the health-check loop.
-    timeout-minutes: 30
+    # 50m: must comfortably exceed the Deploy step's own 40m
+    # command_timeout (see that step's comment for why it's 40m).
+    timeout-minutes: 50
     # packages: read -- GITHUB_TOKEN needs this explicitly granted to pull
     # from GHCR; it isn't covered by the repo's default token permissions.
     permissions:
@@ -186,9 +185,18 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           script_stop: true
-          # 20m, not the action's 10m default: ci-deploy.sh's own pull
-          # retry loop alone can take up to ~5 minutes.
-          command_timeout: 20m
+          # 40m: live testing showed one large layer (chromium + its X11
+          # libs, almost certainly) take ~15 minutes just downloading via
+          # Docker's own internal per-layer retry (not our retry loop --
+          # this is a single docker pull invocation struggling), then hang
+          # with zero output for several more minutes afterward (most
+          # likely extraction stalling under memory pressure -- this host
+          # runs Postgres, two separate Elasticsearch instances, Redis,
+          # Keycloak, and telemetry tooling alongside the app, confirmed
+          # via `free -h`: ~169Mi truly free, 828Mi already swapped). The
+          # previous 20m ceiling cut it off mid-extraction, right after
+          # the layer had already finished downloading.
+          command_timeout: 40m
           # sudo: docker/docker compose require it on this host (confirmed
           # passwordless -- sudo -n succeeds non-interactively).
           script: cd "$HOME/${{ env.DEPLOY_PATH }}" && sudo bash scripts/ci-deploy.sh "${{ needs.build.outputs.image_ref }}" "${{ vars.HEALTH_CHECK_URL || 'http://127.0.0.1:8000/health/' }}" "${{ github.actor }}"
@@ -225,9 +233,9 @@ jobs:
     if: failure() && needs.deploy.result == 'success'
     runs-on: ubuntu-latest
     environment: development
-    # 30m, not 15: ci-rollback.sh's pull-if-not-local fallback can now
-    # take up to ~5 minutes on its own retry loop.
-    timeout-minutes: 30
+    # 50m: must comfortably exceed the Restore previous image step's own
+    # 40m command_timeout (see the Deploy job's equivalent step for why).
+    timeout-minutes: 50
     permissions:
       contents: read
       packages: read
@@ -254,7 +262,10 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           script_stop: true
-          command_timeout: 20m
+          # 40m -- see the Deploy job's equivalent step for why (one large
+          # layer took ~15 min to download plus several more to extract
+          # under this host's memory pressure in live testing).
+          command_timeout: 40m
           script: cd "$HOME/${{ env.DEPLOY_PATH }}" && sudo bash scripts/ci-rollback.sh "${{ vars.HEALTH_CHECK_URL || 'http://127.0.0.1:8000/health/' }}" "${{ github.actor }}"
 
       - name: Mark this run as failed
