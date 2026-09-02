@@ -43,6 +43,7 @@ class DataSpaceClient:
         keycloak_realm: Optional[str] = None,
         keycloak_client_id: Optional[str] = None,
         keycloak_client_secret: Optional[str] = None,
+        keycloak_base_path: str = "/auth",
     ):
         """
         Initialize the DataSpace client.
@@ -53,6 +54,9 @@ class DataSpaceClient:
             keycloak_realm: Keycloak realm name (e.g., "DataSpace")
             keycloak_client_id: Keycloak client ID (e.g., "dataspace")
             keycloak_client_secret: Optional client secret for confidential clients
+            keycloak_base_path: Keycloak's HTTP relative path. Defaults to
+                "/auth" for backwards compatibility. Pass "" for a Keycloak
+                served at the domain root.
         """
         self.base_url = base_url.rstrip("/")
         self._auth = AuthClient(
@@ -61,6 +65,7 @@ class DataSpaceClient:
             keycloak_realm=keycloak_realm,
             keycloak_client_id=keycloak_client_id,
             keycloak_client_secret=keycloak_client_secret,
+            keycloak_base_path=keycloak_base_path,
         )
 
         # Initialize resource clients
