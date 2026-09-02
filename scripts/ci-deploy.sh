@@ -98,6 +98,26 @@ $COMPOSE up -d backend_db elasticsearch redis
 $RELEASE showmigrations --plan 2>/dev/null | grep "^\[ \]" > .deploy/migrations.txt || true
 $RELEASE migrate --noinput
 
+# Ensure every search index exists before populating. Neither flag
+# combination alone is safe here, confirmed live:
+#   - `search_index --create --populate` in one call skips already-existing
+#     indices safely, but ALSO silently skips creating one whose queryset is
+#     currently empty (index_not_found_exception on every unified-search
+#     request afterward, despite the command reporting "Indexing 0 'X'
+#     objects" as if nothing were wrong).
+#   - `search_index --create` alone is NOT idempotent: it hard-errors with
+#     resource_already_exists_exception on the first already-existing index
+#     it hits and stops there, so any index processed after it in the same
+#     invocation never gets attempted.
+# Creating each model's index individually, each tolerating "already
+# exists" on its own, gets the correctness of both without either failure
+# mode. Keep this list in sync with DataSpace/settings.py's
+# ELASTICSEARCH_INDEX_NAMES if a new search document is ever added.
+for model in api.Dataset api.UseCase api.AIModel api.Publication api.Collaborative api.Organization authorization.User; do
+  $RELEASE search_index --create --models "$model" -f || true
+done
+$RELEASE search_index --populate -f
+
 # --- swap the running container ---------------------------------
 # --no-deps so backend_db/elasticsearch/redis are never recreated
 # out from under this.
