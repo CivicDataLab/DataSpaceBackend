@@ -101,7 +101,16 @@ ENTRYPOINT ["bash","/code/docker-entrypoint.sh"]
 # minus headroom for other clients. Excess requests get a fast 503 instead of
 # queueing until the database runs out of slots - shedding load is recoverable,
 # exhausting connections takes the deploy pipeline down with it.
-ENV UVICORN_WORKERS=4 \
+# Sized to the dev box, not to a formula. One worker measured at 740MB
+# resident with only ~2.4GB available on the host, so 4 workers risked an OOM
+# that would have been a worse outage than the one this fixes. Two workers land
+# near 1.3GB and match the 2 CPUs.
+#
+# Two workers alone would only double throughput, but the commit that removes
+# two of the three Keycloak round-trips cuts per-request time as well, and the
+# two compound. Raise UVICORN_WORKERS on a bigger box - it is env-tunable for
+# exactly that reason, and worth revisiting if memory there grows.
+ENV UVICORN_WORKERS=2 \
     UVICORN_LIMIT_CONCURRENCY=15
 
 CMD ["sh", "-c", "exec uvicorn DataSpace.asgi:application --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS} --limit-concurrency ${UVICORN_LIMIT_CONCURRENCY}"]
