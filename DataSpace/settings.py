@@ -301,7 +301,20 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.BasicAuthentication",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "DEFAULT_THROTTLE_RATES": {"anon": "100/hour", "user": "1000/hour"},
+    # NOTE: there is deliberately no DEFAULT_THROTTLE_RATES here.
+    #
+    # It used to say {"anon": "100/hour", "user": "1000/hour"} and had no effect
+    # whatsoever: DEFAULT_THROTTLE_CLASSES was never set, no view declares
+    # throttle_classes, and the endpoint that actually gets hammered
+    # (/api/graphql) is a Strawberry view, not a DRF one.
+    #
+    # It was actively harmful. While diagnosing a flood of 429s on 2026-09-03 it
+    # was the first thing found, read as the cause, and very nearly "fixed" -
+    # which would have changed nothing and sent the investigation the wrong way.
+    #
+    # Real rate limiting lives in api/middleware/rate_limit.py (registered in
+    # MIDDLEWARE above): 5000/hour for GET, 1000/hour for other methods, keyed on
+    # the client IP from X-Forwarded-For. Change limits there.
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "PAGE_SIZE": 10,
 }
