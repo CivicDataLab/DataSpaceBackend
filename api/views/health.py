@@ -5,7 +5,7 @@ import requests
 import structlog
 from django.conf import settings
 from django.core.cache import cache
-from django.db import connection
+from django.db import connection, connections
 from django.http import HttpRequest, JsonResponse
 from elasticsearch import Elasticsearch
 from opentelemetry import trace
@@ -32,16 +32,38 @@ def health_check(request: HttpRequest) -> JsonResponse:
         "telemetry": {"status": "unknown"},
     }
 
-    # Check database
+    # Check database.
+    #
+    # Two distinct checks, because they fail independently:
+    #
+    #   1. The request's own connection still works.
+    #   2. A NEW connection can still be opened.
+    #
+    # Only checking (1) is how this endpoint reported
+    # {"database": "healthy"} in 0.44s while Postgres was refusing new
+    # connections with "FATAL: sorry, too many clients already" and both the
+    # login endpoint and the deploy pipeline were failing on exactly that. The
+    # existing connection is already established, so it keeps answering
+    # SELECT 1 no matter how saturated the server is - which made a green
+    # health check actively misleading during an outage.
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-            status["database"] = {
-                "status": "healthy",
-                "message": "Successfully connected to database",
-            }
-            if current_span:
-                current_span.set_attribute("database.status", "healthy")
+
+        # Deliberately a fresh connection, closed immediately. This is the
+        # check that catches connection exhaustion.
+        new_connection = connections.create_connection("default")
+        try:
+            new_connection.ensure_connection()
+        finally:
+            new_connection.close()
+
+        status["database"] = {
+            "status": "healthy",
+            "message": "Successfully connected to database",
+        }
+        if current_span:
+            current_span.set_attribute("database.status", "healthy")
     except Exception as e:
         logger.error("Database health check failed", error=str(e))
         status["database"] = {
