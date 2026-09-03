@@ -59,7 +59,24 @@ COPY . /code/
 RUN mkdir -p /code/logs
 
 RUN pip install psycopg2-binary uvicorn
-RUN pip install -r requirements.txt
+# Install CPU-only torch first, so the pinned torch==2.9.0 in
+# requirements.txt is already satisfied and pip never reaches for the default
+# CUDA build.
+#
+# The CUDA wheels pull in 4.3GB of nvidia/* libraries, 1.7GB of torch and
+# 592MB of triton - about 6.6GB of GPU runtime on a 2-CPU EC2 box that has no
+# GPU and physically cannot use any of it. That is most of why the image is
+# 14.1GB, why a deploy takes about an hour, and why the deploy of #136 failed
+# outright: `docker pull` ran past the SSH step's 40 minute command_timeout.
+#
+# PEP 440 treats the local version segment as compatible, so 2.9.0+cpu
+# satisfies ==2.9.0 and requirements.txt needs no change. Pinned to the same
+# version deliberately - this changes the build of torch, not the version.
+RUN pip install --no-cache-dir torch==2.9.0 \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# --no-cache-dir: the wheel cache is dead weight in the final layer.
+RUN pip install --no-cache-dir -r requirements.txt
 RUN curl -s https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js -o /code/echarts.min.js
 
 # Create healthcheck script
