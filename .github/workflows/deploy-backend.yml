@@ -116,6 +116,33 @@ jobs:
         run: |
           echo "image_ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
 
+      # A size ceiling, because image size is a deploy-time failure mode here
+      # and nothing else surfaces it. The image reached 14.1GB - 6.6GB of it
+      # CUDA runtime on a GPU-less box - and `docker pull` then ran past the
+      # deploy step's 40 minute command_timeout, so deploys failed with
+      # "Run Command Timeout" and no indication of why. Builds stayed green
+      # throughout; the cost only appeared on the host.
+      #
+      # Fails the build rather than the deploy, so the feedback lands on the
+      # PR that caused it instead of an hour later on a broken environment.
+      # Raise MAX_IMAGE_GB deliberately if the image legitimately grows.
+      - name: Enforce image size ceiling
+        env:
+          MAX_IMAGE_GB: 8
+        run: |
+          set -euo pipefail
+          docker pull -q "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}"
+          BYTES=$(docker image inspect \
+            "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}" \
+            --format "{{.Size}}")
+          GB=$(awk -v b="$BYTES" 'BEGIN{printf "%.2f", b/1024/1024/1024}')
+          echo "Image size: ${GB} GB (ceiling ${MAX_IMAGE_GB} GB)"
+          echo "- image size: **${GB} GB** (ceiling ${MAX_IMAGE_GB} GB)" >> "$GITHUB_STEP_SUMMARY"
+          if awk -v g="$GB" -v m="$MAX_IMAGE_GB" 'BEGIN{exit !(g > m)}'; then
+            echo "::error::Image is ${GB} GB, over the ${MAX_IMAGE_GB} GB ceiling. Pulling this on the deploy host will run past the SSH command_timeout and the deploy will fail. Check for CUDA/GPU wheels (nvidia/*, torch, triton) being pulled in place of CPU builds."
+            exit 1
+          fi
+
       - name: Sanity-check the built image
         # Cheap, real gate: catches import errors and bad settings before
         # anything touches the host. Live testing showed every layer
