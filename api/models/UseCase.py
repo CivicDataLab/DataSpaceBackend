@@ -37,6 +37,7 @@ class UseCase(models.Model):
         max_length=50, default=UseCaseStatus.DRAFT, choices=UseCaseStatus.choices
     )
     datasets = models.ManyToManyField("api.Dataset", blank=True)
+    publications = models.ManyToManyField("api.Publication", blank=True)
     tags = models.ManyToManyField("api.Tag", blank=True)
     running_status = models.CharField(
         max_length=50,
@@ -45,9 +46,7 @@ class UseCase(models.Model):
     )
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="usecases")
     sdgs = models.ManyToManyField("api.SDG", blank=True, related_name="usecases")
-    geographies = models.ManyToManyField(
-        "api.Geography", blank=True, related_name="usecases"
-    )
+    geographies = models.ManyToManyField("api.Geography", blank=True, related_name="usecases")
     contributors = models.ManyToManyField(
         "authorization.User", blank=True, related_name="contributed_usecases"
     )

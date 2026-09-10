@@ -100,7 +100,7 @@ class Command(BaseCommand):
                     skipped_count += 1
                     continue
 
-                # Skip resources that aren't CSV files
+                # Skip resources that aren't in a supported indexed format
                 file_details = resource.resourcefiledetails
                 if not file_details or file_details.format.lower() not in INDEXED_FORMATS:
                     self.stdout.write(

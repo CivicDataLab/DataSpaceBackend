@@ -54,12 +54,19 @@ class KeycloakManager:
             logger.error(f"Error getting token: {e}")
             raise
 
-    def validate_token(self, token: str) -> Dict[str, Any]:
+    def validate_token(
+        self, token: str, token_info: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Validate a token (Django JWT or Keycloak) and return the user info.
 
         Args:
             token: The token to validate
+            token_info: An introspection response for this token, if the caller
+                already has one. Passing it avoids a second introspect call to
+                Keycloak - callers that need the introspection data themselves
+                (for roles and organizations) would otherwise cause two
+                identical network round-trips per request.
 
         Returns:
             Dict containing the user information
@@ -79,7 +86,11 @@ class KeycloakManager:
                     from authorization.models import User
 
                     user = User.objects.get(id=user_id)
-                    user.save()
+                    # Deliberately no user.save() here. It rewrote every
+                    # column of an unchanged row on every authenticated
+                    # request, taking a row lock for no benefit - and since
+                    # concurrent requests for one user contend on that single
+                    # row, it serialized them against each other.
 
                     # NOTE: Organizations are managed in DataSpace database, not Keycloak
                     # Organization memberships should be created/managed through DataSpace's
@@ -107,14 +118,36 @@ class KeycloakManager:
 
         # If Django JWT validation failed, try Keycloak token validation
         try:
-            # Verify the token is valid
-            token_info = self.keycloak_openid.introspect(token)
+            # Verify the token is valid. Reuses the caller's introspection when
+            # one was supplied, rather than repeating the round-trip.
+            if token_info is None:
+                token_info = self.keycloak_openid.introspect(token)
             if not token_info.get("active", False):
                 logger.warning("Token is not active")
                 return {}
 
-            # Try to get user info from the userinfo endpoint
-            # If that fails (403), fall back to token introspection data
+            # Introspection often already carries everything needed. Calling
+            # userinfo anyway costs a round-trip that, on deployments where the
+            # client lacks the scope for it, is guaranteed to fail with 403 and
+            # fall through to exactly the same data - measured as roughly a
+            # third of this request's latency on dev.
+            if token_info.get("sub") and (
+                token_info.get("email") or token_info.get("preferred_username")
+            ):
+                user_info = {
+                    "sub": token_info.get("sub"),
+                    "preferred_username": token_info.get("username")
+                    or token_info.get("preferred_username"),
+                    "email": token_info.get("email"),
+                    "email_verified": token_info.get("email_verified", False),
+                    "name": token_info.get("name"),
+                    "given_name": token_info.get("given_name"),
+                    "family_name": token_info.get("family_name"),
+                }
+                return {k: v for k, v in user_info.items() if v is not None}
+
+            # Otherwise ask userinfo, falling back to introspection data if it
+            # is not available to this client.
             try:
                 user_info = self.keycloak_openid.userinfo(token)
                 return user_info
@@ -379,13 +412,35 @@ class KeycloakManager:
                     )
 
             if user:
-                # Update existing user
-                user.keycloak_id = keycloak_id
-                user.username = username
-                user.email = email
-                user.first_name = user_info.get("given_name", "") or user.first_name
-                user.last_name = user_info.get("family_name", "") or user.last_name
-                user.is_active = True
+                # Update existing user, but only write when something actually
+                # changed. The unconditional save this replaces was the cause
+                # of the connection exhaustion: every login rewrote the same
+                # row, so concurrent logins for one user queued on a row lock
+                # (pg_stat_activity showed "Lock: tuple" and
+                # "Lock: transactionid" on UPDATE "ds_user"), each holding a
+                # database connection while it waited.
+                desired = {
+                    "keycloak_id": keycloak_id,
+                    "username": username,
+                    "email": email,
+                    "first_name": user_info.get("given_name", "") or user.first_name,
+                    "last_name": user_info.get("family_name", "") or user.last_name,
+                    "is_active": True,
+                    "is_staff": "admin" in roles,
+                    "is_superuser": "admin" in roles,
+                }
+                changed = [
+                    field
+                    for field, value in desired.items()
+                    if getattr(user, field) != value
+                ]
+                if changed:
+                    for field in changed:
+                        setattr(user, field, desired[field])
+                    # update_fields keeps the UPDATE narrow instead of
+                    # rewriting every column.
+                    user.save(update_fields=changed)
+                return user
             else:
                 # Create new user
                 user = User(

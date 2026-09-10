@@ -20,7 +20,13 @@ class TestDataSpaceClient(unittest.TestCase):
         self.assertIsNotNone(self.client._auth)
         self.assertIsNotNone(self.client.datasets)
         self.assertIsNotNone(self.client.aimodels)
+        self.assertIsNotNone(self.client.publications)
         self.assertIsNotNone(self.client.usecases)
+
+    def test_set_organization_scopes_publications(self) -> None:
+        """set_organization must set the org header on the publications client too."""
+        self.client.set_organization("org-123")
+        self.assertEqual(self.client.publications.default_headers["organization"], "org-123")
 
     @patch("dataspace_sdk.client.AuthClient.login")
     def test_login(self, mock_login: MagicMock) -> None:
@@ -83,6 +89,27 @@ class TestDataSpaceClient(unittest.TestCase):
 
         self.client._auth.user_info = None
         self.assertIsNone(self.client.user)
+
+
+class TestClientForwardsBasePath(unittest.TestCase):
+    """The regression this covers: AuthClient grew keycloak_base_path but
+    DataSpaceClient did not forward it, so no public consumer could ever set
+    it -- constructing DataSpaceClient(..., keycloak_base_path="") silently
+    behaved the same as not passing it at all.
+    """
+
+    def test_default_matches_auth_client_default(self) -> None:
+        client = DataSpaceClient(base_url="https://api.test.com", keycloak_url="https://kc.test.com", keycloak_realm="DataSpace")
+        self.assertEqual(client._auth._realm_url(), "https://kc.test.com/auth/realms/DataSpace")
+
+    def test_root_path_is_forwarded(self) -> None:
+        client = DataSpaceClient(
+            base_url="https://api.test.com",
+            keycloak_url="https://kc.test.com",
+            keycloak_realm="DataSpace",
+            keycloak_base_path="",
+        )
+        self.assertEqual(client._auth._realm_url(), "https://kc.test.com/realms/DataSpace")
 
 
 if __name__ == "__main__":

@@ -15,7 +15,6 @@ logger = structlog.get_logger("dataspace.data_indexing")
 # Use a separate database for data tables
 DATA_DB = "data_db"  # This should match the connection name in settings.py
 
-
 # Formats indexed into ResourceDataTable (queryable via get_row_count)
 INDEXED_FORMATS = {"csv", "xls", "xlsx", "ods", "parquet", "feather", "json", "tsv"}
 # Formats counted by parsing the file directly (not indexed into DB)
@@ -474,3 +473,4 @@ def get_preview_data(resource: Resource) -> Optional[PreviewData]:
             f"Error getting preview data for resource {resource.id}: {str(e)}, traceback: {traceback.format_exc()}"
         )
         return None
+

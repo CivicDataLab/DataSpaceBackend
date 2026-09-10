@@ -187,5 +187,44 @@ class TestAuthClient(unittest.TestCase):
             self.auth_client.login_as_service_account()
 
 
+class TestRealmUrl(unittest.TestCase):
+    """Keycloak's relative path is deployment-specific, not always /auth."""
+
+    def _url(self, **kwargs: object) -> str:
+        return AuthClient(
+            base_url="https://api.test.com", keycloak_realm="DataSpace", **kwargs
+        )._realm_url()
+
+    def test_defaults_to_auth_for_backwards_compatibility(self) -> None:
+        self.assertEqual(
+            self._url(keycloak_url="https://kc.test.com"),
+            "https://kc.test.com/auth/realms/DataSpace",
+        )
+
+    def test_empty_base_path_for_root_hosted_keycloak(self) -> None:
+        self.assertEqual(
+            self._url(keycloak_url="https://kc.test.com", keycloak_base_path=""),
+            "https://kc.test.com/realms/DataSpace",
+        )
+
+    def test_does_not_double_path_already_in_url(self) -> None:
+        self.assertEqual(
+            self._url(keycloak_url="https://kc.test.com/auth"),
+            "https://kc.test.com/auth/realms/DataSpace",
+        )
+
+    def test_custom_relative_path(self) -> None:
+        self.assertEqual(
+            self._url(keycloak_url="https://kc.test.com", keycloak_base_path="sso"),
+            "https://kc.test.com/sso/realms/DataSpace",
+        )
+
+    def test_slash_only_base_path_is_treated_as_root(self) -> None:
+        self.assertEqual(
+            self._url(keycloak_url="https://kc.test.com/", keycloak_base_path="/"),
+            "https://kc.test.com/realms/DataSpace",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
