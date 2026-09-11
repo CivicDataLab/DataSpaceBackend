@@ -14,7 +14,7 @@ from dataspace_sdk.exceptions import DataSpaceAuthError
 # Initialize client with Keycloak configuration
 client = DataSpaceClient(
     base_url="https://dataspace.civicdatalab.in",
-    keycloak_url="https://opub-kc.civicdatalab.in",
+    keycloak_url="https://auth.civicdatalab.in",
     keycloak_realm="DataSpace",
     keycloak_client_id="dataspace",
     # keycloak_client_secret="your-secret"  # Only if using confidential client
