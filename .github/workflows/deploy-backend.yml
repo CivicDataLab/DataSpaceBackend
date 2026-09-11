@@ -259,9 +259,9 @@ jobs:
       # force_smoke_failure test path.
       deployed_sha: ${{ (inputs.force_smoke_failure == true && 'forced-failure-sentinel') || github.sha }}
       min_passed: ${{ inputs.force_smoke_failure && 999 || 1 }}
-      # provider-smoke creates datasets/use cases with the test account, so
-      # prod deploys run only the read-only api and consumer suites.
-      skip_provider: ${{ github.ref_name == 'main' }}
+      # main: only the readonly allowlist ever runs against prod.
+      # dev: stage 1 of 2 -- functional-tests runs only if this passes.
+      suite: ${{ github.ref_name == 'main' && 'readonly' || 'smoke' }}
     secrets:
       # This job can't see environment-scoped secrets, and the repo-level
       # HOME_URL_DEV is the dev site -- passing it on main smoke-tested dev
@@ -277,10 +277,28 @@ jobs:
       # and the job fails its preflight.
       KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
 
+  functional-tests:
+    name: Functional Tests
+    needs: smoke-tests
+    # dev only, stage 2: runs only once smoke has passed. Functional tests
+    # write (datasets, use cases), so they never run against prod.
+    if: github.ref_name != 'main'
+    uses: CivicDataLab/CivicDataSpace-test/.github/workflows/run-smoke.yml@CI
+    with:
+      suite: functional
+      api_base_url: ${{ vars.DEV_API_BASE_URL }}
+    secrets:
+      HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
+      TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+      KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+
   rollback-on-smoke-failure:
     name: Rollback (smoke tests failed)
     # `deploy` must be in needs: for needs.deploy.result to resolve here.
-    needs: [deploy, smoke-tests]
+    needs: [deploy, smoke-tests, functional-tests]
     # failure()/success() builtins rather than needs.smoke-tests.result --
     # both are false on cancellation, which is the behaviour we want;
     # if: always() would ignore cancellation entirely.
@@ -331,8 +349,10 @@ jobs:
 
   finalize-deploy:
     name: Finalize Deploy
-    needs: [deploy, smoke-tests]
-    if: success()
+    needs: [deploy, smoke-tests, functional-tests]
+    # Not success(): on main functional-tests is skipped by design, and a
+    # skipped need would skip this job too. Nothing failed + smoke passed.
+    if: ${{ !failure() && !cancelled() && needs.smoke-tests.result == 'success' }}
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     timeout-minutes: 10
