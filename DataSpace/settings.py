@@ -59,6 +59,7 @@ DATA_DB_PORT = env("DATA_DB_PORT", default=DB_PORT)
 
 whitelisted_urls = env("URL_WHITELIST").split(",")
 ALLOWED_HOSTS = [
+    "13.235.189.143",  # Allow parakh IP
     "localhost",  # Allow localhost without port
     "127.0.0.1",  # Allow IPv4 loopback
     "::1",  # Allow IPv6 loopback
