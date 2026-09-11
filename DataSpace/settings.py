@@ -155,8 +155,12 @@ MIDDLEWARE = [
     "api.middleware.logging.StructuredLoggingMiddleware",
 ]
 
-# Add debug toolbar middleware if in debug mode
+# Add debug toolbar app and middleware if in debug mode. Both are required --
+# the middleware alone crashes on any request/check that touches
+# debug_toolbar's models: "HistoryEntry doesn't declare an explicit
+# app_label and isn't in an application in INSTALLED_APPS".
 if DEBUG:
+    INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.insert(1, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
 MIDDLEWARE += [
