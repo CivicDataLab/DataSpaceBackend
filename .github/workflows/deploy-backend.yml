@@ -259,8 +259,15 @@ jobs:
       # force_smoke_failure test path.
       deployed_sha: ${{ (inputs.force_smoke_failure == true && 'forced-failure-sentinel') || github.sha }}
       min_passed: ${{ inputs.force_smoke_failure && 999 || 1 }}
+      # provider-smoke creates datasets/use cases with the test account, so
+      # prod deploys run only the read-only api and consumer suites.
+      skip_provider: ${{ github.ref_name == 'main' }}
     secrets:
-      HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
+      # This job can't see environment-scoped secrets, and the repo-level
+      # HOME_URL_DEV is the dev site -- passing it on main smoke-tested dev
+      # while gating a prod deploy. Literal, not a secret, so a missing value
+      # can't silently fall back to dev through the `&& ||` idiom.
+      HOME_URL_DEV: ${{ github.ref_name == 'main' && 'https://civicdataspace.in' || secrets.HOME_URL_DEV }}
       TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
       TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
