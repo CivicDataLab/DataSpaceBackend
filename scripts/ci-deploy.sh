@@ -82,14 +82,35 @@ RELEASE="$COMPOSE --profile release run --rm --no-deps -T release"
 # (see docker-compose.yml) -- args below are manage.py subcommands
 # only, not full "python manage.py ..." invocations.
 
-# backend_db/elasticsearch/redis must be up before the release step below:
-# it uses --no-deps (so compose never recreates them out from under a
-# running deploy), which also means it will NOT wait for their
-# depends_on healthchecks. In steady state these are already running,
-# but a host that had the stack fully down would otherwise fail at
-# migrate with a confusing connection error. up -d is idempotent --
-# no-ops when they are already healthy and their config is unchanged.
-$COMPOSE up -d backend_db elasticsearch redis
+# backend_db/elasticsearch/redis must be reachable before the release step
+# below (it uses --no-deps and won't wait for their depends_on
+# healthchecks). On prod-cds these are long-lived shared containers already
+# owned by a DIFFERENT compose project (dataexchange, the top-level
+# superproject) than this pipeline's own (dataexbackend) -- confirmed live
+# via `docker ps` compose-project labels (DataExBackendDb up 2 months,
+# DataExBackendElastic up 6 months, DataExBackendRedis up 14 months).
+# Docker container names are host-global, not project-scoped, so blindly
+# running `$COMPOSE up -d` against them hits a naming conflict: compose
+# doesn't recognize a same-named container owned by another project as
+# already satisfying the service, and tries (and fails) to create a new
+# one. Bring up only whichever of the three is genuinely absent (a fresh
+# host with nothing running yet) -- trust any that already exist, under any
+# project, rather than fighting over ownership.
+declare -A SVC_CONTAINER=(
+  [backend_db]=DataExBackendDb
+  [elasticsearch]=DataExBackendElastic
+  [redis]=DataExBackendRedis
+)
+MISSING=()
+for svc in "${!SVC_CONTAINER[@]}"; do
+  docker ps --format '{{.Names}}' | grep -qx "${SVC_CONTAINER[$svc]}" || MISSING+=("$svc")
+done
+if [ "${#MISSING[@]}" -gt 0 ]; then
+  echo "Starting missing dependency containers: ${MISSING[*]}"
+  $COMPOSE up -d "${MISSING[@]}"
+else
+  echo "backend_db/elasticsearch/redis already running (externally managed) -- skipping"
+fi
 
 # --- release step, against the NEW image, before the swap ------
 # Recorded for the rollback message: a rollback restores the image
