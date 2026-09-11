@@ -34,6 +34,25 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    # On prod-cds, backend_db/elasticsearch/redis below are NOT what's
+    # actually running -- ci-deploy.sh deliberately skips starting them
+    # when same-named containers already exist under the `dataexchange`
+    # superproject (see its own comment), which lives on a DIFFERENT
+    # default network (dataexchange_default) than this project's own
+    # (dataexbackend_default, this compose file's implicit default).
+    # Confirmed live: the currently-running DataSpace container only
+    # reaches them because of an undocumented `docker network connect
+    # dataexchange_default DataSpace` done by hand on the host at some
+    # point -- never captured here, and would NOT survive a fresh
+    # --force-recreate (confirmed: a real deploy's `release` container hit
+    # "could not translate host name backend_db" on a fresh network-less
+    # container). Joining both networks here covers both cases: a genuinely
+    # fresh host (where this file's own backend_db/elasticsearch/redis come
+    # up on `default`) and prod-cds (where the real ones live on
+    # dataexchange_default).
+    networks:
+      - default
+      - dataexchange_default
 
   # One-off management commands (migrations, etc.) against the deployed
   # image, without touching the running `backend` container. No
@@ -53,6 +72,10 @@ services:
         condition: service_healthy
     entrypoint: ["python", "manage.py"]
     command: ["migrate", "--noinput"]
+    # See `backend`'s identical networks: block above for why both are needed.
+    networks:
+      - default
+      - dataexchange_default
 
   backend_db:
     image: "postgres:14.4"
@@ -253,3 +276,10 @@ volumes:
     driver: local
   redis-data:
     driver: local
+
+networks:
+  # The dataexchange superproject's default network on prod-cds -- external
+  # because this compose project doesn't own it. See the comment on
+  # `backend`'s networks: block above.
+  dataexchange_default:
+    external: true
