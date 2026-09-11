@@ -24,16 +24,19 @@ class KeycloakLoginView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Introspect once and reuse it. This used to introspect twice per
+        # request - once inside validate_token and again here for roles and
+        # organizations - which is a wasted round-trip to Keycloak on every
+        # login while a database connection is held open.
+        token_info = keycloak_manager.keycloak_openid.introspect(keycloak_token)
+
         # Validate the token and get user info
-        user_info = keycloak_manager.validate_token(keycloak_token)
+        user_info = keycloak_manager.validate_token(keycloak_token, token_info=token_info)
         if not user_info:
             return Response(
                 {"error": "Invalid or expired token"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-
-        # Get token introspection data for roles and organizations
-        token_info = keycloak_manager.keycloak_openid.introspect(keycloak_token)
 
         # Get user roles and organizations from the token introspection data
         roles = keycloak_manager.get_user_roles_from_token_info(token_info)

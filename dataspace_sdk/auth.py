@@ -18,6 +18,7 @@ class AuthClient:
         keycloak_realm: Optional[str] = None,
         keycloak_client_id: Optional[str] = None,
         keycloak_client_secret: Optional[str] = None,
+        keycloak_base_path: str = "/auth",
     ):
         """
         Initialize the authentication client.
@@ -28,9 +29,15 @@ class AuthClient:
             keycloak_realm: Keycloak realm name (e.g., "DataSpace")
             keycloak_client_id: Keycloak client ID (e.g., "dataspace")
             keycloak_client_secret: Optional client secret for confidential clients
+            keycloak_base_path: Keycloak's HTTP relative path. Defaults to
+                "/auth", which is what servers configured the legacy way use.
+                Pass "" for a Keycloak served at the domain root.
         """
         self.base_url = base_url.rstrip("/")
         self.keycloak_url = keycloak_url.rstrip("/") if keycloak_url else None
+        self.keycloak_base_path = (
+            "/" + keycloak_base_path.strip("/") if keycloak_base_path.strip("/") else ""
+        )
         self.keycloak_realm = keycloak_realm
         self.keycloak_client_id = keycloak_client_id
         self.keycloak_client_secret = keycloak_client_secret
@@ -46,6 +53,22 @@ class AuthClient:
         # Stored credentials for auto-relogin
         self._username: Optional[str] = None
         self._password: Optional[str] = None
+
+    def _realm_url(self) -> str:
+        """Base URL for this realm's endpoints.
+
+        Keycloak's relative path is deployment-specific: "/auth" on servers
+        configured the legacy way, empty on servers served at the domain root.
+        This used to be hardcoded, which made the SDK unable to reach a
+        root-path Keycloak at all.
+        """
+        path = self.keycloak_base_path
+        base = self.keycloak_url or ""
+        # Tolerate the relative path already being part of keycloak_url, rather
+        # than emitting it twice.
+        if path and base.endswith(path):
+            path = ""
+        return f"{base}{path}/realms/{self.keycloak_realm}"
 
     def login(self, username: str, password: str) -> Dict[str, Any]:
         """
@@ -124,10 +147,7 @@ class AuthClient:
         Raises:
             DataSpaceAuthError: If authentication fails
         """
-        token_url = (
-            f"{self.keycloak_url}/auth/realms/{self.keycloak_realm}/"
-            f"protocol/openid-connect/token"
-        )
+        token_url = f"{self._realm_url()}/protocol/openid-connect/token"
 
         data = {
             "grant_type": "password",
@@ -183,10 +203,7 @@ class AuthClient:
         Raises:
             DataSpaceAuthError: If authentication fails
         """
-        token_url = (
-            f"{self.keycloak_url}/auth/realms/{self.keycloak_realm}/"
-            f"protocol/openid-connect/token"
-        )
+        token_url = f"{self._realm_url()}/protocol/openid-connect/token"
 
         data = {
             "grant_type": "client_credentials",
@@ -247,10 +264,7 @@ class AuthClient:
                 return self._get_keycloak_token(self._username, self._password)
             raise DataSpaceAuthError("No refresh token or credentials available")
 
-        token_url = (
-            f"{self.keycloak_url}/auth/realms/{self.keycloak_realm}/"
-            f"protocol/openid-connect/token"
-        )
+        token_url = f"{self._realm_url()}/protocol/openid-connect/token"
 
         data = {
             "grant_type": "refresh_token",

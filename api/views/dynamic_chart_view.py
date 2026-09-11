@@ -25,9 +25,7 @@ async def create_chart_details(
 
     # Validate chart type
     if chart_type not in ChartTypes.values:
-        return JsonResponse(
-            {"error": f"Unsupported chart type: {chart_type}"}, status=400
-        )
+        return JsonResponse({"error": f"Unsupported chart type: {chart_type}"}, status=400)
 
     # Set basic options
     options["x_axis_label"] = request_details.get("x_axis_label", "X-Axis")
@@ -42,7 +40,7 @@ async def create_chart_details(
         )
 
     # Handle y-axis columns with configurations
-    y_axis_columns = []
+    y_axis_columns: list = []
     if y_axis_configs := request_details.get("y_axis_column", []):
         y_axis_columns = []
         for config in y_axis_configs:
@@ -57,8 +55,7 @@ async def create_chart_details(
                 value_mapping = {
                     str(mapping["key"]): str(mapping["value"])
                     for mapping in raw_mappings
-                    if mapping.get("key") is not None
-                    and mapping.get("value") is not None
+                    if mapping.get("key") is not None and mapping.get("value") is not None
                 }
 
             y_axis_columns.append(
@@ -158,9 +155,7 @@ async def create_chart_details(
 
 
 @csrf_exempt
-async def generate_dynamic_chart(
-    request: HttpRequest, resource_id: uuid.UUID
-) -> HttpResponse:
+async def generate_dynamic_chart(request: HttpRequest, resource_id: uuid.UUID) -> HttpResponse:
     if request.method == "POST":
         try:
             # Fetch the resource asynchronously
@@ -188,9 +183,7 @@ async def generate_dynamic_chart(
                 return response
 
             # Default response: JSON
-            return JsonResponse(
-                json.loads(chart.dump_options_with_quotes()), safe=False
-            )
+            return JsonResponse(json.loads(chart.dump_options_with_quotes()), safe=False)
 
         except Exception as e:
             return JsonResponse({"error": f"Error generating chart: {e}"}, status=500)

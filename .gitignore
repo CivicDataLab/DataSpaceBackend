@@ -168,3 +168,13 @@ files/public/*
 #dvc files
 dvc
 dvc/*
+
+.DS_Store
+
+# Git worktrees for feature branches
+.worktrees/
+
+# CD/deploy runtime state (previous/current image refs, pending migrations
+# list -- written by the deploy pipeline on the host, never committed)
+.deploy/
+.ghcr_token

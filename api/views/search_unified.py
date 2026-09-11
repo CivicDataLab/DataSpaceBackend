@@ -80,6 +80,10 @@ class UnifiedSearchResultSerializer(serializers.Serializer):
     provider = serializers.CharField(required=False)
     is_individual_model = serializers.BooleanField(required=False)
 
+    # Publication (Resource) specific
+    resource_type = serializers.CharField(required=False)
+    is_individual_publication = serializers.BooleanField(required=False)
+
     # Collaborative specific
     is_individual_collaborative = serializers.BooleanField(required=False)
     website = serializers.CharField(required=False)
@@ -131,6 +135,12 @@ class UnifiedSearch(APIView):
                 "search.documents.aimodel_document", "aimodel"
             )
             index_names.append(aimodel_index)
+
+        if "publication" in types_list:
+            publication_index = settings.ELASTICSEARCH_INDEX_NAMES.get(
+                "search.documents.publication_document", "publication"
+            )
+            index_names.append(publication_index)
 
         if "collaborative" in types_list:
             collaborative_index = settings.ELASTICSEARCH_INDEX_NAMES.get(
@@ -312,6 +322,8 @@ class UnifiedSearch(APIView):
             result["type"] = "usecase"
         elif "aimodel" in index_name:
             result["type"] = "aimodel"
+        elif "publication" in index_name:
+            result["type"] = "publication"
         elif "collaborative" in index_name:
             result["type"] = "collaborative"
         elif "publisher" in index_name:
@@ -424,6 +436,8 @@ class UnifiedSearch(APIView):
                         aggregations["types"]["usecase"] = bucket["doc_count"]
                     elif "aimodel" in index_name:
                         aggregations["types"]["aimodel"] = bucket["doc_count"]
+                    elif "publication" in index_name:
+                        aggregations["types"]["publication"] = bucket["doc_count"]
                     elif "collaborative" in index_name:
                         aggregations["types"]["collaborative"] = bucket["doc_count"]
                     elif "publisher" in index_name:
@@ -448,7 +462,9 @@ class UnifiedSearch(APIView):
             "query": request.GET.get("query", ""),
             "page": request.GET.get("page", "1"),
             "size": request.GET.get("size", "10"),
-            "types": request.GET.get("types", "dataset,usecase,aimodel,collaborative,publisher"),
+            "types": request.GET.get(
+                "types", "dataset,usecase,aimodel,publication,collaborative,publisher"
+            ),
             "filters": str(sorted(request.GET.dict().items())),
             "version": str(cache.get(SEARCH_CACHE_VERSION_KEY, 0)),
         }
@@ -467,7 +483,7 @@ class UnifiedSearch(APIView):
             page: int = int(request.GET.get("page", 1))
             size: int = int(request.GET.get("size", 10))
             entity_types: str = request.GET.get(
-                "types", "dataset,usecase,aimodel,collaborative,publisher"
+                "types", "dataset,usecase,aimodel,publication,collaborative,publisher"
             )  # Which entity types to search
 
             types_list = [t.strip() for t in entity_types.split(",")]
