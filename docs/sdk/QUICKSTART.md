@@ -24,7 +24,7 @@ from dataspace_sdk import DataSpaceClient
 # 1. Initialize the client with Keycloak configuration
 client = DataSpaceClient(
     base_url="https://dataspace.civicdatalab.in",
-    keycloak_url="https://opub-kc.civicdatalab.in",
+    keycloak_url="https://auth.civicdatalab.in",
     keycloak_realm="DataSpace",
     keycloak_client_id="dataspace"
 )

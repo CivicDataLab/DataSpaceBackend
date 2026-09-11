@@ -25,7 +25,7 @@ class AuthClient:
 
         Args:
             base_url: Base URL of the DataSpace API
-            keycloak_url: Keycloak server URL (e.g., "https://opub-kc.civicdatalab.in")
+            keycloak_url: Keycloak server URL (e.g., "https://auth.civicdatalab.in")
             keycloak_realm: Keycloak realm name (e.g., "DataSpace")
             keycloak_client_id: Keycloak client ID (e.g., "dataspace")
             keycloak_client_secret: Optional client secret for confidential clients

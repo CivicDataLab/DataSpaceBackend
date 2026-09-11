@@ -21,7 +21,7 @@ from dataspace_sdk import DataSpaceClient
 # Initialize with Keycloak configuration
 client = DataSpaceClient(
     base_url="https://dataspace.civicdatalab.in",
-    keycloak_url="https://opub-kc.civicdatalab.in",
+    keycloak_url="https://auth.civicdatalab.in",
     keycloak_realm="DataSpace",
     keycloak_client_id="dataspace"
 )
@@ -48,7 +48,7 @@ Best for:
 ```python
 client = DataSpaceClient(
     base_url="https://dataspace.civicdatalab.in",
-    keycloak_url="https://opub-kc.civicdatalab.in",
+    keycloak_url="https://auth.civicdatalab.in",
     keycloak_realm="DataSpace",
     keycloak_client_id="dataspace"
 )
@@ -100,7 +100,7 @@ from dataspace_sdk import DataSpaceClient
 
 client = DataSpaceClient(
     base_url="https://dataspace.civicdatalab.in",
-    keycloak_url="https://opub-kc.civicdatalab.in",
+    keycloak_url="https://auth.civicdatalab.in",
     keycloak_realm="DataSpace",
     keycloak_client_id="dataspace"
 )
@@ -129,7 +129,7 @@ You need these details from your Keycloak setup:
 ```python
 client = DataSpaceClient(
     base_url="https://dataspace.civicdatalab.in",          # DataSpace API URL
-    keycloak_url="https://opub-kc.civicdatalab.in",        # Keycloak server URL
+    keycloak_url="https://auth.civicdatalab.in",        # Keycloak server URL
     keycloak_realm="DataSpace",                             # Realm name
     keycloak_client_id="dataspace",                         # Client ID
     keycloak_client_secret="optional-secret"                # Only for confidential clients
@@ -169,7 +169,7 @@ Create a `.env` file:
 
 ```bash
 DATASPACE_API_URL=https://dataspace.civicdatalab.in
-KEYCLOAK_URL=https://opub-kc.civicdatalab.in
+KEYCLOAK_URL=https://auth.civicdatalab.in
 KEYCLOAK_REALM=DataSpace
 KEYCLOAK_CLIENT_ID=dataspace
 DATASPACE_USERNAME=your-email@example.com
@@ -186,7 +186,7 @@ from dataspace_sdk.exceptions import DataSpaceAuthError
 
 client = DataSpaceClient(
     base_url="https://dataspace.civicdatalab.in",
-    keycloak_url="https://opub-kc.civicdatalab.in",
+    keycloak_url="https://auth.civicdatalab.in",
     keycloak_realm="DataSpace",
     keycloak_client_id="dataspace"
 )
@@ -277,7 +277,7 @@ For production applications, use a confidential client with client_secret:
 ```python
 client = DataSpaceClient(
     base_url="https://dataspace.civicdatalab.in",
-    keycloak_url="https://opub-kc.civicdatalab.in",
+    keycloak_url="https://auth.civicdatalab.in",
     keycloak_realm="DataSpace",
     keycloak_client_id="dataspace-prod",
     keycloak_client_secret=os.getenv("KEYCLOAK_CLIENT_SECRET")
@@ -342,15 +342,15 @@ If you're experiencing frequent token expiration:
 This usually means wrong Keycloak URL:
 
 ```python
-# Try with /auth prefix
-keycloak_url="https://opub-kc.civicdatalab.in/auth"
-
-# Or without
-keycloak_url="https://opub-kc.civicdatalab.in"
+keycloak_url="https://auth.civicdatalab.in"
 
 # Test in browser:
-# https://opub-kc.civicdatalab.in/auth/realms/DataSpace/.well-known/openid-configuration
+# https://auth.civicdatalab.in/realms/DataSpace/.well-known/openid-configuration
 ```
+
+No `/auth` path prefix -- current Keycloak versions drop it by default. If
+you're pointed at an older standalone Keycloak instance that still uses the
+legacy context path, try `https://<host>/auth/realms/...` instead.
 
 ### "Client requires user consent" Error
 

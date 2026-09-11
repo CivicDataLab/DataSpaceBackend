@@ -32,7 +32,7 @@ from dataspace_sdk import DataSpaceClient
 # Initialize the client with Keycloak configuration
 client = DataSpaceClient(
     base_url="https://dev.api.civicdataspace.in",
-    keycloak_url="https://opub-kc.civicdatalab.in",
+    keycloak_url="https://auth.civicdatalab.in",
     keycloak_realm="DataSpace",
     keycloak_client_id="dataspace",
     keycloak_client_secret="your_client_secret"
@@ -85,7 +85,7 @@ from dataspace_sdk import DataSpaceClient
 
 client = DataSpaceClient(
     base_url="https://dev.api.civicdataspace.in",
-    keycloak_url="https://opub-kc.civicdatalab.in",
+    keycloak_url="https://auth.civicdatalab.in",
     keycloak_realm="DataSpace",
     keycloak_client_id="dataspace",
     keycloak_client_secret="your_client_secret"

@@ -50,7 +50,7 @@ class DataSpaceClient:
 
         Args:
             base_url: Base URL of the DataSpace API (e.g., "https://api.dataspace.example.com")
-            keycloak_url: Keycloak server URL (e.g., "https://opub-kc.civicdatalab.in")
+            keycloak_url: Keycloak server URL (e.g., "https://auth.civicdatalab.in")
             keycloak_realm: Keycloak realm name (e.g., "DataSpace")
             keycloak_client_id: Keycloak client ID (e.g., "dataspace")
             keycloak_client_secret: Optional client secret for confidential clients
@@ -93,7 +93,7 @@ class DataSpaceClient:
         Example:
             >>> client = DataSpaceClient(
             ...     base_url="https://api.dataspace.example.com",
-            ...     keycloak_url="https://opub-kc.civicdatalab.in",
+            ...     keycloak_url="https://auth.civicdatalab.in",
             ...     keycloak_realm="DataSpace",
             ...     keycloak_client_id="dataspace"
             ... )
@@ -120,7 +120,7 @@ class DataSpaceClient:
         Example:
             >>> client = DataSpaceClient(
             ...     base_url="https://api.dataspace.example.com",
-            ...     keycloak_url="https://opub-kc.civicdatalab.in",
+            ...     keycloak_url="https://auth.civicdatalab.in",
             ...     keycloak_realm="DataSpace",
             ...     keycloak_client_id="dataspace",
             ...     keycloak_client_secret="your-secret"
