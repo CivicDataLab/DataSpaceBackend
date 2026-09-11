@@ -35,12 +35,25 @@
 # never had that problem. So no SSH step here ever carries more than a
 # single trivial invocation line; all real logic lives in scripts/ci-*.sh,
 # shipped as files.
+#
+# Covers both dev (push to `dev`) and prod (push to `main`) -- environment
+# and image tag derive from github.ref_name, same shape the sibling repos'
+# pipelines (DataSpaceFrontend, ParakhAPI, ParakhAI-frontend) already use.
+# scripts/ci-*.sh need no ENV_SUFFIX-style parameterization here: there's a
+# single docker-compose.yml (no dev/prod split, unlike ParakhAPI), and
+# prod-cds already uses the same ~/DataExchange/DataExBackend submodule
+# layout as dev-cds (confirmed via a recent read-only survey) -- no host
+# migration needed either. First push to `main` through this pipeline is
+# still a real cutover though: prod is currently on a locally-built image
+# with `--reload` (stuck at 1 worker) and has uncommitted files in its
+# checkout that an image-based deploy will silently discard -- diff those
+# before relying on this for a real prod deploy.
 
-name: Deploy Backend to Dev EC2
+name: Deploy Backend to EC2
 
 on:
   push:
-    branches: ['dev']
+    branches: ['dev', 'main']
   workflow_dispatch:
     inputs:
       force_smoke_failure:
@@ -49,16 +62,19 @@ on:
         required: false
         default: false
 
-# Queue overlapping deploys rather than cancelling: a cancelled run mid-deploy
-# could leave .deploy/ state and the running containers disagreeing.
+# Queue overlapping deploys to the SAME environment rather than cancelling (a
+# cancelled run mid-deploy could leave .deploy/ state and the running
+# containers disagreeing) -- keyed by ref so a dev push and a main push never
+# block each other.
 concurrency:
-  group: dataspace-backend-dev-deploy
+  group: dataspace-backend-deploy-${{ github.ref_name }}
   cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: civicdatalab/dataspacebackend
   DEPLOY_PATH: ${{ vars.DEPLOY_PATH || 'DataExchange/DataExBackend' }}
+  GH_ENVIRONMENT: ${{ github.ref_name == 'main' && 'production' || 'development' }}
 
 jobs:
   build:
@@ -99,7 +115,7 @@ jobs:
           build-args: |
             GIT_COMMIT_SHA=${{ github.sha }}
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
           # mode=min (the default), not max: this Dockerfile is single-stage
           # (no multi-stage FROM ... AS builder), so mode=max's extra
@@ -175,7 +191,7 @@ jobs:
     name: Deploy to EC2
     needs: build
     runs-on: ubuntu-latest
-    environment: development
+    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     # 50m: must comfortably exceed the Deploy step's own 40m
     # command_timeout (see that step's comment for why it's 40m).
     timeout-minutes: 50
@@ -234,10 +250,10 @@ jobs:
     # No `environment:` here -- GitHub rejects the entire workflow file at
     # parse time if a `uses:` job declares one. Consequence: this job also
     # cannot see environment-scoped vars, which is why api_base_url comes
-    # from a repo-level var.
+    # from repo-level vars, picked by ref rather than by environment.
     uses: CivicDataLab/CivicDataSpace-test/.github/workflows/run-smoke.yml@CI
     with:
-      api_base_url: ${{ vars.DEV_API_BASE_URL }}
+      api_base_url: ${{ github.ref_name == 'main' && vars.PROD_API_BASE_URL || vars.DEV_API_BASE_URL }}
       # An obviously-wrong sentinel SHA fails the reusable workflow's own
       # deployed-SHA-vs-live-/health/ assertion on purpose, for the
       # force_smoke_failure test path.
@@ -263,7 +279,7 @@ jobs:
     # if: always() would ignore cancellation entirely.
     if: failure() && needs.deploy.result == 'success'
     runs-on: ubuntu-latest
-    environment: development
+    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     # 50m: must comfortably exceed the Restore previous image step's own
     # 40m command_timeout (see the Deploy job's equivalent step for why).
     timeout-minutes: 50
@@ -311,7 +327,7 @@ jobs:
     needs: [deploy, smoke-tests]
     if: success()
     runs-on: ubuntu-latest
-    environment: development
+    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     timeout-minutes: 10
     steps:
       - name: Checkout code
