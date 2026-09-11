@@ -1,0 +1,29 @@
+# Full test suite against dev for every PR into main. Required by branch
+# protection on main, so a PR merges (and prod deploys) only once it's green.
+# dev already runs the PR's code (it was merged to dev first); deployed_sha
+# makes the suite fail if dev is running anything else.
+name: PR Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: pr-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  full-suite:
+    name: Full Suite (dev)
+    uses: CivicDataLab/CivicDataSpace-test/.github/workflows/run-smoke.yml@CI
+    with:
+      suite: full
+      api_base_url: ${{ vars.DEV_API_BASE_URL }}
+      deployed_sha: ${{ github.event.pull_request.head.sha }}
+    secrets:
+      HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
+      TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+      KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
