@@ -469,6 +469,8 @@ class KeycloakManager:
             return user
         except Exception as e:
             logger.error(f"Error synchronizing user from Keycloak: {e}")
+            if hasattr(e, "errors"):
+                logger.error(f"Elasticsearch bulk errors: {e.errors}")
             return None
 
 

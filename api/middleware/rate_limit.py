@@ -103,6 +103,29 @@ def rate_limit_middleware(
         client_ip = get_client_ip(request)
         whitelisted_ips = get_whitelisted_ips()
 
+        # Skip rate limiting for selected paths. Both `api.urls` (mounted at
+        # /api/) and `authorization.urls` (mounted at /auth/) expose their
+        # own keycloak login/token-refresh views -- exempt both sets rather
+        # than guess which one a given client actually calls. Rate-limiting
+        # /health/ would make health checks themselves start failing under
+        # load; rate-limiting login/refresh risks locking users out.
+        exempt_paths = {
+            "/api/auth/keycloak/login/",
+            "/api/auth/keycloak/login",
+            "/api/auth/token/refresh/",
+            "/api/auth/token/refresh",
+            "/auth/keycloak/login/",
+            "/auth/keycloak/login",
+            "/auth/token/refresh/",
+            "/auth/token/refresh",
+            "/health/",
+            "/health",
+        }
+
+        if request.path in exempt_paths:
+            logger.debug(f"Skipping rate limit for exempt path: {request.path}")
+            return get_response(request)
+
         # Skip rate limiting for whitelisted IPs
         if client_ip in whitelisted_ips:
             logger.debug(f"Skipping rate limit for whitelisted IP: {client_ip}")
