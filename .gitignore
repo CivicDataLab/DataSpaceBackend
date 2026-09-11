@@ -155,8 +155,6 @@ cython_debug/
 
 #local env file
 .env
-api/migrations/*
-authorization/migrations/*
 
 
 # AWS files
