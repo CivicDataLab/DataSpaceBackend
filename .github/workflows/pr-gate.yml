@@ -4,6 +4,8 @@
 # makes the suite fail if dev is running anything else.
 name: PR Gate
 
+permissions: {}
+
 on:
   pull_request:
     branches: [main]
