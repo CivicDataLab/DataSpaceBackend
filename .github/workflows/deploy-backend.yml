@@ -319,11 +319,14 @@ jobs:
   rollback-on-smoke-failure:
     name: Rollback (smoke tests failed)
     # `deploy` must be in needs: for needs.deploy.result to resolve here.
-    needs: [deploy, smoke-tests, functional-tests]
-    # failure()/success() builtins rather than needs.smoke-tests.result --
-    # both are false on cancellation, which is the behaviour we want;
-    # if: always() would ignore cancellation entirely.
-    if: failure() && needs.deploy.result == 'success'
+    # provider-functional-report is listed so this waits for every test to
+    # finish, but its result is deliberately not checked (report-only).
+    needs: [deploy, smoke-tests, functional-tests, provider-functional-report]
+    # Explicit gating results, not failure(): failure() would also count the
+    # report-only provider job. !cancelled() keeps cancellation a no-op.
+    if: >-
+      ${{ !cancelled() && needs.deploy.result == 'success' &&
+      (needs.smoke-tests.result == 'failure' || needs.functional-tests.result == 'failure') }}
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     # 50m: must comfortably exceed the Restore previous image step's own
@@ -370,10 +373,15 @@ jobs:
 
   finalize-deploy:
     name: Finalize Deploy
-    needs: [deploy, smoke-tests, functional-tests]
-    # Not success(): on main functional-tests is skipped by design, and a
-    # skipped need would skip this job too. Nothing failed + smoke passed.
-    if: ${{ !failure() && !cancelled() && needs.smoke-tests.result == 'success' }}
+    # provider-functional-report is listed so this waits for every test to
+    # finish, but its result is deliberately not checked (report-only).
+    needs: [deploy, smoke-tests, functional-tests, provider-functional-report]
+    # Explicit gating results, not success()/!failure(): on main the functional
+    # jobs are skipped by design, and the provider job must not block.
+    if: >-
+      ${{ !cancelled() && needs.deploy.result == 'success' &&
+      needs.smoke-tests.result == 'success' &&
+      (needs.functional-tests.result == 'success' || needs.functional-tests.result == 'skipped') }}
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     timeout-minutes: 10
