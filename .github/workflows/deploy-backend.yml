@@ -331,7 +331,9 @@ jobs:
       ${{ !cancelled() && needs.deploy.result == 'success' &&
       (needs.smoke-tests.result == 'failure' || needs.functional-tests.result == 'failure') }}
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
+    # production-ops: same prod host/SSH secrets, no required reviewer, main-only.
+    # The human approval is on the deploy job; finalize/rollback must not wait.
+    environment: ${{ github.ref_name == 'main' && 'production-ops' || 'development' }}
     # 50m: must comfortably exceed the Restore previous image step's own
     # 40m command_timeout (see the Deploy job's equivalent step for why).
     timeout-minutes: 50
@@ -386,7 +388,9 @@ jobs:
       needs.smoke-tests.result == 'success' &&
       (needs.functional-tests.result == 'success' || needs.functional-tests.result == 'skipped') }}
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
+    # production-ops: same prod host/SSH secrets, no required reviewer, main-only.
+    # The human approval is on the deploy job; finalize/rollback must not wait.
+    environment: ${{ github.ref_name == 'main' && 'production-ops' || 'development' }}
     timeout-minutes: 10
     steps:
       - name: Checkout code
