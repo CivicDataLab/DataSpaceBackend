@@ -1,5 +1,5 @@
 from rest_framework import status, views
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -82,6 +82,11 @@ class UserInfoView(views.APIView):
     """
     View for getting the current user's information.
     """
+
+    # Without this the project-wide AllowAny default lets an anonymous request
+    # through, and reading .email off AnonymousUser raises a 500 instead of
+    # returning 401.
+    permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
         user = request.user

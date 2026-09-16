@@ -4,12 +4,32 @@ from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse
 from elasticsearch_dsl import Search
+from elasticsearch_dsl.utils import AttrDict, AttrList
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 from rest_framework.views import APIView
 
 from api.signals.dataset_signals import SEARCH_CACHE_VERSION_KEY
+
+def as_plain_data(value: Any) -> Any:
+    """Convert Elasticsearch wrapper objects into plain Python containers.
+
+    Serialized hits keep AttrList/AttrDict/InnerDoc values for nested fields.
+    Those classes are rebuilt per document type, so pickling one raises
+    "it's not the same object as elasticsearch_dsl.document.InnerDoc" and the
+    cache write fails, turning the whole response into a 500.
+    """
+    if isinstance(value, AttrList):
+        return [as_plain_data(item) for item in value]
+    if isinstance(value, AttrDict):
+        return as_plain_data(value.to_dict())
+    if isinstance(value, dict):
+        return {key: as_plain_data(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [as_plain_data(item) for item in value]
+    return value
+
 
 T = TypeVar("T")
 SearchType = TypeVar("SearchType", bound=Search)
@@ -173,11 +193,13 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                 for agg in is_individual_usecase_agg:
                     aggregations["is_individual_usecase"][agg["key"]] = agg["doc_count"]
 
-            result: Dict[str, Any] = {
-                "results": serializer.data,
-                "total": response.hits.total.value,  # type: ignore
-                "aggregations": aggregations,
-            }
+            result: Dict[str, Any] = as_plain_data(
+                {
+                    "results": serializer.data,
+                    "total": response.hits.total.value,  # type: ignore
+                    "aggregations": aggregations,
+                }
+            )
 
             # Cache the result
             cache.set(cache_key, result, timeout=3600)  # Cache for 1 hour
