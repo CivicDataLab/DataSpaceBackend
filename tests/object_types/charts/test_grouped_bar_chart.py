@@ -65,8 +65,7 @@ class TestGroupedBarChart(unittest.TestCase):
         }
         chart_details = MockResourceChartDetails(
             chart_type="BAR",
-            options={**options, "allow_multi_series": true},
-            options=options,
+            options={**options, "allow_multi_series": True},
         )
         chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
@@ -104,8 +103,7 @@ class TestGroupedBarChart(unittest.TestCase):
         }
         chart_details = MockResourceChartDetails(
             chart_type="BAR",
-            options={**options, "allow_multi_series": true},
-            options=options,
+            options={**options, "allow_multi_series": True},
         )
         chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
@@ -136,8 +134,7 @@ class TestGroupedBarChart(unittest.TestCase):
         }
         chart_details = MockResourceChartDetails(
             chart_type="BAR",
-            options={**options, "allow_multi_series": true},
-            options=options,
+            options={**options, "allow_multi_series": True},
         )
         chart = UnifiedChart(chart_details, test_data)
         result = chart.create_chart()
@@ -156,8 +153,7 @@ class TestGroupedBarChart(unittest.TestCase):
         }
         chart_details = MockResourceChartDetails(
             chart_type="BAR",
-            options={**options, "allow_multi_series": true},
-            options=options,
+            options={**options, "allow_multi_series": True},
         )
         chart = UnifiedChart(chart_details, self.test_data)
         result = chart.create_chart()
@@ -190,8 +186,7 @@ class TestGroupedBarChart(unittest.TestCase):
         }
         chart_details = MockResourceChartDetails(
             chart_type="BAR",
-            options={**options, "allow_multi_series": true},
-            options=options,
+            options={**options, "allow_multi_series": True},
         )
         chart = UnifiedChart(chart_details, test_data)
         result = chart.create_chart()
