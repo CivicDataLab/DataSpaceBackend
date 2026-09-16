@@ -1,0 +1,46 @@
+name: Django Tests
+
+# The SDK workflows run a handful of tests with -p no:django, so nothing ever
+# exercised the Django side: views, schema, permissions. This runs that suite.
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  django-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # Not in requirements.txt, which covers the running service only.
+          pip install pytest pytest-django psycopg2-binary setuptools
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          mkdir -p logs
+
+      # tests/object_types/charts and the dataset metadata tests were left
+      # behind by the chart consolidation and fail on main: see #189.
+      - name: Run tests
+        run: |
+          pytest tests/ \
+            --ignore=tests/object_types/charts \
+            --deselect tests/schema/test_dataset_schema.py::TestAddUpdateDatasetMetadata

@@ -17,6 +17,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Unit tests for this repo's own code, alongside the browser/API suite.
+  django-tests:
+    name: Django Tests
+    uses: ./.github/workflows/django-tests.yml
+
   full-suite:
     name: Full Suite (dev)
     uses: CivicDataLab/CivicDataSpace-test/.github/workflows/run-smoke.yml@CI
