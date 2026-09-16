@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 from rest_framework.views import APIView
 
-from api.signals.dataset_signals import SEARCH_CACHE_VERSION_KEY
+from api.utils.search_cache import SEARCH_CACHE_VERSION_KEY
 
 def as_plain_data(value: Any) -> Any:
     """Convert Elasticsearch wrapper objects into plain Python containers.
