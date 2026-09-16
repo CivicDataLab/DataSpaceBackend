@@ -1,16 +1,13 @@
 from typing import Any
 
 import structlog
-from django.core.cache import cache
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 
 from api.models.UseCase import UseCase
 from api.utils.enums import UseCaseStatus
+from api.utils.search_cache import invalidate_search_cache
 from search.documents.usecase_document import UseCaseDocument
-
-# Cache version key for search results
-SEARCH_CACHE_VERSION_KEY = "search_results_version"
 
 logger = structlog.getLogger(__name__)
 
@@ -42,23 +39,13 @@ def handle_usecase_publication(sender: Any, instance: UseCase, **kwargs: Any) ->
 
             # Only proceed if status is actually changing
             if status_changing_to_published or status_changing_from_published:
-                # Invalidate search results cache by incrementing version
-                try:
-                    version = cache.get(SEARCH_CACHE_VERSION_KEY, 0)
-                    cache.set(SEARCH_CACHE_VERSION_KEY, version + 1)
-                    logger.info(
-                        f"Invalidated search cache for usecase {instance.title}"
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to invalidate search cache: {str(e)}")
-
                 # Update Elasticsearch index
                 if status_changing_from_published:
                     # Remove from index when unpublished
                     try:
                         document = UseCaseDocument.get(id=instance.id, ignore=404)
                         if document:
-                            document.delete()
+                            document.delete(refresh=True)
                             logger.info(
                                 f"Removed usecase {instance.title} from Elasticsearch index"
                             )
@@ -70,7 +57,7 @@ def handle_usecase_publication(sender: Any, instance: UseCase, **kwargs: Any) ->
                     # Add to index when published
                     try:
                         document = UseCaseDocument()
-                        document.update(instance)
+                        document.update(instance, refresh=True)
                         logger.info(
                             f"Added usecase {instance.title} to Elasticsearch index"
                         )
@@ -78,6 +65,13 @@ def handle_usecase_publication(sender: Any, instance: UseCase, **kwargs: Any) ->
                         logger.error(
                             f"Failed to add Elasticsearch document for usecase {instance.title}: {str(e)}"
                         )
+
+                # After the index write, never before it: see invalidate_search_cache.
+                try:
+                    invalidate_search_cache()
+                    logger.info(f"Invalidated search cache for usecase {instance.title}")
+                except Exception as e:
+                    logger.error(f"Failed to invalidate search cache: {str(e)}")
 
     except Exception as e:
         logger.error(f"Error in usecase publication signal handler: {str(e)}")

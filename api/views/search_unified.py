@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 from api.models import Dataset, Geography, Metadata, UseCase
 from api.models.AIModel import AIModel
 from api.models.Collaborative import Collaborative
-from api.signals.dataset_signals import SEARCH_CACHE_VERSION_KEY
+from api.utils.search_cache import SEARCH_CACHE_VERSION_KEY
 from api.utils.telemetry_utils import trace_method
 from DataSpace import settings
 from search.documents import (
