@@ -27,9 +27,6 @@ jobs:
     uses: CivicDataLab/CivicDataSpace-test/.github/workflows/run-smoke.yml@CI
     with:
       suite: full
-      # Provider is flaky against dev: it reports in provider-report below, which
-      # branch protection does not require.
-      skip_provider: true
       api_base_url: ${{ vars.DEV_API_BASE_URL }}
       deployed_sha: ${{ github.event.pull_request.head.sha }}
     secrets:
@@ -38,21 +35,4 @@ jobs:
       TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
       TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
       TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
-      KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
-
-  provider-report:
-    name: Provider Full Suite (report-only)
-    uses: CivicDataLab/CivicDataSpace-test/.github/workflows/run-smoke.yml@CI
-    with:
-      suite: full
-      only_provider: true
-      api_base_url: ${{ vars.DEV_API_BASE_URL }}
-    secrets:
-      HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
-      TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
-      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
-      TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
-      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
-      # org_add_permission needs a token to check canAdd; without this every
-      # org-create test skips on both workers and the report is hollow.
       KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
