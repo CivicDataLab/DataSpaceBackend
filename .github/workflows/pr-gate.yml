@@ -1,7 +1,8 @@
 # Full test suite against dev for every PR into main. Required by branch
 # protection on main, so a PR merges (and prod deploys) only once it's green.
-# dev already runs the PR's code (it was merged to dev first); deployed_sha
-# makes the suite fail if dev is running anything else.
+# Releases come from dev, so the suite checks that dev is running dev's head:
+# not the PR head, which is a different commit whenever a release is built as
+# a merge to resolve conflicts.
 name: PR Gate
 
 on:
@@ -22,13 +23,25 @@ jobs:
     name: Django Tests
     uses: ./.github/workflows/django-tests.yml
 
+  dev-head:
+    name: Resolve dev head
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.dev.outputs.sha }}
+    steps:
+      - id: dev
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "sha=$(gh api repos/${{ github.repository }}/commits/dev --jq .sha)" >> "$GITHUB_OUTPUT"
+
   full-suite:
     name: Full Suite (dev)
+    needs: dev-head
     uses: CivicDataLab/CivicDataSpace-test/.github/workflows/run-smoke.yml@CI
     with:
       suite: full
       api_base_url: ${{ vars.DEV_API_BASE_URL }}
-      deployed_sha: ${{ github.event.pull_request.head.sha }}
+      deployed_sha: ${{ needs.dev-head.outputs.sha }}
     secrets:
       HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
       TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
