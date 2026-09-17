@@ -51,6 +51,9 @@
 
 name: Deploy Backend to EC2
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: ['dev', 'main']
