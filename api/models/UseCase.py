@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from api.models.Organization import Organization
     from authorization.models import User
 
+from api.utils.django_utils import retry_on_slug_collision
 from api.utils.enums import (
     OrganizationRelationshipType,
     UseCaseRunningStatus,
@@ -64,7 +65,15 @@ class UseCase(models.Model):
     def save(self, *args: Any, **kwargs: Any) -> None:
         if self.title and not self.slug:
             self.slug = slugify(cast(str, self.title))
-        super().save(*args, **kwargs)
+        base_title = self.title
+
+        def disambiguate(attempt: int) -> None:
+            self.title = f"{base_title} ({attempt})"
+            self.slug = slugify(cast(str, self.title))
+
+        retry_on_slug_collision(
+            lambda: super(UseCase, self).save(*args, **kwargs), disambiguate
+        )
 
     @property
     def is_individual_usecase(self):

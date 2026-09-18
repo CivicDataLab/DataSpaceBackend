@@ -5,6 +5,7 @@ from django.db import models
 from django.db.models import Sum
 from django.utils.text import slugify
 
+from api.utils.django_utils import retry_on_slug_collision
 from api.utils.enums import (
     DatasetAccessType,
     DatasetLicense,
@@ -84,7 +85,14 @@ class Dataset(models.Model):
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
             self.slug = slugify(self.title)
-        super().save(*args, **kwargs)
+        base_slug = self.slug
+
+        def disambiguate(attempt: int) -> None:
+            self.slug = f"{base_slug}-{attempt}"
+
+        retry_on_slug_collision(
+            lambda: super(Dataset, self).save(*args, **kwargs), disambiguate
+        )
 
     @property
     def tags_indexing(self) -> list[str]:
