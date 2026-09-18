@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from api.models.Organization import Organization
     from authorization.models import User
 
+from api.utils.django_utils import retry_on_slug_collision
 from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from api.utils.file_paths import _use_case_directory_path
 
@@ -69,8 +70,17 @@ class Collaborative(models.Model):
     def save(self, *args: Any, **kwargs: Any) -> None:
         if self.title and not self.slug:
             self.slug = slugify(cast(str, self.title))
-        self.full_clean()
-        super().save(*args, **kwargs)
+        base_title = self.title
+
+        def disambiguate(attempt: int) -> None:
+            self.title = f"{base_title} ({attempt})"
+            self.slug = slugify(cast(str, self.title))
+
+        def do_save() -> None:
+            self.full_clean()
+            super(Collaborative, self).save(*args, **kwargs)
+
+        retry_on_slug_collision(do_save, disambiguate)
 
     @property
     def is_individual_collaborative(self):
