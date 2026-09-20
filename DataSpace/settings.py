@@ -289,6 +289,16 @@ ELASTICSEARCH_INDEX_NAMES = {
 }
 
 
+# Third-party platform imports (link-only). All three platforms work with no
+# key for public datasets. KAGGLE_* adds a file count to Kaggle imports,
+# HF_TOKEN unlocks gated Hugging Face repos, GITHUB_TOKEN lifts GitHub's
+# anonymous rate limit.
+KAGGLE_USERNAME = os.getenv("KAGGLE_USERNAME", None)
+KAGGLE_KEY = os.getenv("KAGGLE_KEY", None)
+HF_TOKEN = os.getenv("HF_TOKEN", None)
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", None)  # optional, lifts the 60 req/hour anonymous limit
+PLATFORM_IMPORT_TIMEOUT = float(os.getenv("PLATFORM_IMPORT_TIMEOUT", "15"))
+
 # DVC settings
 DVC_REPO_PATH = os.path.join(BASE_DIR, "dvc")
 DVC_REMOTE_NAME = os.getenv("DVC_REMOTE_NAME", None)
