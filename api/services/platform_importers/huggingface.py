@@ -1,6 +1,7 @@
 """Hugging Face Hub dataset importer (metadata only).
 
-Two requests per import: the repo metadata and the README (dataset card).
+Two small requests per import: the repo metadata (without its file list) and
+the README (dataset card).
 Public datasets need no token; ``HF_TOKEN`` (settings) is sent when present so
 gated/private repos the token can see also work.
 """
@@ -31,6 +32,28 @@ HF_WEB = "https://huggingface.co/datasets"
 _ID_RE = re.compile(r"^(?:[A-Za-z0-9][A-Za-z0-9._-]*/)?[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 MAX_DESCRIPTION = 1000  # Dataset.description column length
+
+# Everything the Hub returns by default EXCEPT ``siblings`` (the per-file list).
+# We never list files, and for large repos that one key is most of the payload:
+# ~9.6 MB for an 85k-file repo versus ~4 KB without it. Asking for fields by
+# name means the list is never downloaded, and never stored in raw_metadata.
+_EXPAND_FIELDS = (
+    "author",
+    "cardData",
+    "citation",
+    "createdAt",
+    "description",
+    "disabled",
+    "downloads",
+    "gated",
+    "lastModified",
+    "likes",
+    "paperswithcode_id",
+    "private",
+    "sha",
+    "tags",
+    "usedStorage",
+)
 
 
 class HuggingFaceImporter(PlatformImporter):
@@ -87,7 +110,11 @@ class HuggingFaceImporter(PlatformImporter):
         headers = self._headers()
 
         try:
-            meta: Dict[str, Any] = self._get_json(f"{HF_API}/{repo_id}", headers=headers)
+            meta: Dict[str, Any] = self._get_json(
+                f"{HF_API}/{repo_id}",
+                headers=headers,
+                params=[("expand[]", name) for name in _EXPAND_FIELDS],
+            )
         except PlatformAuthError as exc:
             # Hugging Face answers 401 for repos that do not exist as well as
             # for private/gated ones, so say both.
@@ -95,6 +122,7 @@ class HuggingFaceImporter(PlatformImporter):
                 f"'{repo_id}' was not found on Hugging Face, or it is private/gated. "
                 "Check the spelling; only public datasets can be imported."
             ) from exc
+        meta.pop("siblings", None)  # never keep the file list, whatever the API sends
         if meta.get("disabled"):
             raise PlatformImportError("This dataset has been disabled on Hugging Face")
 
