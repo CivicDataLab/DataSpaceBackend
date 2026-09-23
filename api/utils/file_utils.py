@@ -17,10 +17,12 @@ def check_ext(file_object: Any) -> Optional[str]:
 
 
 def check_mime_type(file_object: Any) -> Any:
-    # with open(file_object.file) as mime_file:
-    mime_type = magic.from_buffer(file_object.read(), mime=True)
-    # file_object.file.close()
-    return mime_type
+    # Prefer from_file: libmagic 5.46 misidentifies zip buffers as
+    # application/octet-stream via from_buffer, while from_file works.
+    file_path = getattr(file_object, "path", None)
+    if file_path:
+        return magic.from_file(file_path, mime=True)
+    return magic.from_buffer(file_object.read(), mime=True)
 
 
 def file_validation(
