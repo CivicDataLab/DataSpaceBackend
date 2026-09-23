@@ -17,10 +17,13 @@ from django.conf import settings
 from api.services.platform_importers.base import (
     InvalidIdentifierError,
     PlatformAuthError,
+    PlatformColumn,
     PlatformDatasetInfo,
     PlatformImporter,
     PlatformImportError,
+    field_type_for,
     parse_iso_datetime,
+    shorten,
 )
 from api.utils.enums import ImportPlatform
 
@@ -36,7 +39,7 @@ MAX_DESCRIPTION = 1000  # Dataset.description column length
 # Everything the Hub returns by default EXCEPT ``siblings`` (the per-file list).
 # We never list files, and for large repos that one key is most of the payload:
 # ~9.6 MB for an 85k-file repo versus ~4 KB without it. Asking for fields by
-# name means the list is never downloaded, and never stored in raw_metadata.
+# name means the list is never downloaded, and never stored anywhere.
 _EXPAND_FIELDS = (
     "author",
     "cardData",
@@ -44,15 +47,11 @@ _EXPAND_FIELDS = (
     "createdAt",
     "description",
     "disabled",
-    "downloads",
     "gated",
     "lastModified",
-    "likes",
-    "paperswithcode_id",
     "private",
     "sha",
     "tags",
-    "usedStorage",
 )
 
 
@@ -131,18 +130,24 @@ class HuggingFaceImporter(PlatformImporter):
 
         title = card.get("pretty_name") or repo_id.split("/")[-1]
         author = meta.get("author") or (repo_id.split("/")[0] if "/" in repo_id else "")
+        readme = self._readme(repo_id, meta, headers)
 
         return PlatformDatasetInfo(
             platform=self.platform,
             identifier=repo_id,
             title=str(title)[:300],
-            description=self._description(repo_id, meta, headers),
+            description=shorten(readme, MAX_DESCRIPTION),
             source_url=f"{HF_WEB}/{repo_id}",
             author=str(author)[:300],
             license=self._license(card, tags),
             tags=self._tags(tags),
             last_updated=parse_iso_datetime(meta.get("lastModified")),
-            raw=meta,
+            created_at=parse_iso_datetime(meta.get("createdAt")),
+            revision=str(meta.get("sha") or "")[:64],
+            readme=readme,
+            citation=str(meta.get("citation") or ""),
+            languages=self._languages(card, tags),
+            columns=self._columns(card),
         )
 
     # -- pieces -------------------------------------------------------------- #
@@ -174,8 +179,8 @@ class HuggingFaceImporter(PlatformImporter):
                 out.append(value[:50])
         return out[:30]
 
-    def _description(self, repo_id: str, meta: Dict[str, Any], headers: Dict[str, str]) -> str:
-        """Prefer the dataset card body (README) over the terse API field."""
+    def _readme(self, repo_id: str, meta: Dict[str, Any], headers: Dict[str, str]) -> str:
+        """Full dataset card body (README) without its YAML front matter; else the API field."""
         try:
             response = self._get(f"{HF_WEB}/{repo_id}/resolve/main/README.md", headers=headers)
             text = response.text
@@ -190,4 +195,32 @@ class HuggingFaceImporter(PlatformImporter):
             text = text.strip()
         if not text:
             text = str(meta.get("description") or "")
-        return text[:MAX_DESCRIPTION]
+        return text
+
+    @staticmethod
+    def _languages(card: Dict[str, Any], tags: List[str]) -> List[str]:
+        langs = card.get("language")
+        if isinstance(langs, str):
+            langs = [langs]
+        out = [str(v).strip() for v in (langs or []) if str(v).strip()]
+        if not out:
+            out = [t[len("language:") :] for t in tags if t.startswith("language:")]
+        return out[:20]
+
+    @staticmethod
+    def _columns(card: Dict[str, Any]) -> List[PlatformColumn]:
+        """Column names/types from the card's dataset_info (first config if several)."""
+        info = card.get("dataset_info")
+        if isinstance(info, list):
+            info = info[0] if info else None
+        if not isinstance(info, dict):
+            return []
+        cols: List[PlatformColumn] = []
+        for feat in info.get("features") or []:
+            if isinstance(feat, dict) and feat.get("name"):
+                cols.append(
+                    PlatformColumn(
+                        name=str(feat["name"])[:255], field_type=field_type_for(feat.get("dtype"))
+                    )
+                )
+        return cols[:200]

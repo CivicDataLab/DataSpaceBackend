@@ -18,17 +18,27 @@ import_platform_enum: EnumType = strawberry.enum(ImportPlatform)  # type: ignore
 
 @strawberry_django.type(DatasetSource)
 class TypeDatasetSource(BaseType):
-    """Where an imported dataset came from."""
+    """Where an imported dataset came from, and what the platform said about it."""
 
     id: auto
     platform: import_platform_enum  # type: ignore
     source_identifier: auto
     source_url: auto
+    source_homepage: auto
+    revision: auto
     source_author: auto
     source_license: auto
+    source_readme: auto
+    citation: auto
+    source_created_at: auto
     source_last_updated: auto
+    is_archived: auto
     imported_at: auto
     last_synced_at: auto
+
+    @strawberry.field
+    def languages(self) -> List[str]:
+        return list(getattr(self, "languages", None) or [])
 
 
 @strawberry.type
@@ -45,6 +55,9 @@ class TypePlatformDatasetPreview:
     mapped_license: str
     tags: List[str]
     last_updated: Optional[datetime]
+    languages: List[str]
+    revision: str
+    column_count: int
 
     @classmethod
     def from_info(cls, info: PlatformDatasetInfo) -> "TypePlatformDatasetPreview":
@@ -59,4 +72,7 @@ class TypePlatformDatasetPreview:
             mapped_license=info.mapped_license,
             tags=list(info.tags),
             last_updated=info.last_updated,
+            languages=list(info.languages),
+            revision=info.revision,
+            column_count=len(info.columns),
         )

@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 from api.services.platform_importers.base import (
     InvalidIdentifierError,
     PlatformAuthError,
+    PlatformColumn,
     PlatformDatasetInfo,
     PlatformDatasetNotFoundError,
     PlatformImporter,
@@ -53,6 +54,7 @@ __all__ = [
     "detect_platform",
     "PlatformImporter",
     "PlatformDatasetInfo",
+    "PlatformColumn",
     "PlatformImportError",
     "InvalidIdentifierError",
     "PlatformDatasetNotFoundError",

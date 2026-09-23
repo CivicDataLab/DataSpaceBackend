@@ -24,6 +24,7 @@ from api.models import (
     Metadata,
     Organization,
     Resource,
+    ResourceSchema,
     Sector,
     Tag,
 )
@@ -202,7 +203,7 @@ def import_platform_dataset(
     # the dataset page, so "download" redirects there and people browse/fetch
     # files with the platform's own tooling.
     platform_label = PLATFORM_LABELS.get(str(info.platform), str(info.platform).title())
-    Resource.objects.create(
+    link_resource = Resource.objects.create(
         dataset=dataset,
         type=DataType.EXTERNAL,
         name=f"Dataset on {platform_label}"[:200],
@@ -215,11 +216,27 @@ def import_platform_dataset(
         platform=info.platform,
         source_identifier=info.identifier,
         source_url=info.source_url[:500],
+        source_homepage=(info.homepage or "")[:500],
+        revision=(info.revision or "")[:64],
         source_author=info.author[:300],
         source_license=info.license[:300],
+        source_readme=info.readme or "",
+        citation=info.citation or "",
+        languages=list(info.languages or []),
+        source_created_at=info.created_at,
         source_last_updated=info.last_updated,
-        raw_metadata=info.raw,
+        is_archived=bool(info.is_archived),
         imported_by=user,
+    )
+
+    # Column definitions the platform declared (Hugging Face dataset_info).
+    # They live on the link resource so "View All Columns" and the Croissant
+    # recordSet work without any data being fetched.
+    ResourceSchema.objects.bulk_create(
+        [
+            ResourceSchema(resource=link_resource, field_name=col.name, format=col.field_type)
+            for col in info.columns
+        ]
     )
 
     try:

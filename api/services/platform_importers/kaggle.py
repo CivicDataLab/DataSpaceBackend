@@ -21,6 +21,7 @@ from api.services.platform_importers.base import (
     PlatformDatasetInfo,
     PlatformImporter,
     parse_iso_datetime,
+    shorten,
 )
 from api.utils.enums import ImportPlatform
 
@@ -85,19 +86,22 @@ class KaggleImporter(PlatformImporter):
             raise PlatformAuthError("This Kaggle dataset is private")
 
         title = meta.get("title") or slug
-        description = (meta.get("description") or meta.get("subtitle") or "").strip()
+        readme = (meta.get("description") or meta.get("subtitle") or "").strip()
+        version = meta.get("currentVersionNumber")
 
         return PlatformDatasetInfo(
             platform=self.platform,
             identifier=ref,
             title=str(title)[:300],
-            description=description[:MAX_DESCRIPTION],
+            description=shorten(readme, MAX_DESCRIPTION),
             source_url=meta.get("url") or f"{KAGGLE_WEB}/{ref}",
             author=str(meta.get("ownerName") or owner)[:300],
             license=self._license(meta),
             tags=self._tags(meta),
             last_updated=parse_iso_datetime(meta.get("lastUpdated")),
-            raw=meta,
+            created_at=self._first_version_date(meta),
+            revision=str(version) if version is not None else "",
+            readme=readme,
         )
 
     # -- pieces -------------------------------------------------------------- #
@@ -119,3 +123,14 @@ class KaggleImporter(PlatformImporter):
             if isinstance(name, str) and name.strip() and name.strip() not in out:
                 out.append(name.strip()[:50])
         return out[:30]
+
+    @staticmethod
+    def _first_version_date(meta: Dict[str, Any]):
+        """Kaggle has no created date; the earliest version's creation date is the same thing."""
+        dates = [
+            parse_iso_datetime(v.get("creationDate"))
+            for v in (meta.get("versions") or [])
+            if isinstance(v, dict)
+        ]
+        dates = [d for d in dates if d is not None]
+        return min(dates) if dates else None

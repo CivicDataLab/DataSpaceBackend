@@ -54,17 +54,35 @@ class PlatformUnavailableError(PlatformImportError):
 # Normalised result
 # --------------------------------------------------------------------------- #
 @dataclass
+class PlatformColumn:
+    """One column of the dataset as the platform describes it."""
+
+    name: str
+    field_type: str  # a FieldTypes value: STRING / NUMBER / INTEGER / DATE / BOOLEAN
+
+
+@dataclass
 class PlatformDatasetInfo:
+    """Everything an importer returns. Each field lands in a typed column on
+    DatasetSource (or on Dataset / ResourceSchema); nothing raw is kept."""
+
     platform: str
     identifier: str
     title: str
-    description: str
+    description: str  # short form, fits Dataset.description (1,000 chars)
     source_url: str
     author: str = ""
     license: str = ""
     tags: List[str] = field(default_factory=list)
     last_updated: Optional[datetime] = None
-    raw: Dict[str, Any] = field(default_factory=dict)
+    created_at: Optional[datetime] = None
+    revision: str = ""
+    readme: str = ""  # full card / README, unbounded
+    citation: str = ""
+    languages: List[str] = field(default_factory=list)
+    homepage: str = ""
+    is_archived: bool = False
+    columns: List[PlatformColumn] = field(default_factory=list)
 
     @property
     def mapped_license(self) -> str:
@@ -101,6 +119,29 @@ def map_license(raw: str) -> str:
     """Map a platform license string onto DatasetLicense (default CC-BY-4.0)."""
     key = (raw or "").strip().lower()
     return LICENSE_ALIASES.get(key, DatasetLicense.CC_BY_4_0_ATTRIBUTION)
+
+
+def field_type_for(dtype: Any) -> str:
+    """Map a platform column type (Hugging Face / Arrow style names) onto FieldTypes."""
+    name = str(dtype if isinstance(dtype, str) else "").lower()
+    if name in ("bool", "boolean"):
+        return "BOOLEAN"
+    if name.startswith(("int", "uint")):
+        return "INTEGER"
+    if name.startswith(("float", "double", "decimal")):
+        return "NUMBER"
+    if name.startswith(("date", "timestamp", "time")):
+        return "DATE"
+    return "STRING"  # strings, class labels, nested/binary types
+
+
+def shorten(text: str, limit: int = 1000) -> str:
+    """Cut on a word boundary with an ellipsis; used for Dataset.description."""
+    text = (text or "").strip()
+    if len(text) <= limit:
+        return text
+    cut = text[: limit - 1].rsplit(" ", 1)[0]
+    return cut + "…"
 
 
 def parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
@@ -186,11 +227,14 @@ __all__ = [
     "ImportPlatform",
     "PlatformImporter",
     "PlatformDatasetInfo",
+    "PlatformColumn",
     "PlatformImportError",
     "InvalidIdentifierError",
     "PlatformDatasetNotFoundError",
     "PlatformAuthError",
     "PlatformUnavailableError",
     "map_license",
+    "field_type_for",
+    "shorten",
     "parse_iso_datetime",
 ]
