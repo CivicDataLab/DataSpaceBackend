@@ -291,6 +291,7 @@ jobs:
     with:
       suite: functional
       api_base_url: ${{ vars.DEV_API_BASE_URL }}
+      skip_provider: true
     secrets:
       HOME_URL_DEV: ${{ secrets.HOME_URL_DEV }}
       TEST_EMAIL_1: ${{ secrets.TEST_EMAIL_1 }}
