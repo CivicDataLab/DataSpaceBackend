@@ -8,6 +8,7 @@ last updated and the dataset's page URL. Files are never listed or copied.
 
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -119,6 +120,30 @@ def map_license(raw: str) -> str:
     """Map a platform license string onto DatasetLicense (default CC-BY-4.0)."""
     key = (raw or "").strip().lower()
     return LICENSE_ALIASES.get(key, DatasetLicense.CC_BY_4_0_ATTRIBUTION)
+
+
+# Hard limits: the platforms' own maxima are well under these, so anything
+# longer is not a real identifier. Keeps hostile input out of URLs and columns.
+MAX_IDENTIFIER_LEN = 200
+MAX_README_CHARS = 200_000  # ~200 KB; the longest real card seen is ~32 KB
+
+_SEGMENT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def check_identifier_length(value: str, platform_label: str) -> None:
+    if len(value) > MAX_IDENTIFIER_LEN:
+        raise InvalidIdentifierError(f"That {platform_label} identifier is too long to be real")
+
+
+def check_path_segments(path: str, what: str) -> None:
+    """A branch name or sub-path must be plain segments: no '..', no whitespace, no odd characters."""
+    for seg in (path or "").split("/"):
+        if seg and (seg in (".", "..") or not _SEGMENT_RE.match(seg)):
+            raise InvalidIdentifierError(f"'{path}' is not a valid {what}")
+
+
+def cap_readme(text: str) -> str:
+    return (text or "")[:MAX_README_CHARS]
 
 
 def field_type_for(dtype: Any) -> str:
@@ -234,6 +259,10 @@ __all__ = [
     "PlatformAuthError",
     "PlatformUnavailableError",
     "map_license",
+    "check_identifier_length",
+    "check_path_segments",
+    "cap_readme",
+    "MAX_IDENTIFIER_LEN",
     "field_type_for",
     "shorten",
     "parse_iso_datetime",

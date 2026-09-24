@@ -21,6 +21,8 @@ from api.services.platform_importers.base import (
     PlatformDatasetInfo,
     PlatformImporter,
     PlatformImportError,
+    cap_readme,
+    check_identifier_length,
     field_type_for,
     parse_iso_datetime,
     shorten,
@@ -97,6 +99,7 @@ class HuggingFaceImporter(PlatformImporter):
             repo_id = raw[len("datasets/") :] if raw.startswith("datasets/") else raw
 
         repo_id = repo_id.strip("/")
+        check_identifier_length(repo_id, "Hugging Face")
         if not _ID_RE.match(repo_id):
             raise InvalidIdentifierError(
                 "Hugging Face ids look like 'namespace/name' (letters, digits, '-', '_', '.')"
@@ -125,6 +128,10 @@ class HuggingFaceImporter(PlatformImporter):
         if meta.get("disabled"):
             raise PlatformImportError("This dataset has been disabled on Hugging Face")
 
+        # The Hub redirects legacy short names ("imdb") to their canonical id; keep
+        # the canonical one so the same dataset cannot be imported twice under two names.
+        repo_id = str(meta.get("id") or repo_id)
+
         card: Dict[str, Any] = meta.get("cardData") or {}
         tags: List[str] = meta.get("tags") or []
 
@@ -144,8 +151,8 @@ class HuggingFaceImporter(PlatformImporter):
             last_updated=parse_iso_datetime(meta.get("lastModified")),
             created_at=parse_iso_datetime(meta.get("createdAt")),
             revision=str(meta.get("sha") or "")[:64],
-            readme=readme,
-            citation=str(meta.get("citation") or ""),
+            readme=cap_readme(readme),
+            citation=str(meta.get("citation") or "")[:20_000],
             languages=self._languages(card, tags),
             columns=self._columns(card),
         )

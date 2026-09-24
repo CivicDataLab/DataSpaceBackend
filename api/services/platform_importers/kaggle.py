@@ -20,6 +20,8 @@ from api.services.platform_importers.base import (
     PlatformAuthError,
     PlatformDatasetInfo,
     PlatformImporter,
+    cap_readme,
+    check_identifier_length,
     parse_iso_datetime,
     shorten,
 )
@@ -68,6 +70,7 @@ class KaggleImporter(PlatformImporter):
                 raise InvalidIdentifierError("Kaggle refs look like 'owner/dataset-name'")
             owner, slug = parts
 
+        check_identifier_length(f"{owner}/{slug}", "Kaggle")
         if not (_SLUG_RE.match(owner) and _SLUG_RE.match(slug)):
             raise InvalidIdentifierError(
                 "Kaggle owner and dataset names use letters, digits, '-' and '_'"
@@ -79,9 +82,16 @@ class KaggleImporter(PlatformImporter):
         ref = self.parse_identifier(identifier)
         owner, slug = ref.split("/")
 
-        meta: Dict[str, Any] = self._get_json(
-            f"{KAGGLE_API}/datasets/view/{owner}/{slug}", auth=self._auth()
-        )
+        try:
+            meta: Dict[str, Any] = self._get_json(
+                f"{KAGGLE_API}/datasets/view/{owner}/{slug}", auth=self._auth()
+            )
+        except PlatformAuthError as exc:
+            # Kaggle answers 403 for datasets that do not exist as well as private ones.
+            raise PlatformAuthError(
+                f"'{ref}' was not found on Kaggle, or it is private. "
+                "Check the spelling; only public datasets can be imported."
+            ) from exc
         if meta.get("isPrivate"):
             raise PlatformAuthError("This Kaggle dataset is private")
 
@@ -101,7 +111,7 @@ class KaggleImporter(PlatformImporter):
             last_updated=parse_iso_datetime(meta.get("lastUpdated")),
             created_at=self._first_version_date(meta),
             revision=str(version) if version is not None else "",
-            readme=readme,
+            readme=cap_readme(readme),
         )
 
     # -- pieces -------------------------------------------------------------- #
@@ -126,11 +136,13 @@ class KaggleImporter(PlatformImporter):
 
     @staticmethod
     def _first_version_date(meta: Dict[str, Any]):
-        """Kaggle has no created date; the earliest version's creation date is the same thing."""
-        dates = [
-            parse_iso_datetime(v.get("creationDate"))
-            for v in (meta.get("versions") or [])
-            if isinstance(v, dict)
-        ]
+        """Kaggle has no created date. The earliest version's date is the same thing,
+        but the view only lists recent versions for datasets with many, so use it
+        only when the list is complete."""
+        versions = [v for v in (meta.get("versions") or []) if isinstance(v, dict)]
+        current = meta.get("currentVersionNumber")
+        if not versions or (isinstance(current, int) and len(versions) < current):
+            return None
+        dates = [parse_iso_datetime(v.get("creationDate")) for v in versions]
         dates = [d for d in dates if d is not None]
         return min(dates) if dates else None

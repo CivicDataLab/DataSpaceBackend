@@ -20,6 +20,9 @@ from api.services.platform_importers.base import (
     PlatformDatasetInfo,
     PlatformImporter,
     PlatformImportError,
+    cap_readme,
+    check_identifier_length,
+    check_path_segments,
     parse_iso_datetime,
     shorten,
 )
@@ -94,7 +97,13 @@ class GitHubImporter(PlatformImporter):
             raise InvalidIdentifierError(
                 "GitHub owner and repo names use letters, digits, '-', '_' and '.'"
             )
-        return owner, repo, (branch or None), path.strip("/")
+        path = path.strip("/")
+        if branch:
+            check_path_segments(branch, "branch name")
+        if path:
+            check_path_segments(path, "folder path")
+        check_identifier_length(f"{owner}/{repo}@{branch or ''}:{path}", "GitHub")
+        return owner, repo, (branch or None), path
 
     # -- fetch --------------------------------------------------------------- #
     def fetch_dataset_info(self, identifier: str) -> PlatformDatasetInfo:
@@ -126,12 +135,12 @@ class GitHubImporter(PlatformImporter):
             description=shorten(readme, MAX_DESCRIPTION),
             source_url=source_url,
             author=str((meta.get("owner") or {}).get("login") or owner)[:300],
-            license=str(license_info.get("spdx_id") or license_info.get("name") or ""),
+            license=self._license(license_info),
             tags=[t[:50] for t in (meta.get("topics") or []) if isinstance(t, str)][:30],
             last_updated=parse_iso_datetime(meta.get("pushed_at") or meta.get("updated_at")),
             created_at=parse_iso_datetime(meta.get("created_at")),
             revision=self._head_sha(full_name, branch, headers),
-            readme=readme,
+            readme=cap_readme(readme),
             homepage=str(meta.get("homepage") or "")[:500],
             is_archived=bool(meta.get("archived")),
         )
@@ -156,3 +165,11 @@ class GitHubImporter(PlatformImporter):
             return str((ref.get("object") or {}).get("sha") or "")[:64]
         except PlatformImportError:
             return ""
+
+    @staticmethod
+    def _license(license_info: Dict[str, Any]) -> str:
+        """SPDX id when GitHub could detect one. 'NOASSERTION' / 'other' mean it could not."""
+        spdx = str(license_info.get("spdx_id") or "")
+        if spdx.upper() in ("", "NOASSERTION", "OTHER"):
+            return ""
+        return spdx

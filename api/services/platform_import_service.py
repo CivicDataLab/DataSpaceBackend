@@ -153,7 +153,6 @@ def _prefill_metadata(dataset: Dataset, info: PlatformDatasetInfo) -> None:
             logger.info("platform_import_metadata_skipped", label=field.label, error=str(exc))
 
 
-@transaction.atomic
 def import_platform_dataset(
     *,
     platform: str,
@@ -172,9 +171,34 @@ def import_platform_dataset(
     if existing is not None:
         raise DuplicateImportError(existing)
 
+    # Network first, database second: the platform calls (up to a few seconds)
+    # happen before any transaction is opened, so a slow platform never holds a
+    # database connection.
     if info is None:
         info = importer.fetch_dataset_info(canonical_id)
 
+    # The platform may have canonicalised the id (Hugging Face "imdb" ->
+    # "stanfordnlp/imdb"); re-check duplicates under the canonical id too.
+    if info.identifier != canonical_id:
+        existing = find_existing_import(platform, info.identifier, organization, user)
+        if existing is not None:
+            raise DuplicateImportError(existing)
+
+    with transaction.atomic():
+        return _create_import(
+            info, user=user, organization=organization, dataspace=dataspace, title=title
+        )
+
+
+def _create_import(
+    info: PlatformDatasetInfo,
+    *,
+    user: User,
+    organization: Optional[Organization],
+    dataspace: Optional[DataSpace],
+    title: Optional[str],
+) -> Dataset:
+    """All database writes for one import. Runs inside a transaction."""
     # Publisher may choose the name shown on DataSpace; platform title otherwise.
     display_title = (title or "").strip()[:300] or info.title
     dataset = Dataset.objects.create(
