@@ -262,6 +262,7 @@ jobs:
       # force_smoke_failure test path.
       deployed_sha: ${{ (inputs.force_smoke_failure == true && 'forced-failure-sentinel') || github.sha }}
       min_passed: ${{ inputs.force_smoke_failure && 999 || 1 }}
+      skip_provider: true
       # main: only the readonly allowlist ever runs against prod.
       # dev: stage 1 of 2 -- functional-tests runs only if this passes.
       suite: ${{ github.ref_name == 'main' && 'readonly' || 'smoke' }}
