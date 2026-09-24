@@ -6,6 +6,7 @@ from api.models import (
     Catalog,
     Dataset,
     DatasetMetadata,
+    DatasetSource,
     Geography,
     Metadata,
     Organization,
@@ -93,6 +94,10 @@ class DatasetDocument(Document):
             "profile_picture": fields.TextField(analyzer=ngram_analyser),
         }
     )
+
+    # Platform this dataset was imported from (KAGGLE, HUGGINGFACE) or null
+    # for datasets created natively. Lets listings badge/filter imports.
+    source_platform = fields.KeywordField(attr="source_platform_indexing")
 
     formats = fields.TextField(
         attr="formats_indexing",
@@ -238,6 +243,8 @@ class DatasetDocument(Document):
         """Get Dataset instances from related models."""
         if isinstance(related_instance, Resource):
             return related_instance.dataset
+        elif isinstance(related_instance, DatasetSource):
+            return related_instance.dataset
         elif isinstance(related_instance, Metadata):
             ds_metadata_objects = related_instance.datasetmetadata_set.all()
             return [obj.dataset for obj in ds_metadata_objects]  # type: ignore
@@ -271,6 +278,7 @@ class DatasetDocument(Document):
 
         related_models = [
             Resource,
+            DatasetSource,
             Metadata,
             DatasetMetadata,
             PromptDataset,

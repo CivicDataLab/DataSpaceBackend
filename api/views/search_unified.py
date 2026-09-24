@@ -64,6 +64,7 @@ class UnifiedSearchResultSerializer(serializers.Serializer):
     # Type-specific fields
     # Dataset specific
     formats = serializers.ListField(required=False)
+    source_platform = serializers.CharField(required=False, allow_null=True)
     has_charts = serializers.BooleanField(required=False)
     download_count = serializers.IntegerField(required=False)
     is_individual_dataset = serializers.BooleanField(required=False)

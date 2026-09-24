@@ -9,6 +9,7 @@ from api.models.CollaborativeOrganizationRelationship import (
 )
 from api.models.Dataset import Dataset, Tag
 from api.models.DatasetMetadata import DatasetMetadata
+from api.models.DatasetSource import DatasetSource
 from api.models.DataSpace import DataSpace
 from api.models.Geography import Geography
 from api.models.Metadata import Metadata
