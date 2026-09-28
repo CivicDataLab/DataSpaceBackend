@@ -117,11 +117,11 @@
       "value_type": "langstring",
       "repeatable": true,
       "obligation": "optional",
-      "dataspace_field": null,
+      "dataspace_field": "alternative_title",
       "dataspace_input_type": null,
       "visible_on_dataspace": false,
       "controlled_vocabulary": null,
-      "direction": "import_only",
+      "direction": "both",
       "notes": null
     },
     "description": {
@@ -1226,22 +1226,64 @@
     "sha256": "checksum",
     "citation": "citation",
     "temporal_coverage_start": "temporal_coverage_start",
-    "temporal_coverage_end": "temporal_coverage_end"
+    "temporal_coverage_end": "temporal_coverage_end",
+    "alternative_title": "alternative_title"
   },
   "standards": {
     "croissant": {
       "name": "Croissant (MLCommons ML-dataset metadata format)",
-      "version": "1.0",
-      "url": "https://mlcommons.org/croissant/",
+      "version": "1.1",
+      "url": "https://docs.mlcommons.org/croissant/docs/croissant-spec-1.1.html",
       "serialisation": "json-ld",
       "uri_style": "string",
       "context": {
+        "@language": "en",
         "@vocab": "https://schema.org/",
+        "arrayShape": "cr:arrayShape",
+        "citeAs": "cr:citeAs",
+        "column": "cr:column",
+        "conformsTo": "dct:conformsTo",
+        "containedIn": "cr:containedIn",
         "cr": "http://mlcommons.org/croissant/",
-        "sc": "https://schema.org/"
+        "data": {
+          "@id": "cr:data",
+          "@type": "@json"
+        },
+        "dataBiases": "cr:dataBiases",
+        "dataCollection": "cr:dataCollection",
+        "dataType": {
+          "@id": "cr:dataType",
+          "@type": "@vocab"
+        },
+        "dct": "http://purl.org/dc/terms/",
+        "extract": "cr:extract",
+        "field": "cr:field",
+        "fileProperty": "cr:fileProperty",
+        "fileObject": "cr:fileObject",
+        "fileSet": "cr:fileSet",
+        "format": "cr:format",
+        "includes": "cr:includes",
+        "isArray": "cr:isArray",
+        "isLiveDataset": "cr:isLiveDataset",
+        "jsonPath": "cr:jsonPath",
+        "key": "cr:key",
+        "md5": "cr:md5",
+        "parentField": "cr:parentField",
+        "path": "cr:path",
+        "personalSensitiveInformation": "cr:personalSensitiveInformation",
+        "recordSet": "cr:recordSet",
+        "references": "cr:references",
+        "regex": "cr:regex",
+        "repeated": "cr:repeated",
+        "replace": "cr:replace",
+        "sc": "https://schema.org/",
+        "separator": "cr:separator",
+        "source": "cr:source",
+        "subField": "cr:subField",
+        "transform": "cr:transform"
       },
       "node_types": {
-        "dataset": "Dataset",
+        "dataset": "sc:Dataset",
         "distribution": "cr:FileObject",
         "record_set": "cr:RecordSet"
       },
@@ -1271,6 +1313,19 @@
           "dataspace_field": "title",
           "controlled_vocabulary": null,
           "notes": null
+        },
+        {
+          "concept": "alternative_title",
+          "property": "alternateName",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": true,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "alternative_title",
+          "controlled_vocabulary": null,
+          "notes": "For imported datasets: the identifier on the source platform."
         },
         {
           "concept": "description",

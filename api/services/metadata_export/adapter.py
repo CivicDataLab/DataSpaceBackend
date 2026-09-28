@@ -178,6 +178,9 @@ def dataset_to_record(dataset: Dataset) -> Dict[str, Any]:
             else None
         ),
         # provenance and extras, filled for imports; definitions may fill the rest
+        "alternative_title": (
+            [source.source_identifier] if source and source.source_identifier else []
+        ),
         "source": source.source_url if source and source.source_url else None,
         "homepage": source.source_homepage if source and source.source_homepage else None,
         "version": source.revision if source and source.revision else None,

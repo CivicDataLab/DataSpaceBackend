@@ -15,7 +15,7 @@ from api.services.metadata_export.adapter import IANA_BASE, dataset_to_record
 from api.services.metadata_export.crosswalk import Crosswalk
 from api.services.metadata_export.formats import allowed_formats, serialise
 
-CROISSANT_CONFORMS_TO = "http://mlcommons.org/croissant/1.0"
+CROISSANT_CONFORMS_TO = "http://mlcommons.org/croissant/1.1"
 XSD_DATE = "http://www.w3.org/2001/XMLSchema#date"
 DATE_PROPERTIES = ("dcterms:issued", "dcterms:modified", "dcterms:created")
 PERIOD_PROPERTIES = ("dcat:startDate", "dcat:endDate")
