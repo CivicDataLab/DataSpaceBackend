@@ -14,6 +14,7 @@ from api.views import (
     dataset_data,
     download,
     generate_dynamic_chart,
+    metadata_export,
     publication_download_view,
     search_aimodel,
     search_collaborative,
@@ -99,6 +100,16 @@ urlpatterns = [
         "datasets/<uuid:dataset_id>/prompts/",
         dataset_data.PromptDatasetDataView.as_view(),
         name="prompt_dataset_data",
+    ),
+    path(
+        "datasets/<uuid:dataset_id>/export/",
+        metadata_export.metadata_export,
+        name="dataset_metadata_export",
+    ),
+    path(
+        "metadata/export-options/",
+        metadata_export.metadata_export_options,
+        name="metadata_export_options",
     ),
     # Single, simple GraphQL endpoint with no redirects
     path(
