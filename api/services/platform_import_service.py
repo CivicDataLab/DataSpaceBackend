@@ -28,6 +28,7 @@ from api.models import (
     Sector,
     Tag,
 )
+from api.services import metadata_mapping
 from api.services.platform_importers import (
     PlatformDatasetInfo,
     PlatformImportError,
@@ -118,33 +119,20 @@ def _prefill_taxonomies(dataset: Dataset, tags: Iterable[str]) -> None:
 # Optional EAV prefill: if the deployment defines dataset metadata fields whose
 # label matches one of these (case-insensitive), fill it from the platform.
 # Deployments without such fields are simply skipped.
-METADATA_LABEL_SOURCES = {
-    "source": "source_url",
-    "source url": "source_url",
-    "source platform": "platform_label",
-    "original source": "source_url",
-    "author": "author",
-    "creator": "author",
-    "publisher": "author",
-    "license": "license",
-    "original license": "license",
-    "last updated": "last_updated",
-    "source last updated": "last_updated",
-}
-
-
 def _prefill_metadata(dataset: Dataset, info: PlatformDatasetInfo) -> None:
-    values = {
-        "source_url": info.source_url,
-        "platform_label": PLATFORM_LABELS.get(str(info.platform), str(info.platform).title()),
-        "author": info.author,
-        "license": info.license,
-        "last_updated": info.last_updated.date().isoformat() if info.last_updated else "",
-    }
+    """Fill the deployment's dataset metadata definitions from the platform.
+
+    Each enabled definition is matched to a crosswalk concept by URN, then by
+    label (``api.services.metadata_mapping``); the platform value for that
+    concept, if any, becomes the definition's value. A definition whose
+    validators reject the value is skipped and left for the publisher.
+    """
+    platform_label = PLATFORM_LABELS.get(str(info.platform), str(info.platform).title())
+    values = metadata_mapping.platform_values(info, platform_label)
     fields = Metadata.objects.filter(enabled=True, model=MetadataModels.DATASET)
     for field in fields:
-        source_key = METADATA_LABEL_SOURCES.get((field.label or "").strip().lower())
-        value = values.get(source_key or "", "")
+        concept = metadata_mapping.concept_for(field.urn, field.label)
+        value = values.get(concept or "", "")
         if not value:
             continue
         try:
