@@ -34,6 +34,13 @@ class TestPublicationSlug:
         assert second.slug == "annual-report-1"
         assert first.slug != second.slug
 
+    def test_a_blank_title_still_gets_a_unique_slug(self, user):
+        first = Publication.objects.create(title="", user=user)
+        second = Publication.objects.create(title="   ", user=user)
+
+        assert first.slug == "untitled"
+        assert second.slug == "untitled-1"
+
     def test_a_unicode_title_slugs_without_crashing(self, user):
         publication = Publication.objects.create(title="Report — Résumé 2024", user=user)
 
@@ -187,6 +194,16 @@ class TestSeedResourceTypes:
         # Running again must not duplicate.
         call_command("seed_resource_types")
         assert ResourceType.objects.count() == 10
+        assert ResourceType.objects.filter(is_active=True).count() == 10
+
+    def test_seed_leaves_the_starting_set_active_and_ignores_other_types(self):
+        ResourceType.objects.create(name="Report", is_active=False)
+        ResourceType.objects.create(name="Retired custom", is_active=False)
+
+        call_command("seed_resource_types")
+
+        assert ResourceType.objects.get(name="Report").is_active is True
+        assert ResourceType.objects.get(name="Retired custom").is_active is False
 
 
 @pytest.mark.django_db

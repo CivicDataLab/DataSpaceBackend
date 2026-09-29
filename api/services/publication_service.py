@@ -10,10 +10,12 @@ These never talk to GraphQL types or permissions — they take plain values and
 model instances, so they're unit-testable on their own.
 """
 
+import datetime
 from typing import Any, List, Optional
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import URLValidator
+from django.db import transaction
 from django.db.models import QuerySet
 
 from api.models import Geography, Publication, ResourceType, Sector
@@ -23,6 +25,37 @@ from api.utils.enums import DatasetLicense, PublicationStatus
 # when the caller sends no pagination input.
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
+
+
+def validate_draft_inputs(
+    *,
+    license_value: Optional[str] = None,
+    resource_type_id: Any = None,
+    external_source_link: Optional[str] = None,
+) -> Optional[ResourceType]:
+    """Check the shape of whatever a draft save actually sent.
+
+    A draft may be a title, or empty. License, resource type, and the external
+    link are checked only when present: an unknown license, an inactive
+    resource type, or a malformed link is rejected, and a missing one is not.
+    Returns the active resource type when one was sent.
+    """
+    errors: dict[str, List[str]] = {}
+    resource_type = None
+
+    if license_value and license_value not in DatasetLicense.values:
+        errors["license"] = ["Not a valid license."]
+    if resource_type_id:
+        resource_type = _resolve_active_resource_type(resource_type_id, errors)
+    if external_source_link:
+        try:
+            URLValidator()(external_source_link)
+        except DjangoValidationError:
+            errors["external_source_link"] = ["Enter a valid URL."]
+
+    if errors:
+        raise DjangoValidationError(errors)
+    return resource_type
 
 
 def validate_publication_metadata(
@@ -37,13 +70,14 @@ def validate_publication_metadata(
     geography_ids: Optional[List[Any]],
     external_source_link: Optional[str],
 ) -> ResourceType:
-    """Validate a resource's metadata at the create boundary.
+    """Validate a resource's metadata at the publish boundary.
 
     Enforces the required fields (title, description, authors, publication_date,
     license, an active resource type, at least one sector and one geography),
     the controlled license vocabulary, and the optional external link's URL
     shape. Raises a field-keyed ``ValidationError`` on any problem and returns
-    the resolved active ``ResourceType`` on success.
+    the resolved active ``ResourceType`` on success. Draft create/update does
+    not call this — a draft may be saved with only a title, or with nothing.
     """
     errors: dict[str, List[str]] = {}
 
@@ -101,104 +135,154 @@ def create_publication(
     *,
     user: Any,
     organization: Any,
-    title: str,
-    description: Optional[str],
-    authors: List[str],
-    publication_date: Any,
-    license_value: str,
-    resource_type: ResourceType,
-    sector_ids: List[Any],
-    geography_ids: List[Any],
-    external_source_link: Optional[str],
+    title: str = "",
+    description: Optional[str] = None,
+    authors: Optional[List[str]] = None,
+    publication_date: Any = None,
+    license_value: Optional[str] = None,
+    resource_type: Optional[ResourceType] = None,
+    sector_ids: Optional[List[Any]] = None,
+    geography_ids: Optional[List[Any]] = None,
+    external_source_link: Optional[str] = None,
 ) -> Publication:
-    """Create a DRAFT publication from validated metadata and wire its M2M tags.
+    """Create a draft and attach any sector or geography ids that were sent.
 
-    Ownership follows the caller's context: an organization present in the
-    request makes it org-owned, otherwise it's the individual user's.
+    A blank title is replaced with a generated one.     An organization on the
+    request owns the row; otherwise the user does.
     """
-    publication = Publication.objects.create(
-        title=title,
-        description=description,
-        authors=authors,
-        publication_date=publication_date,
-        license=license_value,
-        resource_type=resource_type,
-        external_source_link=external_source_link or None,
-        organization=organization,
-        user=user,
-        status=PublicationStatus.DRAFT,
-    )
-    _set_publication_tags(publication, sector_ids, geography_ids)
+    errors: dict[str, List[str]] = {}
+    _reject_missing_tags(sector_ids or [], geography_ids or [], errors)
+    if errors:
+        raise DjangoValidationError(errors)
+
+    with transaction.atomic():
+        publication = Publication.objects.create(
+            title=(title or "").strip() or _default_title(),
+            description=(description or "").strip() or None,
+            authors=_clean_authors(authors),
+            publication_date=publication_date,
+            license=license_value or DatasetLicense.CC_BY_4_0_ATTRIBUTION,
+            resource_type=resource_type,
+            external_source_link=external_source_link or None,
+            organization=organization,
+            user=user,
+            status=PublicationStatus.DRAFT,
+        )
+        _set_publication_tags(publication, sector_ids or [], geography_ids or [])
     return publication
+
+
+# Distinguishes "the caller omitted this field" from an explicit null/empty.
+_UNSET: Any = object()
 
 
 def apply_publication_update(
     publication: Publication,
     *,
-    title: Optional[str] = None,
-    description: Optional[str] = None,
-    authors: Optional[List[str]] = None,
-    publication_date: Any = None,
-    license_value: Optional[str] = None,
-    resource_type_id: Any = None,
-    sector_ids: Optional[List[Any]] = None,
-    geography_ids: Optional[List[Any]] = None,
-    external_source_link: Optional[str] = None,
+    title: Any = _UNSET,
+    description: Any = _UNSET,
+    authors: Any = _UNSET,
+    publication_date: Any = _UNSET,
+    license_value: Any = _UNSET,
+    resource_type_id: Any = _UNSET,
+    sector_ids: Any = _UNSET,
+    geography_ids: Any = _UNSET,
+    external_source_link: Any = _UNSET,
 ) -> Publication:
-    """Apply a partial metadata update, validating each field that's provided.
+    """Apply a partial metadata update. Omitted fields are left untouched.
 
-    Only fields passed in are touched, so a subpage save never blanks columns it
-    didn't show. A provided license must be in the controlled list; a provided
-    resource type must be active; a provided link must be a valid URL.
+    A draft may be saved incomplete — an empty title, description, or author
+    list is stored as-is. A provided license must be in the controlled list, a
+    provided resource type must be active, and a provided link must be a valid
+    URL. A row that is already published cannot be saved back into an
+    incomplete state; publish is what requires every field.
     """
     errors: dict[str, List[str]] = {}
-
-    # A provided required field must not be explicitly blanked.
-    if title is not None:
-        if not title.strip():
-            errors["title"] = ["Title cannot be empty."]
-        else:
-            publication.title = title
-    if description is not None:
-        if not description.strip():
-            errors["description"] = ["Description cannot be empty."]
-        else:
-            publication.description = description
-    if authors is not None:
-        if not [a for a in authors if a and a.strip()]:
-            errors["authors"] = ["At least one author is required."]
-        else:
-            publication.authors = authors
-    if publication_date is not None:
-        publication.publication_date = publication_date
-    if external_source_link is not None:
+    new_title = publication.title if title is _UNSET else (title or "").strip()
+    new_description = (
+        publication.description
+        if description is _UNSET
+        else ((description or "").strip() or None)
+    )
+    new_authors = publication.authors if authors is _UNSET else _clean_authors(authors)
+    new_date = publication.publication_date if publication_date is _UNSET else publication_date
+    new_link = publication.external_source_link
+    if external_source_link is not _UNSET:
         if external_source_link:
             try:
                 URLValidator()(external_source_link)
-                publication.external_source_link = external_source_link
+                new_link = external_source_link
             except DjangoValidationError:
                 errors["external_source_link"] = ["Enter a valid URL."]
         else:
-            publication.external_source_link = None
+            new_link = None
 
-    if license_value is not None:
+    new_license = publication.license
+    if license_value is not _UNSET and license_value:
         if license_value in DatasetLicense.values:
-            publication.license = license_value
+            new_license = license_value
         else:
             errors["license"] = ["Not a valid license."]
 
-    if resource_type_id is not None:
-        resource_type = _resolve_active_resource_type(resource_type_id, errors)
-        if resource_type is not None:
-            publication.resource_type = resource_type
+    new_resource_type = publication.resource_type
+    if resource_type_id is not _UNSET:
+        if resource_type_id:
+            resolved = _resolve_active_resource_type(resource_type_id, errors)
+            if resolved is not None:
+                new_resource_type = resolved
+        else:
+            new_resource_type = None
 
+    _reject_missing_tags(sector_ids, geography_ids, errors)
     if errors:
         raise DjangoValidationError(errors)
 
-    publication.save()
-    if sector_ids is not None or geography_ids is not None:
-        _set_publication_tags(publication, sector_ids, geography_ids)
+    kept_sectors = _tag_ids(sector_ids, publication.sectors)
+    kept_geographies = _tag_ids(geography_ids, publication.geographies)
+    if publication.status == PublicationStatus.PUBLISHED:
+        validate_publication_metadata(
+            title=new_title,
+            description=new_description,
+            authors=new_authors,
+            publication_date=new_date,
+            license_value=new_license,
+            resource_type_id=getattr(new_resource_type, "id", None),
+            sector_ids=kept_sectors,
+            geography_ids=kept_geographies,
+            external_source_link=new_link,
+        )
+
+    with transaction.atomic():
+        publication.title = new_title
+        publication.description = new_description
+        publication.authors = new_authors
+        publication.publication_date = new_date
+        publication.external_source_link = new_link
+        publication.license = new_license
+        publication.resource_type = new_resource_type
+        publication.save()
+        if sector_ids is not _UNSET or geography_ids is not _UNSET:
+            _set_publication_tags(
+                publication,
+                None if sector_ids is _UNSET or sector_ids is None else sector_ids,
+                None if geography_ids is _UNSET or geography_ids is None else geography_ids,
+            )
     return publication
+
+
+def assert_ready_to_publish(publication: Publication) -> None:
+    """Reject a publish when the draft is still missing a required field."""
+    validate_publication_metadata(
+        title=publication.title,
+        description=publication.description,
+        authors=list(publication.authors or []),
+        publication_date=publication.publication_date,
+        license_value=publication.license,
+        resource_type_id=publication.resource_type_id,
+        sector_ids=list(publication.sectors.values_list("id", flat=True)),
+        geography_ids=list(publication.geographies.values_list("id", flat=True)),
+        external_source_link=publication.external_source_link,
+    )
 
 
 def set_publication_status(publication: Publication, status: PublicationStatus) -> Publication:
@@ -257,6 +341,50 @@ def resolve_pagination(offset: Optional[int], limit: Optional[int]) -> tuple[int
     else:
         safe_limit = min(limit, MAX_PAGE_SIZE)
     return safe_offset, safe_limit
+
+
+def _default_title() -> str:
+    """Title for a publication created without one."""
+    return f"New publication {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}"
+
+
+def _clean_authors(authors: Optional[List[str]]) -> List[str]:
+    """Author names with surrounding space and blanks removed."""
+    return [author.strip() for author in (authors or []) if author and author.strip()]
+
+
+def _tag_ids(incoming: Any, current: Any) -> List[Any]:
+    """Ids used for the publish check. Null keeps the tags already stored."""
+    if incoming is _UNSET or incoming is None:
+        return list(current.values_list("id", flat=True))
+    return list(incoming)
+
+
+def _reject_missing_tags(sector_ids: Any, geography_ids: Any, errors: dict[str, List[str]]) -> None:
+    """Record an error when a sent sector or geography id is not in the database."""
+    if sector_ids is not _UNSET and sector_ids is not None:
+        _require_existing_ids(
+            Sector, sector_ids, "sectors", "One or more sectors do not exist.", errors
+        )
+    if geography_ids is not _UNSET and geography_ids is not None:
+        _require_existing_ids(
+            Geography,
+            geography_ids,
+            "geographies",
+            "One or more geographies do not exist.",
+            errors,
+        )
+
+
+def _require_existing_ids(
+    model: Any, ids: List[Any], field: str, message: str, errors: dict[str, List[str]]
+) -> None:
+    requested = list(ids or [])
+    if not requested:
+        return
+    found = {str(pk) for pk in model.objects.filter(id__in=requested).values_list("id", flat=True)}
+    if any(str(item) not in found for item in requested):
+        errors[field] = [message]
 
 
 def _set_publication_tags(

@@ -138,14 +138,23 @@ mutation($input: UpdatePublicationInput!) {
 
 @pytest.mark.django_db
 class TestUpdateEmptyRejected:
-    def test_explicit_empty_title_is_rejected(self, owner, resource_type):
+    def test_a_draft_can_be_saved_with_an_empty_title(self, owner, resource_type):
         pub = _pub(owner, resource_type, status=PublicationStatus.DRAFT)
+
+        result = run(UPDATE, owner, {"input": {"id": str(pub.id), "title": "  "}})
+
+        assert result.data["updatePublication"]["success"] is True
+        pub.refresh_from_db()
+        assert pub.title == ""
+
+    def test_a_published_resource_cannot_be_blanked(self, owner, resource_type):
+        pub = _pub(owner, resource_type, status=PublicationStatus.PUBLISHED)
 
         result = run(UPDATE, owner, {"input": {"id": str(pub.id), "title": "  "}})
 
         assert result.data["updatePublication"]["success"] is False
         pub.refresh_from_db()
-        assert pub.title == "Findings"  # not blanked
+        assert pub.title == "Findings"
 
 
 @pytest.mark.django_db
