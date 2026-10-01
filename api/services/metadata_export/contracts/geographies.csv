@@ -1,0 +1,828 @@
+key,label,code,uri,tier,parent_key,visible_on_dataspace,is_active
+region:north-east-india,North East India,north-east-india,https://civicdataspace.in/id/geography/region/north-east-india,REGION,,yes,True
+region:southern-asia,Southern Asia,southern-asia,https://civicdataspace.in/id/geography/region/southern-asia,REGION,,yes,True
+country:IN,India,IN,https://www.wikidata.org/entity/Q668,COUNTRY,,yes,True
+state:1,Jammu and Kashmir,1,http://www.wikidata.org/entity/Q66278313,UT,country:IN,yes,True
+state:10,Bihar,10,http://www.wikidata.org/entity/Q1165,STATE,country:IN,yes,True
+state:11,Sikkim,11,http://www.wikidata.org/entity/Q1505,STATE,country:IN,yes,True
+state:12,Arunachal Pradesh,12,http://www.wikidata.org/entity/Q1162,STATE,country:IN,yes,True
+state:13,Nagaland,13,http://www.wikidata.org/entity/Q1599,STATE,country:IN,yes,True
+state:14,Manipur,14,http://www.wikidata.org/entity/Q1193,STATE,country:IN,yes,True
+state:15,Mizoram,15,http://www.wikidata.org/entity/Q1502,STATE,country:IN,yes,True
+state:16,Tripura,16,http://www.wikidata.org/entity/Q1363,STATE,country:IN,yes,True
+state:17,Meghalaya,17,http://www.wikidata.org/entity/Q1195,STATE,country:IN,yes,True
+state:18,Assam,18,http://www.wikidata.org/entity/Q1164,STATE,country:IN,yes,True
+state:19,West Bengal,19,http://www.wikidata.org/entity/Q1356,STATE,country:IN,yes,True
+state:2,Himachal Pradesh,2,http://www.wikidata.org/entity/Q1177,STATE,country:IN,yes,True
+state:20,Jharkhand,20,http://www.wikidata.org/entity/Q1184,STATE,country:IN,yes,True
+state:21,Odisha,21,http://www.wikidata.org/entity/Q22048,STATE,country:IN,yes,True
+state:22,Chhattisgarh,22,http://www.wikidata.org/entity/Q1168,STATE,country:IN,yes,True
+state:23,Madhya Pradesh,23,http://www.wikidata.org/entity/Q1188,STATE,country:IN,yes,True
+state:24,Gujarat,24,http://www.wikidata.org/entity/Q1061,STATE,country:IN,yes,True
+state:27,Maharashtra,27,http://www.wikidata.org/entity/Q1191,STATE,country:IN,yes,True
+state:28,Andhra Pradesh,28,http://www.wikidata.org/entity/Q1159,STATE,country:IN,yes,True
+state:29,Karnataka,29,http://www.wikidata.org/entity/Q1185,STATE,country:IN,yes,True
+state:3,Punjab,3,http://www.wikidata.org/entity/Q22424,STATE,country:IN,yes,True
+state:30,Goa,30,http://www.wikidata.org/entity/Q1171,STATE,country:IN,yes,True
+state:31,Lakshadweep,31,http://www.wikidata.org/entity/Q26927,UT,country:IN,yes,True
+state:32,Kerala,32,http://www.wikidata.org/entity/Q1186,STATE,country:IN,yes,True
+state:33,Tamil Nadu,33,http://www.wikidata.org/entity/Q1445,STATE,country:IN,yes,True
+state:34,Puducherry,34,http://www.wikidata.org/entity/Q66743,UT,country:IN,yes,True
+state:35,Andaman and Nicobar Islands,35,http://www.wikidata.org/entity/Q40888,UT,country:IN,yes,True
+state:36,Telangana,36,http://www.wikidata.org/entity/Q677037,STATE,country:IN,yes,True
+state:37,Ladakh,37,http://www.wikidata.org/entity/Q200667,UT,country:IN,yes,True
+state:38,Dadra and Nagar Haveli and Daman and Diu,38,http://www.wikidata.org/entity/Q77997266,UT,country:IN,yes,True
+state:4,Chandigarh,4,http://www.wikidata.org/entity/Q120971341,UT,country:IN,yes,True
+state:5,Uttarakhand,5,http://www.wikidata.org/entity/Q1499,STATE,country:IN,yes,True
+state:6,Haryana,6,http://www.wikidata.org/entity/Q1174,STATE,country:IN,yes,True
+state:7,National Capital Territory of Delhi,7,http://www.wikidata.org/entity/Q9357528,UT,country:IN,yes,True
+state:8,Rajasthan,8,http://www.wikidata.org/entity/Q1437,STATE,country:IN,yes,True
+state:9,Uttar Pradesh,9,http://www.wikidata.org/entity/Q1498,STATE,country:IN,yes,True
+district:1,Anantnag,1,http://www.wikidata.org/entity/Q2982349,DISTRICT,state:1,no,True
+district:10,Poonch,10,http://www.wikidata.org/entity/Q2983134,DISTRICT,state:1,no,True
+district:11,Pulwama,11,http://www.wikidata.org/entity/Q2085364,DISTRICT,state:1,no,True
+district:12,Rajouri,12,http://www.wikidata.org/entity/Q544279,DISTRICT,state:1,no,True
+district:13,Srinagar,13,http://www.wikidata.org/entity/Q1506029,DISTRICT,state:1,no,True
+district:14,Udhampur,14,http://www.wikidata.org/entity/Q1947311,DISTRICT,state:1,no,True
+district:2,Budgam,2,http://www.wikidata.org/entity/Q2594218,DISTRICT,state:1,no,True
+district:3,Baramulla,3,http://www.wikidata.org/entity/Q1912057,DISTRICT,state:1,no,True
+district:4,Doda,4,http://www.wikidata.org/entity/Q2298979,DISTRICT,state:1,no,True
+district:5,Jammu,5,http://www.wikidata.org/entity/Q1947371,DISTRICT,state:1,no,True
+district:620,Kishtwar,620,http://www.wikidata.org/entity/Q2321899,DISTRICT,state:1,no,True
+district:621,Ramban,621,http://www.wikidata.org/entity/Q2321939,DISTRICT,state:1,no,True
+district:622,Kulgam,622,http://www.wikidata.org/entity/Q2321867,DISTRICT,state:1,no,True
+district:623,Bandipore,623,http://www.wikidata.org/entity/Q2983553,DISTRICT,state:1,no,True
+district:624,Samba,624,http://www.wikidata.org/entity/Q1117086,DISTRICT,state:1,no,True
+district:625,Shopian,625,http://www.wikidata.org/entity/Q2073646,DISTRICT,state:1,no,True
+district:626,Ganderbal,626,http://www.wikidata.org/entity/Q2556028,DISTRICT,state:1,no,True
+district:627,Reasi,627,http://www.wikidata.org/entity/Q2321956,DISTRICT,state:1,no,True
+district:7,Kathua,7,http://www.wikidata.org/entity/Q2375700,DISTRICT,state:1,no,True
+district:8,Kupwara,8,http://www.wikidata.org/entity/Q2297306,DISTRICT,state:1,no,True
+district:188,Araria,188,http://www.wikidata.org/entity/Q42901,DISTRICT,state:10,no,True
+district:189,Aurangabad,189,http://www.wikidata.org/entity/Q43086,DISTRICT,state:10,no,True
+district:190,Banka,190,http://www.wikidata.org/entity/Q43097,DISTRICT,state:10,no,True
+district:191,Begusarai,191,http://www.wikidata.org/entity/Q49157,DISTRICT,state:10,no,True
+district:192,Bhagalpur,192,http://www.wikidata.org/entity/Q49155,DISTRICT,state:10,no,True
+district:193,Bhojpur,193,http://www.wikidata.org/entity/Q49153,DISTRICT,state:10,no,True
+district:194,Buxar,194,http://www.wikidata.org/entity/Q49161,DISTRICT,state:10,no,True
+district:195,Darbhanga,195,http://www.wikidata.org/entity/Q49160,DISTRICT,state:10,no,True
+district:196,Gaya,196,http://www.wikidata.org/entity/Q49173,DISTRICT,state:10,no,True
+district:197,Gopalganj,197,http://www.wikidata.org/entity/Q49171,DISTRICT,state:10,no,True
+district:198,Jamui,198,http://www.wikidata.org/entity/Q49168,DISTRICT,state:10,no,True
+district:199,Jehanabad,199,http://www.wikidata.org/entity/Q49176,DISTRICT,state:10,no,True
+district:200,Kaimur,200,http://www.wikidata.org/entity/Q77367,DISTRICT,state:10,no,True
+district:201,Katihar,201,http://www.wikidata.org/entity/Q77568,DISTRICT,state:10,no,True
+district:202,Khagaria,202,http://www.wikidata.org/entity/Q49175,DISTRICT,state:10,no,True
+district:203,Kishanganj,203,http://www.wikidata.org/entity/Q77375,DISTRICT,state:10,no,True
+district:204,Lakhisarai,204,http://www.wikidata.org/entity/Q77505,DISTRICT,state:10,no,True
+district:205,Madhepura,205,http://www.wikidata.org/entity/Q77746,DISTRICT,state:10,no,True
+district:206,Madhubani,206,http://www.wikidata.org/entity/Q77474,DISTRICT,state:10,no,True
+district:207,Munger,207,http://www.wikidata.org/entity/Q77452,DISTRICT,state:10,no,True
+district:208,Muzaffarpur,208,http://www.wikidata.org/entity/Q77731,DISTRICT,state:10,no,True
+district:209,Nalanda,209,http://www.wikidata.org/entity/Q77633,DISTRICT,state:10,no,True
+district:210,Nawada,210,http://www.wikidata.org/entity/Q100067,DISTRICT,state:10,no,True
+district:211,West Champaran,211,http://www.wikidata.org/entity/Q100124,DISTRICT,state:10,no,True
+district:212,Patna,212,http://www.wikidata.org/entity/Q100077,DISTRICT,state:10,no,True
+district:213,East Champaran,213,http://www.wikidata.org/entity/Q49159,DISTRICT,state:10,no,True
+district:214,Purnia,214,http://www.wikidata.org/entity/Q100082,DISTRICT,state:10,no,True
+district:215,Rohtas,215,http://www.wikidata.org/entity/Q100085,DISTRICT,state:10,no,True
+district:216,Saharsa,216,http://www.wikidata.org/entity/Q100120,DISTRICT,state:10,no,True
+district:217,Samastipur,217,http://www.wikidata.org/entity/Q100117,DISTRICT,state:10,no,True
+district:218,Saran,218,http://www.wikidata.org/entity/Q100146,DISTRICT,state:10,no,True
+district:219,Sheikhpura,219,http://www.wikidata.org/entity/Q100093,DISTRICT,state:10,no,True
+district:220,Sheohar,220,http://www.wikidata.org/entity/Q100095,DISTRICT,state:10,no,True
+district:221,Sitamarhi,221,http://www.wikidata.org/entity/Q100144,DISTRICT,state:10,no,True
+district:222,Siwan,222,http://www.wikidata.org/entity/Q100131,DISTRICT,state:10,no,True
+district:223,Supaul,223,http://www.wikidata.org/entity/Q100139,DISTRICT,state:10,no,True
+district:224,Vaishali,224,http://www.wikidata.org/entity/Q100130,DISTRICT,state:10,no,True
+district:611,Arwal,611,http://www.wikidata.org/entity/Q42917,DISTRICT,state:10,no,True
+district:225,Gangtok,225,http://www.wikidata.org/entity/Q113956160,DISTRICT,state:11,no,True
+district:226,Mangan,226,http://www.wikidata.org/entity/Q1784149,DISTRICT,state:11,no,True
+district:227,Namchi,227,http://www.wikidata.org/entity/Q1805051,DISTRICT,state:11,no,True
+district:228,Gyalshing,228,http://www.wikidata.org/entity/Q611357,DISTRICT,state:11,no,True
+district:741,Pakyong,741,http://www.wikidata.org/entity/Q108803704,DISTRICT,state:11,no,True
+district:742,Soreng,742,http://www.wikidata.org/entity/Q112939132,DISTRICT,state:11,no,True
+district:229,Changlang,229,http://www.wikidata.org/entity/Q15427,DISTRICT,state:12,no,True
+district:230,Dibang Valley,230,http://www.wikidata.org/entity/Q15446,DISTRICT,state:12,no,True
+district:231,East Kameng,231,http://www.wikidata.org/entity/Q15424,DISTRICT,state:12,no,True
+district:232,East Siang,232,http://www.wikidata.org/entity/Q15419,DISTRICT,state:12,no,True
+district:233,Kurung Kumey,233,http://www.wikidata.org/entity/Q2449506,DISTRICT,state:12,no,True
+district:234,Lohit,234,http://www.wikidata.org/entity/Q15438,DISTRICT,state:12,no,True
+district:235,Lower Dibang Valley,235,http://www.wikidata.org/entity/Q2373368,DISTRICT,state:12,no,True
+district:236,Lower Subansiri,236,http://www.wikidata.org/entity/Q15436,DISTRICT,state:12,no,True
+district:237,Papum Pare,237,http://www.wikidata.org/entity/Q15432,DISTRICT,state:12,no,True
+district:238,Tawang,238,http://www.wikidata.org/entity/Q15449,DISTRICT,state:12,no,True
+district:239,Tirap,239,http://www.wikidata.org/entity/Q15448,DISTRICT,state:12,no,True
+district:240,Upper Siang,240,http://www.wikidata.org/entity/Q15465,DISTRICT,state:12,no,True
+district:241,Upper Subansiri,241,http://www.wikidata.org/entity/Q15464,DISTRICT,state:12,no,True
+district:242,West Kameng,242,http://www.wikidata.org/entity/Q15459,DISTRICT,state:12,no,True
+district:243,West Siang,243,http://www.wikidata.org/entity/Q15453,DISTRICT,state:12,no,True
+district:628,Anjaw,628,http://www.wikidata.org/entity/Q15413,DISTRICT,state:12,no,True
+district:666,Longding,666,http://www.wikidata.org/entity/Q5627568,DISTRICT,state:12,no,True
+district:677,Kra Daadi,677,http://www.wikidata.org/entity/Q21018627,DISTRICT,state:12,no,True
+district:678,Namsai,678,http://www.wikidata.org/entity/Q21559824,DISTRICT,state:12,no,True
+district:679,Siang,679,http://www.wikidata.org/entity/Q18642331,DISTRICT,state:12,no,True
+district:718,Kamle,718,http://www.wikidata.org/entity/Q48731073,DISTRICT,state:12,no,True
+district:719,Lower Siang,719,http://www.wikidata.org/entity/Q13602925,DISTRICT,state:12,no,True
+district:723,Pakke-Kessang,723,http://www.wikidata.org/entity/Q61439260,DISTRICT,state:12,no,True
+district:724,Lepa Rada,724,http://www.wikidata.org/entity/Q63563632,DISTRICT,state:12,no,True
+district:725,Shi Yomi,725,http://www.wikidata.org/entity/Q63563625,DISTRICT,state:12,no,True
+district:786,Keyi Panyor,786,http://www.wikidata.org/entity/Q124818540,DISTRICT,state:12,no,True
+district:787,Bichom,787,http://www.wikidata.org/entity/Q124811465,DISTRICT,state:12,no,True
+district:244,Dimapur,244,http://www.wikidata.org/entity/Q634262,DISTRICT,state:13,no,True
+district:245,Kohima,245,http://www.wikidata.org/entity/Q953530,DISTRICT,state:13,no,True
+district:246,Mokokchung,246,http://www.wikidata.org/entity/Q2175311,DISTRICT,state:13,no,True
+district:247,Mon,247,http://www.wikidata.org/entity/Q2339648,DISTRICT,state:13,no,True
+district:248,Phek,248,http://www.wikidata.org/entity/Q590882,DISTRICT,state:13,no,True
+district:249,Tuensang,249,http://www.wikidata.org/entity/Q2571393,DISTRICT,state:13,no,True
+district:250,Wokha,250,http://www.wikidata.org/entity/Q681821,DISTRICT,state:13,no,True
+district:251,Zunheboto,251,http://www.wikidata.org/entity/Q2091461,DISTRICT,state:13,no,True
+district:613,Peren,613,http://www.wikidata.org/entity/Q516294,DISTRICT,state:13,no,True
+district:614,Kiphire,614,http://www.wikidata.org/entity/Q2597908,DISTRICT,state:13,no,True
+district:615,Longleng,615,http://www.wikidata.org/entity/Q1426783,DISTRICT,state:13,no,True
+district:736,Noklak,736,http://www.wikidata.org/entity/Q48731903,DISTRICT,state:13,no,True
+district:757,Tseminyü,757,http://www.wikidata.org/entity/Q110223836,DISTRICT,state:13,no,True
+district:758,Chümoukedima,758,http://www.wikidata.org/entity/Q110223837,DISTRICT,state:13,no,True
+district:764,Niuland,764,http://www.wikidata.org/entity/Q110223839,DISTRICT,state:13,no,True
+district:765,Shamator,765,http://www.wikidata.org/entity/Q111529435,DISTRICT,state:13,no,True
+district:788,Meluri,788,http://www.wikidata.org/entity/Q131191793,DISTRICT,state:13,no,True
+district:252,Bishnupur,252,http://www.wikidata.org/entity/Q938190,DISTRICT,state:14,no,True
+district:253,Chandel,253,http://www.wikidata.org/entity/Q2301769,DISTRICT,state:14,no,True
+district:254,Churachandpur,254,http://www.wikidata.org/entity/Q2577281,DISTRICT,state:14,no,True
+district:255,Imphal East,255,http://www.wikidata.org/entity/Q1916666,DISTRICT,state:14,no,True
+district:256,Imphal West,256,http://www.wikidata.org/entity/Q1822188,DISTRICT,state:14,no,True
+district:257,Senapati,257,http://www.wikidata.org/entity/Q2301706,DISTRICT,state:14,no,True
+district:258,Tamenglong,258,http://www.wikidata.org/entity/Q2301717,DISTRICT,state:14,no,True
+district:259,Thoubal,259,http://www.wikidata.org/entity/Q2086198,DISTRICT,state:14,no,True
+district:260,Ukhrul,260,http://www.wikidata.org/entity/Q735101,DISTRICT,state:14,no,True
+district:711,Kakching,711,http://www.wikidata.org/entity/Q28173825,DISTRICT,state:14,no,True
+district:712,Kangpokpi,712,http://www.wikidata.org/entity/Q28419386,DISTRICT,state:14,no,True
+district:713,Jiribam,713,http://www.wikidata.org/entity/Q28419387,DISTRICT,state:14,no,True
+district:714,Noney,714,http://www.wikidata.org/entity/Q28419389,DISTRICT,state:14,no,True
+district:715,Pherzawl,715,http://www.wikidata.org/entity/Q28173809,DISTRICT,state:14,no,True
+district:716,Tengnoupal,716,http://www.wikidata.org/entity/Q28419388,DISTRICT,state:14,no,True
+district:717,Kamjong,717,http://www.wikidata.org/entity/Q28419390,DISTRICT,state:14,no,True
+district:261,Aizawl,261,http://www.wikidata.org/entity/Q1947322,DISTRICT,state:15,no,True
+district:262,Champhai,262,http://www.wikidata.org/entity/Q1965256,DISTRICT,state:15,no,True
+district:263,Kolasib,263,http://www.wikidata.org/entity/Q1947343,DISTRICT,state:15,no,True
+district:264,Lawngtlai,264,http://www.wikidata.org/entity/Q2086209,DISTRICT,state:15,no,True
+district:265,Lunglei,265,http://www.wikidata.org/entity/Q1947352,DISTRICT,state:15,no,True
+district:266,Mamit,266,http://www.wikidata.org/entity/Q751531,DISTRICT,state:15,no,True
+district:267,Saiha,267,http://www.wikidata.org/entity/Q1821714,DISTRICT,state:15,no,True
+district:268,Serchhip,268,http://www.wikidata.org/entity/Q2086190,DISTRICT,state:15,no,True
+district:726,Hnahthial,726,http://www.wikidata.org/entity/Q86882590,DISTRICT,state:15,no,True
+district:727,Saitual,727,http://www.wikidata.org/entity/Q86882593,DISTRICT,state:15,no,True
+district:728,Khawzawl,728,http://www.wikidata.org/entity/Q86882591,DISTRICT,state:15,no,True
+district:269,Dhalai,269,http://www.wikidata.org/entity/Q2086546,DISTRICT,state:16,no,True
+district:270,North Tripura,270,http://www.wikidata.org/entity/Q1920978,DISTRICT,state:16,no,True
+district:271,South Tripura,271,http://www.wikidata.org/entity/Q1822159,DISTRICT,state:16,no,True
+district:272,West Tripura,272,http://www.wikidata.org/entity/Q1947570,DISTRICT,state:16,no,True
+district:652,Khowai,652,http://www.wikidata.org/entity/Q16086680,DISTRICT,state:16,no,True
+district:653,Sepahijala,653,http://www.wikidata.org/entity/Q16086076,DISTRICT,state:16,no,True
+district:654,Gomati,654,http://www.wikidata.org/entity/Q16086497,DISTRICT,state:16,no,True
+district:655,Unakoti,655,http://www.wikidata.org/entity/Q16087996,DISTRICT,state:16,no,True
+district:273,East Garo Hills,273,http://www.wikidata.org/entity/Q2085455,DISTRICT,state:17,no,True
+district:274,East Khasi Hills,274,http://www.wikidata.org/entity/Q1945304,DISTRICT,state:17,no,True
+district:275,West Jaintia Hills,275,http://www.wikidata.org/entity/Q13181190,DISTRICT,state:17,no,True
+district:276,Ri-Bhoi,276,http://www.wikidata.org/entity/Q1884672,DISTRICT,state:17,no,True
+district:277,South Garo Hills,277,http://www.wikidata.org/entity/Q2329228,DISTRICT,state:17,no,True
+district:278,West Garo Hills,278,http://www.wikidata.org/entity/Q2329181,DISTRICT,state:17,no,True
+district:279,West Khasi Hills,279,http://www.wikidata.org/entity/Q2064752,DISTRICT,state:17,no,True
+district:656,North Garo Hills,656,http://www.wikidata.org/entity/Q7055466,DISTRICT,state:17,no,True
+district:657,East Jaintia Hills,657,http://www.wikidata.org/entity/Q15923776,DISTRICT,state:17,no,True
+district:658,South West Khasi Hills,658,http://www.wikidata.org/entity/Q15923741,DISTRICT,state:17,no,True
+district:663,South West Garo Hills,663,http://www.wikidata.org/entity/Q15961576,DISTRICT,state:17,no,True
+district:740,Eastern West Khasi Hills,740,http://www.wikidata.org/entity/Q110442602,DISTRICT,state:17,no,True
+district:280,Barpeta,280,http://www.wikidata.org/entity/Q41249,DISTRICT,state:18,no,True
+district:281,Bongaigaon,281,http://www.wikidata.org/entity/Q42197,DISTRICT,state:18,no,True
+district:282,Cachar,282,http://www.wikidata.org/entity/Q42209,DISTRICT,state:18,no,True
+district:283,Darrang,283,http://www.wikidata.org/entity/Q42461,DISTRICT,state:18,no,True
+district:284,Dhemaji,284,http://www.wikidata.org/entity/Q42473,DISTRICT,state:18,no,True
+district:285,Dhubri,285,http://www.wikidata.org/entity/Q42485,DISTRICT,state:18,no,True
+district:286,Dibrugarh,286,http://www.wikidata.org/entity/Q42479,DISTRICT,state:18,no,True
+district:287,Goalpara,287,http://www.wikidata.org/entity/Q42522,DISTRICT,state:18,no,True
+district:288,Golaghat,288,http://www.wikidata.org/entity/Q42517,DISTRICT,state:18,no,True
+district:289,Hailakandi,289,http://www.wikidata.org/entity/Q42505,DISTRICT,state:18,no,True
+district:290,Jorhat,290,http://www.wikidata.org/entity/Q42611,DISTRICT,state:18,no,True
+district:291,Kamrup,291,http://www.wikidata.org/entity/Q2247441,DISTRICT,state:18,no,True
+district:292,Karbi Anglong,292,http://www.wikidata.org/entity/Q29025081,DISTRICT,state:18,no,True
+district:293,Sribhumi,293,http://www.wikidata.org/entity/Q42542,DISTRICT,state:18,no,True
+district:294,Kokrajhar,294,http://www.wikidata.org/entity/Q42618,DISTRICT,state:18,no,True
+district:295,Lakhimpur,295,http://www.wikidata.org/entity/Q42743,DISTRICT,state:18,no,True
+district:296,Morigaon,296,http://www.wikidata.org/entity/Q42737,DISTRICT,state:18,no,True
+district:297,,297,http://www.wikidata.org/entity/Q42686,DISTRICT,state:18,no,True
+district:298,Nalbari,298,http://www.wikidata.org/entity/Q42779,DISTRICT,state:18,no,True
+district:299,Dima Hasao,299,http://www.wikidata.org/entity/Q42774,DISTRICT,state:18,no,True
+district:300,Sivasagar,300,http://www.wikidata.org/entity/Q42768,DISTRICT,state:18,no,True
+district:301,Sonitpur,301,http://www.wikidata.org/entity/Q42765,DISTRICT,state:18,no,True
+district:302,Tinsukia,302,http://www.wikidata.org/entity/Q42756,DISTRICT,state:18,no,True
+district:612,Chirang,612,http://www.wikidata.org/entity/Q2574898,DISTRICT,state:18,no,True
+district:616,Baksa,616,http://www.wikidata.org/entity/Q2360266,DISTRICT,state:18,no,True
+district:617,Udalguri,617,http://www.wikidata.org/entity/Q321998,DISTRICT,state:18,no,True
+district:618,Kamrup Metropolitan,618,http://www.wikidata.org/entity/Q2464674,DISTRICT,state:18,no,True
+district:705,Bishwanath,705,http://www.wikidata.org/entity/Q22079836,DISTRICT,state:18,no,True
+district:706,Majuli,706,http://www.wikidata.org/entity/Q28110729,DISTRICT,state:18,no,True
+district:707,South Salmara-Mankachar,707,http://www.wikidata.org/entity/Q24907599,DISTRICT,state:18,no,True
+district:708,Charaideo,708,http://www.wikidata.org/entity/Q24039029,DISTRICT,state:18,no,True
+district:709,Hojai,709,http://www.wikidata.org/entity/Q24699407,DISTRICT,state:18,no,True
+district:710,West Karbi Anglong,710,http://www.wikidata.org/entity/Q24949218,DISTRICT,state:18,no,True
+district:739,Bajali,739,http://www.wikidata.org/entity/Q101088203,DISTRICT,state:18,no,True
+district:756,Tamulpur,756,http://www.wikidata.org/entity/Q110661970,DISTRICT,state:18,no,True
+district:303,North 24 Parganas,303,http://www.wikidata.org/entity/Q338425,DISTRICT,state:19,no,True
+district:304,South 24 Parganas,304,http://www.wikidata.org/entity/Q2308319,DISTRICT,state:19,no,True
+district:305,Bankura,305,http://www.wikidata.org/entity/Q2088458,DISTRICT,state:19,no,True
+district:306,Purba Bardhaman,306,http://www.wikidata.org/entity/Q29257278,DISTRICT,state:19,no,True
+district:307,Birbhum,307,http://www.wikidata.org/entity/Q2088440,DISTRICT,state:19,no,True
+district:308,Cooch Behar,308,http://www.wikidata.org/entity/Q2728658,DISTRICT,state:19,no,True
+district:309,Darjeeling,309,http://www.wikidata.org/entity/Q1134759,DISTRICT,state:19,no,True
+district:310,Dakshin Dinajpur,310,http://www.wikidata.org/entity/Q533839,DISTRICT,state:19,no,True
+district:311,Uttar Dinajpur,311,http://www.wikidata.org/entity/Q2019766,DISTRICT,state:19,no,True
+district:312,Hooghly,312,http://www.wikidata.org/entity/Q548518,DISTRICT,state:19,no,True
+district:313,Howrah,313,http://www.wikidata.org/entity/Q1478937,DISTRICT,state:19,no,True
+district:314,Jalpaiguri,314,http://www.wikidata.org/entity/Q1351487,DISTRICT,state:19,no,True
+district:315,Kolkata,315,http://www.wikidata.org/entity/Q2088496,DISTRICT,state:19,no,True
+district:316,Malda,316,http://www.wikidata.org/entity/Q2049820,DISTRICT,state:19,no,True
+district:317,Purba Medinipur,317,http://www.wikidata.org/entity/Q1431920,DISTRICT,state:19,no,True
+district:318,Paschim Medinipur,318,http://www.wikidata.org/entity/Q1855537,DISTRICT,state:19,no,True
+district:319,Murshidabad,319,http://www.wikidata.org/entity/Q1546240,DISTRICT,state:19,no,True
+district:320,Nadia,320,http://www.wikidata.org/entity/Q1143880,DISTRICT,state:19,no,True
+district:321,Purulia,321,http://www.wikidata.org/entity/Q307474,DISTRICT,state:19,no,True
+district:664,Alipurduar,664,http://www.wikidata.org/entity/Q4726845,DISTRICT,state:19,no,True
+district:702,Kalimpong,702,http://www.wikidata.org/entity/Q28769140,DISTRICT,state:19,no,True
+district:703,Jhargram,703,http://www.wikidata.org/entity/Q29168456,DISTRICT,state:19,no,True
+district:704,Paschim Bardhaman,704,http://www.wikidata.org/entity/Q29215602,DISTRICT,state:19,no,True
+district:15,Bilaspur,15,http://www.wikidata.org/entity/Q1478939,DISTRICT,state:2,no,True
+district:16,Chamba,16,http://www.wikidata.org/entity/Q1060614,DISTRICT,state:2,no,True
+district:17,Hamirpur,17,http://www.wikidata.org/entity/Q2086180,DISTRICT,state:2,no,True
+district:18,Kangra,18,http://www.wikidata.org/entity/Q727232,DISTRICT,state:2,no,True
+district:19,Kinnaur,19,http://www.wikidata.org/entity/Q1862950,DISTRICT,state:2,no,True
+district:20,Kullu,20,http://www.wikidata.org/entity/Q2980880,DISTRICT,state:2,no,True
+district:21,Lahaul and Spiti,21,http://www.wikidata.org/entity/Q837595,DISTRICT,state:2,no,True
+district:22,Mandi,22,http://www.wikidata.org/entity/Q1892161,DISTRICT,state:2,no,True
+district:23,Shimla,23,http://www.wikidata.org/entity/Q1921404,DISTRICT,state:2,no,True
+district:24,Sirmaur,24,http://www.wikidata.org/entity/Q654331,DISTRICT,state:2,no,True
+district:25,Solan,25,http://www.wikidata.org/entity/Q2980937,DISTRICT,state:2,no,True
+district:26,Una,26,http://www.wikidata.org/entity/Q2301741,DISTRICT,state:2,no,True
+district:322,Bokaro,322,http://www.wikidata.org/entity/Q2295925,DISTRICT,state:20,no,True
+district:323,Chatra,323,http://www.wikidata.org/entity/Q1979499,DISTRICT,state:20,no,True
+district:324,Deoghar,324,http://www.wikidata.org/entity/Q2030017,DISTRICT,state:20,no,True
+district:325,Dhanbad,325,http://www.wikidata.org/entity/Q2240791,DISTRICT,state:20,no,True
+district:326,Dumka,326,http://www.wikidata.org/entity/Q2577657,DISTRICT,state:20,no,True
+district:327,East Singhbhum,327,http://www.wikidata.org/entity/Q2452921,DISTRICT,state:20,no,True
+district:328,Garhwa,328,http://www.wikidata.org/entity/Q2302076,DISTRICT,state:20,no,True
+district:329,Giridih,329,http://www.wikidata.org/entity/Q2302065,DISTRICT,state:20,no,True
+district:330,Godda,330,http://www.wikidata.org/entity/Q638980,DISTRICT,state:20,no,True
+district:331,Gumla,331,http://www.wikidata.org/entity/Q2295865,DISTRICT,state:20,no,True
+district:332,Hazaribagh,332,http://www.wikidata.org/entity/Q1945416,DISTRICT,state:20,no,True
+district:333,Jamtara,333,http://www.wikidata.org/entity/Q2980986,DISTRICT,state:20,no,True
+district:334,Koderma,334,http://www.wikidata.org/entity/Q2085480,DISTRICT,state:20,no,True
+district:335,Latehar,335,http://www.wikidata.org/entity/Q2244762,DISTRICT,state:20,no,True
+district:336,Lohardaga,336,http://www.wikidata.org/entity/Q1948301,DISTRICT,state:20,no,True
+district:337,Pakur,337,http://www.wikidata.org/entity/Q2295930,DISTRICT,state:20,no,True
+district:338,Palamu,338,http://www.wikidata.org/entity/Q1797254,DISTRICT,state:20,no,True
+district:339,Ranchi,339,http://www.wikidata.org/entity/Q1947380,DISTRICT,state:20,no,True
+district:340,Sahebganj,340,http://www.wikidata.org/entity/Q767878,DISTRICT,state:20,no,True
+district:341,Seraikela Kharsawan,341,http://www.wikidata.org/entity/Q2362658,DISTRICT,state:20,no,True
+district:342,Simdega,342,http://www.wikidata.org/entity/Q2597889,DISTRICT,state:20,no,True
+district:343,West Singhbhum,343,http://www.wikidata.org/entity/Q1950527,DISTRICT,state:20,no,True
+district:606,Khunti,606,http://www.wikidata.org/entity/Q367344,DISTRICT,state:20,no,True
+district:607,Ramgarh,607,http://www.wikidata.org/entity/Q2663612,DISTRICT,state:20,no,True
+district:344,Angul,344,http://www.wikidata.org/entity/Q1772807,DISTRICT,state:21,no,True
+district:345,Balangir,345,http://www.wikidata.org/entity/Q804642,DISTRICT,state:21,no,True
+district:346,Balasore,346,http://www.wikidata.org/entity/Q2022279,DISTRICT,state:21,no,True
+district:347,Bargarh,347,http://www.wikidata.org/entity/Q808140,DISTRICT,state:21,no,True
+district:348,Bhadrak,348,http://www.wikidata.org/entity/Q685638,DISTRICT,state:21,no,True
+district:349,Boudh,349,http://www.wikidata.org/entity/Q2363639,DISTRICT,state:21,no,True
+district:350,Cuttack,350,http://www.wikidata.org/entity/Q2022256,DISTRICT,state:21,no,True
+district:351,Debagarh,351,http://www.wikidata.org/entity/Q2269639,DISTRICT,state:21,no,True
+district:352,Dhenkanal,352,http://www.wikidata.org/entity/Q1948389,DISTRICT,state:21,no,True
+district:353,Gajapati,353,http://www.wikidata.org/entity/Q1947292,DISTRICT,state:21,no,True
+district:354,Ganjam,354,http://www.wikidata.org/entity/Q776213,DISTRICT,state:21,no,True
+district:355,Jagatsinghpur,355,http://www.wikidata.org/entity/Q971581,DISTRICT,state:21,no,True
+district:356,Jajpur,356,http://www.wikidata.org/entity/Q2087771,DISTRICT,state:21,no,True
+district:357,Jharsuguda,357,http://www.wikidata.org/entity/Q569181,DISTRICT,state:21,no,True
+district:358,Kalahandi,358,http://www.wikidata.org/entity/Q1876588,DISTRICT,state:21,no,True
+district:359,Kandhamal,359,http://www.wikidata.org/entity/Q2085500,DISTRICT,state:21,no,True
+district:360,Kendrapara,360,http://www.wikidata.org/entity/Q2299172,DISTRICT,state:21,no,True
+district:361,Kendujhar,361,http://www.wikidata.org/entity/Q2085428,DISTRICT,state:21,no,True
+district:362,Khordha,362,http://www.wikidata.org/entity/Q662818,DISTRICT,state:21,no,True
+district:363,Koraput,363,http://www.wikidata.org/entity/Q1947300,DISTRICT,state:21,no,True
+district:364,Malkangiri,364,http://www.wikidata.org/entity/Q5122619,DISTRICT,state:21,no,True
+district:365,Mayurbhanj,365,http://www.wikidata.org/entity/Q1914546,DISTRICT,state:21,no,True
+district:366,Nabarangpur,366,http://www.wikidata.org/entity/Q2396798,DISTRICT,state:21,no,True
+district:367,Nayagarh,367,http://www.wikidata.org/entity/Q2367388,DISTRICT,state:21,no,True
+district:368,Nuapada,368,http://www.wikidata.org/entity/Q1810550,DISTRICT,state:21,no,True
+district:369,Puri,369,http://www.wikidata.org/entity/Q1817158,DISTRICT,state:21,no,True
+district:370,Rayagada,370,http://www.wikidata.org/entity/Q2577997,DISTRICT,state:21,no,True
+district:371,Sambalpur,371,http://www.wikidata.org/entity/Q1267306,DISTRICT,state:21,no,True
+district:372,Subarnapur,372,http://www.wikidata.org/entity/Q1473957,DISTRICT,state:21,no,True
+district:373,Sundargarh,373,http://www.wikidata.org/entity/Q2296047,DISTRICT,state:21,no,True
+district:374,Bastar,374,http://www.wikidata.org/entity/Q100152,DISTRICT,state:22,no,True
+district:375,Bilaspur,375,http://www.wikidata.org/entity/Q100157,DISTRICT,state:22,no,True
+district:376,Dantewada,376,http://www.wikidata.org/entity/Q100211,DISTRICT,state:22,no,True
+district:377,Dhamtari,377,http://www.wikidata.org/entity/Q100190,DISTRICT,state:22,no,True
+district:378,Durg,378,http://www.wikidata.org/entity/Q100182,DISTRICT,state:22,no,True
+district:379,Janjgir–Champa,379,http://www.wikidata.org/entity/Q2575633,DISTRICT,state:22,no,True
+district:380,Jashpur,380,http://www.wikidata.org/entity/Q2577551,DISTRICT,state:22,no,True
+district:381,Kanker,381,http://www.wikidata.org/entity/Q2310530,DISTRICT,state:22,no,True
+district:382,Kabirdham,382,http://www.wikidata.org/entity/Q2450255,DISTRICT,state:22,no,True
+district:383,Korba,383,http://www.wikidata.org/entity/Q2299121,DISTRICT,state:22,no,True
+district:384,Koriya,384,http://www.wikidata.org/entity/Q2295896,DISTRICT,state:22,no,True
+district:385,Mahasamund,385,http://www.wikidata.org/entity/Q2450240,DISTRICT,state:22,no,True
+district:386,Raigarh,386,http://www.wikidata.org/entity/Q2286310,DISTRICT,state:22,no,True
+district:387,Raipur,387,http://www.wikidata.org/entity/Q2295914,DISTRICT,state:22,no,True
+district:388,Rajnandgaon,388,http://www.wikidata.org/entity/Q2341800,DISTRICT,state:22,no,True
+district:389,Surguja,389,http://www.wikidata.org/entity/Q1805075,DISTRICT,state:22,no,True
+district:636,Bijapur,636,http://www.wikidata.org/entity/Q100164,DISTRICT,state:22,no,True
+district:637,Narayanpur,637,http://www.wikidata.org/entity/Q2322000,DISTRICT,state:22,no,True
+district:642,Sukma,642,http://www.wikidata.org/entity/Q16933590,DISTRICT,state:22,no,True
+district:643,Kondagaon,643,http://www.wikidata.org/entity/Q12420995,DISTRICT,state:22,no,True
+district:644,Baloda Bazar,644,http://www.wikidata.org/entity/Q15663455,DISTRICT,state:22,no,True
+district:645,Gariaband,645,http://www.wikidata.org/entity/Q16961365,DISTRICT,state:22,no,True
+district:646,Balod,646,http://www.wikidata.org/entity/Q16056266,DISTRICT,state:22,no,True
+district:647,Mungeli,647,http://www.wikidata.org/entity/Q13476249,DISTRICT,state:22,no,True
+district:648,Surajpur,648,http://www.wikidata.org/entity/Q16938031,DISTRICT,state:22,no,True
+district:649,Balrampur–Ramanujganj,649,http://www.wikidata.org/entity/Q16056268,DISTRICT,state:22,no,True
+district:650,Bemetara,650,http://www.wikidata.org/entity/Q16254159,DISTRICT,state:22,no,True
+district:734,Gaurela-Pendra-Marwahi,734,http://www.wikidata.org/entity/Q96584972,DISTRICT,state:22,no,True
+district:759,Khairagarh-Chhuikhadan-Gandai,759,http://www.wikidata.org/entity/Q113485010,DISTRICT,state:22,no,True
+district:760,Manendragarh-Chirmiri-Bharatpur,760,http://www.wikidata.org/entity/Q108427451,DISTRICT,state:22,no,True
+district:761,Mohla-Manpur-Ambagarh Chowki,761,http://www.wikidata.org/entity/Q108569901,DISTRICT,state:22,no,True
+district:762,Sakti,762,http://www.wikidata.org/entity/Q108569905,DISTRICT,state:22,no,True
+district:763,Sarangarh-Bilaigarh,763,http://www.wikidata.org/entity/Q108569900,DISTRICT,state:22,no,True
+district:390,Anuppur,390,http://www.wikidata.org/entity/Q2299093,DISTRICT,state:23,no,True
+district:391,Ashoknagar,391,http://www.wikidata.org/entity/Q2246416,DISTRICT,state:23,no,True
+district:392,Balaghat,392,http://www.wikidata.org/entity/Q641904,DISTRICT,state:23,no,True
+district:393,Barwani,393,http://www.wikidata.org/entity/Q2126754,DISTRICT,state:23,no,True
+district:394,Betul,394,http://www.wikidata.org/entity/Q1815279,DISTRICT,state:23,no,True
+district:395,Bhind,395,http://www.wikidata.org/entity/Q2341700,DISTRICT,state:23,no,True
+district:396,Bhopal,396,http://www.wikidata.org/entity/Q1797245,DISTRICT,state:23,no,True
+district:397,Burhanpur,397,http://www.wikidata.org/entity/Q2125592,DISTRICT,state:23,no,True
+district:398,Chhatarpur,398,http://www.wikidata.org/entity/Q2449785,DISTRICT,state:23,no,True
+district:399,Chhindwara,399,http://www.wikidata.org/entity/Q1986096,DISTRICT,state:23,no,True
+district:400,Damoh,400,http://www.wikidata.org/entity/Q2479331,DISTRICT,state:23,no,True
+district:401,Datia,401,http://www.wikidata.org/entity/Q2206266,DISTRICT,state:23,no,True
+district:402,Dewas,402,http://www.wikidata.org/entity/Q2025998,DISTRICT,state:23,no,True
+district:403,Dhar,403,http://www.wikidata.org/entity/Q2299069,DISTRICT,state:23,no,True
+district:404,Dindori,404,http://www.wikidata.org/entity/Q2398551,DISTRICT,state:23,no,True
+district:405,Khandwa,405,http://www.wikidata.org/entity/Q2085436,DISTRICT,state:23,no,True
+district:406,Guna,406,http://www.wikidata.org/entity/Q930027,DISTRICT,state:23,no,True
+district:407,Gwalior,407,http://www.wikidata.org/entity/Q2085310,DISTRICT,state:23,no,True
+district:408,Harda,408,http://www.wikidata.org/entity/Q2173003,DISTRICT,state:23,no,True
+district:409,Narmadapuram,409,http://www.wikidata.org/entity/Q620801,DISTRICT,state:23,no,True
+district:410,Indore,410,http://www.wikidata.org/entity/Q742938,DISTRICT,state:23,no,True
+district:411,Jabalpur,411,http://www.wikidata.org/entity/Q632093,DISTRICT,state:23,no,True
+district:412,Jhabua,412,http://www.wikidata.org/entity/Q2085336,DISTRICT,state:23,no,True
+district:413,Katni,413,http://www.wikidata.org/entity/Q746441,DISTRICT,state:23,no,True
+district:414,Khargone,414,http://www.wikidata.org/entity/Q2273900,DISTRICT,state:23,no,True
+district:415,Mandla,415,http://www.wikidata.org/entity/Q2341670,DISTRICT,state:23,no,True
+district:416,Mandsaur,416,http://www.wikidata.org/entity/Q1870014,DISTRICT,state:23,no,True
+district:417,Morena,417,http://www.wikidata.org/entity/Q2341467,DISTRICT,state:23,no,True
+district:418,Narsinghpur,418,http://www.wikidata.org/entity/Q2341616,DISTRICT,state:23,no,True
+district:419,Neemuch,419,http://www.wikidata.org/entity/Q2341713,DISTRICT,state:23,no,True
+district:420,Panna,420,http://www.wikidata.org/entity/Q2341630,DISTRICT,state:23,no,True
+district:421,Raisen,421,http://www.wikidata.org/entity/Q1815223,DISTRICT,state:23,no,True
+district:422,Rajgarh,422,http://www.wikidata.org/entity/Q1833306,DISTRICT,state:23,no,True
+district:423,Ratlam,423,http://www.wikidata.org/entity/Q2299164,DISTRICT,state:23,no,True
+district:424,Rewa,424,http://www.wikidata.org/entity/Q526862,DISTRICT,state:23,no,True
+district:425,Sagar,425,http://www.wikidata.org/entity/Q2085421,DISTRICT,state:23,no,True
+district:426,Satna,426,http://www.wikidata.org/entity/Q2577924,DISTRICT,state:23,no,True
+district:427,Sehore,427,http://www.wikidata.org/entity/Q2299029,DISTRICT,state:23,no,True
+district:428,Seoni,428,http://www.wikidata.org/entity/Q2221184,DISTRICT,state:23,no,True
+district:429,Shahdol,429,http://www.wikidata.org/entity/Q2085464,DISTRICT,state:23,no,True
+district:430,Shajapur,430,http://www.wikidata.org/entity/Q2449803,DISTRICT,state:23,no,True
+district:431,Sheopur,431,http://www.wikidata.org/entity/Q620105,DISTRICT,state:23,no,True
+district:432,Shivpuri,432,http://www.wikidata.org/entity/Q2299042,DISTRICT,state:23,no,True
+district:433,Sidhi,433,http://www.wikidata.org/entity/Q2449793,DISTRICT,state:23,no,True
+district:434,Tikamgarh,434,http://www.wikidata.org/entity/Q2449760,DISTRICT,state:23,no,True
+district:435,Ujjain,435,http://www.wikidata.org/entity/Q892641,DISTRICT,state:23,no,True
+district:436,Umaria,436,http://www.wikidata.org/entity/Q620297,DISTRICT,state:23,no,True
+district:437,Vidisha,437,http://www.wikidata.org/entity/Q1815253,DISTRICT,state:23,no,True
+district:638,Singrauli,638,http://www.wikidata.org/entity/Q2668638,DISTRICT,state:23,no,True
+district:639,Alirajpur,639,http://www.wikidata.org/entity/Q2667586,DISTRICT,state:23,no,True
+district:667,Agar Malwa,667,http://www.wikidata.org/entity/Q15732396,DISTRICT,state:23,no,True
+district:722,Niwari,722,http://www.wikidata.org/entity/Q63563797,DISTRICT,state:23,no,True
+district:766,Mauganj,766,http://www.wikidata.org/entity/Q122417864,DISTRICT,state:23,no,True
+district:784,Maihar,784,http://www.wikidata.org/entity/Q111675213,DISTRICT,state:23,no,True
+district:785,Pandhurna,785,http://www.wikidata.org/entity/Q123286184,DISTRICT,state:23,no,True
+district:438,Ahmedabad,438,http://www.wikidata.org/entity/Q401686,DISTRICT,state:24,no,True
+district:439,Amreli,439,http://www.wikidata.org/entity/Q257946,DISTRICT,state:24,no,True
+district:440,Anand,440,http://www.wikidata.org/entity/Q485683,DISTRICT,state:24,no,True
+district:441,Banaskantha,441,http://www.wikidata.org/entity/Q806125,DISTRICT,state:24,no,True
+district:442,Bharuch,442,http://www.wikidata.org/entity/Q854900,DISTRICT,state:24,no,True
+district:443,Bhavnagar,443,http://www.wikidata.org/entity/Q854963,DISTRICT,state:24,no,True
+district:444,Dang,444,http://www.wikidata.org/entity/Q1135616,DISTRICT,state:24,no,True
+district:445,Dahod,445,http://www.wikidata.org/entity/Q186518,DISTRICT,state:24,no,True
+district:446,Gandhinagar,446,http://www.wikidata.org/entity/Q1772860,DISTRICT,state:24,no,True
+district:447,Jamnagar,447,http://www.wikidata.org/entity/Q2982118,DISTRICT,state:24,no,True
+district:448,Junagadh,448,http://www.wikidata.org/entity/Q1797344,DISTRICT,state:24,no,True
+district:449,Kutch,449,http://www.wikidata.org/entity/Q1063417,DISTRICT,state:24,no,True
+district:450,Kheda,450,http://www.wikidata.org/entity/Q1755463,DISTRICT,state:24,no,True
+district:451,Mehsana,451,http://www.wikidata.org/entity/Q2019694,DISTRICT,state:24,no,True
+district:452,Narmada,452,http://www.wikidata.org/entity/Q1797230,DISTRICT,state:24,no,True
+district:453,Navsari,453,http://www.wikidata.org/entity/Q1797349,DISTRICT,state:24,no,True
+district:454,Panchmahal,454,http://www.wikidata.org/entity/Q1781463,DISTRICT,state:24,no,True
+district:455,Patan,455,http://www.wikidata.org/entity/Q1815269,DISTRICT,state:24,no,True
+district:456,Porbandar,456,http://www.wikidata.org/entity/Q1772815,DISTRICT,state:24,no,True
+district:457,Rajkot,457,http://www.wikidata.org/entity/Q1815245,DISTRICT,state:24,no,True
+district:458,Sabarkantha,458,http://www.wikidata.org/entity/Q1772856,DISTRICT,state:24,no,True
+district:459,Surat,459,http://www.wikidata.org/entity/Q1797317,DISTRICT,state:24,no,True
+district:460,Surendranagar,460,http://www.wikidata.org/entity/Q237535,DISTRICT,state:24,no,True
+district:461,Vadodara,461,http://www.wikidata.org/entity/Q578285,DISTRICT,state:24,no,True
+district:462,Valsad,462,http://www.wikidata.org/entity/Q1946743,DISTRICT,state:24,no,True
+district:641,Tapi,641,http://www.wikidata.org/entity/Q670165,DISTRICT,state:24,no,True
+district:668,Chhota Udaipur,668,http://www.wikidata.org/entity/Q5979243,DISTRICT,state:24,no,True
+district:669,Mahisagar,669,http://www.wikidata.org/entity/Q5706885,DISTRICT,state:24,no,True
+district:672,Aravalli,672,http://www.wikidata.org/entity/Q12175285,DISTRICT,state:24,no,True
+district:673,Morbi,673,http://www.wikidata.org/entity/Q5979727,DISTRICT,state:24,no,True
+district:674,Devbhumi Dwarka,674,http://www.wikidata.org/entity/Q14594717,DISTRICT,state:24,no,True
+district:675,Gir Somnath,675,http://www.wikidata.org/entity/Q15244465,DISTRICT,state:24,no,True
+district:676,Botad,676,http://www.wikidata.org/entity/Q14505072,DISTRICT,state:24,no,True
+district:789,Vav-Tharad,789,http://www.wikidata.org/entity/Q131621560,DISTRICT,state:24,no,True
+district:466,Ahilyanagar,466,http://www.wikidata.org/entity/Q401744,DISTRICT,state:27,no,True
+district:467,Akola,467,http://www.wikidata.org/entity/Q520510,DISTRICT,state:27,no,True
+district:468,Amravati,468,http://www.wikidata.org/entity/Q1771774,DISTRICT,state:27,no,True
+district:469,Aurangabad,469,http://www.wikidata.org/entity/Q592942,DISTRICT,state:27,no,True
+district:470,Beed,470,http://www.wikidata.org/entity/Q814037,DISTRICT,state:27,no,True
+district:471,Bhandara,471,http://www.wikidata.org/entity/Q1813857,DISTRICT,state:27,no,True
+district:472,Buldhana,472,http://www.wikidata.org/entity/Q47929,DISTRICT,state:27,no,True
+district:473,Chandrapur,473,http://www.wikidata.org/entity/Q1797274,DISTRICT,state:27,no,True
+district:474,Dhule,474,http://www.wikidata.org/entity/Q1797383,DISTRICT,state:27,no,True
+district:475,Gadchiroli,475,http://www.wikidata.org/entity/Q1804847,DISTRICT,state:27,no,True
+district:476,Gondia,476,http://www.wikidata.org/entity/Q1917227,DISTRICT,state:27,no,True
+district:477,Hingoli,477,http://www.wikidata.org/entity/Q2087615,DISTRICT,state:27,no,True
+district:478,Jalgaon,478,http://www.wikidata.org/entity/Q1797291,DISTRICT,state:27,no,True
+district:479,Jalna,479,http://www.wikidata.org/entity/Q1804863,DISTRICT,state:27,no,True
+district:480,Kolhapur,480,http://www.wikidata.org/entity/Q1797312,DISTRICT,state:27,no,True
+district:481,Latur,481,http://www.wikidata.org/entity/Q1948713,DISTRICT,state:27,no,True
+district:482,Mumbai City,482,http://www.wikidata.org/entity/Q2341660,DISTRICT,state:27,no,True
+district:483,Mumbai Suburban,483,http://www.wikidata.org/entity/Q2085374,DISTRICT,state:27,no,True
+district:484,Nagpur,484,http://www.wikidata.org/entity/Q1797367,DISTRICT,state:27,no,True
+district:485,Nanded,485,http://www.wikidata.org/entity/Q692389,DISTRICT,state:27,no,True
+district:486,Nandurbar,486,http://www.wikidata.org/entity/Q1623525,DISTRICT,state:27,no,True
+district:487,Nashik,487,http://www.wikidata.org/entity/Q1797269,DISTRICT,state:27,no,True
+district:488,Dharashiv,488,http://www.wikidata.org/entity/Q1647186,DISTRICT,state:27,no,True
+district:489,Parbhani,489,http://www.wikidata.org/entity/Q1797389,DISTRICT,state:27,no,True
+district:490,Pune,490,http://www.wikidata.org/entity/Q1797336,DISTRICT,state:27,no,True
+district:491,Raigad,491,http://www.wikidata.org/entity/Q2019683,DISTRICT,state:27,no,True
+district:492,Ratnagiri,492,http://www.wikidata.org/entity/Q1771768,DISTRICT,state:27,no,True
+district:493,Sangli,493,http://www.wikidata.org/entity/Q1425060,DISTRICT,state:27,no,True
+district:494,Satara,494,http://www.wikidata.org/entity/Q1135612,DISTRICT,state:27,no,True
+district:495,Sindhudurg,495,http://www.wikidata.org/entity/Q768332,DISTRICT,state:27,no,True
+district:496,Solapur,496,http://www.wikidata.org/entity/Q1797263,DISTRICT,state:27,no,True
+district:497,Thane,497,http://www.wikidata.org/entity/Q943099,DISTRICT,state:27,no,True
+district:498,Wardha,498,http://www.wikidata.org/entity/Q980608,DISTRICT,state:27,no,True
+district:499,Washim,499,http://www.wikidata.org/entity/Q1804858,DISTRICT,state:27,no,True
+district:500,Yavatmal,500,http://www.wikidata.org/entity/Q1804852,DISTRICT,state:27,no,True
+district:665,Palghar,665,http://www.wikidata.org/entity/Q18003119,DISTRICT,state:27,no,True
+district:502,Anantapuramu,502,http://www.wikidata.org/entity/Q15212,DISTRICT,state:28,no,True
+district:503,Chittoor,503,http://www.wikidata.org/entity/Q15213,DISTRICT,state:28,no,True
+district:504,YSR  Kadapa,504,http://www.wikidata.org/entity/Q15342,DISTRICT,state:28,no,True
+district:505,East Godavari,505,http://www.wikidata.org/entity/Q15338,DISTRICT,state:28,no,True
+district:506,Guntur,506,http://www.wikidata.org/entity/Q15341,DISTRICT,state:28,no,True
+district:510,Krishna,510,http://www.wikidata.org/entity/Q15382,DISTRICT,state:28,no,True
+district:511,Kurnool,511,http://www.wikidata.org/entity/Q15381,DISTRICT,state:28,no,True
+district:515,Sri Potti Sri Ramulu Nellore,515,http://www.wikidata.org/entity/Q15383,DISTRICT,state:28,no,True
+district:517,Prakasam,517,http://www.wikidata.org/entity/Q15390,DISTRICT,state:28,no,True
+district:519,Srikakulam,519,http://www.wikidata.org/entity/Q15395,DISTRICT,state:28,no,True
+district:520,Visakhapatnam,520,http://www.wikidata.org/entity/Q15394,DISTRICT,state:28,no,True
+district:521,Vizianagaram,521,http://www.wikidata.org/entity/Q15392,DISTRICT,state:28,no,True
+district:523,West Godavari,523,http://www.wikidata.org/entity/Q15404,DISTRICT,state:28,no,True
+district:743,Parvathipuram Manyam,743,http://www.wikidata.org/entity/Q110714856,DISTRICT,state:28,no,True
+district:744,Anakapalli,744,http://www.wikidata.org/entity/Q110714857,DISTRICT,state:28,no,True
+district:745,Alluri Sitharama Raju,745,http://www.wikidata.org/entity/Q110714850,DISTRICT,state:28,no,True
+district:746,Kakinada,746,http://www.wikidata.org/entity/Q110714860,DISTRICT,state:28,no,True
+district:747,Dr. B.R. Ambedkar Konaseema,747,http://www.wikidata.org/entity/Q110714859,DISTRICT,state:28,no,True
+district:748,Eluru,748,http://www.wikidata.org/entity/Q110714851,DISTRICT,state:28,no,True
+district:749,NTR,749,http://www.wikidata.org/entity/Q110876763,DISTRICT,state:28,no,True
+district:750,Bapatla,750,http://www.wikidata.org/entity/Q110876712,DISTRICT,state:28,no,True
+district:751,Palnadu,751,http://www.wikidata.org/entity/Q110714862,DISTRICT,state:28,no,True
+district:752,Tirupati,752,http://www.wikidata.org/entity/Q110714853,DISTRICT,state:28,no,True
+district:753,Annamayya,753,http://www.wikidata.org/entity/Q110714854,DISTRICT,state:28,no,True
+district:754,Sri Sathya Sai,754,http://www.wikidata.org/entity/Q110714863,DISTRICT,state:28,no,True
+district:755,Nandyal,755,http://www.wikidata.org/entity/Q110714861,DISTRICT,state:28,no,True
+district:524,Bagalkot,524,http://www.wikidata.org/entity/Q1910231,DISTRICT,state:29,no,True
+district:525,Bengaluru Urban,525,http://www.wikidata.org/entity/Q806463,DISTRICT,state:29,no,True
+district:526,Bengaluru North,526,http://www.wikidata.org/entity/Q806464,DISTRICT,state:29,no,True
+district:527,Belagavi,527,http://www.wikidata.org/entity/Q815464,DISTRICT,state:29,no,True
+district:528,Ballari,528,http://www.wikidata.org/entity/Q1791926,DISTRICT,state:29,no,True
+district:529,Bidar,529,http://www.wikidata.org/entity/Q1790568,DISTRICT,state:29,no,True
+district:530,Vijaypura,530,http://www.wikidata.org/entity/Q83108,DISTRICT,state:29,no,True
+district:531,Chamarajanagar,531,http://www.wikidata.org/entity/Q862912,DISTRICT,state:29,no,True
+district:532,Chikmagalur,532,http://www.wikidata.org/entity/Q743077,DISTRICT,state:29,no,True
+district:533,Chitradurga,533,http://www.wikidata.org/entity/Q165264,DISTRICT,state:29,no,True
+district:534,Dakshina Kannada,534,http://www.wikidata.org/entity/Q950571,DISTRICT,state:29,no,True
+district:535,Davanagere,535,http://www.wikidata.org/entity/Q1863214,DISTRICT,state:29,no,True
+district:536,Dharwad,536,http://www.wikidata.org/entity/Q1790904,DISTRICT,state:29,no,True
+district:537,Gadag,537,http://www.wikidata.org/entity/Q2353931,DISTRICT,state:29,no,True
+district:538,Kalaburgi,538,http://www.wikidata.org/entity/Q2641873,DISTRICT,state:29,no,True
+district:539,Hassan,539,http://www.wikidata.org/entity/Q956732,DISTRICT,state:29,no,True
+district:540,Haveri,540,http://www.wikidata.org/entity/Q765481,DISTRICT,state:29,no,True
+district:541,Kodagu,541,http://www.wikidata.org/entity/Q1553185,DISTRICT,state:29,no,True
+district:542,Kolar,542,http://www.wikidata.org/entity/Q2509866,DISTRICT,state:29,no,True
+district:543,Koppal,543,http://www.wikidata.org/entity/Q956387,DISTRICT,state:29,no,True
+district:544,Mandya,544,http://www.wikidata.org/entity/Q2768290,DISTRICT,state:29,no,True
+district:545,Mysuru,545,http://www.wikidata.org/entity/Q591781,DISTRICT,state:29,no,True
+district:546,Raichur,546,http://www.wikidata.org/entity/Q1430830,DISTRICT,state:29,no,True
+district:547,Shimoga,547,http://www.wikidata.org/entity/Q2981389,DISTRICT,state:29,no,True
+district:548,Tumkur,548,http://www.wikidata.org/entity/Q1301635,DISTRICT,state:29,no,True
+district:549,Udupi,549,http://www.wikidata.org/entity/Q1483337,DISTRICT,state:29,no,True
+district:550,Uttara Kannada,550,http://www.wikidata.org/entity/Q579205,DISTRICT,state:29,no,True
+district:630,Chikkaballapura,630,http://www.wikidata.org/entity/Q1072629,DISTRICT,state:29,no,True
+district:631,Bengaluru South,631,http://www.wikidata.org/entity/Q427679,DISTRICT,state:29,no,True
+district:635,Yadgir,635,http://www.wikidata.org/entity/Q1786949,DISTRICT,state:29,no,True
+district:738,Vijayanagara,738,http://www.wikidata.org/entity/Q104876850,DISTRICT,state:29,no,True
+district:27,Amritsar,27,http://www.wikidata.org/entity/Q202822,DISTRICT,state:3,no,True
+district:28,Bathinda,28,http://www.wikidata.org/entity/Q172488,DISTRICT,state:3,no,True
+district:29,Faridkot,29,http://www.wikidata.org/entity/Q172494,DISTRICT,state:3,no,True
+district:30,Fatehgarh Sahib,30,http://www.wikidata.org/entity/Q172485,DISTRICT,state:3,no,True
+district:31,Firozpur,31,http://www.wikidata.org/entity/Q172385,DISTRICT,state:3,no,True
+district:32,Gurdaspur,32,http://www.wikidata.org/entity/Q146708,DISTRICT,state:3,no,True
+district:33,Hoshiarpur,33,http://www.wikidata.org/entity/Q304800,DISTRICT,state:3,no,True
+district:34,Jalandhar,34,http://www.wikidata.org/entity/Q1817425,DISTRICT,state:3,no,True
+district:35,Kapurthala,35,http://www.wikidata.org/entity/Q172363,DISTRICT,state:3,no,True
+district:36,Ludhiana,36,http://www.wikidata.org/entity/Q172482,DISTRICT,state:3,no,True
+district:37,Mansa,37,http://www.wikidata.org/entity/Q172387,DISTRICT,state:3,no,True
+district:38,Moga,38,http://www.wikidata.org/entity/Q1946896,DISTRICT,state:3,no,True
+district:39,Sri Muktsar Sahib,39,http://www.wikidata.org/entity/Q1947359,DISTRICT,state:3,no,True
+district:40,Shaheed Bhagat Singh Nagar,40,http://www.wikidata.org/entity/Q202710,DISTRICT,state:3,no,True
+district:41,Patiala,41,http://www.wikidata.org/entity/Q172391,DISTRICT,state:3,no,True
+district:42,Rupnagar,42,http://www.wikidata.org/entity/Q196508,DISTRICT,state:3,no,True
+district:43,Sangrur,43,http://www.wikidata.org/entity/Q1945515,DISTRICT,state:3,no,True
+district:605,Barnala,605,http://www.wikidata.org/entity/Q2353293,DISTRICT,state:3,no,True
+district:608,Sahibzada Ajit Singh Nagar,608,http://www.wikidata.org/entity/Q2037672,DISTRICT,state:3,no,True
+district:609,Tarn Taran,609,http://www.wikidata.org/entity/Q2298993,DISTRICT,state:3,no,True
+district:651,Fazilka,651,http://www.wikidata.org/entity/Q188702,DISTRICT,state:3,no,True
+district:662,Pathankot,662,http://www.wikidata.org/entity/Q172269,DISTRICT,state:3,no,True
+district:737,Malerkotla,737,http://www.wikidata.org/entity/Q107016021,DISTRICT,state:3,no,True
+district:551,North Goa,551,http://www.wikidata.org/entity/Q108234,DISTRICT,state:30,no,True
+district:552,South Goa,552,http://www.wikidata.org/entity/Q108244,DISTRICT,state:30,no,True
+district:553,Lakshadweep,553,http://www.wikidata.org/entity/Q10784153,DISTRICT,state:31,no,True
+district:554,Alappuzha,554,http://www.wikidata.org/entity/Q928959,DISTRICT,state:32,no,True
+district:555,Ernakulam,555,http://www.wikidata.org/entity/Q1356097,DISTRICT,state:32,no,True
+district:556,Idukki,556,http://www.wikidata.org/entity/Q301821,DISTRICT,state:32,no,True
+district:557,Kannur,557,http://www.wikidata.org/entity/Q2980652,DISTRICT,state:32,no,True
+district:558,Kasaragod,558,http://www.wikidata.org/entity/Q1419703,DISTRICT,state:32,no,True
+district:559,Kollam,559,http://www.wikidata.org/entity/Q1356124,DISTRICT,state:32,no,True
+district:560,Kottayam,560,http://www.wikidata.org/entity/Q1353354,DISTRICT,state:32,no,True
+district:561,Kozhikode,561,http://www.wikidata.org/entity/Q1142979,DISTRICT,state:32,no,True
+district:562,Malappuram,562,http://www.wikidata.org/entity/Q1030918,DISTRICT,state:32,no,True
+district:563,Palakkad,563,http://www.wikidata.org/entity/Q1535742,DISTRICT,state:32,no,True
+district:564,Pathanamthitta,564,http://www.wikidata.org/entity/Q634935,DISTRICT,state:32,no,True
+district:565,Thiruvananthapuram,565,http://www.wikidata.org/entity/Q162612,DISTRICT,state:32,no,True
+district:566,Thrissur,566,http://www.wikidata.org/entity/Q2429655,DISTRICT,state:32,no,True
+district:567,Wayanad,567,http://www.wikidata.org/entity/Q1364427,DISTRICT,state:32,no,True
+district:568,Chennai,568,http://www.wikidata.org/entity/Q15116,DISTRICT,state:33,no,True
+district:569,Coimbatore,569,http://www.wikidata.org/entity/Q15136,DISTRICT,state:33,no,True
+district:570,Cuddalore,570,http://www.wikidata.org/entity/Q15150,DISTRICT,state:33,no,True
+district:571,Dharmapuri,571,http://www.wikidata.org/entity/Q15152,DISTRICT,state:33,no,True
+district:572,Dindigul,572,http://www.wikidata.org/entity/Q15154,DISTRICT,state:33,no,True
+district:573,Erode,573,http://www.wikidata.org/entity/Q15155,DISTRICT,state:33,no,True
+district:574,Kanchipuram,574,http://www.wikidata.org/entity/Q15157,DISTRICT,state:33,no,True
+district:575,Kanniyakumari,575,http://www.wikidata.org/entity/Q15158,DISTRICT,state:33,no,True
+district:576,Karur,576,http://www.wikidata.org/entity/Q15182,DISTRICT,state:33,no,True
+district:577,Krishnagiri,577,http://www.wikidata.org/entity/Q15183,DISTRICT,state:33,no,True
+district:578,Madurai,578,http://www.wikidata.org/entity/Q15184,DISTRICT,state:33,no,True
+district:579,Nagapattinam,579,http://www.wikidata.org/entity/Q15185,DISTRICT,state:33,no,True
+district:580,Namakkal,580,http://www.wikidata.org/entity/Q15187,DISTRICT,state:33,no,True
+district:581,Perambalur,581,http://www.wikidata.org/entity/Q15186,DISTRICT,state:33,no,True
+district:582,Pudukkottai,582,http://www.wikidata.org/entity/Q15190,DISTRICT,state:33,no,True
+district:583,Ramanathapuram,583,http://www.wikidata.org/entity/Q15191,DISTRICT,state:33,no,True
+district:584,Salem,584,http://www.wikidata.org/entity/Q15192,DISTRICT,state:33,no,True
+district:585,Sivaganga,585,http://www.wikidata.org/entity/Q15195,DISTRICT,state:33,no,True
+district:586,Thanjavur,586,http://www.wikidata.org/entity/Q15194,DISTRICT,state:33,no,True
+district:587,Nilgiris,587,http://www.wikidata.org/entity/Q15188,DISTRICT,state:33,no,True
+district:588,Theni,588,http://www.wikidata.org/entity/Q15196,DISTRICT,state:33,no,True
+district:589,Tiruvallur,589,http://www.wikidata.org/entity/Q15204,DISTRICT,state:33,no,True
+district:590,Tiruvarur,590,http://www.wikidata.org/entity/Q15197,DISTRICT,state:33,no,True
+district:591,Tiruchirappalli,591,http://www.wikidata.org/entity/Q15201,DISTRICT,state:33,no,True
+district:592,Tirunelveli,592,http://www.wikidata.org/entity/Q15200,DISTRICT,state:33,no,True
+district:593,Tiruvannamalai,593,http://www.wikidata.org/entity/Q15207,DISTRICT,state:33,no,True
+district:594,Thoothukudi,594,http://www.wikidata.org/entity/Q15198,DISTRICT,state:33,no,True
+district:595,Vellore,595,http://www.wikidata.org/entity/Q15206,DISTRICT,state:33,no,True
+district:596,Viluppuram,596,http://www.wikidata.org/entity/Q15205,DISTRICT,state:33,no,True
+district:597,Virudhunagar,597,http://www.wikidata.org/entity/Q15209,DISTRICT,state:33,no,True
+district:610,Ariyalur,610,http://www.wikidata.org/entity/Q15112,DISTRICT,state:33,no,True
+district:634,Tiruppur,634,http://www.wikidata.org/entity/Q15202,DISTRICT,state:33,no,True
+district:729,Kallakurichi,729,http://www.wikidata.org/entity/Q60493360,DISTRICT,state:33,no,True
+district:730,Chengalpattu,730,http://www.wikidata.org/entity/Q65976177,DISTRICT,state:33,no,True
+district:731,Ranipet,731,http://www.wikidata.org/entity/Q66659623,DISTRICT,state:33,no,True
+district:732,Tirupattur,732,http://www.wikidata.org/entity/Q66659621,DISTRICT,state:33,no,True
+district:733,Tenkasi,733,http://www.wikidata.org/entity/Q75094121,DISTRICT,state:33,no,True
+district:735,Mayiladuthurai,735,http://www.wikidata.org/entity/Q89918869,DISTRICT,state:33,no,True
+district:598,Karaikal,598,http://www.wikidata.org/entity/Q639264,DISTRICT,state:34,no,True
+district:600,Puducherry,600,http://www.wikidata.org/entity/Q984035,DISTRICT,state:34,no,True
+district:602,South Andaman,602,http://www.wikidata.org/entity/Q796979,DISTRICT,state:35,no,True
+district:603,Nicobar,603,http://www.wikidata.org/entity/Q797295,DISTRICT,state:35,no,True
+district:632,North and Middle Andaman,632,http://www.wikidata.org/entity/Q796983,DISTRICT,state:35,no,True
+district:501,Adilabad,501,http://www.wikidata.org/entity/Q15211,DISTRICT,state:36,no,True
+district:507,Hyderabad,507,http://www.wikidata.org/entity/Q15340,DISTRICT,state:36,no,True
+district:508,Karimnagar,508,http://www.wikidata.org/entity/Q15373,DISTRICT,state:36,no,True
+district:509,Khammam,509,http://www.wikidata.org/entity/Q15371,DISTRICT,state:36,no,True
+district:512,Mahabubnagar,512,http://www.wikidata.org/entity/Q15380,DISTRICT,state:36,no,True
+district:513,Medak,513,http://www.wikidata.org/entity/Q15386,DISTRICT,state:36,no,True
+district:514,Nalgonda,514,http://www.wikidata.org/entity/Q15384,DISTRICT,state:36,no,True
+district:516,Nizamabad,516,http://www.wikidata.org/entity/Q15391,DISTRICT,state:36,no,True
+district:518,Ranga Reddy,518,http://www.wikidata.org/entity/Q15388,DISTRICT,state:36,no,True
+district:522,Warangal,522,http://www.wikidata.org/entity/Q15399,DISTRICT,state:36,no,True
+district:680,Nirmal,680,http://www.wikidata.org/entity/Q28169750,DISTRICT,state:36,no,True
+district:681,Jagtial,681,http://www.wikidata.org/entity/Q28169780,DISTRICT,state:36,no,True
+district:682,Peddapalli,682,http://www.wikidata.org/entity/Q27614797,DISTRICT,state:36,no,True
+district:683,Rajanna Sircilla,683,http://www.wikidata.org/entity/Q28172781,DISTRICT,state:36,no,True
+district:684,Mancherial,684,http://www.wikidata.org/entity/Q28169747,DISTRICT,state:36,no,True
+district:685,Kamareddy,685,http://www.wikidata.org/entity/Q27956125,DISTRICT,state:36,no,True
+district:686,Hanamkonda,686,http://www.wikidata.org/entity/Q213077,DISTRICT,state:36,no,True
+district:687,Jayashankar Bhupalpally,687,http://www.wikidata.org/entity/Q28169775,DISTRICT,state:36,no,True
+district:688,Mahabubabad,688,http://www.wikidata.org/entity/Q28169761,DISTRICT,state:36,no,True
+district:689,Jangaon,689,http://www.wikidata.org/entity/Q28170170,DISTRICT,state:36,no,True
+district:690,Bhadradri Kothagudem,690,http://www.wikidata.org/entity/Q28169767,DISTRICT,state:36,no,True
+district:691,Sangareddy,691,http://www.wikidata.org/entity/Q28169753,DISTRICT,state:36,no,True
+district:692,Siddipet,692,http://www.wikidata.org/entity/Q28169756,DISTRICT,state:36,no,True
+district:693,Wanaparthy,693,http://www.wikidata.org/entity/Q28172504,DISTRICT,state:36,no,True
+district:694,Nagarkurnool,694,http://www.wikidata.org/entity/Q28169773,DISTRICT,state:36,no,True
+district:695,Jogulamba Gadwal,695,http://www.wikidata.org/entity/Q27897618,DISTRICT,state:36,no,True
+district:696,Suryapet,696,http://www.wikidata.org/entity/Q28169770,DISTRICT,state:36,no,True
+district:697,Yadadri Bhuvanagiri,697,http://www.wikidata.org/entity/Q28169764,DISTRICT,state:36,no,True
+district:698,Vikarabad,698,http://www.wikidata.org/entity/Q28170173,DISTRICT,state:36,no,True
+district:699,Kumaram Bheem Asifabad,699,http://www.wikidata.org/entity/Q28170184,DISTRICT,state:36,no,True
+district:700,Medchal-Malkajgiri,700,http://www.wikidata.org/entity/Q27614841,DISTRICT,state:36,no,True
+district:720,Mulugu,720,http://www.wikidata.org/entity/Q61746006,DISTRICT,state:36,no,True
+district:721,Narayanpet,721,http://www.wikidata.org/entity/Q61746013,DISTRICT,state:36,no,True
+district:6,Kargil,6,http://www.wikidata.org/entity/Q1650798,DISTRICT,state:37,no,True
+district:9,Leh,9,http://www.wikidata.org/entity/Q1921210,DISTRICT,state:37,no,True
+district:463,Daman,463,http://www.wikidata.org/entity/Q1158197,DISTRICT,state:38,no,True
+district:464,Diu,464,http://www.wikidata.org/entity/Q2552347,DISTRICT,state:38,no,True
+district:465,Dadra and Nagar Haveli,465,http://www.wikidata.org/entity/Q46107,DISTRICT,state:38,no,True
+district:44,Chandigarh,44,http://www.wikidata.org/entity/Q5071071,DISTRICT,state:4,no,True
+district:45,Almora,45,http://www.wikidata.org/entity/Q1805066,DISTRICT,state:5,no,True
+district:46,Bageshwar,46,http://www.wikidata.org/entity/Q1815313,DISTRICT,state:5,no,True
+district:47,Chamoli,47,http://www.wikidata.org/entity/Q1797372,DISTRICT,state:5,no,True
+district:48,Champawat,48,http://www.wikidata.org/entity/Q288278,DISTRICT,state:5,no,True
+district:49,Dehradun,49,http://www.wikidata.org/entity/Q1815740,DISTRICT,state:5,no,True
+district:50,Haridwar,50,http://www.wikidata.org/entity/Q2270438,DISTRICT,state:5,no,True
+district:51,Nainital,51,http://www.wikidata.org/entity/Q1797306,DISTRICT,state:5,no,True
+district:52,Pauri Garhwal,52,http://www.wikidata.org/entity/Q2085474,DISTRICT,state:5,no,True
+district:53,Pithoragarh,53,http://www.wikidata.org/entity/Q1945425,DISTRICT,state:5,no,True
+district:54,Rudraprayag,54,http://www.wikidata.org/entity/Q1805059,DISTRICT,state:5,no,True
+district:55,Tehri Garhwal,55,http://www.wikidata.org/entity/Q1357107,DISTRICT,state:5,no,True
+district:56,Udham Singh Nagar,56,http://www.wikidata.org/entity/Q1805082,DISTRICT,state:5,no,True
+district:57,Uttarkashi,57,http://www.wikidata.org/entity/Q1773437,DISTRICT,state:5,no,True
+district:58,Ambala,58,http://www.wikidata.org/entity/Q2086226,DISTRICT,state:6,no,True
+district:59,Bhiwani,59,http://www.wikidata.org/entity/Q1852857,DISTRICT,state:6,no,True
+district:60,Faridabad,60,http://www.wikidata.org/entity/Q2086173,DISTRICT,state:6,no,True
+district:604,Nuh,604,http://www.wikidata.org/entity/Q2216696,DISTRICT,state:6,no,True
+district:61,Fatehabad,61,http://www.wikidata.org/entity/Q2301753,DISTRICT,state:6,no,True
+district:619,Palwal,619,http://www.wikidata.org/entity/Q2724926,DISTRICT,state:6,no,True
+district:62,Gurugram,62,http://www.wikidata.org/entity/Q1815766,DISTRICT,state:6,no,True
+district:63,Hisar,63,http://www.wikidata.org/entity/Q1815773,DISTRICT,state:6,no,True
+district:64,Jhajjar,64,http://www.wikidata.org/entity/Q1948260,DISTRICT,state:6,no,True
+district:65,Jind,65,http://www.wikidata.org/entity/Q268605,DISTRICT,state:6,no,True
+district:66,Kaithal,66,http://www.wikidata.org/entity/Q614037,DISTRICT,state:6,no,True
+district:67,Karnal,67,http://www.wikidata.org/entity/Q607915,DISTRICT,state:6,no,True
+district:68,Kurukshetra,68,http://www.wikidata.org/entity/Q980118,DISTRICT,state:6,no,True
+district:69,Mahendragarh,69,http://www.wikidata.org/entity/Q684019,DISTRICT,state:6,no,True
+district:70,Panchkula,70,http://www.wikidata.org/entity/Q1898143,DISTRICT,state:6,no,True
+district:701,Charkhi Dadri,701,http://www.wikidata.org/entity/Q28172110,DISTRICT,state:6,no,True
+district:71,Panipat,71,http://www.wikidata.org/entity/Q2086163,DISTRICT,state:6,no,True
+district:72,Rewari,72,http://www.wikidata.org/entity/Q2301759,DISTRICT,state:6,no,True
+district:73,Rohtak,73,http://www.wikidata.org/entity/Q967388,DISTRICT,state:6,no,True
+district:74,Sirsa,74,http://www.wikidata.org/entity/Q526101,DISTRICT,state:6,no,True
+district:75,Sonipat,75,http://www.wikidata.org/entity/Q2241746,DISTRICT,state:6,no,True
+district:76,Yamunanagar,76,http://www.wikidata.org/entity/Q1873644,DISTRICT,state:6,no,True
+district:670,South East Delhi,670,http://www.wikidata.org/entity/Q25553535,DISTRICT,state:7,no,True
+district:671,Shahdara,671,http://www.wikidata.org/entity/Q83486,DISTRICT,state:7,no,True
+district:77,Central Delhi,77,http://www.wikidata.org/entity/Q107941,DISTRICT,state:7,no,True
+district:78,East Delhi,78,http://www.wikidata.org/entity/Q107960,DISTRICT,state:7,no,True
+district:79,New Delhi,79,http://www.wikidata.org/entity/Q8560886,DISTRICT,state:7,no,True
+district:794,Outer North Delhi,794,http://www.wikidata.org/entity/Q140805546,DISTRICT,state:7,no,True
+district:795,Old Delhi,795,http://www.wikidata.org/entity/Q140721912,DISTRICT,state:7,no,True
+district:796,Central North Delhi,796,http://www.wikidata.org/entity/Q140804026,DISTRICT,state:7,no,True
+district:80,North Delhi,80,http://www.wikidata.org/entity/Q693367,DISTRICT,state:7,no,True
+district:81,North East Delhi,81,http://www.wikidata.org/entity/Q429329,DISTRICT,state:7,no,True
+district:82,North West Delhi,82,http://www.wikidata.org/entity/Q766125,DISTRICT,state:7,no,True
+district:83,South Delhi,83,http://www.wikidata.org/entity/Q2061938,DISTRICT,state:7,no,True
+district:84,South West Delhi,84,http://www.wikidata.org/entity/Q2379189,DISTRICT,state:7,no,True
+district:85,West Delhi,85,http://www.wikidata.org/entity/Q549807,DISTRICT,state:7,no,True
+district:100,Sri Ganganagar,100,http://www.wikidata.org/entity/Q1419696,DISTRICT,state:8,no,True
+district:101,Hanumangarh,101,http://www.wikidata.org/entity/Q1356112,DISTRICT,state:8,no,True
+district:102,Jaipur,102,http://www.wikidata.org/entity/Q1134781,DISTRICT,state:8,no,True
+district:103,Jaisalmer,103,http://www.wikidata.org/entity/Q1419708,DISTRICT,state:8,no,True
+district:104,kishangarh sub division.Ajmer,104,http://www.wikidata.org/entity/Q1460832,DISTRICT,state:8,no,True
+district:105,Jhalawar,105,http://www.wikidata.org/entity/Q1471417,DISTRICT,state:8,no,True
+district:106,Jhunjhunu,106,http://www.wikidata.org/entity/Q1471427,DISTRICT,state:8,no,True
+district:107,Jodhpur,107,http://www.wikidata.org/entity/Q1434965,DISTRICT,state:8,no,True
+district:108,Karauli,108,http://www.wikidata.org/entity/Q1419668,DISTRICT,state:8,no,True
+district:109,Kota,109,http://www.wikidata.org/entity/Q999432,DISTRICT,state:8,no,True
+district:110,Nagaur,110,http://www.wikidata.org/entity/Q1507174,DISTRICT,state:8,no,True
+district:111,Pali,111,http://www.wikidata.org/entity/Q46925,DISTRICT,state:8,no,True
+district:112,Rajsamand,112,http://www.wikidata.org/entity/Q596693,DISTRICT,state:8,no,True
+district:113,Sawai Madhopur,113,http://www.wikidata.org/entity/Q1507166,DISTRICT,state:8,no,True
+district:114,Sikar,114,http://www.wikidata.org/entity/Q12945777,DISTRICT,state:8,no,True
+district:115,Sirohi,115,http://www.wikidata.org/entity/Q205719,DISTRICT,state:8,no,True
+district:116,Tonk,116,http://www.wikidata.org/entity/Q915880,DISTRICT,state:8,no,True
+district:117,Udaipur,117,http://www.wikidata.org/entity/Q1321577,DISTRICT,state:8,no,True
+district:629,Pratapgarh,629,http://www.wikidata.org/entity/Q1585433,DISTRICT,state:8,no,True
+district:767,Deeg,767,http://www.wikidata.org/entity/Q122766908,DISTRICT,state:8,no,True
+district:768,Didwana-Kuchaman,768,http://www.wikidata.org/entity/Q122971176,DISTRICT,state:8,no,True
+district:769,Dudu,769,http://www.wikidata.org/entity/Q122971166,DISTRICT,state:8,no,True
+district:770,Khairthal-Tijara,770,http://www.wikidata.org/entity/Q122971175,DISTRICT,state:8,no,True
+district:771,Gangapur City,771,http://www.wikidata.org/entity/Q121607665,DISTRICT,state:8,no,True
+district:772,Phalodi,772,http://www.wikidata.org/entity/Q122971167,DISTRICT,state:8,no,True
+district:773,Neem Ka Thana,773,http://www.wikidata.org/entity/Q122212229,DISTRICT,state:8,no,True
+district:774,Beawar,774,http://www.wikidata.org/entity/Q122971174,DISTRICT,state:8,no,True
+district:775,Balotra,775,http://www.wikidata.org/entity/Q121335556,DISTRICT,state:8,no,True
+district:776,Anupgarh,776,http://www.wikidata.org/entity/Q117230972,DISTRICT,state:8,no,True
+district:777,Salumbar,777,http://www.wikidata.org/entity/Q122971173,DISTRICT,state:8,no,True
+district:778,Jodhpur Gramin,778,http://www.wikidata.org/entity/Q122971177,DISTRICT,state:8,no,True
+district:779,Sanchore,779,http://www.wikidata.org/entity/Q122276059,DISTRICT,state:8,no,True
+district:781,Kekri,781,http://www.wikidata.org/entity/Q122971178,DISTRICT,state:8,no,True
+district:782,Kotputli-Behror,782,http://www.wikidata.org/entity/Q117313512,DISTRICT,state:8,no,True
+district:86,Ajmer,86,http://www.wikidata.org/entity/Q413037,DISTRICT,state:8,no,True
+district:87,Alwar,87,http://www.wikidata.org/entity/Q449690,DISTRICT,state:8,no,True
+district:88,Banswara,88,http://www.wikidata.org/entity/Q806969,DISTRICT,state:8,no,True
+district:89,Baran,89,http://www.wikidata.org/entity/Q2329717,DISTRICT,state:8,no,True
+district:90,Barmer,90,http://www.wikidata.org/entity/Q42016,DISTRICT,state:8,no,True
+district:91,Bharatpur,91,http://www.wikidata.org/entity/Q854861,DISTRICT,state:8,no,True
+district:92,Bhilwara,92,http://www.wikidata.org/entity/Q41991,DISTRICT,state:8,no,True
+district:93,Bikaner,93,http://www.wikidata.org/entity/Q778996,DISTRICT,state:8,no,True
+district:94,Bundi,94,http://www.wikidata.org/entity/Q670405,DISTRICT,state:8,no,True
+district:95,Chittorgarh,95,http://www.wikidata.org/entity/Q1075011,DISTRICT,state:8,no,True
+district:96,Churu,96,http://www.wikidata.org/entity/Q1090006,DISTRICT,state:8,no,True
+district:97,Dausa,97,http://www.wikidata.org/entity/Q1173042,DISTRICT,state:8,no,True
+district:98,Dholpur,98,http://www.wikidata.org/entity/Q1207709,DISTRICT,state:8,no,True
+district:99,Dungarpur,99,http://www.wikidata.org/entity/Q1265687,DISTRICT,state:8,no,True
+district:118,Agra,118,http://www.wikidata.org/entity/Q606343,DISTRICT,state:9,no,True
+district:119,Aligarh,119,http://www.wikidata.org/entity/Q766918,DISTRICT,state:9,no,True
+district:120,Prayagraj,120,http://www.wikidata.org/entity/Q1773426,DISTRICT,state:9,no,True
+district:121,Ambedkar Nagar,121,http://www.wikidata.org/entity/Q456764,DISTRICT,state:9,no,True
+district:122,Auraiya,122,http://www.wikidata.org/entity/Q1812533,DISTRICT,state:9,no,True
+district:123,Azamgarh,123,http://www.wikidata.org/entity/Q793553,DISTRICT,state:9,no,True
+district:124,Bagpat,124,http://www.wikidata.org/entity/Q1797363,DISTRICT,state:9,no,True
+district:125,Bahraich,125,http://www.wikidata.org/entity/Q1812548,DISTRICT,state:9,no,True
+district:126,Ballia,126,http://www.wikidata.org/entity/Q584644,DISTRICT,state:9,no,True
+district:127,Balrampur,127,http://www.wikidata.org/entity/Q1948380,DISTRICT,state:9,no,True
+district:128,Banda,128,http://www.wikidata.org/entity/Q2131759,DISTRICT,state:9,no,True
+district:129,Barabanki,129,http://www.wikidata.org/entity/Q633114,DISTRICT,state:9,no,True
+district:130,Bareilly,130,http://www.wikidata.org/entity/Q1797378,DISTRICT,state:9,no,True
+district:131,Basti,131,http://www.wikidata.org/entity/Q715267,DISTRICT,state:9,no,True
+district:132,Bijnor,132,http://www.wikidata.org/entity/Q1937865,DISTRICT,state:9,no,True
+district:133,Budaun,133,http://www.wikidata.org/entity/Q1815262,DISTRICT,state:9,no,True
+district:134,Bulandshahr,134,http://www.wikidata.org/entity/Q1752328,DISTRICT,state:9,no,True
+district:135,Chandauli,135,http://www.wikidata.org/entity/Q2733369,DISTRICT,state:9,no,True
+district:136,Chitrakoot,136,http://www.wikidata.org/entity/Q2089141,DISTRICT,state:9,no,True
+district:137,Deoria,137,http://www.wikidata.org/entity/Q731746,DISTRICT,state:9,no,True
+district:138,Etah,138,http://www.wikidata.org/entity/Q1773429,DISTRICT,state:9,no,True
+district:139,Etawah,139,http://www.wikidata.org/entity/Q1815288,DISTRICT,state:9,no,True
+district:140,Ayodhya,140,http://www.wikidata.org/entity/Q1814132,DISTRICT,state:9,no,True
+district:141,Farrukhabad,141,http://www.wikidata.org/entity/Q1897251,DISTRICT,state:9,no,True
+district:142,Fatehpur,142,http://www.wikidata.org/entity/Q1946829,DISTRICT,state:9,no,True
+district:143,Firozabad,143,http://www.wikidata.org/entity/Q1946950,DISTRICT,state:9,no,True
+district:144,Gautam Buddh Nagar,144,http://www.wikidata.org/entity/Q1785950,DISTRICT,state:9,no,True
+district:145,Ghaziabad,145,http://www.wikidata.org/entity/Q1773444,DISTRICT,state:9,no,True
+district:146,Ghazipur,146,http://www.wikidata.org/entity/Q1287993,DISTRICT,state:9,no,True
+district:147,Gonda,147,http://www.wikidata.org/entity/Q1937857,DISTRICT,state:9,no,True
+district:148,Gorakhpur,148,http://www.wikidata.org/entity/Q1144349,DISTRICT,state:9,no,True
+district:149,Hamirpur,149,http://www.wikidata.org/entity/Q2019757,DISTRICT,state:9,no,True
+district:150,Hardoi,150,http://www.wikidata.org/entity/Q1772822,DISTRICT,state:9,no,True
+district:151,Jalaun,151,http://www.wikidata.org/entity/Q2089115,DISTRICT,state:9,no,True
+district:152,Jaunpur,152,http://www.wikidata.org/entity/Q1356060,DISTRICT,state:9,no,True
+district:153,Jhansi,153,http://www.wikidata.org/entity/Q1937885,DISTRICT,state:9,no,True
+district:154,Amroha,154,http://www.wikidata.org/entity/Q1891677,DISTRICT,state:9,no,True
+district:155,Kannauj,155,http://www.wikidata.org/entity/Q627979,DISTRICT,state:9,no,True
+district:156,Kanpur Dehat,156,http://www.wikidata.org/entity/Q610612,DISTRICT,state:9,no,True
+district:157,Kanpur Nagar,157,http://www.wikidata.org/entity/Q2089152,DISTRICT,state:9,no,True
+district:158,Kaushambi,158,http://www.wikidata.org/entity/Q1946937,DISTRICT,state:9,no,True
+district:159,Lakhimpur Kheri,159,http://www.wikidata.org/entity/Q1755447,DISTRICT,state:9,no,True
+district:160,Kushinagar,160,http://www.wikidata.org/entity/Q1840355,DISTRICT,state:9,no,True
+district:161,Lalitpur,161,http://www.wikidata.org/entity/Q1947336,DISTRICT,state:9,no,True
+district:162,Lucknow,162,http://www.wikidata.org/entity/Q1773416,DISTRICT,state:9,no,True
+district:163,Hathras,163,http://www.wikidata.org/entity/Q1814892,DISTRICT,state:9,no,True
+district:164,Maharajganj,164,http://www.wikidata.org/entity/Q1356139,DISTRICT,state:9,no,True
+district:165,Mahoba,165,http://www.wikidata.org/entity/Q1815322,DISTRICT,state:9,no,True
+district:166,Mainpuri,166,http://www.wikidata.org/entity/Q1816657,DISTRICT,state:9,no,True
+district:167,Mathura,167,http://www.wikidata.org/entity/Q1773422,DISTRICT,state:9,no,True
+district:168,Mau,168,http://www.wikidata.org/entity/Q1518847,DISTRICT,state:9,no,True
+district:169,Meerut,169,http://www.wikidata.org/entity/Q1764627,DISTRICT,state:9,no,True
+district:170,Mirzapur,170,http://www.wikidata.org/entity/Q1143894,DISTRICT,state:9,no,True
+district:171,Moradabad,171,http://www.wikidata.org/entity/Q1345006,DISTRICT,state:9,no,True
+district:172,Muzaffarnagar,172,http://www.wikidata.org/entity/Q2365710,DISTRICT,state:9,no,True
+district:173,Pilibhit,173,http://www.wikidata.org/entity/Q2980705,DISTRICT,state:9,no,True
+district:174,Pratapgarh,174,http://www.wikidata.org/entity/Q1473962,DISTRICT,state:9,no,True
+district:175,Raebareli,175,http://www.wikidata.org/entity/Q1321157,DISTRICT,state:9,no,True
+district:176,Rampur,176,http://www.wikidata.org/entity/Q1815331,DISTRICT,state:9,no,True
+district:177,Saharanpur,177,http://www.wikidata.org/entity/Q1797326,DISTRICT,state:9,no,True
+district:178,Sant Kabir Nagar,178,http://www.wikidata.org/entity/Q1945445,DISTRICT,state:9,no,True
+district:179,Bhadohi,179,http://www.wikidata.org/entity/Q127533,DISTRICT,state:9,no,True
+district:180,Shahjahanpur,180,http://www.wikidata.org/entity/Q1812557,DISTRICT,state:9,no,True
+district:181,Shravasti,181,http://www.wikidata.org/entity/Q1945458,DISTRICT,state:9,no,True
+district:182,Siddharthnagar,182,http://www.wikidata.org/entity/Q1815339,DISTRICT,state:9,no,True
+district:183,Sitapur,183,http://www.wikidata.org/entity/Q1812539,DISTRICT,state:9,no,True
+district:184,Sonbhadra,184,http://www.wikidata.org/entity/Q607798,DISTRICT,state:9,no,True
+district:185,Sultanpur,185,http://www.wikidata.org/entity/Q1356154,DISTRICT,state:9,no,True
+district:186,Unnao,186,http://www.wikidata.org/entity/Q1937875,DISTRICT,state:9,no,True
+district:187,Varanasi,187,http://www.wikidata.org/entity/Q1321140,DISTRICT,state:9,no,True
+district:633,Kasganj,633,http://www.wikidata.org/entity/Q890800,DISTRICT,state:9,no,True
+district:640,Amethi,640,http://www.wikidata.org/entity/Q1071494,DISTRICT,state:9,no,True
+district:659,Sambhal,659,http://www.wikidata.org/entity/Q3000436,DISTRICT,state:9,no,True
+district:660,Shamli,660,http://www.wikidata.org/entity/Q2999938,DISTRICT,state:9,no,True
+district:661,Hapur,661,http://www.wikidata.org/entity/Q5653340,DISTRICT,state:9,no,True
