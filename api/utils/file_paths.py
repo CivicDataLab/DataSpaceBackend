@@ -87,3 +87,15 @@ def _publication_block_directory_path(block: Any, filename: str) -> str:
     publication_id = block.publication_id
     unique_name = f"{uuid.uuid4().hex}_{filename}"
     return f"files/public/publications/{publication_id}/{unique_name}"
+
+
+def _external_contributor_directory_path(external_contributor: Any, filename: str) -> str:
+    """
+    Create a path for an external contributor's profile image.
+
+    The id isn't set yet when a contributor is created, and the original
+    filename is guessable, so use a random name. That way a hidden
+    (unapproved) contributor's image can't be found by URL.
+    """
+    _, extension = os.path.splitext(filename)
+    return f"files/public/external_contributors/{uuid.uuid4().hex}{extension.lower()}"
