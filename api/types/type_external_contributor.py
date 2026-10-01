@@ -10,8 +10,9 @@ from api.types.base_type import BaseType
 
 @strawberry_django.filter(ExternalContributor)
 class ExternalContributorFilter:
+    # No `name`/`email` filters: filtering on hidden fields would reveal
+    # them for unapproved contributors even though the result is masked.
     id: auto
-    name: auto
 
 
 @strawberry_django.order(ExternalContributor)

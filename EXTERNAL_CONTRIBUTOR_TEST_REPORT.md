@@ -37,11 +37,22 @@ Result: **17/17 checks passed.**
 | 16 | The contributor's email string never appears in the list response | PASS |
 | 17 | Delete succeeds (test data cleaned up) | PASS |
 
-## Known gaps (not covered by masking)
+## Enumeration and access hardening (second run: 12/12 passed)
 
-- `ExternalContributorFilter` still exposes `name`, so `externalContributors(filters: {name: {exact: "..."}})` confirms whether an unapproved person is a contributor.
-- `searchExternalContributors` matches on name **and email**, so it also confirms whether an email or name belongs to a contributor, even though the result is masked.
-- None of the external contributor queries/mutations check authentication.
+Executed in-process in the container with a local user; the transaction was rolled back.
+
+| Check | Result |
+|---|---|
+| Anonymous `create` / `list` / `get` / `search` / `delete` all return `User is not authenticated` | PASS (5) |
+| Authenticated create works and sets `hasApproved = true` | PASS |
+| Search finds an approved contributor by name | PASS |
+| Search never matches on email | PASS |
+| Search never returns unapproved contributors | PASS |
+| `filters: {name: ...}` is rejected (filter only accepts `id`) | PASS |
+| Masking still applies for authenticated callers | PASS |
+| Authenticated delete works | PASS |
+
+Contributors nested under a collaborative (`publishedCollaboratives { externalContributors { ... } }`) remain readable without login, with masking applied.
 
 ## Bugs found and fixed during testing
 
