@@ -11,6 +11,7 @@ from strawberry.types import Info
 from api.models import Dataset, DatasetMetadata, PromptDataset, Resource, Tag
 from api.types.base_type import BaseType
 from api.types.type_dataset_metadata import TypeDatasetMetadata
+from api.types.type_dataset_source import TypeDatasetSource
 from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
 from api.types.type_resource import TypeResource
@@ -64,6 +65,12 @@ class TypeDataset(BaseType):
     tags: List["TypeTag"]
     download_count: int
     user: Optional["TypeUser"]
+
+    @strawberry.field
+    def source(self) -> Optional["TypeDatasetSource"]:
+        """Provenance for datasets imported from a third-party platform (else null)."""
+        source = getattr(self, "source", None)
+        return TypeDatasetSource.from_django(source) if source is not None else None
 
     @strawberry.field
     def sectors(self, info: Info) -> List["TypeSector"]:

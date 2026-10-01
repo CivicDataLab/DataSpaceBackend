@@ -81,6 +81,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
     tags = serializers.ListField()
     sectors = serializers.ListField()
     formats = serializers.ListField()
+    source_platform = serializers.CharField(required=False, allow_null=True)
     catalogs = serializers.ListField()
     geographies = serializers.ListField()
     has_charts = serializers.BooleanField()
@@ -118,6 +119,7 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
             "tags",
             "sectors",
             "formats",
+            "source_platform",
             "catalogs",
             "geographies",
             "has_charts",
@@ -175,6 +177,7 @@ class SearchDataset(PaginatedElasticSearchAPIView):
             "catalogs.raw": "terms",
             "geographies.raw": "terms",
             "dataset_type": "terms",
+            "source_platform": "terms",
         }
         for metadata in enabled_metadata:  # type: Metadata
             if metadata.filterable:
@@ -273,6 +276,13 @@ class SearchDataset(PaginatedElasticSearchAPIView):
             elif filter == "dataset_type":
                 # Filter by dataset type (DATA or PROMPT)
                 search = search.filter("term", dataset_type=filters[filter])
+            elif filter == "source_platform":
+                # Filter by import platform (HUGGINGFACE, GITHUB, KAGGLE); "NATIVE"
+                # selects datasets that were not imported at all.
+                if filters[filter] == "NATIVE":
+                    search = search.exclude("exists", field="source_platform")
+                else:
+                    search = search.filter("terms", source_platform=filters[filter].split(","))
             elif filter == "task_type":
                 # Filter by prompt task type (nested in prompt_metadata)
                 search = search.filter(
