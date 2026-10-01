@@ -60,11 +60,24 @@ Run on 2026-10-01 against the local server (`http://localhost:8000/api/graphql`,
 | 13 | Search by email returns nothing | PASS |
 | 14 | Cleanup (collaborative and contributor deleted) | PASS |
 
+## Raw API walkthrough (curl, logged in)
+
+Ran the full flow as raw `curl` requests and inspected every response: create collaborative → create contributor with an image (multipart upload) → set collaborative designation and attach contributor → read → unapprove → read → search by name / email → re-approve → delete. All responses matched the expected behaviour above, and the contributor's email did not appear anywhere in the response for the unapproved read.
+
+## Image handling (verified with multipart uploads)
+
+| Check | Result |
+|---|---|
+| Upload on create stores the file under a random name (`external_contributors/<uuid>.png`) and it is served (200) | PASS |
+| Replacing the image deletes the old file (old URL → 404, new → 200) | PASS |
+| Deleting the contributor deletes the image (URL → 404, no files left on disk) | PASS |
+| Unapproved contributor: `image` is `null` in the API | PASS |
+
 ## Not covered / known limitations
 
 - Platform users' emails (`user { email }`, `contributors { email }`) are still returned to anonymous callers; left unchanged by decision.
 - Any caller can set `hasApproved`; no permission check by decision.
-- Image upload was not exercised (no file sent); the `image` field was only checked as `null`.
+- An unapproved contributor's image file is still publicly served if someone already has its URL; the random name only stops it being guessed.
 
 ## Bugs found and fixed while testing
 
@@ -72,3 +85,5 @@ Run on 2026-10-01 against the local server (`http://localhost:8000/api/graphql`,
 - `image` was typed `str` but returned a file object; it now uses `DjangoImageType` like other models.
 - `createdAt`/`updatedAt` had been turned into strings; they are DateTime again.
 - `external_contributor_schema` was not registered in `api/schema/schema.py`.
+- Images were saved under `external_contributors/None/…` (the id isn't set at create time), using the original, guessable filename; they now get a random name.
+- Replacing or deleting a contributor left the old image file on disk; it is now removed.

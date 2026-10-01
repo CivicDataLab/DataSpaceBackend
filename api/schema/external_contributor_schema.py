@@ -158,6 +158,8 @@ class Mutation:
                 external_contributor.bio = input.bio
 
             if input.image is not None:
+                if external_contributor.image:
+                    external_contributor.image.delete(save=False)
                 external_contributor.image = input.image
 
             if input.has_approved is not None:
@@ -174,6 +176,8 @@ class Mutation:
         """Delete an external contributor."""
         try:
             external_contributor = ExternalContributor.objects.get(id=external_contributor_id)
+            if external_contributor.image:
+                external_contributor.image.delete(save=False)
             external_contributor.delete()
             return True
         except ExternalContributor.DoesNotExist:
