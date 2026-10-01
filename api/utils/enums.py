@@ -324,3 +324,11 @@ class EndpointAuthType(models.TextChoices):
     OAUTH2 = "OAUTH2"
     CUSTOM = "CUSTOM"
     NONE = "NONE"
+
+
+class ImportPlatform(models.TextChoices):
+    """Third-party platforms a dataset can be imported (link-only) from."""
+
+    KAGGLE = "KAGGLE"
+    HUGGINGFACE = "HUGGINGFACE"
+    GITHUB = "GITHUB"
