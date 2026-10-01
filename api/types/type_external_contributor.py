@@ -39,6 +39,13 @@ class TypeExternalContributor(BaseType):
         return "Anonymous"
 
     @field
+    def email(self) -> Optional[str]:
+        """Return email if approved, otherwise None."""
+        if self.has_approved:  # type: ignore
+            return self.email  # type: ignore
+        return None
+
+    @field
     def image(self) -> Optional[strawberry_django.DjangoImageType]:
         """Return image if approved, otherwise None."""
         if self.has_approved and self.image:  # type: ignore

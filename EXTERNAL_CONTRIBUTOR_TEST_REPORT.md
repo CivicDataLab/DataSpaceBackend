@@ -1,7 +1,7 @@
 # External Contributor Privacy — Test Report
 
 Run against the live local server (`http://localhost:8000/api/graphql`, hot-reload compose overlay) on 2026-10-01.
-Result: **17/17 checks passed.**
+Result: **18/18 checks passed** (plus 13/13 for the logged-in collaborative flow below).
 
 ## Behaviour under test
 
@@ -9,9 +9,8 @@ Result: **17/17 checks passed.**
 |---|---|---|
 | `id`, `hasApproved` | returned | returned |
 | `name` | real name | `"Anonymous"` |
-| `designation`, `bio`, `image` | returned | `null` |
+| `email`, `designation`, `bio`, `image` | returned | `null` |
 | `createdAt`, `updatedAt` | returned | returned |
-| `email` | not in schema | not in schema |
 
 `createExternalContributor` always sets `hasApproved: true`; `updateExternalContributor` can toggle it.
 
@@ -25,17 +24,37 @@ Result: **17/17 checks passed.**
 | 4 | Approved: designation returned | PASS |
 | 5 | Approved: bio returned | PASS |
 | 6 | Approved: dates returned | PASS |
-| 7 | Querying `email` is a schema error | PASS |
+| 7 | Approved: email returned | PASS |
 | 8 | Update to `hasApproved: false` succeeds | PASS |
 | 9 | Unapproved: name is `Anonymous` | PASS |
 | 10 | Unapproved: designation null | PASS |
-| 11 | Unapproved: bio null | PASS |
+| 11 | Unapproved: email and bio null | PASS |
 | 12 | Unapproved: image null | PASS |
 | 13 | Unapproved: `hasApproved = false` | PASS |
 | 14 | Unapproved: dates still returned | PASS |
 | 15 | `externalContributors` list applies the same masking | PASS |
-| 16 | The contributor's email string never appears in the list response | PASS |
+| 16 | An unapproved contributor's email never appears in the list response | PASS |
 | 17 | Delete succeeds (test data cleaned up) | PASS |
+
+## Logged-in collaborative flow (13/13 passed)
+
+Run over HTTP with a real Keycloak token for a platform user.
+
+| Check | Result |
+|---|---|
+| Create contributor (approved) | PASS |
+| `updateCollaborative` sets `designation` and attaches the contributor via `externalContributorIds` | PASS |
+| `collaborative { designation externalContributors { ... } }` returns no errors | PASS |
+| Collaborative designation saved | PASS |
+| Approved contributor shown in full under the collaborative | PASS |
+| After unapproving: shown as `Anonymous`, personal fields null | PASS |
+| After unapproving: dates still returned | PASS |
+| After unapproving: email absent from the response | PASS |
+| (Run before email was exposed) email not queryable | PASS |
+| Re-approving restores the data | PASS |
+| Search by name finds the contributor | PASS |
+| Search by email returns nothing | PASS |
+| Cleanup (collaborative and contributor deleted) | PASS |
 
 ## Search and filter
 
