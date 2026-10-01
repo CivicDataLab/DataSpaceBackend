@@ -30,6 +30,9 @@ def register_models() -> None:
     Resource = apps.get_model("api", "Resource")
     registry.register(Resource)
 
+    Publication = apps.get_model("api", "Publication")
+    registry.register(Publication)
+
     # Register UseCaseOrganizationRelationship model
     UseCaseOrganizationRelationship = apps.get_model(
         "api", "UseCaseOrganizationRelationship"

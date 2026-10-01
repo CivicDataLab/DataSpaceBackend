@@ -27,14 +27,16 @@ from api.services.publication_blocks import (
     remove_block,
     reorder_blocks,
     replace_block_file,
+    update_block_details,
 )
 from api.services.publication_service import (
     apply_publication_update,
+    assert_ready_to_publish,
     create_publication,
     get_scoped_publications,
     resolve_pagination,
     set_publication_status,
-    validate_publication_metadata,
+    validate_draft_inputs,
 )
 from api.types.type_publication import (
     PublicationFilter,
@@ -57,24 +59,8 @@ from authorization.permissions import (
 
 @strawberry.input
 class CreatePublicationInput:
-    """Metadata for a new resource. All fields validated at the boundary."""
+    """Metadata for a new draft. Every field is optional."""
 
-    title: str
-    description: str
-    authors: List[str]
-    publication_date: datetime.date
-    license: publication_license
-    resource_type_id: uuid.UUID
-    sector_ids: List[uuid.UUID]
-    geography_ids: List[int]
-    external_source_link: Optional[str] = None
-
-
-@strawberry.input
-class UpdatePublicationInput:
-    """Partial edit to a resource — only the fields provided are touched."""
-
-    id: uuid.UUID
     title: Optional[str] = None
     description: Optional[str] = None
     authors: Optional[List[str]] = None
@@ -84,7 +70,28 @@ class UpdatePublicationInput:
     sector_ids: Optional[List[uuid.UUID]] = None
     geography_ids: Optional[List[int]] = None
     external_source_link: Optional[str] = None
-    external_contributor_ids: Optional[List[int]] = None
+
+
+@strawberry.input
+class UpdatePublicationInput:
+    """Partial edit to a resource — only the fields provided are touched.
+
+    ``UNSET`` (the default) means the client omitted the field. An explicit
+    null clears a nullable column. Completeness is not required while the row
+    is still a draft.
+    """
+
+    id: uuid.UUID
+    title: Optional[str] = strawberry.UNSET
+    description: Optional[str] = strawberry.UNSET
+    authors: Optional[List[str]] = strawberry.UNSET
+    publication_date: Optional[datetime.date] = strawberry.UNSET
+    license: Optional[publication_license] = strawberry.UNSET
+    resource_type_id: Optional[uuid.UUID] = strawberry.UNSET
+    sector_ids: Optional[List[uuid.UUID]] = strawberry.UNSET
+    geography_ids: Optional[List[int]] = strawberry.UNSET
+    external_source_link: Optional[str] = strawberry.UNSET
+    external_contributor_ids: Optional[List[int]] = strawberry.UNSET
 
 
 @strawberry.type(name="Query")
@@ -159,32 +166,28 @@ class Mutation:
     def create_publication(
         self, info: Info, input: CreatePublicationInput
     ) -> MutationResponse[TypePublication]:
-        """Create a DRAFT resource owned by the caller's org or the user."""
+        """Create a draft owned by the caller's organization or the user.
+
+        A blank title is filled in. Sent fields are shape-checked. Required
+        fields are enforced by ``publish_publication``.
+        """
         user = info.context.user
         organization = info.context.context.get("organization")
 
-        # Reject missing/invalid metadata before any row is written.
-        resource_type = validate_publication_metadata(
-            title=input.title,
+        resource_type = validate_draft_inputs(
+            license_value=input.license.value if input.license else None,
+            resource_type_id=input.resource_type_id,
+            external_source_link=input.external_source_link,
+        )
+
+        publication = create_publication(
+            user=user,
+            organization=organization,
+            title=input.title or "",
             description=input.description,
             authors=input.authors,
             publication_date=input.publication_date,
             license_value=input.license.value if input.license else None,
-            resource_type_id=input.resource_type_id,
-            sector_ids=input.sector_ids,
-            geography_ids=input.geography_ids,
-            external_source_link=input.external_source_link,
-        )
-
-        # Create the draft and wire its sector/geography tags.
-        publication = create_publication(
-            user=user,
-            organization=organization,
-            title=input.title,
-            description=input.description,
-            authors=input.authors,
-            publication_date=input.publication_date,
-            license_value=input.license.value,
             resource_type=resource_type,
             sector_ids=input.sector_ids,
             geography_ids=input.geography_ids,
@@ -209,20 +212,8 @@ class Mutation:
         # Load the target, or surface a clean not-found.
         publication = _get_publication_or_raise(input.id)
 
-        # Update only the provided fields, validating each.
-        publication = apply_publication_update(
-            publication,
-            title=input.title,
-            description=input.description,
-            authors=input.authors,
-            publication_date=input.publication_date,
-            license_value=input.license.value if input.license else None,
-            resource_type_id=input.resource_type_id,
-            sector_ids=input.sector_ids,
-            geography_ids=input.geography_ids,
-            external_source_link=input.external_source_link,
-            external_contributor_ids=input.external_contributor_ids,
-        )
+        # Update only the provided fields. Omitted inputs stay UNSET and are skipped.
+        publication = apply_publication_update(publication, **_update_kwargs(input))
         return MutationResponse.success_response(TypePublication.from_django(publication))
 
     @strawberry.mutation
@@ -238,8 +229,14 @@ class Mutation:
     def publish_publication(
         self, info: Info, publication_id: uuid.UUID
     ) -> MutationResponse[TypePublication]:
-        """Flip a resource to PUBLISHED (self-serve, no moderation)."""
+        """Flip a resource to PUBLISHED (self-serve, no moderation).
+
+        The required-field check lives here, not on create: title, description,
+        an author, a date, a license, an active resource type, one sector, and
+        one geography.
+        """
         publication = _get_publication_or_raise(publication_id)
+        assert_ready_to_publish(publication)
 
         # Mark it published — the index signal picks up the visibility change.
         publication = set_publication_status(publication, PublicationStatus.PUBLISHED)
@@ -293,13 +290,18 @@ class Mutation:
         trace_attributes={"component": "publication"},
     )
     def add_publication_file_block(
-        self, info: Info, publication_id: uuid.UUID, file: Upload
+        self,
+        info: Info,
+        publication_id: uuid.UUID,
+        file: Upload,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> MutationResponse[TypePublicationBlock]:
         """Append an uploaded file as the next content block (validated server-side)."""
         publication = _get_publication_or_raise(publication_id)
 
         # Validate + store the file as the last block.
-        block = add_file_block(publication, file)
+        block = add_file_block(publication, file, title=title, description=description)
         return MutationResponse.success_response(TypePublicationBlock.from_django(block))
 
     @strawberry.mutation
@@ -309,13 +311,20 @@ class Mutation:
         trace_attributes={"component": "publication"},
     )
     def add_publication_youtube_block(
-        self, info: Info, publication_id: uuid.UUID, youtube_url: str
+        self,
+        info: Info,
+        publication_id: uuid.UUID,
+        youtube_url: str,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> MutationResponse[TypePublicationBlock]:
         """Append a YouTube link as the next content block (validated server-side)."""
         publication = _get_publication_or_raise(publication_id)
 
         # Validate the url + extract its video id, then store the block.
-        block = add_youtube_block(publication, youtube_url)
+        block = add_youtube_block(
+            publication, youtube_url, title=title, description=description
+        )
         return MutationResponse.success_response(TypePublicationBlock.from_django(block))
 
     @strawberry.mutation
@@ -332,6 +341,24 @@ class Mutation:
 
         # Replace in place — same block id, old file removed.
         block = replace_block_file(block, file)
+        return MutationResponse.success_response(TypePublicationBlock.from_django(block))
+
+    @strawberry.mutation
+    @BaseMutation.mutation(
+        permission_classes=[ChangePublicationPermission],
+        trace_name="update_publication_block",
+        trace_attributes={"component": "publication"},
+    )
+    def update_publication_block(
+        self,
+        info: Info,
+        block_id: uuid.UUID,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> MutationResponse[TypePublicationBlock]:
+        """Set a block's display title and optional description."""
+        block = _get_block_or_raise(block_id)
+        block = update_block_details(block, title=title, description=description)
         return MutationResponse.success_response(TypePublicationBlock.from_django(block))
 
     @strawberry.mutation
@@ -364,6 +391,36 @@ class Mutation:
         reorder_blocks(publication, block_ids)
         publication.refresh_from_db()
         return MutationResponse.success_response(TypePublication.from_django(publication))
+
+
+def _update_kwargs(input: UpdatePublicationInput) -> dict:
+    """Translate an update input into service kwargs, dropping omitted fields.
+
+    Strawberry's ``UNSET`` is not the service's own sentinel, so omitted fields
+    are left out of the dict and the service keeps its defaults.
+    """
+    kwargs: dict = {}
+    if input.title is not strawberry.UNSET:
+        kwargs["title"] = input.title
+    if input.description is not strawberry.UNSET:
+        kwargs["description"] = input.description
+    if input.authors is not strawberry.UNSET:
+        kwargs["authors"] = input.authors
+    if input.publication_date is not strawberry.UNSET:
+        kwargs["publication_date"] = input.publication_date
+    if input.license is not strawberry.UNSET:
+        kwargs["license_value"] = input.license.value if input.license else None
+    if input.resource_type_id is not strawberry.UNSET:
+        kwargs["resource_type_id"] = input.resource_type_id
+    if input.sector_ids is not strawberry.UNSET:
+        kwargs["sector_ids"] = input.sector_ids
+    if input.geography_ids is not strawberry.UNSET:
+        kwargs["geography_ids"] = input.geography_ids
+    if input.external_source_link is not strawberry.UNSET:
+        kwargs["external_source_link"] = input.external_source_link
+    if input.external_contributor_ids is not strawberry.UNSET:
+        kwargs["external_contributor_ids"] = input.external_contributor_ids
+    return kwargs
 
 
 def _get_publication_or_raise(publication_id: uuid.UUID) -> Publication:

@@ -7,6 +7,7 @@ from typing import Any, List, Optional, Union
 import strawberry
 import strawberry_django
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Count, QuerySet
 from strawberry.permission import BasePermission
 from strawberry.types import Info
 from strawberry_django.pagination import OffsetPaginationInput
@@ -31,7 +32,13 @@ from api.schema.base_mutation import (
     MutationResponse,
 )
 from api.schema.extensions import TrackActivity, TrackModelActivity
-from api.types.type_dataset import DatasetFilter, DatasetOrder, TypeDataset
+from api.types.type_dataset import (
+    DatasetFilter,
+    DatasetOrder,
+    DatasetResponse,
+    DatasetStatusCount,
+    TypeDataset,
+)
 from api.types.type_organization import TypeOrganization
 from api.types.type_prompt_metadata import TypePromptDataset, prompt_task_type_enum
 from api.types.type_resource import TypeResource
@@ -48,6 +55,12 @@ from api.utils.enums import (
     UseCaseStatus,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.qs_utils import (
+    FilterSpec,
+    SortSpec,
+    apply_filters,
+    get_pagination_window,
+)
 from authorization.models import DatasetPermission, OrganizationMembership, Role, User
 from authorization.permissions import (
     DatasetPermissionGraphQL,
@@ -386,6 +399,54 @@ def _add_update_dataset_geographies(dataset: Dataset, geography_ids: List[int]) 
     dataset.save()
 
 
+# Fields a table client may filter or sort on. Explicit allowlists are what
+# stop arbitrary columns (and relations) from becoming queryable.
+DATASETS_TABLE_FILTER_FIELDS = [
+    "id",
+    "title",
+    "status",
+    "dataset_type",
+    "access_type",
+    "license",
+    "organization",
+    "organization__slug",
+    "sectors__id",
+    "sectors__slug",
+    "sectors__name",
+    "geographies__id",
+    "geographies__name",
+    "geographies__code",
+    "tags__value",
+    "created",
+    "modified",
+]
+DATASETS_TABLE_SORT_FIELDS = [
+    "title",
+    "created",
+    "modified",
+    "status",
+    "dataset_type",
+    "access_type",
+]
+
+
+def _visible_datasets(info: Info, include_public: Optional[bool] = False) -> QuerySet:
+    """The datasets a caller may list. Same rules as `datasets`."""
+    organization = info.context.context.get("organization")
+    user = info.context.user
+    if organization:
+        queryset = Dataset.objects.filter(organization=organization)
+    elif not user.is_authenticated:
+        queryset = Dataset.objects.none()
+    elif user.is_superuser:
+        queryset = Dataset.objects.all()
+    else:
+        queryset = Dataset.objects.filter(user=user, organization=None)
+    if include_public:
+        queryset = queryset | Dataset.objects.filter(status=DatasetStatus.PUBLISHED)
+    return queryset.distinct()
+
+
 @strawberry.type
 class Query:
     @strawberry.field
@@ -445,6 +506,54 @@ class Query:
             queryset = strawberry_django.pagination.apply(pagination, queryset)
 
         return TypeDataset.from_django_list(queryset)
+
+    @strawberry.field
+    @trace_resolver(name="datasets_table", attributes={"component": "dataset"})
+    def datasets_table(
+        self,
+        info: Info,
+        filters: Optional[List[FilterSpec]] = None,
+        sort_options: Optional[List[SortSpec]] = None,
+        limit: int = 50,
+        offset: int = 0,
+        include_public: Optional[bool] = False,
+    ) -> DatasetResponse:
+        """Datasets for a table UI: client-driven filters, sortable columns and
+        page controls backed by a real total count.
+
+        Additive next to `datasets`, with the same visibility rules: the current
+        organisation's datasets in an organisation context, otherwise the
+        caller's own datasets (everything for a superuser), plus published
+        datasets when `include_public` is set. Filters are `{field, condition,
+        value}` and sorts are `{field, direction}`, limited to the allowlists
+        below; anything else is a GraphQL error naming the allowed fields.
+        """
+        visible = _visible_datasets(info, include_public)
+        queryset = visible.annotate(_resource_count=Count("resources", distinct=True))
+        window = get_pagination_window(
+            queryset,
+            limit=limit,
+            offset=offset,
+            filters=filters,
+            filtering_allowed_fields=DATASETS_TABLE_FILTER_FIELDS,
+            sort_options=sort_options or [SortSpec(field="created", direction="desc")],
+            sorting_allowed_fields=DATASETS_TABLE_SORT_FIELDS,
+        )
+        # Tab labels: counts per status under every filter except status itself.
+        without_status = [f for f in (filters or []) if f.field.strip() != "status"]
+        status_rows = (
+            apply_filters(visible, without_status, DATASETS_TABLE_FILTER_FIELDS)
+            .order_by()
+            .values("status")
+            .annotate(n=Count("id", distinct=True))
+        )
+        return DatasetResponse(
+            data=TypeDataset.from_django_list(window["data"]),
+            total_items_count=window["total_items_count"],
+            status_counts=[
+                DatasetStatusCount(status=row["status"], count=row["n"]) for row in status_rows
+            ],
+        )
 
     @strawberry.field(
         permission_classes=[AllowPublishedDatasets],  # type: ignore[list-item]

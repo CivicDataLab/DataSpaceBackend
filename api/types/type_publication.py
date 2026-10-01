@@ -88,11 +88,14 @@ class TypePublicationBlock(BaseType):
     id: uuid.UUID
     position: int
     block_type: publication_block_type
+    title: str
+    description: Optional[str]
     file_name: str
     file_format: str
     file_size: Optional[int]
     youtube_url: Optional[str]
     youtube_video_id: str
+    created: datetime
 
 
 @strawberry_django.filter(Publication)

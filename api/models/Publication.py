@@ -82,7 +82,7 @@ class Publication(models.Model):
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
-            base_slug = slugify(self.title)
+            base_slug = slugify(self.title) or "untitled"
             slug = base_slug
             counter = 1
             while Publication.objects.filter(slug=slug).exclude(pk=self.pk).exists():
@@ -133,7 +133,8 @@ class PublicationBlock(models.Model):
     exactly one of two shapes, enforced by the ``file_xor_youtube`` check
     constraint: a FILE block carries an uploaded file (with its name/format/size),
     a YOUTUBE block carries a video url and its extracted id. Neither-both nor
-    neither-set is a valid row.
+    neither-set is a valid row. ``title`` is the display name and
+    ``description`` is optional. ``file_name`` is the original upload name.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -147,6 +148,9 @@ class PublicationBlock(models.Model):
         max_length=20,
         choices=PublicationBlockType.choices,
     )
+
+    title = models.CharField(max_length=300, blank=True)
+    description = models.TextField(blank=True, null=True)
 
     # FILE block fields.
     file = models.FileField(

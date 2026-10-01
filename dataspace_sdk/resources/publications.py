@@ -58,7 +58,7 @@ class PublicationClient(BaseAPIClient):
                 id title description slug status authors publicationDate
                 license externalSourceLink downloadCount
                 resourceType { id name }
-                blocks { id position blockType fileName youtubeUrl }
+                blocks { id position blockType title description fileName youtubeUrl created }
             }
         }
         """

@@ -220,7 +220,7 @@ class TestCreate:
         assert payload["data"]["isIndividualPublication"] is True
         assert payload["data"]["user"]["id"] == str(individual.id)
 
-    def test_missing_title_is_rejected_without_creating(
+    def test_empty_title_still_creates_a_draft(
         self, individual, resource_type, sector, geography
     ):
         result = run(
@@ -228,8 +228,31 @@ class TestCreate:
         )
 
         payload = result.data["createPublication"]
-        assert payload["success"] is False
-        assert Publication.objects.count() == 0
+        assert payload["success"] is True
+        assert payload["data"]["status"] == "DRAFT"
+        publication = Publication.objects.get(id=payload["data"]["id"])
+        assert publication.title.startswith("New publication ")
+
+    def test_title_only_creates_a_draft(self, individual):
+        result = run(CREATE, ctx(individual), {"input": {"title": "Just a title"}})
+
+        payload = result.data["createPublication"]
+        assert payload["success"] is True
+        assert payload["data"]["status"] == "DRAFT"
+        publication = Publication.objects.get(id=payload["data"]["id"])
+        assert publication.title == "Just a title"
+        assert publication.description in (None, "")
+        assert publication.authors == []
+        assert publication.resource_type_id is None
+
+    def test_empty_input_creates_a_draft(self, individual):
+        result = run(CREATE, ctx(individual), {"input": {}})
+
+        payload = result.data["createPublication"]
+        assert payload["success"] is True
+        publication = Publication.objects.get(id=payload["data"]["id"])
+        assert publication.title.startswith("New publication ")
+        assert publication.slug.startswith("new-publication-")
 
     def test_inactive_resource_type_is_rejected(self, individual, inactive_type, sector, geography):
         result = run(CREATE, ctx(individual), valid_create_vars(inactive_type, sector, geography))
@@ -307,8 +330,10 @@ class TestUpdateAndRoles:
 # --------------------------------------------------------------------------- #
 @pytest.mark.django_db
 class TestPublish:
-    def test_admin_publishes(self, org_a_admin, org_a, resource_type):
+    def test_admin_publishes(self, org_a_admin, org_a, resource_type, sector, geography):
         publication = _make_publication(org_a_admin, org_a, resource_type)
+        publication.sectors.add(sector)
+        publication.geographies.add(geography)
 
         result = run(PUBLISH, ctx(org_a_admin, org_a), {"id": str(publication.id)})
 
@@ -335,6 +360,90 @@ class TestPublish:
         assert result.data["unpublishPublication"]["success"] is True
         publication.refresh_from_db()
         assert publication.status == PublicationStatus.DRAFT
+
+    def test_publish_rejects_an_incomplete_draft(self, org_a_admin, org_a, resource_type):
+        publication = _make_publication(org_a_admin, org_a, resource_type)
+
+        result = run(PUBLISH, ctx(org_a_admin, org_a), {"id": str(publication.id)})
+
+        assert result.data["publishPublication"]["success"] is False
+        publication.refresh_from_db()
+        assert publication.status == PublicationStatus.DRAFT
+
+
+def _published(user, org, resource_type, sector, geography):
+    publication = _make_publication(
+        user, org, resource_type, status=PublicationStatus.PUBLISHED
+    )
+    publication.sectors.add(sector)
+    publication.geographies.add(geography)
+    return publication
+
+
+@pytest.mark.django_db
+class TestPublicationTags:
+    def test_unknown_sector_is_rejected_and_the_row_is_unchanged(
+        self, org_a_admin, org_a, resource_type, sector, geography
+    ):
+        publication = _published(org_a_admin, org_a, resource_type, sector, geography)
+
+        result = run(
+            UPDATE,
+            ctx(org_a_admin, org_a),
+            {
+                "input": {
+                    "id": str(publication.id),
+                    "title": "Should not stick",
+                    "sectorIds": ["00000000-0000-0000-0000-000000000000"],
+                }
+            },
+        )
+
+        assert result.data["updatePublication"]["success"] is False
+        fields = [
+            error["field"]
+            for error in result.data["updatePublication"]["errors"]["fieldErrors"]
+        ]
+        assert "sectors" in fields
+        publication.refresh_from_db()
+        assert publication.title == "Existing"
+        assert list(publication.sectors.values_list("id", flat=True)) == [sector.id]
+
+    def test_null_tag_lists_leave_published_tags_in_place(
+        self, org_a_admin, org_a, resource_type, sector, geography
+    ):
+        publication = _published(org_a_admin, org_a, resource_type, sector, geography)
+
+        result = run(
+            UPDATE,
+            ctx(org_a_admin, org_a),
+            {
+                "input": {
+                    "id": str(publication.id),
+                    "title": "Renamed",
+                    "sectorIds": None,
+                    "geographyIds": None,
+                }
+            },
+        )
+
+        assert result.data["updatePublication"]["success"] is True
+        publication.refresh_from_db()
+        assert publication.title == "Renamed"
+        assert list(publication.sectors.values_list("id", flat=True)) == [sector.id]
+        assert list(publication.geographies.values_list("id", flat=True)) == [geography.id]
+
+    def test_create_rejects_an_unknown_geography(
+        self, individual, resource_type, sector, geography
+    ):
+        result = run(
+            CREATE,
+            ctx(individual),
+            valid_create_vars(resource_type, sector, geography, geographyIds=[999999999]),
+        )
+
+        assert result.data["createPublication"]["success"] is False
+        assert Publication.objects.count() == 0
 
 
 # --------------------------------------------------------------------------- #
@@ -432,10 +541,24 @@ class TestReadGating:
 # Content-block mutations (wiring + cross-org gate)
 # --------------------------------------------------------------------------- #
 ADD_YOUTUBE = """
-mutation AddYt($id: UUID!, $url: String!) {
-  addPublicationYoutubeBlock(publicationId: $id, youtubeUrl: $url) {
+mutation AddYt($id: UUID!, $url: String!, $title: String, $description: String) {
+  addPublicationYoutubeBlock(
+    publicationId: $id
+    youtubeUrl: $url
+    title: $title
+    description: $description
+  ) {
     success
-    data { id blockType youtubeVideoId position }
+    data { id blockType youtubeVideoId position title description created }
+  }
+}
+"""
+
+UPDATE_BLOCK = """
+mutation UpdateBlock($blockId: UUID!, $title: String, $description: String) {
+  updatePublicationBlock(blockId: $blockId, title: $title, description: $description) {
+    success
+    data { id title description }
   }
 }
 """
@@ -461,7 +584,33 @@ class TestBlockMutations:
         payload = result.data["addPublicationYoutubeBlock"]
         assert payload["success"] is True
         assert payload["data"]["youtubeVideoId"] == "dQw4w9WgXcQ"
+        assert payload["data"]["title"] == ""
+        assert payload["data"]["created"]
         assert publication.blocks.count() == 1
+
+    def test_block_title_and_description_can_be_set(self, org_a_admin, org_a, resource_type):
+        publication = _make_publication(org_a_admin, org_a, resource_type)
+        created = run(
+            ADD_YOUTUBE,
+            ctx(org_a_admin, org_a),
+            {
+                "id": str(publication.id),
+                "url": "https://youtu.be/dQw4w9WgXcQ",
+                "title": "Launch talk",
+                "description": "Opening remarks",
+            },
+        )
+        block_id = created.data["addPublicationYoutubeBlock"]["data"]["id"]
+
+        renamed = run(
+            UPDATE_BLOCK,
+            ctx(org_a_admin, org_a),
+            {"blockId": block_id, "title": "Renamed talk"},
+        )
+
+        assert renamed.data["updatePublicationBlock"]["success"] is True
+        assert renamed.data["updatePublicationBlock"]["data"]["title"] == "Renamed talk"
+        assert renamed.data["updatePublicationBlock"]["data"]["description"] == "Opening remarks"
 
     def test_invalid_youtube_url_is_rejected(self, org_a_admin, org_a, resource_type):
         publication = _make_publication(org_a_admin, org_a, resource_type)

@@ -62,12 +62,20 @@ class TestAddBlocks:
         assert block.file_format == "pdf"
         assert block.file_size > 0
         assert block.position == 0
+        assert block.title == "report"
+        assert block.created is not None
+
+    def test_a_long_title_is_stored_within_the_column(self, publication):
+        block = add_file_block(publication, _pdf(), title="x" * 400)
+
+        assert len(block.title) == 300
 
     def test_youtube_block_extracts_video_id(self, publication):
         block = add_youtube_block(publication, VIDEO)
 
         assert block.block_type == PublicationBlockType.YOUTUBE
         assert block.youtube_video_id == "dQw4w9WgXcQ"
+        assert block.title == ""
 
     def test_positions_increment_across_mixed_blocks(self, publication):
         add_file_block(publication, _pdf("a.pdf"))
