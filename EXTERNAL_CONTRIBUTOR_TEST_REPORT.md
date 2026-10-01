@@ -37,22 +37,12 @@ Result: **17/17 checks passed.**
 | 16 | The contributor's email string never appears in the list response | PASS |
 | 17 | Delete succeeds (test data cleaned up) | PASS |
 
-## Enumeration and access hardening (second run: 12/12 passed)
+## Search and filter
 
-Executed in-process in the container with a local user; the transaction was rolled back.
+- `searchExternalContributors` matches approved contributors by name only; it never matches on email.
+- `externalContributors` can only be filtered by `id`, so filtering can't reveal a hidden name.
 
-| Check | Result |
-|---|---|
-| Anonymous `create` / `list` / `get` / `search` / `delete` all return `User is not authenticated` | PASS (5) |
-| Authenticated create works and sets `hasApproved = true` | PASS |
-| Search finds an approved contributor by name | PASS |
-| Search never matches on email | PASS |
-| Search never returns unapproved contributors | PASS |
-| `filters: {name: ...}` is rejected (filter only accepts `id`) | PASS |
-| Masking still applies for authenticated callers | PASS |
-| Authenticated delete works | PASS |
-
-Contributors nested under a collaborative (`publishedCollaboratives { externalContributors { ... } }`) remain readable without login, with masking applied.
+No login is required for these endpoints, and who can set `hasApproved` is not restricted.
 
 ## Bugs found and fixed during testing
 

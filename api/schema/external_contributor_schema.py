@@ -9,7 +9,6 @@ from strawberry_django.pagination import OffsetPaginationInput
 from api.models import ExternalContributor
 from api.services.external_contributor_service import is_email_already_user
 from api.types.type_external_contributor import ExternalContributorFilter, ExternalContributorOrder, TypeExternalContributor
-from authorization.graphql_permissions import IsAuthenticated
 
 
 @strawberry.input
@@ -34,7 +33,7 @@ class ExternalContributorInputPartial:
 
 @strawberry.type(name="Query")
 class Query:
-    @strawberry_django.field(permission_classes=[IsAuthenticated])
+    @strawberry_django.field
     def external_contributor(self, info: Info, id: int) -> Optional[TypeExternalContributor]:
         """Get an external contributor by ID."""
         try:
@@ -47,7 +46,6 @@ class Query:
         filters=ExternalContributorFilter,
         pagination=True,
         order=ExternalContributorOrder,
-        permission_classes=[IsAuthenticated],
     )
     def external_contributors(
         self,
@@ -70,7 +68,7 @@ class Query:
 
         return [TypeExternalContributor.from_django(instance) for instance in queryset]
 
-    @strawberry_django.field(pagination=True, permission_classes=[IsAuthenticated])
+    @strawberry_django.field(pagination=True)
     def search_external_contributors(
         self,
         info: Info,
@@ -99,7 +97,7 @@ class Query:
 
 @strawberry.type
 class Mutation:
-    @strawberry_django.mutation(handle_django_errors=True, permission_classes=[IsAuthenticated])
+    @strawberry_django.mutation(handle_django_errors=True)
     def create_external_contributor(self, info: Info, input: ExternalContributorInput) -> TypeExternalContributor:
         """Create a new external contributor."""
         email_lower = input.email.lower().strip()
@@ -128,7 +126,7 @@ class Mutation:
 
         return TypeExternalContributor.from_django(external_contributor)
 
-    @strawberry_django.mutation(handle_django_errors=True, permission_classes=[IsAuthenticated])
+    @strawberry_django.mutation(handle_django_errors=True)
     def update_external_contributor(
         self, info: Info, input: ExternalContributorInputPartial
     ) -> Optional[TypeExternalContributor]:
@@ -173,7 +171,7 @@ class Mutation:
         except ExternalContributor.DoesNotExist:
             raise ValueError(f"External contributor with ID {input.id} does not exist.")
 
-    @strawberry_django.mutation(handle_django_errors=False, permission_classes=[IsAuthenticated])
+    @strawberry_django.mutation(handle_django_errors=False)
     def delete_external_contributor(self, info: Info, external_contributor_id: int) -> bool:
         """Delete an external contributor."""
         try:
