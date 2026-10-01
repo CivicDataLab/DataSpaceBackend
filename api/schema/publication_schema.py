@@ -84,6 +84,7 @@ class UpdatePublicationInput:
     sector_ids: Optional[List[uuid.UUID]] = None
     geography_ids: Optional[List[int]] = None
     external_source_link: Optional[str] = None
+    external_contributor_ids: Optional[List[int]] = None
 
 
 @strawberry.type(name="Query")
@@ -220,6 +221,7 @@ class Mutation:
             sector_ids=input.sector_ids,
             geography_ids=input.geography_ids,
             external_source_link=input.external_source_link,
+            external_contributor_ids=input.external_contributor_ids,
         )
         return MutationResponse.success_response(TypePublication.from_django(publication))
 

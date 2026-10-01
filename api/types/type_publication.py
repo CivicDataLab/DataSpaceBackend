@@ -15,6 +15,7 @@ from api.models import (
     UseCase,
 )
 from api.types.base_type import BaseType
+from api.types.type_external_contributor import TypeExternalContributor
 from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
 from api.types.type_sector import TypeSector
@@ -152,6 +153,24 @@ class TypePublication(BaseType):
         try:
             instance = cast(Publication, self)
             return TypeGeo.from_django_list(instance.geographies.all())
+        except (AttributeError, Publication.DoesNotExist):
+            return []
+
+    @strawberry.field
+    def contributors(self, info: Info) -> List["TypeUser"]:
+        """Contributors (registered users) on this publication."""
+        try:
+            instance = cast(Publication, self)
+            return TypeUser.from_django_list(instance.contributors.all())
+        except (AttributeError, Publication.DoesNotExist):
+            return []
+
+    @strawberry.field
+    def external_contributors(self, info: Info) -> List["TypeExternalContributor"]:
+        """External contributors on this publication."""
+        try:
+            instance = cast(Publication, self)
+            return TypeExternalContributor.from_django_list(instance.external_contributors.all())
         except (AttributeError, Publication.DoesNotExist):
             return []
 

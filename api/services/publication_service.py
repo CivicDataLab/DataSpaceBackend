@@ -16,7 +16,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import URLValidator
 from django.db.models import QuerySet
 
-from api.models import Geography, Publication, ResourceType, Sector
+from api.models import ExternalContributor, Geography, Publication, ResourceType, Sector
 from api.utils.enums import DatasetLicense, PublicationStatus
 
 # Default page size + hard ceiling for a publications listing, enforced even
@@ -144,6 +144,7 @@ def apply_publication_update(
     sector_ids: Optional[List[Any]] = None,
     geography_ids: Optional[List[Any]] = None,
     external_source_link: Optional[str] = None,
+    external_contributor_ids: Optional[List[int]] = None,
 ) -> Publication:
     """Apply a partial metadata update, validating each field that's provided.
 
@@ -198,6 +199,9 @@ def apply_publication_update(
     publication.save()
     if sector_ids is not None or geography_ids is not None:
         _set_publication_tags(publication, sector_ids, geography_ids)
+    if external_contributor_ids is not None:
+        external_contributors = ExternalContributor.objects.filter(id__in=external_contributor_ids)
+        publication.external_contributors.set(external_contributors)
     return publication
 
 
