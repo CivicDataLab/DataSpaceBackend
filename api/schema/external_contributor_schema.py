@@ -167,7 +167,7 @@ class Mutation:
         except ExternalContributor.DoesNotExist:
             raise ValueError(f"External contributor with ID {input.id} does not exist.")
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(handle_django_errors=False)
     def delete_external_contributor(self, info: Info, external_contributor_id: int) -> bool:
         """Delete an external contributor."""
         try:

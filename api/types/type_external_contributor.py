@@ -23,7 +23,7 @@ class ExternalContributorOrder:
 @strawberry_django.type(
     ExternalContributor,
     pagination=True,
-    fields=["id", "has_approved"],
+    fields=["id", "has_approved", "created_at", "updated_at"],
     filters=ExternalContributorFilter,
     order=ExternalContributorOrder,
 )
@@ -38,9 +38,9 @@ class TypeExternalContributor(BaseType):
         return "Anonymous"
 
     @field
-    def image(self) -> Optional[str]:
+    def image(self) -> Optional[strawberry_django.DjangoImageType]:
         """Return image if approved, otherwise None."""
-        if self.has_approved:  # type: ignore
+        if self.has_approved and self.image:  # type: ignore
             return self.image  # type: ignore
         return None
 
@@ -57,13 +57,3 @@ class TypeExternalContributor(BaseType):
         if self.has_approved:  # type: ignore
             return self.bio  # type: ignore
         return None
-
-    @field
-    def created_at(self) -> str:
-        """Always return created_at for all users (approved or not)."""
-        return str(self.created_at)  # type: ignore
-
-    @field
-    def updated_at(self) -> str:
-        """Always return updated_at for all users (approved or not)."""
-        return str(self.updated_at)  # type: ignore
