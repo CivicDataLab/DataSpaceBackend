@@ -51,6 +51,9 @@ class UseCase(models.Model):
     contributors = models.ManyToManyField(
         "authorization.User", blank=True, related_name="contributed_usecases"
     )
+    external_contributors = models.ManyToManyField(
+        "api.ExternalContributor", blank=True, related_name="usecases"
+    )
     # Organizations can be added as supporters or partners through the intermediate model
     organizations = models.ManyToManyField(
         "api.Organization",

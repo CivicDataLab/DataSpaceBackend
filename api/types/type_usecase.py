@@ -16,6 +16,7 @@ from api.models import (
     UseCaseOrganizationRelationship,
 )
 from api.types.base_type import BaseType
+from api.types.type_external_contributor import TypeExternalContributor
 from api.types.type_dataset import TypeDataset, TypeTag
 from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
@@ -180,6 +181,17 @@ class TypeUseCase(BaseType):
             if not queryset.exists():
                 return []
             return TypeUser.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field(description="Get external contributors associated with this use case.")
+    def external_contributors(self) -> Optional[List["TypeExternalContributor"]]:
+        """Get external contributors associated with this use case."""
+        try:
+            queryset = self.external_contributors.all()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeExternalContributor.from_django_list(queryset)
         except Exception:
             return []
 
