@@ -39,7 +39,7 @@ Result: **17/17 checks passed.**
 
 ## Search and filter
 
-- `searchExternalContributors` matches approved contributors by name only; it never matches on email.
+- `searchExternalContributors` matches by name only (unapproved results come back as Anonymous); it never matches on email.
 - `externalContributors` can only be filtered by `id`, so filtering can't reveal a hidden name.
 
 No login is required for these endpoints, and who can set `hasApproved` is not restricted.

@@ -75,19 +75,17 @@ class Query:
         query: str,
         pagination: Optional[OffsetPaginationInput] = strawberry.UNSET,
     ) -> list[TypeExternalContributor]:
-        """Search approved external contributors by name (minimum 3 characters).
+        """Search external contributors by name (minimum 3 characters).
 
-        Unapproved contributors and emails are never matched, so a search can't
-        confirm whether a hidden person or email belongs to a contributor.
+        Emails are never matched, so a search can't confirm whether an email
+        belongs to a contributor.
         """
         query_clean = query.strip()
 
         if len(query_clean) < 3:
             raise ValueError("Search query must be at least 3 characters long.")
 
-        queryset = ExternalContributor.objects.filter(
-            name__icontains=query_clean, has_approved=True
-        )
+        queryset = ExternalContributor.objects.filter(name__icontains=query_clean)
 
         if pagination is not strawberry.UNSET:
             queryset = strawberry_django.pagination.apply(pagination, queryset)
