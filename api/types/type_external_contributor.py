@@ -12,8 +12,6 @@ from api.types.base_type import BaseType
 class ExternalContributorFilter:
     id: auto
     name: auto
-    email: auto
-    organization: auto
 
 
 @strawberry_django.order(ExternalContributor)
@@ -40,18 +38,6 @@ class TypeExternalContributor(BaseType):
         return "Anonymous"
 
     @field
-    def email(self) -> Optional[str]:
-        """Email is never returned for privacy reasons."""
-        return None
-
-    @field
-    def organization(self) -> Optional[str]:
-        """Return organization if approved, otherwise None."""
-        if self.has_approved:  # type: ignore
-            return self.organization  # type: ignore
-        return None
-
-    @field
     def designation(self) -> Optional[str]:
         """Return designation if approved, otherwise None."""
         if self.has_approved:  # type: ignore
@@ -66,15 +52,11 @@ class TypeExternalContributor(BaseType):
         return None
 
     @field
-    def created_at(self) -> Optional[str]:
-        """Return created_at if approved, otherwise None."""
-        if self.has_approved:  # type: ignore
-            return str(self.created_at)  # type: ignore
-        return None
+    def created_at(self) -> str:
+        """Always return created_at for all users (approved or not)."""
+        return str(self.created_at)  # type: ignore
 
     @field
-    def updated_at(self) -> Optional[str]:
-        """Return updated_at if approved, otherwise None."""
-        if self.has_approved:  # type: ignore
-            return str(self.updated_at)  # type: ignore
-        return None
+    def updated_at(self) -> str:
+        """Always return updated_at for all users (approved or not)."""
+        return str(self.updated_at)  # type: ignore

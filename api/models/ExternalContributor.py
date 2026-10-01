@@ -17,7 +17,6 @@ class ExternalContributor(models.Model):
         blank=True,
         null=True,
     )
-    organization = models.CharField(max_length=255, blank=True, null=True)
     designation = models.CharField(max_length=200, blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
     has_approved = models.BooleanField(default=False)

@@ -15,7 +15,6 @@ from api.types.type_external_contributor import ExternalContributorFilter, Exter
 class ExternalContributorInput:
     name: str
     email: str
-    organization: Optional[str] = None
     designation: Optional[str] = None
     bio: Optional[str] = None
     image: Optional[Upload] = None
@@ -26,7 +25,6 @@ class ExternalContributorInputPartial:
     id: int
     name: Optional[str] = None
     email: Optional[str] = None
-    organization: Optional[str] = None
     designation: Optional[str] = None
     bio: Optional[str] = None
     image: Optional[Upload] = None
@@ -112,7 +110,6 @@ class Mutation:
         external_contributor = ExternalContributor(
             name=input.name,
             email=email_lower,
-            organization=input.organization,
             designation=input.designation,
             bio=input.bio,
             has_approved=True,  # Set to True when creating via mutation
@@ -151,9 +148,6 @@ class Mutation:
 
             if input.name is not None:
                 external_contributor.name = input.name
-
-            if input.organization is not None:
-                external_contributor.organization = input.organization
 
             if input.designation is not None:
                 external_contributor.designation = input.designation
