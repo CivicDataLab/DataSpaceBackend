@@ -23,7 +23,7 @@ class ExternalContributorOrder:
 @strawberry_django.type(
     ExternalContributor,
     pagination=True,
-    fields=["id", "image", "has_approved"],
+    fields=["id", "has_approved"],
     filters=ExternalContributorFilter,
     order=ExternalContributorOrder,
 )
@@ -36,6 +36,13 @@ class TypeExternalContributor(BaseType):
         if self.has_approved:  # type: ignore
             return self.name  # type: ignore
         return "Anonymous"
+
+    @field
+    def image(self) -> Optional[str]:
+        """Return image if approved, otherwise None."""
+        if self.has_approved:  # type: ignore
+            return self.image  # type: ignore
+        return None
 
     @field
     def designation(self) -> Optional[str]:
