@@ -38,9 +38,7 @@ class Collaborative(models.Model):
         max_length=75, null=True, blank=True, unique=True, validators=[slug_validator]
     )
     user = models.ForeignKey("authorization.User", on_delete=models.CASCADE)
-    organization = models.ForeignKey(
-        "api.Organization", on_delete=models.CASCADE, null=True, blank=True
-    )
+    designation = models.CharField(max_length=200, blank=True, null=True)
     status = models.CharField(
         max_length=50,
         default=CollaborativeStatus.DRAFT,
@@ -55,6 +53,9 @@ class Collaborative(models.Model):
     geographies = models.ManyToManyField("api.Geography", blank=True, related_name="collaboratives")
     contributors = models.ManyToManyField(
         "authorization.User", blank=True, related_name="contributed_collaboratives"
+    )
+    external_contributors = models.ManyToManyField(
+        "api.ExternalContributor", blank=True, related_name="collaboratives"
     )
     # Organizations can be added as supporters or partners through the intermediate model
     organizations = models.ManyToManyField(
@@ -84,7 +85,7 @@ class Collaborative(models.Model):
 
     @property
     def is_individual_collaborative(self):
-        return self.organization is None
+        return True
 
     @property
     def sectors_indexing(self):
