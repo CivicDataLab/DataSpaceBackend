@@ -22,15 +22,23 @@ from api.utils.publication_uploads import validate_publication_file
 from api.utils.youtube import validate_youtube_url
 
 
-def add_file_block(publication: Publication, uploaded_file: Any) -> PublicationBlock:
+def add_file_block(
+    publication: Publication,
+    uploaded_file: Any,
+    title: Any = None,
+    description: Any = None,
+) -> PublicationBlock:
     """Validate an uploaded file and append it as the next content block."""
     extension, size = validate_publication_file(uploaded_file)
+    file_name = getattr(uploaded_file, "name", "")
 
     block = PublicationBlock(
         publication=publication,
         position=_next_position(publication),
         block_type=PublicationBlockType.FILE,
-        file_name=getattr(uploaded_file, "name", ""),
+        title=_block_title(title, _file_display_title(file_name)),
+        description=_clean_description(description),
+        file_name=file_name,
         file_format=extension.lstrip("."),
         file_size=size,
     )
@@ -39,7 +47,12 @@ def add_file_block(publication: Publication, uploaded_file: Any) -> PublicationB
     return block
 
 
-def add_youtube_block(publication: Publication, youtube_url: str) -> PublicationBlock:
+def add_youtube_block(
+    publication: Publication,
+    youtube_url: str,
+    title: Any = None,
+    description: Any = None,
+) -> PublicationBlock:
     """Validate a YouTube url and append it as the next content block."""
     video_id = validate_youtube_url(youtube_url)
 
@@ -47,9 +60,27 @@ def add_youtube_block(publication: Publication, youtube_url: str) -> Publication
         publication=publication,
         position=_next_position(publication),
         block_type=PublicationBlockType.YOUTUBE,
+        title=_block_title(title),
+        description=_clean_description(description),
         youtube_url=youtube_url,
         youtube_video_id=video_id,
     )
+
+
+def update_block_details(
+    block: PublicationBlock, *, title: Any = None, description: Any = None
+) -> PublicationBlock:
+    """Set a block's display title and optional description.
+
+    ``None`` leaves that field unchanged, so a rename doesn't wipe the
+    description and the other way around. A blank description clears it.
+    """
+    if title is not None:
+        block.title = _block_title(title)
+    if description is not None:
+        block.description = _clean_description(description)
+    block.save()
+    return block
 
 
 def replace_block_file(block: PublicationBlock, uploaded_file: Any) -> PublicationBlock:
@@ -126,6 +157,28 @@ def can_access_block_file(user: Any, publication: Publication) -> bool:
             user=user, organization=publication.organization
         ).exists()
     return False
+
+
+def _block_title(title: Any, fallback: str = "") -> str:
+    """Display title, at most the column length. A blank title uses the fallback."""
+    text = title.strip() if isinstance(title, str) else ""
+    return (text or fallback)[:300]
+
+
+def _file_display_title(filename: str) -> str:
+    """The name shown on a new file block: the filename without its extension."""
+    base = filename.replace("\\", "/").rsplit("/", 1)[-1]
+    stem, separator, _extension = base.rpartition(".")
+    title = stem if separator else base
+    return (title or base)[:300]
+
+
+def _clean_description(description: Any) -> Any:
+    """Blank descriptions are stored as null."""
+    if description is None:
+        return None
+    cleaned = str(description).strip()
+    return cleaned or None
 
 
 def _next_position(publication: Publication) -> int:
