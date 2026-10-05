@@ -1,5 +1,5 @@
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from django.db import models
 from django.db.models import Sum
@@ -124,14 +124,22 @@ class Dataset(models.Model):
 
         Used in Elasticsearch indexing.
         """
-        return list(
-            set(
-                [
-                    resource.resourcefiledetails.format  # type: ignore
-                    for resource in self.resources.all()
-                ]
-            ).difference({""})
-        )
+        formats: set[str] = set()
+        for resource in self.resources.all():
+            # Link-only (EXTERNAL) resources have no file details; skip them.
+            file_details = getattr(resource, "resourcefiledetails", None)
+            if file_details is not None and file_details.format:
+                formats.add(file_details.format)
+        return list(formats)
+
+    @property
+    def source_platform_indexing(self) -> Optional[str]:
+        """Platform this dataset was imported from, or None for native datasets.
+
+        Used in Elasticsearch indexing.
+        """
+        source = getattr(self, "source", None)
+        return source.platform if source is not None else None
 
     @property
     def catalogs_indexing(self) -> list[str]:
