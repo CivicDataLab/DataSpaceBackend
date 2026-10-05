@@ -10,7 +10,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("api", "0047_resourcetype_publication_collaborative_publications_and_more"),
+        ("api", "0048_publicationblock_title_description"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

@@ -58,6 +58,15 @@ def format_validation_error(
     error: DjangoValidationError,
 ) -> ErrorDictType:
     """Formats Django ValidationError into a consistent GraphQL error format with field-specific messages"""
+    error_dict = getattr(error, "error_dict", None)
+    if error_dict:
+        return FieldErrors(
+            field_errors={
+                str(field): [str(message) for message in messages]
+                for field, messages in error.message_dict.items()
+            }
+        )
+
     error_str = str(error)
 
     # Try to extract field name from validation error message
