@@ -103,7 +103,7 @@ def resource_to_record(resource: Resource) -> Dict[str, Any]:
         "description": resource.description or None,
         "format": media_type(file_details.format if file_details else None),
         "size": (file_details.size if file_details else None) or None,
-        "sha256": None,  # not stored yet; see the file-hash follow-up
+        "sha256": (file_details.sha256 if file_details else None) or None,
         "download_url": None,
         "access_url": None,
         "columns": [

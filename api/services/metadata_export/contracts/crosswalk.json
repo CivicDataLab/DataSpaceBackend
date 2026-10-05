@@ -2378,7 +2378,8 @@
         "foaf": "http://xmlns.com/foaf/0.1/",
         "prov": "http://www.w3.org/ns/prov#",
         "xsd": "http://www.w3.org/2001/XMLSchema#",
-        "owl": "http://www.w3.org/2002/07/owl#"
+        "owl": "http://www.w3.org/2002/07/owl#",
+        "spdx": "http://spdx.org/rdf/terms#"
       },
       "node_types": {
         "dataset": "dcat:Dataset",
@@ -2775,6 +2776,19 @@
           "dataspace_field": "citation",
           "controlled_vocabulary": null,
           "notes": null
+        },
+        {
+          "concept": "checksum",
+          "property": "spdx:checksum",
+          "node": "distribution",
+          "parent_property": null,
+          "value_type": "checksum",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "sha256",
+          "controlled_vocabulary": null,
+          "notes": "Rendered as an spdx:Checksum node (algorithm sha256) by the exporter."
         }
       ],
       "import": {
@@ -3757,11 +3771,6 @@
           "concept": "slug",
           "reason": "unbound",
           "notes": null
-        },
-        {
-          "concept": "checksum",
-          "reason": "declared gap",
-          "notes": "No integrity-verification property in DCAT. Croissant requires sha256."
         },
         {
           "concept": "file_set",

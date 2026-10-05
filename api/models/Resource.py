@@ -1,3 +1,4 @@
+import hashlib
 import os
 import random
 import uuid
@@ -8,7 +9,7 @@ import structlog
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils.text import slugify
 
@@ -74,6 +75,12 @@ class ResourceFileDetails(models.Model):
     resource = models.OneToOneField(Resource, on_delete=models.CASCADE, null=False, blank=False)
     file = models.FileField(upload_to="resources/", max_length=300)
     size = models.FloatField(blank=True, null=True)
+    sha256 = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        help_text="SHA-256 of the file contents, computed when the file is saved.",
+    )
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     format = models.CharField(max_length=50)
@@ -121,6 +128,44 @@ class ResourceVersion(models.Model):
     class Meta:
         unique_together = ("resource", "version_number")
         db_table = "resource_version"
+
+
+def compute_sha256(fieldfile: Any) -> Optional[str]:
+    """Stream the file once and return its SHA-256 hex digest, or None if unreadable.
+
+    Works both for a file already in storage and for an upload that has not
+    been written yet (the position is reset afterwards so the write still
+    starts at byte 0).
+    """
+    if not fieldfile:
+        return None
+    digest = hashlib.sha256()
+    try:
+        fieldfile.open("rb")
+        for chunk in fieldfile.chunks():
+            digest.update(chunk)
+        fieldfile.seek(0)
+    except Exception as exc:  # a missing or unreadable file must never block a save
+        logger.warning(f"Could not hash resource file {getattr(fieldfile, 'name', '')}: {exc}")
+        return None
+    return digest.hexdigest()
+
+
+@receiver(pre_save, sender=ResourceFileDetails)
+def hash_resource_file(sender, instance: ResourceFileDetails, **kwargs):
+    """Keep ``sha256`` in step with the file. Recomputed only when the file changes."""
+    if not instance.file:
+        instance.sha256 = None
+        return
+    if instance.pk and instance.sha256:
+        stored_name = (
+            ResourceFileDetails.objects.filter(pk=instance.pk)
+            .values_list("file", flat=True)
+            .first()
+        )
+        if stored_name == instance.file.name:
+            return  # same file as before
+    instance.sha256 = compute_sha256(instance.file)
 
 
 @receiver(post_save, sender=ResourceFileDetails)

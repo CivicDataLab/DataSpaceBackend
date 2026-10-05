@@ -43,8 +43,12 @@ def _by_name(record: Dict[str, Any]) -> Dict[str, dict]:
     return {r.get("name"): r for r in record.get("resources") or [] if r.get("name")}
 
 
+SPDX_SHA256 = "http://spdx.org/rdf/terms#checksumAlgorithm_sha256"
+
+
 def _fix_dcat_distributions(doc: Dict[str, Any]) -> None:
-    """Media type as an IANA IRI; licence on every distribution (DCAT-AP)."""
+    """Media type as an IANA IRI; licence on every distribution; checksum as
+    the spdx:Checksum node DCAT-AP prescribes."""
     licence = doc.get("dcterms:license")
     for dist in doc.get("dcat:distribution") or []:
         mt = dist.get("dcat:mediaType")
@@ -52,6 +56,13 @@ def _fix_dcat_distributions(doc: Dict[str, Any]) -> None:
             dist["dcat:mediaType"] = {"@id": IANA_BASE + mt}
         if licence and "dcterms:license" not in dist:
             dist["dcterms:license"] = licence
+        digest = dist.get("spdx:checksum")
+        if isinstance(digest, str):
+            dist["spdx:checksum"] = {
+                "@type": "spdx:Checksum",
+                "spdx:algorithm": {"@id": SPDX_SHA256},
+                "spdx:checksumValue": digest,
+            }
 
 
 def _fix_croissant_file_objects(doc: Dict[str, Any], record: Dict[str, Any]) -> None:
