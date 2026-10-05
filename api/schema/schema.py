@@ -17,6 +17,7 @@ import api.schema.geography_schema
 import api.schema.metadata_schema
 import api.schema.organization_data_schema
 import api.schema.organization_schema
+import api.schema.platform_import_schema
 import api.schema.publication_schema
 import api.schema.resource_chart_schema
 import api.schema.resource_schema
@@ -78,7 +79,7 @@ Query = merge_types(
         api.schema.user_schema.Query,
         api.schema.collaborative_schema.Query,
         api.schema.publication_schema.Query,
-        api.schema.external_contributor_schema.Query,
+        api.schema.platform_import_schema.Query,
         AuthQuery,
     ),
 )
@@ -102,7 +103,6 @@ Mutation = merge_types(
         api.schema.tags_schema.Mutation,
         api.schema.collaborative_schema.Mutation,
         api.schema.publication_schema.Mutation,
-        api.schema.external_contributor_schema.Mutation,
         AuthMutation,
     ),
 )

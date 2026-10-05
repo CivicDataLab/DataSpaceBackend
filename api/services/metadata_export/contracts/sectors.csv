@@ -1,0 +1,22 @@
+key,label,code,uri,is_open,visible_on_dataspace,alt_codes
+cdl:child-rights,Child Rights,child-rights,https://civicdataspace.in/id/sector/child-rights,,yes,dac_crs=16010|eu_data_theme=SOCI|eu_match_type=broadMatch|sdg=
+cdl:climate-action,Climate Action,climate-action,https://civicdataspace.in/id/sector/climate-action,,yes,dac_crs=|eu_data_theme=ENVI|eu_match_type=broadMatch|sdg=13
+cdl:coastal,Coastal,coastal,https://civicdataspace.in/id/sector/coastal,,yes,dac_crs=|eu_data_theme=ENVI|eu_match_type=broadMatch|sdg=14
+cdl:disaster-risk-reduction,Disaster Risk Reduction,disaster-risk-reduction,https://civicdataspace.in/id/sector/disaster-risk-reduction,,yes,dac_crs=74020|eu_data_theme=ENVI|eu_match_type=broadMatch|sdg=
+cdl:gender,Gender,gender,https://civicdataspace.in/id/sector/gender,,yes,dac_crs=15170|eu_data_theme=SOCI|eu_match_type=broadMatch|sdg=5
+cdl:law-and-justice,Law and Justice,law-and-justice,https://civicdataspace.in/id/sector/law-and-justice,,yes,dac_crs=|eu_data_theme=JUST|eu_match_type=closeMatch|sdg=16
+cdl:public-finance,Public Finance,public-finance,https://civicdataspace.in/id/sector/public-finance,,yes,dac_crs=|eu_data_theme=GOVE|eu_match_type=closeMatch|sdg=
+cdl:urban-development,Urban Development,urban-development,https://civicdataspace.in/id/sector/urban-development,,yes,dac_crs=|eu_data_theme=REGI|eu_match_type=closeMatch|sdg=11
+eu-theme:AGRI,"Agriculture, fisheries, forestry and food",AGRI,http://publications.europa.eu/resource/authority/data-theme/AGRI,,no,
+eu-theme:ECON,Economy and finance,ECON,http://publications.europa.eu/resource/authority/data-theme/ECON,,no,
+eu-theme:EDUC,"Education, culture and sport",EDUC,http://publications.europa.eu/resource/authority/data-theme/EDUC,,no,
+eu-theme:ENER,Energy,ENER,http://publications.europa.eu/resource/authority/data-theme/ENER,,no,
+eu-theme:ENVI,Environment,ENVI,http://publications.europa.eu/resource/authority/data-theme/ENVI,,no,
+eu-theme:GOVE,Government and public sector,GOVE,http://publications.europa.eu/resource/authority/data-theme/GOVE,,no,
+eu-theme:HEAL,Health,HEAL,http://publications.europa.eu/resource/authority/data-theme/HEAL,,no,
+eu-theme:INTR,International issues,INTR,http://publications.europa.eu/resource/authority/data-theme/INTR,,no,
+eu-theme:JUST,"Justice, legal system and public safety",JUST,http://publications.europa.eu/resource/authority/data-theme/JUST,,no,
+eu-theme:SOCI,Population and society,SOCI,http://publications.europa.eu/resource/authority/data-theme/SOCI,,no,
+eu-theme:REGI,Regions and cities,REGI,http://publications.europa.eu/resource/authority/data-theme/REGI,,no,
+eu-theme:TECH,Science and technology,TECH,http://publications.europa.eu/resource/authority/data-theme/TECH,,no,
+eu-theme:TRAN,Transport,TRAN,http://publications.europa.eu/resource/authority/data-theme/TRAN,,no,
