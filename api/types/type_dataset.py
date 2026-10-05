@@ -135,6 +135,14 @@ class TypeDataset(BaseType):
         except (AttributeError, PromptDataset.DoesNotExist):
             return None
 
+    @strawberry.field(description="Number of files or links on the dataset.")
+    def resource_count(self) -> int:
+        # datasetsTable annotates this in one query; elsewhere fall back to a count.
+        annotated = getattr(self, "_resource_count", None)
+        if annotated is not None:
+            return int(annotated)
+        return Resource.objects.filter(dataset_id=self.id).count()
+
     @strawberry.field
     def resources(self) -> List["TypeResource"]:
         """Get resources for this dataset."""
@@ -287,3 +295,23 @@ class TypeTag(BaseType):
 
     id: strawberry.auto
     value: strawberry.auto
+
+
+@strawberry.type(description="How many datasets carry each status, for tab labels.")
+class DatasetStatusCount:
+    status: str
+    count: int
+
+
+@strawberry.type
+class DatasetResponse:
+    """One page of a table listing (`datasetsTable`): rows, the total after
+    filters, and per-status counts for tab labels."""
+
+    data: List[TypeDataset]
+    total_items_count: int
+    status_counts: List[DatasetStatusCount] = strawberry.field(
+        default_factory=list,
+        description="Counts per status with the same filters applied, except any status filter, "
+        "so tab labels stay stable when switching tabs.",
+    )

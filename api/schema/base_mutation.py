@@ -191,15 +191,21 @@ class BaseMutation(Generic[T]):
                             except Exception:
                                 action_data = {}
 
-                            # Record activity with data
+                            # Activity tracking does not change the mutation result.
                             if result.data and isinstance(result.data, Model):
-                                record_activity(
-                                    actor=info.context.user,
-                                    verb=verb,
-                                    action_object=result.data,  # type: ignore
-                                    request=info.context,
-                                    **action_data,
-                                )
+                                try:
+                                    record_activity(
+                                        actor=info.context.user,
+                                        verb=verb,
+                                        action_object=result.data,  # type: ignore
+                                        request=info.context,
+                                        **action_data,
+                                    )
+                                except Exception as activity_error:
+                                    logger.error(
+                                        "activity_record_failed",
+                                        error=str(activity_error),
+                                    )
 
                     # Handle the mutation result
                     if result is None:
