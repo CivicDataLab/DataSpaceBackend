@@ -1,0 +1,4902 @@
+{
+  "version": 2,
+  "value_types": {
+    "literal": "A plain string.",
+    "langstring": "A string that may carry a language tag.",
+    "date": "ISO 8601 date (xsd:date).",
+    "datetime": "ISO 8601 datetime (xsd:dateTime).",
+    "uri": "An absolute URI, serialised as a node reference not a string.",
+    "number": "A numeric literal.",
+    "bytes": "A non-negative integer count of bytes.",
+    "duration": "ISO 8601 duration (xsd:duration).",
+    "media_type": "An IANA media type, or a format token where none exists.",
+    "agent": "A person or organisation; a node with at least a name.",
+    "concept": "A term from a controlled scheme; prefer its URI.",
+    "location": "A place; prefer a resolvable URI over a name string.",
+    "period": "A time interval, expressed as start and end.",
+    "frequency": "A term from the Dublin Core Frequency vocabulary.",
+    "checksum": "A hash digest, with its algorithm.",
+    "vcard": "A contact, serialised as a vCard node.",
+    "structured": "A nested object whose shape the standard defines."
+  },
+  "nodes": [
+    "contact_point",
+    "dataset",
+    "distribution",
+    "period",
+    "record_set"
+  ],
+  "directions": {
+    "both": "Read on import, write on export.",
+    "export_only": "Platform-derived. Emit it; never let an import overwrite it.",
+    "import_only": "Accept from a source; the platform does not re-emit it.",
+    "none": "Platform-internal. Not metadata; ignore in both directions."
+  },
+  "controlled_vocabularies": {
+    "license": {
+      "path": "licenses.csv",
+      "key_field": "key",
+      "uri_field": "uri"
+    },
+    "sector": {
+      "path": "sectors.csv",
+      "key_field": "key",
+      "uri_field": "uri"
+    },
+    "geography": {
+      "path": "geographies.csv",
+      "key_field": "key",
+      "uri_field": "uri"
+    },
+    "language": {
+      "scheme": "http://id.loc.gov/vocabulary/iso639-1/",
+      "notes": "ISO 639-1 code appended to the scheme"
+    }
+  },
+  "concepts": {
+    "identifier": {
+      "label": "Identifier",
+      "definition": "A unique identifier for the dataset (platform ID, DOI, catalog UUID).",
+      "node": "dataset",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "mandatory",
+      "dataspace_field": "id",
+      "dataspace_input_type": "automated",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "export_only",
+      "notes": "Croissant uses @id for this. On import the incoming identifier is kept in source_identifier, never written over the platform's own ID."
+    },
+    "source_identifier": {
+      "label": "Source identifier",
+      "definition": "The identifier this dataset carried on the platform it was imported from.",
+      "node": "dataset",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "Not in the source workbook. Added because round-tripping a federated record is impossible without somewhere to keep its origin ID."
+    },
+    "slug": {
+      "label": "Slug",
+      "definition": "URL-safe short name for the dataset on the platform.",
+      "node": "dataset",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": "slug",
+      "dataspace_input_type": "automated",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "export_only",
+      "notes": "No standard equivalent; it is the path component of landing_page."
+    },
+    "title": {
+      "label": "Title",
+      "definition": "A name given to the dataset.",
+      "node": "dataset",
+      "value_type": "langstring",
+      "repeatable": false,
+      "obligation": "mandatory",
+      "dataspace_field": "title",
+      "dataspace_input_type": "free_text",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": null
+    },
+    "alternative_title": {
+      "label": "Alternative title",
+      "definition": "An alternative name for the dataset.",
+      "node": "dataset",
+      "value_type": "langstring",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": "alternative_title",
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": null
+    },
+    "description": {
+      "label": "Description",
+      "definition": "A free-text account of the dataset.",
+      "node": "dataset",
+      "value_type": "langstring",
+      "repeatable": false,
+      "obligation": "mandatory",
+      "dataspace_field": "description",
+      "dataspace_input_type": "free_text",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": null
+    },
+    "abstract": {
+      "label": "Abstract",
+      "definition": "A summary of the dataset, shorter than the description.",
+      "node": "dataset",
+      "value_type": "langstring",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "keyword": {
+      "label": "Keywords",
+      "definition": "Free-text tags describing the dataset, used for search.",
+      "node": "dataset",
+      "value_type": "literal",
+      "repeatable": true,
+      "obligation": "recommended",
+      "dataspace_field": "tags",
+      "dataspace_input_type": "semi_controlled",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": null
+    },
+    "theme": {
+      "label": "Theme / Sector",
+      "definition": "The category the dataset belongs to, from a controlled scheme.",
+      "node": "dataset",
+      "value_type": "concept",
+      "repeatable": true,
+      "obligation": "recommended",
+      "dataspace_field": "sectors",
+      "dataspace_input_type": "controlled",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": "sector",
+      "direction": "both",
+      "notes": "Partial match. CDL sectors are the platform's own scheme; export maps them onto EU data themes, which collapses several sectors onto one theme."
+    },
+    "dataset_type": {
+      "label": "Dataset type",
+      "definition": "The nature or genre of the dataset.",
+      "node": "dataset",
+      "value_type": "concept",
+      "repeatable": false,
+      "obligation": "recommended",
+      "dataspace_field": "datasetType",
+      "dataspace_input_type": "controlled",
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": "The platform's set of types is undefined in the source workbook."
+    },
+    "language": {
+      "label": "Language",
+      "definition": "Language of the dataset, as an ISO 639 code or URI.",
+      "node": "dataset",
+      "value_type": "concept",
+      "repeatable": true,
+      "obligation": "recommended",
+      "dataspace_field": "language",
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": "Requires normalisation to ISO codes/URIs on import."
+    },
+    "publisher": {
+      "label": "Publisher",
+      "definition": "The entity responsible for making the dataset available.",
+      "node": "dataset",
+      "value_type": "agent",
+      "repeatable": false,
+      "obligation": "recommended",
+      "dataspace_field": "organization",
+      "dataspace_input_type": "free_text",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": "The workbook maps organization to dct:publisher but Croissant creator, and user to dct:creator but Croissant publisher. That inversion is preserved here as recorded; see the open question in the README."
+    },
+    "creator": {
+      "label": "Creator",
+      "definition": "The entity responsible for producing the dataset.",
+      "node": "dataset",
+      "value_type": "agent",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": "user",
+      "dataspace_input_type": "free_text",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": null
+    },
+    "qualified_attribution": {
+      "label": "Qualified attribution",
+      "definition": "A role-qualified link to an agent, for multiple contributors.",
+      "node": "dataset",
+      "value_type": "structured",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "Needed when a dataset has several publishers with distinct roles."
+    },
+    "contact_point": {
+      "label": "Contact point",
+      "definition": "Contact information for the dataset, as a vCard.",
+      "node": "dataset",
+      "value_type": "vcard",
+      "repeatable": true,
+      "obligation": "recommended",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "Sub-fields are the contact_* concepts on the contact_point node."
+    },
+    "license": {
+      "label": "License",
+      "definition": "The legal document under which the dataset is made available.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": false,
+      "obligation": "mandatory",
+      "dataspace_field": "license",
+      "dataspace_input_type": "controlled",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": "license",
+      "direction": "both",
+      "notes": "Must serialise as a resolvable LicenseDocument URI, not the enum label. Resolve through the license vocabulary before emitting."
+    },
+    "rights": {
+      "label": "Rights statement",
+      "definition": "A statement about rights held in and over the dataset.",
+      "node": "dataset",
+      "value_type": "langstring",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "access_rights": {
+      "label": "Access rights",
+      "definition": "Whether the dataset is public, restricted, or non-public.",
+      "node": "dataset",
+      "value_type": "concept",
+      "repeatable": false,
+      "obligation": "recommended",
+      "dataspace_field": "accessType",
+      "dataspace_input_type": "controlled",
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": "The workbook calls accessType unclear and marks it unmappable. It lines up with dcterms:accessRights if it means public/restricted; confirm against the platform before relying on this binding."
+    },
+    "issued": {
+      "label": "Date issued",
+      "definition": "The date the dataset was first published.",
+      "node": "dataset",
+      "value_type": "date",
+      "repeatable": false,
+      "obligation": "mandatory",
+      "dataspace_field": "issued",
+      "dataspace_input_type": "controlled",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": "The platform's \"created\" is mapped to issued, not dcterms:created. The workbook flags that it is unclear whether this is the original creation date or the upload date."
+    },
+    "created": {
+      "label": "Date created",
+      "definition": "The date the dataset itself was created, before publication.",
+      "node": "dataset",
+      "value_type": "date",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": "created",
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": null
+    },
+    "modified": {
+      "label": "Date modified",
+      "definition": "The most recent date the dataset was changed.",
+      "node": "dataset",
+      "value_type": "date",
+      "repeatable": false,
+      "obligation": "mandatory",
+      "dataspace_field": "modified",
+      "dataspace_input_type": "controlled",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": "Should be driven by the platform's versioning, per the workbook."
+    },
+    "accrual_periodicity": {
+      "label": "Update frequency",
+      "definition": "How often the dataset is updated.",
+      "node": "dataset",
+      "value_type": "frequency",
+      "repeatable": false,
+      "obligation": "recommended",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "Use the Dublin Core Frequency vocabulary."
+    },
+    "accrual_method": {
+      "label": "Accrual method",
+      "definition": "How the dataset is added to.",
+      "node": "dataset",
+      "value_type": "concept",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "version": {
+      "label": "Version",
+      "definition": "The version designator of the dataset.",
+      "node": "dataset",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": "version",
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": "DCAT has no single version field; the workbook records the combination of issued + modified + dcterms:hasVersion as the partial match."
+    },
+    "spatial_coverage": {
+      "label": "Spatial coverage",
+      "definition": "The geographic region the dataset covers.",
+      "node": "dataset",
+      "value_type": "location",
+      "repeatable": true,
+      "obligation": "recommended",
+      "dataspace_field": "geographies",
+      "dataspace_input_type": "controlled",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": "geography",
+      "direction": "both",
+      "notes": "Must serialise as a resolvable place URI. The platform stores name strings today; resolve through the geography vocabulary first."
+    },
+    "spatial_resolution": {
+      "label": "Spatial resolution",
+      "definition": "Minimum spatial separation resolvable in the dataset.",
+      "node": "dataset",
+      "value_type": "number",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "DCAT expects metres. The registry sheet uses admin level (district, village), which needs a conversion or a separate literal field."
+    },
+    "temporal_coverage_start": {
+      "label": "Temporal coverage (start)",
+      "definition": "Start of the period the dataset covers.",
+      "node": "dataset",
+      "value_type": "date",
+      "repeatable": false,
+      "obligation": "recommended",
+      "dataspace_field": "temporal_coverage_start",
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": "Serialises inside a dcterms:temporal PeriodOfTime node."
+    },
+    "temporal_coverage_end": {
+      "label": "Temporal coverage (end)",
+      "definition": "End of the period the dataset covers.",
+      "node": "dataset",
+      "value_type": "date",
+      "repeatable": false,
+      "obligation": "recommended",
+      "dataspace_field": "temporal_coverage_end",
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": null
+    },
+    "temporal_resolution": {
+      "label": "Temporal resolution",
+      "definition": "Minimum time period resolvable in the dataset.",
+      "node": "dataset",
+      "value_type": "duration",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "landing_page": {
+      "label": "Landing page",
+      "definition": "A web page giving access to the dataset and its publisher.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": false,
+      "obligation": "recommended",
+      "dataspace_field": "landing_page",
+      "dataspace_input_type": "automated",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "export_only",
+      "notes": "Constructed from slug at export time."
+    },
+    "homepage": {
+      "label": "Homepage",
+      "definition": "The publisher's home page for the dataset.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": "homepage",
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": null
+    },
+    "source": {
+      "label": "Source",
+      "definition": "A related resource the dataset is derived from.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": "source",
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": null
+    },
+    "depiction": {
+      "label": "Depiction",
+      "definition": "An image representing the dataset.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "in_catalog": {
+      "label": "In catalog",
+      "definition": "The catalog the dataset is listed in.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": false,
+      "obligation": "recommended",
+      "dataspace_field": "in_catalog",
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "export_only",
+      "notes": null
+    },
+    "in_series": {
+      "label": "In series",
+      "definition": "The dataset series this dataset belongs to.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "conforms_to": {
+      "label": "Conforms to",
+      "definition": "An established standard or schema the dataset conforms to.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "none",
+      "notes": "Unbound. Definition values export by concept through metadata_mapping.py."
+    },
+    "relation": {
+      "label": "Related resource",
+      "definition": "A resource with an unspecified relationship to the dataset.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "has_part": {
+      "label": "Has part",
+      "definition": "A resource included either physically or logically in the dataset.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "is_part_of": {
+      "label": "Is part of",
+      "definition": "A resource the dataset is included in.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "is_referenced_by": {
+      "label": "Is referenced by",
+      "definition": "A resource that references the dataset.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "replaces": {
+      "label": "Replaces",
+      "definition": "A resource the dataset supplants.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "is_replaced_by": {
+      "label": "Is replaced by",
+      "definition": "A resource that supplants the dataset.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "is_version_of": {
+      "label": "Is version of",
+      "definition": "A resource the dataset is a version of.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "has_version": {
+      "label": "Has version",
+      "definition": "A version of the dataset.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "provenance": {
+      "label": "Provenance",
+      "definition": "A statement of changes in ownership and custody of the dataset.",
+      "node": "dataset",
+      "value_type": "structured",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "DCAT needs the external PROV-O ontology for this."
+    },
+    "jurisdiction_level": {
+      "label": "Jurisdiction level",
+      "definition": "The administrative level the dataset's authority operates at.",
+      "node": "dataset",
+      "value_type": "concept",
+      "repeatable": false,
+      "obligation": "recommended",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "DCAT-IN, not yet a stable published spec."
+    },
+    "applicable_legislation": {
+      "label": "Applicable legislation",
+      "definition": "The legislation mandating the dataset's creation or publication.",
+      "node": "dataset",
+      "value_type": "uri",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "DCAT-IN."
+    },
+    "hvd_category": {
+      "label": "High-value dataset category",
+      "definition": "The high-value dataset category the dataset falls in.",
+      "node": "dataset",
+      "value_type": "concept",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "DCAT-IN."
+    },
+    "note": {
+      "label": "Note",
+      "definition": "A free-text note about the dataset.",
+      "node": "dataset",
+      "value_type": "langstring",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "DCAT-IN."
+    },
+    "distribution": {
+      "label": "Distribution",
+      "definition": "An accessible form of the dataset — a downloadable file or an API.",
+      "node": "dataset",
+      "value_type": "structured",
+      "repeatable": true,
+      "obligation": "mandatory",
+      "dataspace_field": "resources",
+      "dataspace_input_type": "free_text",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": "The link from dataset to its distribution nodes."
+    },
+    "access_url": {
+      "label": "Access URL",
+      "definition": "A URL giving access to the distribution.",
+      "node": "distribution",
+      "value_type": "uri",
+      "repeatable": false,
+      "obligation": "mandatory",
+      "dataspace_field": "access_url",
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": "DCAT requires this on every Distribution. Where the platform has only a download URL, use it for both."
+    },
+    "download_url": {
+      "label": "Download URL",
+      "definition": "A direct link to the downloadable file.",
+      "node": "distribution",
+      "value_type": "uri",
+      "repeatable": false,
+      "obligation": "recommended",
+      "dataspace_field": "download_url",
+      "dataspace_input_type": "automated",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": null
+    },
+    "media_type": {
+      "label": "Format / media type",
+      "definition": "The file format of the distribution.",
+      "node": "distribution",
+      "value_type": "media_type",
+      "repeatable": false,
+      "obligation": "recommended",
+      "dataspace_field": "format",
+      "dataspace_input_type": "automated",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": "The platform's dataset-level \"formats\" is the set of its resources' formats, derived rather than entered."
+    },
+    "byte_size": {
+      "label": "Byte size",
+      "definition": "The size of the distribution in bytes.",
+      "node": "distribution",
+      "value_type": "bytes",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": "size",
+      "dataspace_input_type": "automated",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": null
+    },
+    "checksum": {
+      "label": "Checksum",
+      "definition": "A hash of the distribution's contents, for integrity checking.",
+      "node": "distribution",
+      "value_type": "checksum",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": "sha256",
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": "Croissant requires sha256 on a FileObject; DCAT has no such property."
+    },
+    "distribution_title": {
+      "label": "Distribution title",
+      "definition": "A name given to the distribution.",
+      "node": "distribution",
+      "value_type": "langstring",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": "name",
+      "dataspace_input_type": "free_text",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "both",
+      "notes": null
+    },
+    "endpoint_url": {
+      "label": "Endpoint URL",
+      "definition": "The root location of an API-based distribution.",
+      "node": "distribution",
+      "value_type": "uri",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "endpoint_description": {
+      "label": "Endpoint description",
+      "definition": "A description of the services available at the endpoint.",
+      "node": "distribution",
+      "value_type": "uri",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "file_set": {
+      "label": "File set",
+      "definition": "A group of files described by a pattern rather than individually.",
+      "node": "dataset",
+      "value_type": "structured",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "DCAT has no grouping semantics; the nearest is many Distributions."
+    },
+    "containment": {
+      "label": "Containment",
+      "definition": "Which file or archive a file is contained in.",
+      "node": "distribution",
+      "value_type": "uri",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "DCAT cannot model file hierarchy."
+    },
+    "record_set": {
+      "label": "Record set",
+      "definition": "A table within the dataset — its columns and their semantics.",
+      "node": "dataset",
+      "value_type": "structured",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "The main DCAT gap. This is the concept that makes a dataset ML-readable, and it is also what schemas/data_dictionary_template.csv captures."
+    },
+    "field": {
+      "label": "Field",
+      "definition": "One column of a record set, with a name, description and type.",
+      "node": "record_set",
+      "value_type": "structured",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "No column-level metadata exists in DCAT."
+    },
+    "data_type": {
+      "label": "Data type",
+      "definition": "The semantic type of a field (including ML types like BoundingBox).",
+      "node": "record_set",
+      "value_type": "uri",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "transform": {
+      "label": "Transform",
+      "definition": "A transformation applied to source data to produce a field.",
+      "node": "record_set",
+      "value_type": "structured",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "Expressible in DCAT only through external PROV-O."
+    },
+    "annotation": {
+      "label": "Annotation",
+      "definition": "A structured ML annotation over the data.",
+      "node": "dataset",
+      "value_type": "structured",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "contact_name": {
+      "label": "Contact name",
+      "definition": "Formatted name of the contact.",
+      "node": "contact_point",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "contact_title": {
+      "label": "Contact title",
+      "definition": "Job title of the contact.",
+      "node": "contact_point",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "contact_role": {
+      "label": "Contact role",
+      "definition": "Role the contact plays for this dataset.",
+      "node": "contact_point",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "contact_organization": {
+      "label": "Contact organisation",
+      "definition": "Organisation the contact belongs to.",
+      "node": "contact_point",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "contact_email": {
+      "label": "Contact email",
+      "definition": "Email address of the contact.",
+      "node": "contact_point",
+      "value_type": "uri",
+      "repeatable": false,
+      "obligation": "recommended",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "Serialises as a mailto: URI."
+    },
+    "contact_address": {
+      "label": "Contact address",
+      "definition": "Postal address of the contact.",
+      "node": "contact_point",
+      "value_type": "structured",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": "Nests the contact_street_address / locality / postal_code concepts."
+    },
+    "contact_street_address": {
+      "label": "Contact street address",
+      "definition": "Street address of the contact.",
+      "node": "contact_point",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "contact_locality": {
+      "label": "Contact locality",
+      "definition": "Town or city of the contact's address.",
+      "node": "contact_point",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "contact_postal_code": {
+      "label": "Contact postal code",
+      "definition": "Postal code of the contact's address.",
+      "node": "contact_point",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": null,
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "import_only",
+      "notes": null
+    },
+    "status": {
+      "label": "Status",
+      "definition": "Publication workflow state of the dataset on the platform.",
+      "node": "dataset",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": "status",
+      "dataspace_input_type": "automated",
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "none",
+      "notes": "Croissant has a status concept; the workbook records no DCAT equivalent and marks it not user-facing."
+    },
+    "download_count": {
+      "label": "Download count",
+      "definition": "Number of times the dataset has been downloaded.",
+      "node": "dataset",
+      "value_type": "number",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": "downloadCount",
+      "dataspace_input_type": "automated",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "none",
+      "notes": "Usage statistic, not metadata. No DCAT equivalent."
+    },
+    "similar_datasets": {
+      "label": "Similar datasets",
+      "definition": "Datasets the platform computes as related.",
+      "node": "dataset",
+      "value_type": "structured",
+      "repeatable": true,
+      "obligation": "optional",
+      "dataspace_field": "similarDatasets",
+      "dataspace_input_type": "automated",
+      "visible_on_dataspace": true,
+      "controlled_vocabulary": null,
+      "direction": "none",
+      "notes": "Platform-level and dynamic; the workbook says it need not be metadata."
+    },
+    "is_individual_dataset": {
+      "label": "Is individual dataset",
+      "definition": "Whether the record is a standalone dataset or part of a collection.",
+      "node": "dataset",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": "isIndividualDataset",
+      "dataspace_input_type": "automated",
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "none",
+      "notes": "The workbook suspects this links to catalogs. If confirmed, it belongs with in_catalog / in_series rather than here."
+    },
+    "dataspace": {
+      "label": "Dataspace",
+      "definition": "Unclear platform field.",
+      "node": "dataset",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": "dataspace",
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "none",
+      "notes": "Marked unclear and unmappable in the source workbook."
+    },
+    "prompt_metadata": {
+      "label": "Prompt metadata",
+      "definition": "Unclear platform field.",
+      "node": "dataset",
+      "value_type": "literal",
+      "repeatable": false,
+      "obligation": "optional",
+      "dataspace_field": "promptMetadata",
+      "dataspace_input_type": null,
+      "visible_on_dataspace": false,
+      "controlled_vocabulary": null,
+      "direction": "none",
+      "notes": "Undefined in the source workbook."
+    },
+    "citation": {
+      "label": "Citation",
+      "definition": "How to cite the dataset, as free text (BibTeX or a sentence).",
+      "dataspace_field": "citation",
+      "dataspace_input_type": "text",
+      "value_type": "literal",
+      "obligation": "optional",
+      "direction": "both",
+      "repeatable": false,
+      "node": "dataset",
+      "controlled_vocabulary": null,
+      "visible_on_dataspace": true,
+      "notes": "Croissant citeAs; Dublin Core / DCAT dcterms:bibliographicCitation."
+    }
+  },
+  "platform_fields": {
+    "id": "identifier",
+    "slug": "slug",
+    "title": "title",
+    "description": "description",
+    "tags": "keyword",
+    "sectors": "theme",
+    "datasetType": "dataset_type",
+    "organization": "publisher",
+    "user": "creator",
+    "license": "license",
+    "accessType": "access_rights",
+    "created": "created",
+    "modified": "modified",
+    "geographies": "spatial_coverage",
+    "resources": "distribution",
+    "download_url": "download_url",
+    "format": "media_type",
+    "size": "byte_size",
+    "name": "distribution_title",
+    "status": "status",
+    "downloadCount": "download_count",
+    "similarDatasets": "similar_datasets",
+    "isIndividualDataset": "is_individual_dataset",
+    "dataspace": "dataspace",
+    "promptMetadata": "prompt_metadata",
+    "issued": "issued",
+    "source": "source",
+    "homepage": "homepage",
+    "language": "language",
+    "version": "version",
+    "landing_page": "landing_page",
+    "in_catalog": "in_catalog",
+    "access_url": "access_url",
+    "sha256": "checksum",
+    "citation": "citation",
+    "temporal_coverage_start": "temporal_coverage_start",
+    "temporal_coverage_end": "temporal_coverage_end",
+    "alternative_title": "alternative_title"
+  },
+  "standards": {
+    "croissant": {
+      "name": "Croissant (MLCommons ML-dataset metadata format)",
+      "version": "1.1",
+      "url": "https://docs.mlcommons.org/croissant/docs/croissant-spec-1.1.html",
+      "serialisation": "json-ld",
+      "uri_style": "string",
+      "context": {
+        "@language": "en",
+        "@vocab": "https://schema.org/",
+        "arrayShape": "cr:arrayShape",
+        "citeAs": "cr:citeAs",
+        "column": "cr:column",
+        "conformsTo": "dct:conformsTo",
+        "containedIn": "cr:containedIn",
+        "cr": "http://mlcommons.org/croissant/",
+        "data": {
+          "@id": "cr:data",
+          "@type": "@json"
+        },
+        "dataBiases": "cr:dataBiases",
+        "dataCollection": "cr:dataCollection",
+        "dataType": {
+          "@id": "cr:dataType",
+          "@type": "@vocab"
+        },
+        "dct": "http://purl.org/dc/terms/",
+        "extract": "cr:extract",
+        "field": "cr:field",
+        "fileProperty": "cr:fileProperty",
+        "fileObject": "cr:fileObject",
+        "fileSet": "cr:fileSet",
+        "format": "cr:format",
+        "includes": "cr:includes",
+        "isArray": "cr:isArray",
+        "isLiveDataset": "cr:isLiveDataset",
+        "jsonPath": "cr:jsonPath",
+        "key": "cr:key",
+        "md5": "cr:md5",
+        "parentField": "cr:parentField",
+        "path": "cr:path",
+        "personalSensitiveInformation": "cr:personalSensitiveInformation",
+        "recordSet": "cr:recordSet",
+        "references": "cr:references",
+        "regex": "cr:regex",
+        "repeated": "cr:repeated",
+        "replace": "cr:replace",
+        "sc": "https://schema.org/",
+        "separator": "cr:separator",
+        "source": "cr:source",
+        "subField": "cr:subField",
+        "transform": "cr:transform"
+      },
+      "node_types": {
+        "dataset": "sc:Dataset",
+        "distribution": "cr:FileObject",
+        "record_set": "cr:RecordSet"
+      },
+      "export": [
+        {
+          "concept": "identifier",
+          "property": "identifier",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "partial",
+          "dataspace_field": "id",
+          "controlled_vocabulary": null,
+          "notes": "Croissant also uses @id as the node identity; emit both."
+        },
+        {
+          "concept": "title",
+          "property": "name",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "langstring",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "title",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "alternative_title",
+          "property": "alternateName",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": true,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "alternative_title",
+          "controlled_vocabulary": null,
+          "notes": "For imported datasets: the identifier on the source platform."
+        },
+        {
+          "concept": "description",
+          "property": "description",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "langstring",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "description",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "keyword",
+          "property": "keywords",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": true,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "tags",
+          "controlled_vocabulary": null,
+          "notes": "Free text only; no controlled-scheme distinction."
+        },
+        {
+          "concept": "publisher",
+          "property": "publisher",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "agent",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "organization",
+          "controlled_vocabulary": null,
+          "notes": "The source workbook maps the platform's organization to dct:publisher but to Croissant creator, and user the other way round. Preserved as recorded - see the open question in the README before relying on it."
+        },
+        {
+          "concept": "creator",
+          "property": "creator",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "agent",
+          "repeatable": true,
+          "obligation": "optional",
+          "match": "partial",
+          "dataspace_field": "user",
+          "controlled_vocabulary": null,
+          "notes": "See publisher; the inversion is as recorded in the workbook."
+        },
+        {
+          "concept": "license",
+          "property": "license",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "license",
+          "controlled_vocabulary": "license",
+          "notes": "A license URL, same steward URI as DCAT."
+        },
+        {
+          "concept": "issued",
+          "property": "datePublished",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "issued",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "modified",
+          "property": "dateModified",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "modified",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "version",
+          "property": "version",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "version",
+          "controlled_vocabulary": null,
+          "notes": "Croissant has a dedicated version field, which is the one place it is stricter than DCAT."
+        },
+        {
+          "concept": "spatial_coverage",
+          "property": "spatialCoverage",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "location",
+          "repeatable": true,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "geographies",
+          "controlled_vocabulary": "geography",
+          "notes": "schema.org Place, not a dcterms:Location. Accepts a name string, so an export can succeed while carrying no resolvable URI - check the value."
+        },
+        {
+          "concept": "temporal_coverage_start",
+          "property": "temporalCoverage",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "temporal_coverage_start",
+          "controlled_vocabulary": null,
+          "notes": "One ISO 8601 interval string (\"2019-01-01/2023-12-31\"), not two fields. Both start and end serialise into it."
+        },
+        {
+          "concept": "temporal_coverage_end",
+          "property": "temporalCoverage",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "temporal_coverage_end",
+          "controlled_vocabulary": null,
+          "notes": "See temporal_coverage_start; both concepts share one property."
+        },
+        {
+          "concept": "landing_page",
+          "property": "url",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "landing_page",
+          "controlled_vocabulary": null,
+          "notes": "Requires interpretation of intent - url is not specifically a landing page."
+        },
+        {
+          "concept": "distribution",
+          "property": "distribution",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "structured",
+          "repeatable": true,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "resources",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "download_url",
+          "property": "contentUrl",
+          "node": "distribution",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "download_url",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "media_type",
+          "property": "encodingFormat",
+          "node": "distribution",
+          "parent_property": null,
+          "value_type": "media_type",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "format",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "byte_size",
+          "property": "contentSize",
+          "node": "distribution",
+          "parent_property": null,
+          "value_type": "bytes",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "size",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "checksum",
+          "property": "sha256",
+          "node": "distribution",
+          "parent_property": null,
+          "value_type": "checksum",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "sha256",
+          "controlled_vocabulary": null,
+          "notes": "Required on a FileObject. DCAT has nothing equivalent."
+        },
+        {
+          "concept": "distribution_title",
+          "property": "name",
+          "node": "distribution",
+          "parent_property": null,
+          "value_type": "langstring",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "name",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "language",
+          "property": "inLanguage",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": true,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "language",
+          "controlled_vocabulary": "language",
+          "notes": null
+        },
+        {
+          "concept": "created",
+          "property": "dateCreated",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "created",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "source",
+          "property": "sameAs",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "source",
+          "controlled_vocabulary": null,
+          "notes": "For imported datasets: the same dataset on the source platform."
+        },
+        {
+          "concept": "citation",
+          "property": "citeAs",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "citation",
+          "controlled_vocabulary": null,
+          "notes": null
+        }
+      ],
+      "import": {
+        "dataset": {
+          "identifier": [
+            {
+              "concept": "identifier",
+              "property": "identifier",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "literal",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "partial",
+              "dataspace_field": "id",
+              "controlled_vocabulary": null,
+              "notes": "Croissant also uses @id as the node identity; emit both."
+            }
+          ],
+          "name": [
+            {
+              "concept": "title",
+              "property": "name",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "title",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "alternateName": [
+            {
+              "concept": "alternative_title",
+              "property": "alternateName",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "description": [
+            {
+              "concept": "description",
+              "property": "description",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "description",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "keywords": [
+            {
+              "concept": "keyword",
+              "property": "keywords",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "literal",
+              "repeatable": true,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": "tags",
+              "controlled_vocabulary": null,
+              "notes": "Free text only; no controlled-scheme distinction."
+            }
+          ],
+          "inLanguage": [
+            {
+              "concept": "language",
+              "property": "inLanguage",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "concept",
+              "repeatable": true,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "creator": [
+            {
+              "concept": "publisher",
+              "property": "creator",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "agent",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": "organization",
+              "controlled_vocabulary": null,
+              "notes": "The source workbook maps the platform's organization to dct:publisher but to Croissant creator, and user the other way round. Preserved as recorded - see the open question in the README before relying on it."
+            }
+          ],
+          "publisher": [
+            {
+              "concept": "creator",
+              "property": "publisher",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "agent",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "partial",
+              "dataspace_field": "user",
+              "controlled_vocabulary": null,
+              "notes": "See publisher; the inversion is as recorded in the workbook."
+            }
+          ],
+          "license": [
+            {
+              "concept": "license",
+              "property": "license",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "license",
+              "controlled_vocabulary": "license",
+              "notes": "A license URL, same steward URI as DCAT."
+            }
+          ],
+          "datePublished": [
+            {
+              "concept": "issued",
+              "property": "datePublished",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "issued",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dateCreated": [
+            {
+              "concept": "created",
+              "property": "dateCreated",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dateModified": [
+            {
+              "concept": "modified",
+              "property": "dateModified",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "modified",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "version": [
+            {
+              "concept": "version",
+              "property": "version",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "literal",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "Croissant has a dedicated version field, which is the one place it is stricter than DCAT."
+            }
+          ],
+          "spatialCoverage": [
+            {
+              "concept": "spatial_coverage",
+              "property": "spatialCoverage",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "location",
+              "repeatable": true,
+              "obligation": "mandatory",
+              "match": "partial",
+              "dataspace_field": "geographies",
+              "controlled_vocabulary": "geography",
+              "notes": "schema.org Place, not a dcterms:Location. Accepts a name string, so an export can succeed while carrying no resolvable URI - check the value."
+            }
+          ],
+          "temporalCoverage": [
+            {
+              "concept": "temporal_coverage_start",
+              "property": "temporalCoverage",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "One ISO 8601 interval string (\"2019-01-01/2023-12-31\"), not two fields. Both start and end serialise into it."
+            },
+            {
+              "concept": "temporal_coverage_end",
+              "property": "temporalCoverage",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "See temporal_coverage_start; both concepts share one property."
+            }
+          ],
+          "url": [
+            {
+              "concept": "landing_page",
+              "property": "url",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "Requires interpretation of intent - url is not specifically a landing page."
+            },
+            {
+              "concept": "homepage",
+              "property": "url",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "isBasedOn": [
+            {
+              "concept": "source",
+              "property": "isBasedOn",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "conformsTo": [
+            {
+              "concept": "conforms_to",
+              "property": "conformsTo",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": "metadata",
+              "controlled_vocabulary": null,
+              "notes": "Croissant uses this to declare the Croissant spec version itself."
+            }
+          ],
+          "hasPart": [
+            {
+              "concept": "has_part",
+              "property": "hasPart",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "isPartOf": [
+            {
+              "concept": "is_part_of",
+              "property": "isPartOf",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "distribution": [
+            {
+              "concept": "distribution",
+              "property": "distribution",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "structured",
+              "repeatable": true,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "resources",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "cr:FileSet": [
+            {
+              "concept": "file_set",
+              "property": "cr:FileSet",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "structured",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "A group of files given by an includes/excludes pattern."
+            }
+          ],
+          "cr:recordSet": [
+            {
+              "concept": "record_set",
+              "property": "cr:recordSet",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "structured",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "cr:annotation": [
+            {
+              "concept": "annotation",
+              "property": "cr:annotation",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "structured",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ]
+        },
+        "distribution": {
+          "contentUrl": [
+            {
+              "concept": "download_url",
+              "property": "contentUrl",
+              "node": "distribution",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": "download_url",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "encodingFormat": [
+            {
+              "concept": "media_type",
+              "property": "encodingFormat",
+              "node": "distribution",
+              "parent_property": null,
+              "value_type": "media_type",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": "format",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "contentSize": [
+            {
+              "concept": "byte_size",
+              "property": "contentSize",
+              "node": "distribution",
+              "parent_property": null,
+              "value_type": "bytes",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": "size",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "sha256": [
+            {
+              "concept": "checksum",
+              "property": "sha256",
+              "node": "distribution",
+              "parent_property": null,
+              "value_type": "checksum",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "Required on a FileObject. DCAT has nothing equivalent."
+            }
+          ],
+          "name": [
+            {
+              "concept": "distribution_title",
+              "property": "name",
+              "node": "distribution",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": "name",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "containedIn": [
+            {
+              "concept": "containment",
+              "property": "containedIn",
+              "node": "distribution",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ]
+        },
+        "record_set": {
+          "cr:field": [
+            {
+              "concept": "field",
+              "property": "cr:field",
+              "node": "record_set",
+              "parent_property": null,
+              "value_type": "structured",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dataType": [
+            {
+              "concept": "data_type",
+              "property": "dataType",
+              "node": "record_set",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "Includes ML types such as cr:BoundingBox."
+            }
+          ],
+          "cr:transform": [
+            {
+              "concept": "transform",
+              "property": "cr:transform",
+              "node": "record_set",
+              "parent_property": null,
+              "value_type": "structured",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ]
+        }
+      },
+      "gaps": [
+        {
+          "concept": "source_identifier",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "slug",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "abstract",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "theme",
+          "reason": "declared gap",
+          "notes": "No controlled theme scheme. Sectors have to go out as keywords, which loses the vocabulary binding."
+        },
+        {
+          "concept": "dataset_type",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "qualified_attribution",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "contact_point",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "rights",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "access_rights",
+          "reason": "declared gap",
+          "notes": "Not defined in Croissant. The workbook notes dcterms:accessRights exists only on the DCAT side."
+        },
+        {
+          "concept": "accrual_periodicity",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "accrual_method",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "spatial_resolution",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "temporal_resolution",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "depiction",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "in_catalog",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "in_series",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "relation",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "is_referenced_by",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "replaces",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "is_replaced_by",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "is_version_of",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "has_version",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "provenance",
+          "reason": "declared gap",
+          "notes": "cr:transform covers field derivation, not dataset custody history."
+        },
+        {
+          "concept": "jurisdiction_level",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "applicable_legislation",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "hvd_category",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "note",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "endpoint_url",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "endpoint_description",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "contact_name",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "contact_title",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "contact_role",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "contact_organization",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "contact_email",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "contact_address",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "contact_street_address",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "contact_locality",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "contact_postal_code",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "download_count",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "similar_datasets",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "is_individual_dataset",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "dataspace",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "prompt_metadata",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "homepage",
+          "reason": "declared gap",
+          "notes": "Croissant `url` is the landing page; there is no separate homepage property."
+        }
+      ]
+    },
+    "dcat": {
+      "name": "DCAT v3 (Data Catalog Vocabulary)",
+      "version": "3",
+      "url": "https://www.w3.org/TR/vocab-dcat-3/",
+      "serialisation": "json-ld",
+      "uri_style": "node",
+      "context": {
+        "dcat": "http://www.w3.org/ns/dcat#",
+        "dcterms": "http://purl.org/dc/terms/",
+        "foaf": "http://xmlns.com/foaf/0.1/",
+        "prov": "http://www.w3.org/ns/prov#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "owl": "http://www.w3.org/2002/07/owl#"
+      },
+      "node_types": {
+        "dataset": "dcat:Dataset",
+        "distribution": "dcat:Distribution",
+        "contact_point": "vcard:Kind"
+      },
+      "export": [
+        {
+          "concept": "identifier",
+          "property": "dcterms:identifier",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "id",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "title",
+          "property": "dcterms:title",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "langstring",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "title",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "description",
+          "property": "dcterms:description",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "langstring",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "description",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "keyword",
+          "property": "dcat:keyword",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": true,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "tags",
+          "controlled_vocabulary": null,
+          "notes": "dcat:keyword or dcterms:subject, depending on whether the values are free text or come from a controlled scheme. The platform's tags are semi-controlled, so keyword is the safer target."
+        },
+        {
+          "concept": "theme",
+          "property": "dcat:theme",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "concept",
+          "repeatable": true,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "sectors",
+          "controlled_vocabulary": "sector",
+          "notes": "Expects a skos:Concept from a published scheme. CDL sectors collapse onto EU data themes many-to-one; the mapping is lossy in that direction and not reversible."
+        },
+        {
+          "concept": "dataset_type",
+          "property": "dcterms:type",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "concept",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "datasetType",
+          "controlled_vocabulary": null,
+          "notes": "Dataset-level only. DCAT has no field-level typing."
+        },
+        {
+          "concept": "publisher",
+          "property": "dcterms:publisher",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "agent",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "organization",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "creator",
+          "property": "dcterms:creator",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "agent",
+          "repeatable": true,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "user",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "license",
+          "property": "dcterms:license",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "license",
+          "controlled_vocabulary": "license",
+          "notes": "Mandatory at Distribution in the registry profile. Emit the steward URI from the license vocabulary, never the platform's enum label."
+        },
+        {
+          "concept": "access_rights",
+          "property": "dcterms:accessRights",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "concept",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "accessType",
+          "controlled_vocabulary": null,
+          "notes": "Croissant has no equivalent; this is DCAT-only."
+        },
+        {
+          "concept": "issued",
+          "property": "dcterms:issued",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "issued",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "modified",
+          "property": "dcterms:modified",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "modified",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "version",
+          "property": "owl:versionInfo",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "partial",
+          "dataspace_field": "version",
+          "controlled_vocabulary": null,
+          "notes": "DCAT has no dedicated version field. The workbook records the combination issued + modified + dcterms:hasVersion / owl:versionInfo. owl:versionInfo is used here because dcterms:hasVersion means \"a version of this exists over there\" - binding both concepts to it would make an incoming hasVersion impossible to route."
+        },
+        {
+          "concept": "spatial_coverage",
+          "property": "dcterms:spatial",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "location",
+          "repeatable": true,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "geographies",
+          "controlled_vocabulary": "geography",
+          "notes": null
+        },
+        {
+          "concept": "temporal_coverage_start",
+          "property": "dcat:startDate",
+          "node": "period",
+          "parent_property": "dcterms:temporal",
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "temporal_coverage_start",
+          "controlled_vocabulary": null,
+          "notes": "Nested inside a dcterms:PeriodOfTime node."
+        },
+        {
+          "concept": "temporal_coverage_end",
+          "property": "dcat:endDate",
+          "node": "period",
+          "parent_property": "dcterms:temporal",
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "temporal_coverage_end",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "landing_page",
+          "property": "dcat:landingPage",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "landing_page",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "in_catalog",
+          "property": "dcat:inCatalog",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "in_catalog",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "distribution",
+          "property": "dcat:distribution",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "structured",
+          "repeatable": true,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "resources",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "access_url",
+          "property": "dcat:accessURL",
+          "node": "distribution",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "access_url",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "download_url",
+          "property": "dcat:downloadURL",
+          "node": "distribution",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "download_url",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "media_type",
+          "property": "dcat:mediaType",
+          "node": "distribution",
+          "parent_property": null,
+          "value_type": "media_type",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "format",
+          "controlled_vocabulary": null,
+          "notes": "dcterms:format is the looser alternative the workbook also records. Use mediaType when the value is a real MIME type, format otherwise."
+        },
+        {
+          "concept": "byte_size",
+          "property": "dcat:byteSize",
+          "node": "distribution",
+          "parent_property": null,
+          "value_type": "bytes",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "size",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "distribution_title",
+          "property": "dcterms:title",
+          "node": "distribution",
+          "parent_property": null,
+          "value_type": "langstring",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "name",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "language",
+          "property": "dcterms:language",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "concept",
+          "repeatable": true,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "language",
+          "controlled_vocabulary": "language",
+          "notes": null
+        },
+        {
+          "concept": "created",
+          "property": "dcterms:created",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "created",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "homepage",
+          "property": "foaf:homepage",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "homepage",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "source",
+          "property": "dcterms:source",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "source",
+          "controlled_vocabulary": null,
+          "notes": "For imported datasets: the dataset page on the source platform."
+        },
+        {
+          "concept": "source",
+          "property": "prov:wasDerivedFrom",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "source",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "citation",
+          "property": "dcterms:bibliographicCitation",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "citation",
+          "controlled_vocabulary": null,
+          "notes": null
+        }
+      ],
+      "import": {
+        "dataset": {
+          "dcterms:identifier": [
+            {
+              "concept": "identifier",
+              "property": "dcterms:identifier",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "literal",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "id",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:title": [
+            {
+              "concept": "title",
+              "property": "dcterms:title",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "title",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:alternative": [
+            {
+              "concept": "alternative_title",
+              "property": "dcterms:alternative",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:description": [
+            {
+              "concept": "description",
+              "property": "dcterms:description",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "description",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:abstract": [
+            {
+              "concept": "abstract",
+              "property": "dcterms:abstract",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcat:keyword": [
+            {
+              "concept": "keyword",
+              "property": "dcat:keyword",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "literal",
+              "repeatable": true,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": "tags",
+              "controlled_vocabulary": null,
+              "notes": "dcat:keyword or dcterms:subject, depending on whether the values are free text or come from a controlled scheme. The platform's tags are semi-controlled, so keyword is the safer target."
+            }
+          ],
+          "dcat:theme": [
+            {
+              "concept": "theme",
+              "property": "dcat:theme",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "concept",
+              "repeatable": true,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": "sectors",
+              "controlled_vocabulary": "sector",
+              "notes": "Expects a skos:Concept from a published scheme. CDL sectors collapse onto EU data themes many-to-one; the mapping is lossy in that direction and not reversible."
+            }
+          ],
+          "dcterms:type": [
+            {
+              "concept": "dataset_type",
+              "property": "dcterms:type",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "concept",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": "datasetType",
+              "controlled_vocabulary": null,
+              "notes": "Dataset-level only. DCAT has no field-level typing."
+            }
+          ],
+          "dcterms:language": [
+            {
+              "concept": "language",
+              "property": "dcterms:language",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "concept",
+              "repeatable": true,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:publisher": [
+            {
+              "concept": "publisher",
+              "property": "dcterms:publisher",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "agent",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": "organization",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:creator": [
+            {
+              "concept": "creator",
+              "property": "dcterms:creator",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "agent",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": "user",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "prov:qualifiedAttribution": [
+            {
+              "concept": "qualified_attribution",
+              "property": "prov:qualifiedAttribution",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "structured",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "Requires PROV-O, which is outside DCAT proper."
+            }
+          ],
+          "dcat:contactPoint": [
+            {
+              "concept": "contact_point",
+              "property": "dcat:contactPoint",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "vcard",
+              "repeatable": true,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "Nests a vcard:Kind node built from the contact_* concepts."
+            }
+          ],
+          "dcterms:license": [
+            {
+              "concept": "license",
+              "property": "dcterms:license",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "license",
+              "controlled_vocabulary": "license",
+              "notes": "Mandatory at Distribution in the registry profile. Emit the steward URI from the license vocabulary, never the platform's enum label."
+            }
+          ],
+          "dcterms:rights": [
+            {
+              "concept": "rights",
+              "property": "dcterms:rights",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:accessRights": [
+            {
+              "concept": "access_rights",
+              "property": "dcterms:accessRights",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "concept",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": "accessType",
+              "controlled_vocabulary": null,
+              "notes": "Croissant has no equivalent; this is DCAT-only."
+            }
+          ],
+          "dcterms:issued": [
+            {
+              "concept": "issued",
+              "property": "dcterms:issued",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "issued",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:created": [
+            {
+              "concept": "created",
+              "property": "dcterms:created",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:modified": [
+            {
+              "concept": "modified",
+              "property": "dcterms:modified",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "modified",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:accrualPeriodicity": [
+            {
+              "concept": "accrual_periodicity",
+              "property": "dcterms:accrualPeriodicity",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "frequency",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:accrualMethod": [
+            {
+              "concept": "accrual_method",
+              "property": "dcterms:accrualMethod",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "concept",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "owl:versionInfo": [
+            {
+              "concept": "version",
+              "property": "owl:versionInfo",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "literal",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "DCAT has no dedicated version field. The workbook records the combination issued + modified + dcterms:hasVersion / owl:versionInfo. owl:versionInfo is used here because dcterms:hasVersion means \"a version of this exists over there\" - binding both concepts to it would make an incoming hasVersion impossible to route."
+            }
+          ],
+          "dcterms:spatial": [
+            {
+              "concept": "spatial_coverage",
+              "property": "dcterms:spatial",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "location",
+              "repeatable": true,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "geographies",
+              "controlled_vocabulary": "geography",
+              "notes": null
+            }
+          ],
+          "dcat:spatialResolutionInMeters": [
+            {
+              "concept": "spatial_resolution",
+              "property": "dcat:spatialResolutionInMeters",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "number",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "DCAT wants metres. The registry records admin level instead, which does not convert cleanly — carry it as a literal or drop it."
+            }
+          ],
+          "dcat:temporalResolution": [
+            {
+              "concept": "temporal_resolution",
+              "property": "dcat:temporalResolution",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "duration",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcat:landingPage": [
+            {
+              "concept": "landing_page",
+              "property": "dcat:landingPage",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "foaf:homepage": [
+            {
+              "concept": "homepage",
+              "property": "foaf:homepage",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:source": [
+            {
+              "concept": "source",
+              "property": "dcterms:source",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "foaf:depiction": [
+            {
+              "concept": "depiction",
+              "property": "foaf:depiction",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcat:inCatalog": [
+            {
+              "concept": "in_catalog",
+              "property": "dcat:inCatalog",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcat:inSeries": [
+            {
+              "concept": "in_series",
+              "property": "dcat:inSeries",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:conformsTo": [
+            {
+              "concept": "conforms_to",
+              "property": "dcterms:conformsTo",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "partial",
+              "dataspace_field": "metadata",
+              "controlled_vocabulary": null,
+              "notes": "DCAT's only way to point at an external schema such as CSVW."
+            }
+          ],
+          "dcterms:relation": [
+            {
+              "concept": "relation",
+              "property": "dcterms:relation",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:hasPart": [
+            {
+              "concept": "has_part",
+              "property": "dcterms:hasPart",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:isPartOf": [
+            {
+              "concept": "is_part_of",
+              "property": "dcterms:isPartOf",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:isReferencedBy": [
+            {
+              "concept": "is_referenced_by",
+              "property": "dcterms:isReferencedBy",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:replaces": [
+            {
+              "concept": "replaces",
+              "property": "dcterms:replaces",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:isReplacedBy": [
+            {
+              "concept": "is_replaced_by",
+              "property": "dcterms:isReplacedBy",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:isVersionOf": [
+            {
+              "concept": "is_version_of",
+              "property": "dcterms:isVersionOf",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:hasVersion": [
+            {
+              "concept": "has_version",
+              "property": "dcterms:hasVersion",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "prov:wasGeneratedBy": [
+            {
+              "concept": "provenance",
+              "property": "prov:wasGeneratedBy",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "structured",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "Requires PROV-O."
+            }
+          ],
+          "dcatin:jurisdictionLevel": [
+            {
+              "concept": "jurisdiction_level",
+              "property": "dcatin:jurisdictionLevel",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "concept",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "DCAT-IN, proposed. Namespace is a placeholder until it publishes."
+            }
+          ],
+          "dcatin:applicableLegislation": [
+            {
+              "concept": "applicable_legislation",
+              "property": "dcatin:applicableLegislation",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "DCAT-IN, proposed."
+            }
+          ],
+          "dcatin:hvdCategory": [
+            {
+              "concept": "hvd_category",
+              "property": "dcatin:hvdCategory",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "concept",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "DCAT-IN, proposed."
+            }
+          ],
+          "dcatin:note": [
+            {
+              "concept": "note",
+              "property": "dcatin:note",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "DCAT-IN, proposed."
+            }
+          ],
+          "dcat:distribution": [
+            {
+              "concept": "distribution",
+              "property": "dcat:distribution",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "structured",
+              "repeatable": true,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "resources",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ]
+        },
+        "period": {
+          "dcat:startDate": [
+            {
+              "concept": "temporal_coverage_start",
+              "property": "dcat:startDate",
+              "node": "period",
+              "parent_property": "dcterms:temporal",
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "Nested inside a dcterms:PeriodOfTime node."
+            }
+          ],
+          "dcat:endDate": [
+            {
+              "concept": "temporal_coverage_end",
+              "property": "dcat:endDate",
+              "node": "period",
+              "parent_property": "dcterms:temporal",
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ]
+        },
+        "distribution": {
+          "dcat:accessURL": [
+            {
+              "concept": "access_url",
+              "property": "dcat:accessURL",
+              "node": "distribution",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcat:downloadURL": [
+            {
+              "concept": "download_url",
+              "property": "dcat:downloadURL",
+              "node": "distribution",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": "download_url",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcat:mediaType": [
+            {
+              "concept": "media_type",
+              "property": "dcat:mediaType",
+              "node": "distribution",
+              "parent_property": null,
+              "value_type": "media_type",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": "format",
+              "controlled_vocabulary": null,
+              "notes": "dcterms:format is the looser alternative the workbook also records. Use mediaType when the value is a real MIME type, format otherwise."
+            }
+          ],
+          "dcat:byteSize": [
+            {
+              "concept": "byte_size",
+              "property": "dcat:byteSize",
+              "node": "distribution",
+              "parent_property": null,
+              "value_type": "bytes",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": "size",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:title": [
+            {
+              "concept": "distribution_title",
+              "property": "dcterms:title",
+              "node": "distribution",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": "name",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcat:endpointURL": [
+            {
+              "concept": "endpoint_url",
+              "property": "dcat:endpointURL",
+              "node": "distribution",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcat:endpointDescription": [
+            {
+              "concept": "endpoint_description",
+              "property": "dcat:endpointDescription",
+              "node": "distribution",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ]
+        },
+        "contact_point": {
+          "vcard:fn": [
+            {
+              "concept": "contact_name",
+              "property": "vcard:fn",
+              "node": "contact_point",
+              "parent_property": null,
+              "value_type": "literal",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "vcard:title": [
+            {
+              "concept": "contact_title",
+              "property": "vcard:title",
+              "node": "contact_point",
+              "parent_property": null,
+              "value_type": "literal",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "vcard:role": [
+            {
+              "concept": "contact_role",
+              "property": "vcard:role",
+              "node": "contact_point",
+              "parent_property": null,
+              "value_type": "literal",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "vcard:organization-name": [
+            {
+              "concept": "contact_organization",
+              "property": "vcard:organization-name",
+              "node": "contact_point",
+              "parent_property": null,
+              "value_type": "literal",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "vcard:hasEmail": [
+            {
+              "concept": "contact_email",
+              "property": "vcard:hasEmail",
+              "node": "contact_point",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "vcard:hasAddress": [
+            {
+              "concept": "contact_address",
+              "property": "vcard:hasAddress",
+              "node": "contact_point",
+              "parent_property": null,
+              "value_type": "structured",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "vcard:street-address": [
+            {
+              "concept": "contact_street_address",
+              "property": "vcard:street-address",
+              "node": "contact_point",
+              "parent_property": "vcard:hasAddress",
+              "value_type": "literal",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "vcard:locality": [
+            {
+              "concept": "contact_locality",
+              "property": "vcard:locality",
+              "node": "contact_point",
+              "parent_property": "vcard:hasAddress",
+              "value_type": "literal",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "vcard:postal-code": [
+            {
+              "concept": "contact_postal_code",
+              "property": "vcard:postal-code",
+              "node": "contact_point",
+              "parent_property": "vcard:hasAddress",
+              "value_type": "literal",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ]
+        }
+      },
+      "gaps": [
+        {
+          "concept": "source_identifier",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "slug",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "checksum",
+          "reason": "declared gap",
+          "notes": "No integrity-verification property in DCAT. Croissant requires sha256."
+        },
+        {
+          "concept": "file_set",
+          "reason": "declared gap",
+          "notes": "No file grouping or pattern support; nearest is many Distributions."
+        },
+        {
+          "concept": "containment",
+          "reason": "declared gap",
+          "notes": "No file hierarchy modelling."
+        },
+        {
+          "concept": "record_set",
+          "reason": "declared gap",
+          "notes": "Cannot represent tables or rows. Use conforms_to to point outward."
+        },
+        {
+          "concept": "field",
+          "reason": "declared gap",
+          "notes": "No column-level metadata."
+        },
+        {
+          "concept": "data_type",
+          "reason": "declared gap",
+          "notes": "No semantic or ML typing."
+        },
+        {
+          "concept": "transform",
+          "reason": "declared gap",
+          "notes": "Possible only via external PROV-O."
+        },
+        {
+          "concept": "annotation",
+          "reason": "declared gap",
+          "notes": "No native annotation model."
+        },
+        {
+          "concept": "status",
+          "reason": "declared gap",
+          "notes": "Publication workflow state is not a DCAT concept."
+        },
+        {
+          "concept": "download_count",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "similar_datasets",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "is_individual_dataset",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "dataspace",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "prompt_metadata",
+          "reason": "unbound",
+          "notes": null
+        }
+      ]
+    },
+    "dublin_core": {
+      "name": "Dublin Core Metadata Terms (DCMI)",
+      "version": "DCMI Metadata Terms 2020-01-20",
+      "url": "https://www.dublincore.org/specifications/dublin-core/dcmi-terms/",
+      "serialisation": "json-ld",
+      "uri_style": "node",
+      "context": {
+        "dcterms": "http://purl.org/dc/terms/"
+      },
+      "node_types": {
+        "dataset": "dcterms:Dataset"
+      },
+      "export": [
+        {
+          "concept": "identifier",
+          "property": "dcterms:identifier",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "id",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "title",
+          "property": "dcterms:title",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "langstring",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "title",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "description",
+          "property": "dcterms:description",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "langstring",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "description",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "keyword",
+          "property": "dcterms:subject",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": true,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "tags",
+          "controlled_vocabulary": null,
+          "notes": "Dublin Core has no free-text keyword element. subject is the nearest and is meant to carry controlled terms, so round-tripping tags through it loses the distinction between a tag and a theme."
+        },
+        {
+          "concept": "theme",
+          "property": "dcterms:subject",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "concept",
+          "repeatable": true,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "sectors",
+          "controlled_vocabulary": "sector",
+          "notes": "Shares dcterms:subject with keyword. On import from Dublin Core there is no way to tell which concept a subject value belongs to; the workbook's DCAT sheet maps Subject to both dcat:theme and dcat:keyword for the same reason. Prefer DCAT when the distinction matters."
+        },
+        {
+          "concept": "dataset_type",
+          "property": "dcterms:type",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "concept",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "datasetType",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "publisher",
+          "property": "dcterms:publisher",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "agent",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "organization",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "creator",
+          "property": "dcterms:creator",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "agent",
+          "repeatable": true,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "user",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "license",
+          "property": "dcterms:license",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "license",
+          "controlled_vocabulary": "license",
+          "notes": null
+        },
+        {
+          "concept": "access_rights",
+          "property": "dcterms:accessRights",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "concept",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "accessType",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "issued",
+          "property": "dcterms:issued",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "issued",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "modified",
+          "property": "dcterms:modified",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "mandatory",
+          "match": "exact",
+          "dataspace_field": "modified",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "spatial_coverage",
+          "property": "dcterms:spatial",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "location",
+          "repeatable": true,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "geographies",
+          "controlled_vocabulary": "geography",
+          "notes": null
+        },
+        {
+          "concept": "temporal_coverage_start",
+          "property": "dcterms:temporal",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "temporal_coverage_start",
+          "controlled_vocabulary": null,
+          "notes": "Dublin Core has no start/end structure - temporal takes a single literal period. Serialise start and end as one DCMI Period string; parsing it back into two dates is best-effort."
+        },
+        {
+          "concept": "temporal_coverage_end",
+          "property": "dcterms:temporal",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "temporal_coverage_end",
+          "controlled_vocabulary": null,
+          "notes": "See temporal_coverage_start; both concepts share one property."
+        },
+        {
+          "concept": "download_url",
+          "property": "dcterms:identifier",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "download_url",
+          "controlled_vocabulary": null,
+          "notes": "Dublin Core has no download link. The workbook's Identifier row maps to dcat:landingPage and foaf:homePage for this reason. Lossy either way."
+        },
+        {
+          "concept": "media_type",
+          "property": "dcterms:format",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "media_type",
+          "repeatable": false,
+          "obligation": "recommended",
+          "match": "partial",
+          "dataspace_field": "format",
+          "controlled_vocabulary": null,
+          "notes": "Flattened onto the dataset, because Dublin Core has no Distribution. For a multi-file dataset this collapses to the set of its formats."
+        },
+        {
+          "concept": "byte_size",
+          "property": "dcterms:extent",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "bytes",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "partial",
+          "dataspace_field": "size",
+          "controlled_vocabulary": null,
+          "notes": "Flattened onto the dataset; a literal, not a byte count."
+        },
+        {
+          "concept": "language",
+          "property": "dcterms:language",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": true,
+          "obligation": "recommended",
+          "match": "exact",
+          "dataspace_field": "language",
+          "controlled_vocabulary": "language",
+          "notes": null
+        },
+        {
+          "concept": "created",
+          "property": "dcterms:created",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "date",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "created",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "source",
+          "property": "dcterms:source",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "uri",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "source",
+          "controlled_vocabulary": null,
+          "notes": null
+        },
+        {
+          "concept": "citation",
+          "property": "dcterms:bibliographicCitation",
+          "node": "dataset",
+          "parent_property": null,
+          "value_type": "literal",
+          "repeatable": false,
+          "obligation": "optional",
+          "match": "exact",
+          "dataspace_field": "citation",
+          "controlled_vocabulary": null,
+          "notes": null
+        }
+      ],
+      "import": {
+        "dataset": {
+          "dcterms:identifier": [
+            {
+              "concept": "identifier",
+              "property": "dcterms:identifier",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "literal",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "id",
+              "controlled_vocabulary": null,
+              "notes": null
+            },
+            {
+              "concept": "download_url",
+              "property": "dcterms:identifier",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": "download_url",
+              "controlled_vocabulary": null,
+              "notes": "Dublin Core has no download link. The workbook's Identifier row maps to dcat:landingPage and foaf:homePage for this reason. Lossy either way."
+            }
+          ],
+          "dcterms:title": [
+            {
+              "concept": "title",
+              "property": "dcterms:title",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "title",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:alternative": [
+            {
+              "concept": "alternative_title",
+              "property": "dcterms:alternative",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:description": [
+            {
+              "concept": "description",
+              "property": "dcterms:description",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "description",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:abstract": [
+            {
+              "concept": "abstract",
+              "property": "dcterms:abstract",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:subject": [
+            {
+              "concept": "keyword",
+              "property": "dcterms:subject",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "literal",
+              "repeatable": true,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": "tags",
+              "controlled_vocabulary": null,
+              "notes": "Dublin Core has no free-text keyword element. subject is the nearest and is meant to carry controlled terms, so round-tripping tags through it loses the distinction between a tag and a theme."
+            },
+            {
+              "concept": "theme",
+              "property": "dcterms:subject",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "concept",
+              "repeatable": true,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": "sectors",
+              "controlled_vocabulary": "sector",
+              "notes": "Shares dcterms:subject with keyword. On import from Dublin Core there is no way to tell which concept a subject value belongs to; the workbook's DCAT sheet maps Subject to both dcat:theme and dcat:keyword for the same reason. Prefer DCAT when the distinction matters."
+            }
+          ],
+          "dcterms:type": [
+            {
+              "concept": "dataset_type",
+              "property": "dcterms:type",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "concept",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": "datasetType",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:language": [
+            {
+              "concept": "language",
+              "property": "dcterms:language",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "concept",
+              "repeatable": true,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:publisher": [
+            {
+              "concept": "publisher",
+              "property": "dcterms:publisher",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "agent",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": "organization",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:creator": [
+            {
+              "concept": "creator",
+              "property": "dcterms:creator",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "agent",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": "user",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:license": [
+            {
+              "concept": "license",
+              "property": "dcterms:license",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "license",
+              "controlled_vocabulary": "license",
+              "notes": null
+            }
+          ],
+          "dcterms:rights": [
+            {
+              "concept": "rights",
+              "property": "dcterms:rights",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "langstring",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:accessRights": [
+            {
+              "concept": "access_rights",
+              "property": "dcterms:accessRights",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "concept",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": "accessType",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:issued": [
+            {
+              "concept": "issued",
+              "property": "dcterms:issued",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "issued",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:created": [
+            {
+              "concept": "created",
+              "property": "dcterms:created",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:modified": [
+            {
+              "concept": "modified",
+              "property": "dcterms:modified",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "modified",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:accrualPeriodicity": [
+            {
+              "concept": "accrual_periodicity",
+              "property": "dcterms:accrualPeriodicity",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "frequency",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:accrualMethod": [
+            {
+              "concept": "accrual_method",
+              "property": "dcterms:accrualMethod",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "concept",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:spatial": [
+            {
+              "concept": "spatial_coverage",
+              "property": "dcterms:spatial",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "location",
+              "repeatable": true,
+              "obligation": "mandatory",
+              "match": "exact",
+              "dataspace_field": "geographies",
+              "controlled_vocabulary": "geography",
+              "notes": null
+            }
+          ],
+          "dcterms:temporal": [
+            {
+              "concept": "temporal_coverage_start",
+              "property": "dcterms:temporal",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "Dublin Core has no start/end structure - temporal takes a single literal period. Serialise start and end as one DCMI Period string; parsing it back into two dates is best-effort."
+            },
+            {
+              "concept": "temporal_coverage_end",
+              "property": "dcterms:temporal",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "date",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "See temporal_coverage_start; both concepts share one property."
+            }
+          ],
+          "dcterms:source": [
+            {
+              "concept": "source",
+              "property": "dcterms:source",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:conformsTo": [
+            {
+              "concept": "conforms_to",
+              "property": "dcterms:conformsTo",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": "metadata",
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:relation": [
+            {
+              "concept": "relation",
+              "property": "dcterms:relation",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:hasPart": [
+            {
+              "concept": "has_part",
+              "property": "dcterms:hasPart",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:isPartOf": [
+            {
+              "concept": "is_part_of",
+              "property": "dcterms:isPartOf",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:isReferencedBy": [
+            {
+              "concept": "is_referenced_by",
+              "property": "dcterms:isReferencedBy",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:replaces": [
+            {
+              "concept": "replaces",
+              "property": "dcterms:replaces",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:isReplacedBy": [
+            {
+              "concept": "is_replaced_by",
+              "property": "dcterms:isReplacedBy",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:isVersionOf": [
+            {
+              "concept": "is_version_of",
+              "property": "dcterms:isVersionOf",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:hasVersion": [
+            {
+              "concept": "has_version",
+              "property": "dcterms:hasVersion",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "uri",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "exact",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": null
+            }
+          ],
+          "dcterms:provenance": [
+            {
+              "concept": "provenance",
+              "property": "dcterms:provenance",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "structured",
+              "repeatable": true,
+              "obligation": "optional",
+              "match": "partial",
+              "dataspace_field": null,
+              "controlled_vocabulary": null,
+              "notes": "A free-text statement, not the structured PROV-O graph."
+            }
+          ],
+          "dcterms:format": [
+            {
+              "concept": "media_type",
+              "property": "dcterms:format",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "media_type",
+              "repeatable": false,
+              "obligation": "recommended",
+              "match": "partial",
+              "dataspace_field": "format",
+              "controlled_vocabulary": null,
+              "notes": "Flattened onto the dataset, because Dublin Core has no Distribution. For a multi-file dataset this collapses to the set of its formats."
+            }
+          ],
+          "dcterms:extent": [
+            {
+              "concept": "byte_size",
+              "property": "dcterms:extent",
+              "node": "dataset",
+              "parent_property": null,
+              "value_type": "bytes",
+              "repeatable": false,
+              "obligation": "optional",
+              "match": "partial",
+              "dataspace_field": "size",
+              "controlled_vocabulary": null,
+              "notes": "Flattened onto the dataset; a literal, not a byte count."
+            }
+          ]
+        }
+      },
+      "gaps": [
+        {
+          "concept": "source_identifier",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "slug",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "qualified_attribution",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "contact_point",
+          "reason": "declared gap",
+          "notes": "No contact structure; publisher is the only agent-ish element."
+        },
+        {
+          "concept": "version",
+          "reason": "declared gap",
+          "notes": "No version element. dcterms:hasVersion points at a different resource that is a version of this one, which is has_version, not this concept."
+        },
+        {
+          "concept": "spatial_resolution",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "temporal_resolution",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "landing_page",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "homepage",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "depiction",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "in_catalog",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "in_series",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "jurisdiction_level",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "applicable_legislation",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "hvd_category",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "note",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "distribution",
+          "reason": "declared gap",
+          "notes": "No Distribution resource. Every file-level fact flattens or is lost."
+        },
+        {
+          "concept": "access_url",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "checksum",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "distribution_title",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "endpoint_url",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "endpoint_description",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "file_set",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "containment",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "record_set",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "field",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "data_type",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "transform",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "annotation",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "contact_name",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "contact_title",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "contact_role",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "contact_organization",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "contact_email",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "contact_address",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "contact_street_address",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "contact_locality",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "contact_postal_code",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "status",
+          "reason": "declared gap",
+          "notes": null
+        },
+        {
+          "concept": "download_count",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "similar_datasets",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "is_individual_dataset",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "dataspace",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "prompt_metadata",
+          "reason": "unbound",
+          "notes": null
+        },
+        {
+          "concept": "homepage",
+          "reason": "declared gap",
+          "notes": "No homepage term in DCMI Metadata Terms."
+        }
+      ]
+    }
+  },
+  "owner": "DataSpaceBackend (api/services/metadata_export/contracts)",
+  "origin": "Started as a copy of CivicDataLab/DataSpace-data-ecosystem @ 83e577752784 (data_model/metadata/metadata-standards/superset/out/crosswalk.json). Edited here since; this file is the source of truth."
+}
