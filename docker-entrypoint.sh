@@ -48,6 +48,13 @@ END
 echo "Running migrations..."
 python manage.py migrate --noinput
 
+# Add any new search-document fields to the existing Elasticsearch indexes.
+# Deploys never rebuild indexes; without this, a new keyword field gets
+# dynamically mapped as text and breaks aggregations on it. The command never
+# exits non-zero, and `|| true` keeps a search outage from blocking start-up.
+echo "Syncing search index mappings..."
+python manage.py sync_search_mappings || true
+
 # Create superuser if needed (ignore failure, e.g. if already exists)
 if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ] && [ -n "$DJANGO_SUPERUSER_EMAIL" ]; then
     echo "Creating superuser (if not exists)..."
