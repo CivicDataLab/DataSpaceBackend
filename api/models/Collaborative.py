@@ -23,7 +23,7 @@ slug_validator = RegexValidator(
 class Collaborative(models.Model):
     id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=200, unique=True, blank=True, null=True)
-    summary = models.CharField(max_length=10000, blank=True, null=True)
+    summary = models.TextField(max_length=200_000, blank=True, null=True)
     logo = models.ImageField(
         upload_to=_use_case_directory_path, max_length=300, blank=True, null=True
     )
