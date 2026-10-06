@@ -394,7 +394,13 @@ class Mutation:
                 raise ValueError("Slug cannot be empty.")
             collaborative.slug = data.slug.strip()
         if data.summary is not None:
-            collaborative.summary = data.summary.strip()
+            summary = data.summary.strip()
+            max_summary_length = Collaborative._meta.get_field("summary").max_length
+            if max_summary_length and len(summary) > max_summary_length:
+                raise ValueError(
+                    f"Summary cannot exceed {max_summary_length} characters."
+                )
+            collaborative.summary = summary
         if data.platform_url is not None:
             collaborative.platform_url = data.platform_url.strip()
         if data.started_on is not None:
