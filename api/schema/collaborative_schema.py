@@ -20,6 +20,7 @@ from api.models import (
     Collaborative,
     CollaborativeMetadata,
     CollaborativeOrganizationRelationship,
+    ExternalContributor,
     Dataset,
     Geography,
     Metadata,
@@ -53,7 +54,7 @@ from authorization.types import TypeUser
 
 
 @strawberry_django.input(
-    Collaborative, fields="__all__", exclude=["datasets", "publications", "slug"]
+    Collaborative, fields="__all__", exclude=["datasets", "publications", "slug", "organization"]
 )
 class CollaborativeInput:
     """Input type for collaborative creation."""
@@ -77,7 +78,7 @@ class UpdateCollaborativeMetadataInput:
     geographies: Optional[List[int]]
 
 
-@strawberry_django.partial(Collaborative, fields="__all__", exclude=["datasets", "publications"])
+@strawberry_django.partial(Collaborative, fields="__all__", exclude=["datasets", "publications", "organization"])
 class CollaborativeInputPartial:
     """Input type for collaborative updates."""
 
@@ -87,12 +88,14 @@ class CollaborativeInputPartial:
     title: Optional[str] = None
     slug: Optional[str] = None
     summary: Optional[str] = None
+    designation: Optional[str] = None
     platform_url: Optional[str] = None
     tags: Optional[List[str]] = None
     sectors: Optional[List[uuid.UUID]] = None
     sdgs: Optional[List[uuid.UUID]] = None
     started_on: Optional[datetime.date] = None
     completed_on: Optional[datetime.date] = None
+    external_contributor_ids: Optional[List[int]] = None
 
 
 @strawberry.type(name="Query")
@@ -116,10 +119,7 @@ class Query:
     ) -> list[TypeCollaborative]:
         """Get all collaboratives."""
         user = info.context.user
-        organization = info.context.context.get("organization")
-        if organization:
-            queryset = Collaborative.objects.filter(organization=organization)
-        elif user.is_superuser:
+        if user.is_superuser:
             queryset = Collaborative.objects.all()
         elif user.is_authenticated:
             queryset = Collaborative.objects.filter(user=user)
@@ -283,9 +283,6 @@ class Mutation:
                 get_data=lambda result, **kwargs: {
                     "collaborative_id": str(result.id),
                     "collaborative_title": result.title,
-                    "organization_id": (
-                        str(result.organization.id) if result.organization else None
-                    ),
                 },
             )
         ],
@@ -297,22 +294,12 @@ class Mutation:
     def add_collaborative(self, info: Info) -> TypeCollaborative:
         """Add a new collaborative."""
         user = info.context.user
-        organization = info.context.context.get("organization")
-        if organization:
-            collaborative = Collaborative.objects.create(
-                title=f"New collaborative {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}",
-                summary="",
-                organization=organization,
-                status=CollaborativeStatus.DRAFT,
-                user=user,
-            )
-        else:
-            collaborative = Collaborative.objects.create(
-                title=f"New collaborative {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}",
-                summary="",
-                user=user,
-                status=CollaborativeStatus.DRAFT,
-            )
+        collaborative = Collaborative.objects.create(
+            title=f"New collaborative {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}",
+            summary="",
+            user=user,
+            status=CollaborativeStatus.DRAFT,
+        )
 
         return TypeCollaborative.from_django(collaborative)
 
@@ -395,6 +382,8 @@ class Mutation:
             collaborative.slug = data.slug.strip()
         if data.summary is not None:
             collaborative.summary = data.summary.strip()
+        if data.designation is not None:
+            collaborative.designation = data.designation.strip()
         if data.platform_url is not None:
             collaborative.platform_url = data.platform_url.strip()
         if data.started_on is not None:
@@ -405,6 +394,10 @@ class Mutation:
             collaborative.logo = data.logo
         if data.cover_image is not None and data.cover_image is not strawberry.UNSET:
             collaborative.cover_image = data.cover_image
+        if data.external_contributor_ids is not None:
+            external_contributor_ids = data.external_contributor_ids
+            external_contributors = ExternalContributor.objects.filter(id__in=external_contributor_ids)
+            collaborative.external_contributors.set(external_contributors)
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
 
@@ -551,8 +544,8 @@ class Mutation:
         except Collaborative.DoesNotExist:
             raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
-        # Only the collaborative's owner / org editors may change its links.
-        assert_can_manage_links(info.context.user, collaborative.user, collaborative.organization)
+        # Only the collaborative's owner may change its links.
+        assert_can_manage_links(info.context.user, collaborative.user, None)
 
         if collaborative.status != CollaborativeStatus.DRAFT:
             raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
@@ -571,8 +564,8 @@ class Mutation:
         except Collaborative.DoesNotExist:
             raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
 
-        # Only the collaborative's owner / org editors may change its links.
-        assert_can_manage_links(info.context.user, collaborative.user, collaborative.organization)
+        # Only the collaborative's owner may change its links.
+        assert_can_manage_links(info.context.user, collaborative.user, None)
 
         if collaborative.status != CollaborativeStatus.DRAFT:
             raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")
@@ -595,8 +588,8 @@ class Mutation:
         except Collaborative.DoesNotExist:
             raise ValueError(f"Collaborative with ID {collaborative_id} doesn't exist")
 
-        # Only the collaborative's owner / org editors may change its links.
-        assert_can_manage_links(info.context.user, collaborative.user, collaborative.organization)
+        # Only the collaborative's owner may change its links.
+        assert_can_manage_links(info.context.user, collaborative.user, None)
 
         if collaborative.status != CollaborativeStatus.DRAFT:
             raise ValueError(f"Collaborative with ID {collaborative_id} is not in draft status.")

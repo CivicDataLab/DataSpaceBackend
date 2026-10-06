@@ -69,6 +69,12 @@ class Publication(models.Model):
     )
     sectors = models.ManyToManyField("api.Sector", blank=True, related_name="publications")
     geographies = models.ManyToManyField("api.Geography", blank=True, related_name="publications")
+    contributors = models.ManyToManyField(
+        "authorization.User", blank=True, related_name="contributed_publications"
+    )
+    external_contributors = models.ManyToManyField(
+        "api.ExternalContributor", blank=True, related_name="publications"
+    )
     download_count = models.IntegerField(default=0)
 
     created = models.DateTimeField(auto_now_add=True)

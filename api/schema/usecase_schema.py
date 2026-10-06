@@ -19,6 +19,7 @@ from strawberry_django.pagination import OffsetPaginationInput
 from api.models import (
     SDG,
     Dataset,
+    ExternalContributor,
     Geography,
     Metadata,
     Organization,
@@ -93,6 +94,7 @@ class UseCaseInputPartial:
     geographies: Optional[List[int]] = None
     started_on: Optional[datetime.date] = None
     completed_on: Optional[datetime.date] = None
+    external_contributor_ids: Optional[List[int]] = None
 
 
 @strawberry.type(name="Query")
@@ -392,6 +394,10 @@ class Mutation:
             usecase.running_status = data.running_status
         if data.logo is not None and data.logo is not strawberry.UNSET:
             usecase.logo = data.logo
+        if data.external_contributor_ids is not None:
+            external_contributor_ids = data.external_contributor_ids
+            external_contributors = ExternalContributor.objects.filter(id__in=external_contributor_ids)
+            usecase.external_contributors.set(external_contributors)
         usecase.save()
         return TypeUseCase.from_django(usecase)
 

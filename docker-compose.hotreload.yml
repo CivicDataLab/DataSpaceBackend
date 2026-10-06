@@ -4,6 +4,18 @@
 # Usage: docker compose -f docker-compose.yml -f docker-compose.hotreload.yml up --build
 services:
   backend:
-    command: uvicorn DataSpace.asgi:application --host 0.0.0.0 --port 8000 --reload
+    # watchfiles isn't installed, so uvicorn falls back to StatReload, which
+    # polls every *.py under its watch dirs. Watching all of /code includes
+    # .venv (~18k files) and pins the reloader at 100% CPU, so watch only the
+    # app's own packages. Add a dir here if new server code lives elsewhere.
+    command: >
+      uvicorn DataSpace.asgi:application --host 0.0.0.0 --port 8000 --reload
+      --reload-dir DataSpace --reload-dir api --reload-dir authorization
+      --reload-dir search
     volumes:
       - .:/code
+    # The base file also joins dataexchange_default, an external network that
+    # only exists on prod-cds. Locally it's missing and compose refuses to
+    # start, so replace (not merge) the list with just the project network.
+    networks: !override
+      - default

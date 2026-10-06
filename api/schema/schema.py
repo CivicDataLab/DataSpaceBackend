@@ -12,6 +12,7 @@ import api.schema.aimodel_schema
 import api.schema.collaborative_schema
 import api.schema.dataset_schema
 import api.schema.dataspace_schema
+import api.schema.external_contributor_schema
 import api.schema.geography_schema
 import api.schema.metadata_schema
 import api.schema.organization_data_schema
@@ -102,7 +103,6 @@ Mutation = merge_types(
         api.schema.tags_schema.Mutation,
         api.schema.collaborative_schema.Mutation,
         api.schema.publication_schema.Mutation,
-        api.schema.platform_import_schema.Mutation,
         AuthMutation,
     ),
 )

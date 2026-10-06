@@ -444,6 +444,16 @@ class KeycloakManager:
                     # update_fields keeps the UPDATE narrow instead of
                     # rewriting every column.
                     user.save(update_fields=changed)
+
+                # Try to merge external contributor if email was just updated or verified
+                try:
+                    email_verified = user_info.get("email_verified", False)
+                    if email_verified and "email" in changed:
+                        from api.services.external_contributor_service import merge_external_contributor_into_user
+                        merge_external_contributor_into_user(user)
+                except Exception as merge_error:
+                    logger.error(f"Error merging contributor into user: {merge_error}")
+
                 return user
             else:
                 # Create new user
@@ -465,6 +475,16 @@ class KeycloakManager:
                 user.is_superuser = False
 
             user.save()
+
+            # Try to merge external contributor into user if email is verified
+            try:
+                email_verified = user_info.get("email_verified", False)
+                if email_verified and user.email:
+                    from api.services.external_contributor_service import merge_external_contributor_into_user
+                    merge_external_contributor_into_user(user)
+            except Exception as merge_error:
+                logger.error(f"Error merging contributor into user: {merge_error}")
+                # Never break login due to merge failure
 
             return user
         except Exception as e:

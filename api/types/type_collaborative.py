@@ -19,6 +19,7 @@ from api.types.type_collaborative_metadata import TypeCollaborativeMetadata
 from api.types.type_collaborative_organization import (
     TypeCollaborativeOrganizationRelationship,
 )
+from api.types.type_external_contributor import TypeExternalContributor
 from api.types.type_dataset import TypeDataset, TypeTag
 from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
@@ -65,8 +66,8 @@ class TypeCollaborative(BaseType):
     """GraphQL type for Collaborative model."""
 
     user: TypeUser = strawberry.field(description="User who created this collaborative")
-    organization: Optional[TypeOrganization] = strawberry.field(
-        description="Organization associated with this collaborative"
+    designation: Optional[str] = strawberry.field(
+        description="Designation or title of the user for this collaborative"
     )
     platform_url: Optional[str] = strawberry.field(
         description="URL of the platform where this collaborative is published"
@@ -75,7 +76,7 @@ class TypeCollaborative(BaseType):
     @strawberry.field(description="Check if this collaborative is created by an individual user.")
     def is_individual_collaborative(self) -> bool:
         """Check if this collaborative is created by an individual user."""
-        return self.organization is None
+        return True
 
     @strawberry.field(description="Get geographies associated with this collaborative.")
     def geographies(self) -> Optional[List[TypeGeo]]:
@@ -202,6 +203,17 @@ class TypeCollaborative(BaseType):
             if not queryset.exists():
                 return []
             return TypeUser.from_django_list(queryset)
+        except Exception:
+            return []
+
+    @strawberry.field(description="Get external contributors associated with this collaborative.")
+    def external_contributors(self) -> Optional[List["TypeExternalContributor"]]:
+        """Get external contributors associated with this collaborative."""
+        try:
+            queryset = self.external_contributors.all()  # type: ignore
+            if not queryset.exists():
+                return []
+            return TypeExternalContributor.from_django_list(queryset)
         except Exception:
             return []
 

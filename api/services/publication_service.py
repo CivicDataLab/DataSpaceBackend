@@ -18,7 +18,7 @@ from django.core.validators import URLValidator
 from django.db import transaction
 from django.db.models import QuerySet
 
-from api.models import Geography, Publication, ResourceType, Sector
+from api.models import ExternalContributor, Geography, Publication, ResourceType, Sector
 from api.utils.enums import DatasetLicense, PublicationStatus
 
 # Default page size + hard ceiling for a publications listing, enforced even
@@ -188,6 +188,7 @@ def apply_publication_update(
     sector_ids: Any = _UNSET,
     geography_ids: Any = _UNSET,
     external_source_link: Any = _UNSET,
+    external_contributor_ids: Any = _UNSET,
 ) -> Publication:
     """Apply a partial metadata update. Omitted fields are left untouched.
 
@@ -266,6 +267,10 @@ def apply_publication_update(
                 publication,
                 None if sector_ids is _UNSET or sector_ids is None else sector_ids,
                 None if geography_ids is _UNSET or geography_ids is None else geography_ids,
+            )
+        if external_contributor_ids is not _UNSET:
+            publication.external_contributors.set(
+                ExternalContributor.objects.filter(id__in=external_contributor_ids or [])
             )
     return publication
 

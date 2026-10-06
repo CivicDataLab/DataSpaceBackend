@@ -91,6 +91,7 @@ class UpdatePublicationInput:
     sector_ids: Optional[List[uuid.UUID]] = strawberry.UNSET
     geography_ids: Optional[List[int]] = strawberry.UNSET
     external_source_link: Optional[str] = strawberry.UNSET
+    external_contributor_ids: Optional[List[int]] = strawberry.UNSET
 
 
 @strawberry.type(name="Query")
@@ -417,6 +418,8 @@ def _update_kwargs(input: UpdatePublicationInput) -> dict:
         kwargs["geography_ids"] = input.geography_ids
     if input.external_source_link is not strawberry.UNSET:
         kwargs["external_source_link"] = input.external_source_link
+    if input.external_contributor_ids is not strawberry.UNSET:
+        kwargs["external_contributor_ids"] = input.external_contributor_ids
     return kwargs
 
 

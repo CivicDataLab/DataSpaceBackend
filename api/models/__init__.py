@@ -7,6 +7,7 @@ from api.models.CollaborativeMetadata import CollaborativeMetadata
 from api.models.CollaborativeOrganizationRelationship import (
     CollaborativeOrganizationRelationship,
 )
+from api.models.ExternalContributor import ExternalContributor
 from api.models.Dataset import Dataset, Tag
 from api.models.DatasetMetadata import DatasetMetadata
 from api.models.DatasetSource import DatasetSource
