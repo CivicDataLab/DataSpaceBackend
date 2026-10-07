@@ -16,7 +16,7 @@ from api.models import (
 from api.utils.enums import CollaborativeStatus
 from authorization.models import User
 from DataSpace import settings
-from search.documents.analysers import html_strip, ngram_analyser
+from search.documents.analysers import html_strip, ngram_analyser, title_subfields
 
 if TYPE_CHECKING:
     from api.models import CollaborativeOrganizationRelationship as RelationshipModel
@@ -58,9 +58,7 @@ class CollaborativeDocument(Document):
 
     title = fields.TextField(
         analyzer=ngram_analyser,
-        fields={
-            "raw": KeywordField(multi=False),
-        },
+        fields=title_subfields(),
     )
 
     summary = fields.TextField(
