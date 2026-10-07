@@ -3,14 +3,13 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import structlog
 from django.core.cache import cache
-from elasticsearch_dsl import A
-from elasticsearch_dsl import Q as ESQ
-from elasticsearch_dsl import Search
+from elasticsearch_dsl import A, Search
 from elasticsearch_dsl.query import Query as ESQuery
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 
 from api.models import Collaborative, CollaborativeMetadata, Geography, Metadata
+from api.utils.search_query import nested_paths, text_query
 from api.utils.telemetry_utils import trace_method
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
 from search.documents import CollaborativeDocument
@@ -237,63 +236,8 @@ class SearchCollaborative(PaginatedElasticSearchAPIView):
 
     @trace_method(name="generate_q_expression", attributes={"component": "search_collaborative"})
     def generate_q_expression(self, query: str) -> Optional[Union[ESQuery, List[ESQuery]]]:
-        if query:
-            queries: List[ESQuery] = []
-            for field in self.searchable_fields:
-                if field.startswith("datasets."):
-                    queries.append(
-                        ESQ(
-                            "nested",
-                            path="datasets",
-                            query=ESQ(
-                                "bool",
-                                should=[
-                                    ESQ("wildcard", **{field: {"value": f"*{query}*"}}),
-                                    ESQ("fuzzy", **{field: {"value": query, "fuzziness": "AUTO"}}),
-                                ],
-                            ),
-                        )
-                    )
-                elif field.startswith("use_cases."):
-                    queries.append(
-                        ESQ(
-                            "nested",
-                            path="use_cases",
-                            query=ESQ(
-                                "bool",
-                                should=[
-                                    ESQ("wildcard", **{field: {"value": f"*{query}*"}}),
-                                    ESQ("fuzzy", **{field: {"value": query, "fuzziness": "AUTO"}}),
-                                ],
-                            ),
-                        )
-                    )
-                elif (
-                    field.startswith("user.")
-                    or field.startswith("organization.")
-                    or field.startswith("contributors.")
-                    or field.startswith("organizations.")
-                ):
-                    path = field.split(".")[0]
-                    queries.append(
-                        ESQ(
-                            "nested",
-                            path=path,
-                            query=ESQ(
-                                "bool",
-                                should=[
-                                    ESQ("wildcard", **{field: {"value": f"*{query}*"}}),
-                                    ESQ("fuzzy", **{field: {"value": query, "fuzziness": "AUTO"}}),
-                                ],
-                            ),
-                        )
-                    )
-                else:
-                    queries.append(ESQ("fuzzy", **{field: {"value": query, "fuzziness": "AUTO"}}))
-        else:
-            queries = [ESQ("match_all")]
-
-        return ESQ("bool", should=queries, minimum_should_match=1)
+        """Analysed text query over the searchable fields (api/utils/search_query.py)."""
+        return text_query(query, self.searchable_fields, nested=nested_paths(self.document_class))
 
     @trace_method(name="add_filters", attributes={"component": "search_collaborative"})
     def add_filters(self, filters: Dict[str, str], search: Search) -> Search:
