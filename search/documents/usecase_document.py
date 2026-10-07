@@ -14,7 +14,7 @@ from api.models import (
 from api.utils.enums import UseCaseStatus
 from authorization.models import User
 from DataSpace import settings
-from search.documents.analysers import html_strip, ngram_analyser
+from search.documents.analysers import html_strip, ngram_analyser, title_subfields
 
 INDEX = Index(settings.ELASTICSEARCH_INDEX_NAMES[__name__])
 INDEX.settings(number_of_shards=1, number_of_replicas=0)
@@ -28,9 +28,7 @@ class UseCaseDocument(Document):
         properties={
             "value": KeywordField(multi=True),
             "raw": KeywordField(multi=True),
-            "metadata_item": fields.ObjectField(
-                properties={"label": KeywordField(multi=False)}
-            ),
+            "metadata_item": fields.ObjectField(properties={"label": KeywordField(multi=False)}),
         }
     )
 
@@ -44,9 +42,7 @@ class UseCaseDocument(Document):
 
     title = fields.TextField(
         analyzer=ngram_analyser,
-        fields={
-            "raw": KeywordField(multi=False),
-        },
+        fields=title_subfields(),
     )
 
     summary = fields.TextField(
@@ -190,9 +186,7 @@ class UseCaseDocument(Document):
                 "name": instance.user.full_name,
                 "bio": instance.user.bio or "",
                 "profile_picture": (
-                    instance.user.profile_picture.url
-                    if instance.user.profile_picture
-                    else ""
+                    instance.user.profile_picture.url if instance.user.profile_picture else ""
                 ),
             }
         return None
@@ -252,11 +246,7 @@ class UseCaseDocument(Document):
 
     def get_queryset(self) -> Any:
         """Get the queryset for indexing."""
-        return (
-            super(UseCaseDocument, self)
-            .get_queryset()
-            .filter(status=UseCaseStatus.PUBLISHED)
-        )
+        return super(UseCaseDocument, self).get_queryset().filter(status=UseCaseStatus.PUBLISHED)
 
     def get_instances_from_related(
         self,

@@ -16,8 +16,11 @@ Fields inside nested objects (``resources.name``, ``user.name``,
 ``metadata.value`` …) are wrapped in the ``nested`` query Elasticsearch needs
 for them; without it they silently match nothing.
 
-Known limit, tracked in #226: with 4-gram titles, a word shorter than four
-letters (GDP, AI) produces no token and cannot match a title.
+Title-like fields (``title``, ``name``, ``display_name``) are also searched
+through their ``words`` and ``prefix`` sub-fields: whole words (so GDP and AI
+match, and rank highest) and word beginnings (search-as-you-type). On an index
+that does not have those sub-fields yet, those parts simply match nothing and
+search behaves as before; ``sync_search_mappings`` adds and fills them.
 """
 
 from __future__ import annotations
@@ -34,6 +37,29 @@ TYPO_TOLERANT_MIN_MATCH = "3<80%"
 
 # Primary title fields count three times as much as the rest.
 DEFAULT_BOOSTS: Dict[str, int] = {"title": 3, "name": 3, "display_name": 3}
+
+# Top-level title-like fields carry two more sub-fields (search/documents/
+# analysers.py: title_subfields): ``words`` (whole words, stemmed) and
+# ``prefix`` (search-as-you-type). Whole words rank highest; they are also the
+# only way words under four letters (GDP, AI) can match a title.
+TITLE_FIELDS = ("title", "name", "display_name")
+WORDS_BOOST = 4
+PREFIX_BOOST = 2
+
+
+def _prefix_clause(query: str, title_fields: List[str]) -> ESQuery:
+    """Word-beginning match, so "mang" finds "Mangrove" while typing."""
+    fields: List[str] = []
+    for field in title_fields:
+        fields += [f"{field}.prefix", f"{field}.prefix._2gram", f"{field}.prefix._3gram"]
+    return ESQ(
+        "multi_match",
+        query=query,
+        type="bool_prefix",
+        fields=fields,
+        operator="and",
+        boost=PREFIX_BOOST,
+    )
 
 
 def nested_paths(document_class: object) -> set[str]:
@@ -80,11 +106,15 @@ def text_query(
     nested_set = set(nested)
     boosts = DEFAULT_BOOSTS if boosts is None else boosts
     groups: Dict[Optional[str], List[str]] = {}
+    title_fields: List[str] = []
     for field in fields:
         root = field.split(".", 1)[0]
         path = root if root in nested_set and "." in field else None
         weight = boosts.get(field)
         groups.setdefault(path, []).append(f"{field}^{weight}" if weight else field)
+        if path is None and field in TITLE_FIELDS:
+            title_fields.append(field)
+            groups[None].append(f"{field}.words^{WORDS_BOOST}")
 
     clauses: List[ESQuery] = []
     for path, group in groups.items():
@@ -92,5 +122,7 @@ def text_query(
         if path:
             clause = ESQ("nested", path=path, query=clause, ignore_unmapped=True)
         clauses.append(clause)
+    if title_fields:
+        clauses.append(_prefix_clause(text, title_fields))
 
     return clauses[0] if len(clauses) == 1 else ESQ("bool", should=clauses, minimum_should_match=1)

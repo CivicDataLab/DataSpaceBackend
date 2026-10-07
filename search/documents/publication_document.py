@@ -19,7 +19,7 @@ from api.models.Sector import Sector
 from api.utils.enums import PublicationStatus
 from authorization.models import User
 from DataSpace import settings
-from search.documents.analysers import html_strip, ngram_analyser
+from search.documents.analysers import html_strip, ngram_analyser, title_subfields
 
 INDEX = Index(settings.ELASTICSEARCH_INDEX_NAMES[__name__])
 INDEX.settings(number_of_shards=1, number_of_replicas=0)
@@ -31,7 +31,7 @@ class PublicationDocument(Document):
 
     title = fields.TextField(
         analyzer=ngram_analyser,
-        fields={"raw": KeywordField(multi=False)},
+        fields=title_subfields(),
     )
     description = fields.TextField(
         analyzer=html_strip,
