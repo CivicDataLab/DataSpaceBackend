@@ -64,6 +64,11 @@ on:
         type: boolean
         required: false
         default: false
+      rollback:
+        description: "Roll dev back to the image that was live before the last deploy (no build, no tests). Ignored on main."
+        type: boolean
+        required: false
+        default: false
 
 # Queue overlapping deploys to the SAME environment rather than cancelling (a
 # cancelled run mid-deploy could leave .deploy/ state and the running
@@ -82,6 +87,7 @@ env:
 jobs:
   build:
     name: Build and push image
+    if: ${{ !inputs.rollback }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -250,6 +256,9 @@ jobs:
   smoke-tests:
     name: Smoke Tests
     needs: deploy
+    # Repo variable SKIP_DEV_TESTS=true skips the dev test gates (e.g. while the
+    # test owner is away). main ignores it: prod deploys are always gated.
+    if: github.ref_name == 'main' || vars.SKIP_DEV_TESTS != 'true'
     # No `environment:` here -- GitHub rejects the entire workflow file at
     # parse time if a `uses:` job declares one. Consequence: this job also
     # cannot see environment-scoped vars, which is why api_base_url comes
@@ -300,15 +309,27 @@ jobs:
       TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
       KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
 
+  tests-skipped:
+    name: Tests skipped (SKIP_DEV_TESTS)
+    needs: deploy
+    if: github.ref_name != 'main' && vars.SKIP_DEV_TESTS == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::notice::SKIP_DEV_TESTS=true: smoke and functional tests were skipped for this dev deploy."
+          echo "**SKIP_DEV_TESTS=true**: smoke and functional tests were skipped. Delete the repo variable to turn them back on." >> "$GITHUB_STEP_SUMMARY"
+
   rollback-on-smoke-failure:
     name: Rollback (smoke tests failed)
     # `deploy` must be in needs: for needs.deploy.result to resolve here.
     needs: [deploy, smoke-tests, functional-tests]
     # Explicit results rather than failure(), so that a skipped functional stage
     # on main never reads as a failure. !cancelled() keeps cancellation a no-op.
+    # Also the manual rollback button: Run workflow on dev with `rollback` ticked.
     if: >-
-      ${{ !cancelled() && needs.deploy.result == 'success' &&
-      (needs.smoke-tests.result == 'failure' || needs.functional-tests.result == 'failure') }}
+      ${{ !cancelled() && ((inputs.rollback && github.ref_name != 'main') ||
+      (needs.deploy.result == 'success' &&
+      (needs.smoke-tests.result == 'failure' || needs.functional-tests.result == 'failure'))) }}
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     # 50m: must comfortably exceed the Restore previous image step's own
@@ -347,6 +368,7 @@ jobs:
           script: cd "$HOME/${{ env.DEPLOY_PATH }}" && sudo bash scripts/ci-rollback.sh "${{ vars.HEALTH_CHECK_URL || 'http://127.0.0.1:8000/health/' }}" "${{ github.actor }}"
 
       - name: Mark this run as failed
+        if: ${{ !inputs.rollback }}
         # The mitigation succeeded, but the run must still read RED -- a bad
         # deploy that silently self-heals is a bad deploy nobody investigates.
         run: |
@@ -357,10 +379,10 @@ jobs:
     name: Finalize Deploy
     needs: [deploy, smoke-tests, functional-tests]
     # Explicit results, not success()/!failure(): on main the functional stage
-    # is skipped by design.
+    # is skipped by design, and on dev SKIP_DEV_TESTS skips smoke too.
     if: >-
       ${{ !cancelled() && needs.deploy.result == 'success' &&
-      needs.smoke-tests.result == 'success' &&
+      (needs.smoke-tests.result == 'success' || needs.smoke-tests.result == 'skipped') &&
       (needs.functional-tests.result == 'success' || needs.functional-tests.result == 'skipped') }}
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
