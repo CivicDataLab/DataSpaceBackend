@@ -64,6 +64,11 @@ on:
         type: boolean
         required: false
         default: false
+      rollback:
+        description: "Roll dev back to the image that was live before the last deploy (no build, no tests). Ignored on main."
+        type: boolean
+        required: false
+        default: false
 
 # Queue overlapping deploys to the SAME environment rather than cancelling (a
 # cancelled run mid-deploy could leave .deploy/ state and the running
@@ -82,6 +87,7 @@ env:
 jobs:
   build:
     name: Build and push image
+    if: ${{ !inputs.rollback }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -319,9 +325,11 @@ jobs:
     needs: [deploy, smoke-tests, functional-tests]
     # Explicit results rather than failure(), so that a skipped functional stage
     # on main never reads as a failure. !cancelled() keeps cancellation a no-op.
+    # Also the manual rollback button: Run workflow on dev with `rollback` ticked.
     if: >-
-      ${{ !cancelled() && needs.deploy.result == 'success' &&
-      (needs.smoke-tests.result == 'failure' || needs.functional-tests.result == 'failure') }}
+      ${{ !cancelled() && ((inputs.rollback && github.ref_name != 'main') ||
+      (needs.deploy.result == 'success' &&
+      (needs.smoke-tests.result == 'failure' || needs.functional-tests.result == 'failure'))) }}
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     # 50m: must comfortably exceed the Restore previous image step's own
@@ -360,6 +368,7 @@ jobs:
           script: cd "$HOME/${{ env.DEPLOY_PATH }}" && sudo bash scripts/ci-rollback.sh "${{ vars.HEALTH_CHECK_URL || 'http://127.0.0.1:8000/health/' }}" "${{ github.actor }}"
 
       - name: Mark this run as failed
+        if: ${{ !inputs.rollback }}
         # The mitigation succeeded, but the run must still read RED -- a bad
         # deploy that silently self-heals is a bad deploy nobody investigates.
         run: |
