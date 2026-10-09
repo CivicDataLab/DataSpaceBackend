@@ -13,6 +13,7 @@ from api.views import (
     auth,
     download,
     generate_dynamic_chart,
+    metadata_export,
     publication_download_view,
     search_aimodel,
     search_collaborative,
@@ -83,6 +84,16 @@ urlpatterns = [
         "trending/datasets/",
         trending_datasets.TrendingDatasets.as_view(),
         name="trending_datasets",
+    ),
+    path(
+        "datasets/<uuid:dataset_id>/export/",
+        metadata_export.metadata_export,
+        name="dataset_metadata_export",
+    ),
+    path(
+        "metadata/export-options/",
+        metadata_export.metadata_export_options,
+        name="metadata_export_options",
     ),
     # Single, simple GraphQL endpoint with no redirects
     path(

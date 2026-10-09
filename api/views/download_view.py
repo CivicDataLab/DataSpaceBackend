@@ -6,7 +6,7 @@ import magic
 from asgiref.sync import sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.uploadedfile import UploadedFile
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
 from pyecharts.charts.chart import Chart
 from pyecharts.render import make_snapshot
 from selenium import webdriver
@@ -16,6 +16,7 @@ from snapshot_selenium import snapshot
 
 from api.models import Resource, ResourceChartDetails, ResourceChartImage
 from api.types.type_resource_chart import chart_base
+from api.utils.enums import DataType
 
 
 @sync_to_async
@@ -47,13 +48,21 @@ def get_resource_response(
     resource: Resource, request: Optional[HttpRequest] = None
 ) -> HttpResponse:
     """Get file response for a resource."""
-    file_details = resource.resourcefiledetails
+    # Link-only (platform-imported) resources: we hold no bytes, send the
+    # user to the file on the source platform. Still counts as a download.
+    if resource.type == DataType.EXTERNAL:
+        if not resource.url:
+            return JsonResponse({"error": "External resource has no URL"}, status=404)
+        resource.download_count += 1
+        resource.save(update_fields=["download_count"])
+        _track_download(resource, request)
+        return HttpResponseRedirect(resource.url)
+
+    file_details = getattr(resource, "resourcefiledetails", None)
     if not file_details or not file_details.file:
         return JsonResponse({"error": "File not found"}, status=404)
 
-    response = HttpResponse(
-        file_details.file.read(), content_type="application/octet-stream"
-    )
+    response = HttpResponse(file_details.file.read(), content_type="application/octet-stream")
 
     # Handle filename and basename explicitly
     default_name = f"resource_{resource.name}.csv"
@@ -69,7 +78,14 @@ def get_resource_response(
     resource.download_count += 1
     resource.save()
 
-    # Track the download activity if the user is authenticated
+    _track_download(resource, request)
+
+    response["Content-Disposition"] = f'attachment; filename="{basename}"'
+    return response
+
+
+def _track_download(resource: Resource, request: Optional[HttpRequest]) -> None:
+    """Record the download in the activity stream for authenticated users."""
     if request and hasattr(request, "user") and request.user.is_authenticated:
         # Import here to avoid circular imports
         import asyncio
@@ -80,9 +96,6 @@ def get_resource_response(
             sync_to_async(track_resource_downloaded)(request.user, resource, request)
         )
 
-    response["Content-Disposition"] = f'attachment; filename="{basename}"'
-    return response
-
 
 @sync_to_async
 def get_chart_image_response(chart_image: ResourceChartImage) -> HttpResponse:
@@ -90,9 +103,7 @@ def get_chart_image_response(chart_image: ResourceChartImage) -> HttpResponse:
     if not chart_image.image:
         return JsonResponse({"error": "File not found"}, status=404)
 
-    response = HttpResponse(
-        chart_image.image.read(), content_type="application/octet-stream"
-    )
+    response = HttpResponse(chart_image.image.read(), content_type="application/octet-stream")
 
     # Handle filename and basename explicitly
     default_name = f"chart_{chart_image.id}.png"
@@ -180,9 +191,7 @@ def get_file_chart_image_response(chart_image: ResourceChartImage) -> HttpRespon
         file_obj.seek(0)  # Reset file pointer
         response = HttpResponse(file_obj, content_type=mime_type)
         file_name = str(file_obj.name)
-        response["Content-Disposition"] = (
-            f'attachment; filename="{os.path.basename(file_name)}"'
-        )
+        response["Content-Disposition"] = f'attachment; filename="{os.path.basename(file_name)}"'
     else:
         response = HttpResponse("File doesn't exist", content_type="text/plain")
     return response
@@ -192,9 +201,7 @@ def get_custom_webdriver() -> WebDriver:
     """Configure and return a custom Selenium WebDriver."""
     chrome_options = Options()
     chrome_options.add_argument("--no-sandbox")  # Bypass OS security model
-    chrome_options.add_argument(
-        "--disable-dev-shm-usage"
-    )  # Overcome limited resource problems
+    chrome_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
     chrome_options.add_argument("--headless")  # Run headless browser
     chrome_options.add_argument("--disable-gpu")  # Disable GPU for headless browser
 

@@ -393,7 +393,13 @@ class Mutation:
                 raise ValueError("Title cannot be empty.")
             usecase.title = data.title.strip()
         if data.summary is not None:
-            usecase.summary = data.summary.strip()
+            summary = data.summary.strip()
+            max_summary_length = UseCase._meta.get_field("summary").max_length
+            if max_summary_length and len(summary) > max_summary_length:
+                raise ValueError(
+                    f"Summary cannot exceed {max_summary_length} characters."
+                )
+            usecase.summary = summary
         if data.platform_url is not None:
             usecase.platform_url = data.platform_url.strip()
         if data.started_on is not None:

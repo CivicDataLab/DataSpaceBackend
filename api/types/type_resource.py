@@ -69,6 +69,7 @@ class TypeResource(BaseType):
     preview_enabled: auto
     preview_details: Optional[TypePreviewDetails]
     download_count: auto
+    url: auto
 
     # @strawberry.field
     # def model_resources(self) -> List[TypeAccessModelResourceFields]:

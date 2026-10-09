@@ -163,8 +163,12 @@ if DEBUG:
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.insert(1, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
+# Defaults on; set RATE_LIMIT_ENABLED=False on dev so test runs aren't throttled.
+RATE_LIMIT_ENABLED = env.bool("RATE_LIMIT_ENABLED", default=True)
+if RATE_LIMIT_ENABLED:
+    MIDDLEWARE.append("api.middleware.rate_limit.rate_limit_middleware")
+
 MIDDLEWARE += [
-    "api.middleware.rate_limit.rate_limit_middleware",
     "authorization.middleware.KeycloakAuthenticationMiddleware",
     "authorization.middleware.activity_consent.ActivityConsentMiddleware",
 ]
@@ -288,6 +292,21 @@ ELASTICSEARCH_INDEX_NAMES = {
     "search.documents.publisher_document.UserPublisherDocument": "user_publisher",
 }
 
+
+# Third-party platform imports (link-only). All three platforms work with no
+# key for public datasets. KAGGLE_* adds a file count to Kaggle imports,
+# HF_TOKEN unlocks gated Hugging Face repos, GITHUB_TOKEN lifts GitHub's
+# anonymous rate limit.
+KAGGLE_USERNAME = os.getenv("KAGGLE_USERNAME", None)
+KAGGLE_KEY = os.getenv("KAGGLE_KEY", None)
+HF_TOKEN = os.getenv("HF_TOKEN", None)
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", None)  # optional, lifts the 60 req/hour anonymous limit
+PLATFORM_IMPORT_TIMEOUT = float(os.getenv("PLATFORM_IMPORT_TIMEOUT", "15"))
+
+# Absolute URLs written into exported metadata documents (dataset landing page,
+# download links). Override on any environment that is not production.
+PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://civicdataspace.in")
+PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.civicdataspace.in")
 
 # DVC settings
 DVC_REPO_PATH = os.path.join(BASE_DIR, "dvc")
@@ -427,7 +446,7 @@ OTEL_INSTRUMENTATION_PACKAGES = [
 ]
 
 # Rate limiting settings
-RATELIMIT_ENABLE = True
+RATELIMIT_ENABLE = RATE_LIMIT_ENABLED
 RATELIMIT_USE_CACHE = "default"
 RATELIMIT_VIEW = "api.views.rate_limit_exceeded_view"
 

@@ -1,10 +1,11 @@
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from django.db import models
 from django.db.models import Sum
 from django.utils.text import slugify
 
+from api.utils.django_utils import retry_on_slug_collision
 from api.utils.enums import (
     DatasetAccessType,
     DatasetLicense,
@@ -84,7 +85,14 @@ class Dataset(models.Model):
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
             self.slug = slugify(self.title)
-        super().save(*args, **kwargs)
+        base_slug = self.slug
+
+        def disambiguate(attempt: int) -> None:
+            self.slug = f"{base_slug}-{attempt}"
+
+        retry_on_slug_collision(
+            lambda: super(Dataset, self).save(*args, **kwargs), disambiguate
+        )
 
     @property
     def tags_indexing(self) -> list[str]:
@@ -116,14 +124,22 @@ class Dataset(models.Model):
 
         Used in Elasticsearch indexing.
         """
-        return list(
-            set(
-                [
-                    resource.resourcefiledetails.format  # type: ignore
-                    for resource in self.resources.all()
-                ]
-            ).difference({""})
-        )
+        formats: set[str] = set()
+        for resource in self.resources.all():
+            # Link-only (EXTERNAL) resources have no file details; skip them.
+            file_details = getattr(resource, "resourcefiledetails", None)
+            if file_details is not None and file_details.format:
+                formats.add(file_details.format)
+        return list(formats)
+
+    @property
+    def source_platform_indexing(self) -> Optional[str]:
+        """Platform this dataset was imported from, or None for native datasets.
+
+        Used in Elasticsearch indexing.
+        """
+        source = getattr(self, "source", None)
+        return source.platform if source is not None else None
 
     @property
     def catalogs_indexing(self) -> list[str]:

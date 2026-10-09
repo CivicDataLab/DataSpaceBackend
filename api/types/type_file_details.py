@@ -15,5 +15,6 @@ class TypeFileDetails(BaseType):
     file: auto
     size: auto
     format: auto
+    sha256: auto
     created: auto
     modified: auto
