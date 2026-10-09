@@ -250,6 +250,9 @@ jobs:
   smoke-tests:
     name: Smoke Tests
     needs: deploy
+    # Repo variable SKIP_DEV_TESTS=true skips the dev test gates (e.g. while the
+    # test owner is away). main ignores it: prod deploys are always gated.
+    if: github.ref_name == 'main' || vars.SKIP_DEV_TESTS != 'true'
     # No `environment:` here -- GitHub rejects the entire workflow file at
     # parse time if a `uses:` job declares one. Consequence: this job also
     # cannot see environment-scoped vars, which is why api_base_url comes
@@ -299,6 +302,16 @@ jobs:
       TEST_EMAIL_2: ${{ secrets.TEST_EMAIL_2 }}
       TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
       KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
+
+  tests-skipped:
+    name: Tests skipped (SKIP_DEV_TESTS)
+    needs: deploy
+    if: github.ref_name != 'main' && vars.SKIP_DEV_TESTS == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::notice::SKIP_DEV_TESTS=true: smoke and functional tests were skipped for this dev deploy."
+          echo "**SKIP_DEV_TESTS=true**: smoke and functional tests were skipped. Delete the repo variable to turn them back on." >> "$GITHUB_STEP_SUMMARY"
 
   rollback-on-smoke-failure:
     name: Rollback (smoke tests failed)
@@ -357,10 +370,10 @@ jobs:
     name: Finalize Deploy
     needs: [deploy, smoke-tests, functional-tests]
     # Explicit results, not success()/!failure(): on main the functional stage
-    # is skipped by design.
+    # is skipped by design, and on dev SKIP_DEV_TESTS skips smoke too.
     if: >-
       ${{ !cancelled() && needs.deploy.result == 'success' &&
-      needs.smoke-tests.result == 'success' &&
+      (needs.smoke-tests.result == 'success' || needs.smoke-tests.result == 'skipped') &&
       (needs.functional-tests.result == 'success' || needs.functional-tests.result == 'skipped') }}
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
