@@ -11,6 +11,7 @@ from strawberry.types import Info
 from api.models import Dataset, DatasetMetadata, PromptDataset, Resource, Tag
 from api.types.base_type import BaseType
 from api.types.type_dataset_metadata import TypeDatasetMetadata
+from api.types.type_dataset_source import TypeDatasetSource
 from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
 from api.types.type_resource import TypeResource
@@ -64,6 +65,12 @@ class TypeDataset(BaseType):
     tags: List["TypeTag"]
     download_count: int
     user: Optional["TypeUser"]
+
+    @strawberry.field
+    def source(self) -> Optional["TypeDatasetSource"]:
+        """Provenance for datasets imported from a third-party platform (else null)."""
+        source = getattr(self, "source", None)
+        return TypeDatasetSource.from_django(source) if source is not None else None
 
     @strawberry.field
     def sectors(self, info: Info) -> List["TypeSector"]:
@@ -127,6 +134,14 @@ class TypeDataset(BaseType):
             return None
         except (AttributeError, PromptDataset.DoesNotExist):
             return None
+
+    @strawberry.field(description="Number of files or links on the dataset.")
+    def resource_count(self) -> int:
+        # datasetsTable annotates this in one query; elsewhere fall back to a count.
+        annotated = getattr(self, "_resource_count", None)
+        if annotated is not None:
+            return int(annotated)
+        return Resource.objects.filter(dataset_id=self.id).count()
 
     @strawberry.field
     def resources(self) -> List["TypeResource"]:
@@ -280,3 +295,23 @@ class TypeTag(BaseType):
 
     id: strawberry.auto
     value: strawberry.auto
+
+
+@strawberry.type(description="How many datasets carry each status, for tab labels.")
+class DatasetStatusCount:
+    status: str
+    count: int
+
+
+@strawberry.type
+class DatasetResponse:
+    """One page of a table listing (`datasetsTable`): rows, the total after
+    filters, and per-status counts for tab labels."""
+
+    data: List[TypeDataset]
+    total_items_count: int
+    status_counts: List[DatasetStatusCount] = strawberry.field(
+        default_factory=list,
+        description="Counts per status with the same filters applied, except any status filter, "
+        "so tab labels stay stable when switching tabs.",
+    )

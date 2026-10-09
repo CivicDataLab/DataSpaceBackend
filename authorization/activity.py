@@ -10,6 +10,31 @@ from django.http import HttpRequest
 # mypy: disable-error-code=no-any-return
 
 
+def _send_action(
+    *,
+    actor: Union[AbstractBaseUser, Model],
+    verb: str,
+    action_object: Optional[Model],
+    target: Optional[Model],
+    **kwargs: Any
+) -> Optional[Model]:
+    """Send the actstream action signal.
+
+    In actstream 2, ``action`` is a Signal.
+    """
+    responses = action.send(
+        actor,
+        verb=verb,
+        action_object=action_object,
+        target=target,
+        **kwargs,
+    )
+    for _receiver, response in responses:
+        if isinstance(response, Model):
+            return response
+    return None
+
+
 def record_activity(
     actor: Union[AbstractBaseUser, Model],
     verb: str,
@@ -47,7 +72,7 @@ def record_activity(
         if not hasattr(actor, "is_authenticated"):
             if not track_anonymous:
                 return None
-        return action(
+        return _send_action(
             actor=actor, verb=verb, action_object=action_object, target=target, **kwargs
         )
 
@@ -71,6 +96,6 @@ def record_activity(
         return None
 
     # Record the activity
-    return action(
+    return _send_action(
         actor=actor, verb=verb, action_object=action_object, target=target, **kwargs
     )

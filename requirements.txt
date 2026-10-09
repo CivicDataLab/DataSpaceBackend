@@ -123,3 +123,4 @@ torch==2.9.0
 transformers==4.57.1
 sentencepiece==0.2.1
 accelerate==1.11.0
+rdflib==7.6.0
