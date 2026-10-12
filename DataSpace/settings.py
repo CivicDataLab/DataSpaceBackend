@@ -306,7 +306,7 @@ PLATFORM_IMPORT_TIMEOUT = float(os.getenv("PLATFORM_IMPORT_TIMEOUT", "15"))
 # Absolute URLs written into exported metadata documents (dataset landing page,
 # download links). Override on any environment that is not production.
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://civicdataspace.in")
-PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.civicdataspace.in")
+PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.datakeep.civicdays.in")
 
 # DVC settings
 DVC_REPO_PATH = os.path.join(BASE_DIR, "dvc")
