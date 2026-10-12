@@ -25,7 +25,7 @@ def _public_base() -> str:
 
 
 def _api_base() -> str:
-    return getattr(settings, "PUBLIC_API_URL", "https://api.civicdataspace.in").rstrip("/")
+    return getattr(settings, "PUBLIC_API_URL", "https://api.datakeep.civicdays.in").rstrip("/")
 
 
 def _iso(dt: Any) -> Optional[str]:

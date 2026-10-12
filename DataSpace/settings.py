@@ -163,8 +163,12 @@ if DEBUG:
     INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.insert(1, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
+# Defaults on; set RATE_LIMIT_ENABLED=False on dev so test runs aren't throttled.
+RATE_LIMIT_ENABLED = env.bool("RATE_LIMIT_ENABLED", default=True)
+if RATE_LIMIT_ENABLED:
+    MIDDLEWARE.append("api.middleware.rate_limit.rate_limit_middleware")
+
 MIDDLEWARE += [
-    "api.middleware.rate_limit.rate_limit_middleware",
     "authorization.middleware.KeycloakAuthenticationMiddleware",
     "authorization.middleware.activity_consent.ActivityConsentMiddleware",
 ]
@@ -302,7 +306,7 @@ PLATFORM_IMPORT_TIMEOUT = float(os.getenv("PLATFORM_IMPORT_TIMEOUT", "15"))
 # Absolute URLs written into exported metadata documents (dataset landing page,
 # download links). Override on any environment that is not production.
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://civicdataspace.in")
-PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.civicdataspace.in")
+PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.datakeep.civicdays.in")
 
 # DVC settings
 DVC_REPO_PATH = os.path.join(BASE_DIR, "dvc")
@@ -442,7 +446,7 @@ OTEL_INSTRUMENTATION_PACKAGES = [
 ]
 
 # Rate limiting settings
-RATELIMIT_ENABLE = True
+RATELIMIT_ENABLE = RATE_LIMIT_ENABLED
 RATELIMIT_USE_CACHE = "default"
 RATELIMIT_VIEW = "api.views.rate_limit_exceeded_view"
 
