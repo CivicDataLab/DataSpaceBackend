@@ -39,7 +39,8 @@ Before you call a change finished:
 - Cache: Redis (`django-redis`, `django-cacheops`)
 - Activity feed: `django-activity-stream`
 - Observability: OpenTelemetry, `structlog`
-- Data: pandas, pyarrow, DVC for dataset versioning
+- Data: pandas, pyarrow
+- Media: S3 only, via `django-storages` (`public`/`private` storages in `api/utils/storage.py`; keys prefixed by `STORAGE_ENV`)
 - Runtime: uvicorn/gunicorn in Docker, deployed to AWS (ECS / EC2 via `scripts/ci-*.sh`)
 
 **File structure:**
@@ -51,7 +52,6 @@ Before you call a change finished:
   - `views/`: REST views (search, downloads, charts, health, auth)
   - `services/`: business logic kept out of resolvers (publication, platform import, metadata mapping/export, model clients)
   - `activities/`: activity-stream handlers and display per domain (`dataset.py`, `organization.py`, …), wired up in `registry.py`
-  - `managers/`: `dvc_manager.py` for dataset versioning
   - `signals/`: post-save hooks (search indexing, cache invalidation)
   - `middleware/`, `utils/middleware.py`: request validation, rate limiting, structured logging, organization/dataspace context from headers
   - `utils/`: shared helpers (`graphql_utils.py`, `keycloak_utils.py`, `search_query.py`, `search_cache.py`, `enums.py`, …)
@@ -158,6 +158,7 @@ def update_org(self, info, input):
 - Branch from `dev` with `fix/…`, `feat/…` or `chore/…`. PRs go into `dev`. Releases go from `dev` to `main`, gated by `pr-gate.yml`.
 - Do not make any commits utill asked for it.
 - Use Conventional Commits with a scope: `fix(api): …`, `feat(usecase): …`.
+- Never use claude co-author while doing commit.
 - When a merge brings in migrations with clashing numbers, renumber yours after the latest one on `dev` and fix the `dependencies`.
 
 ## Boundaries
