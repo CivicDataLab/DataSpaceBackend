@@ -6,12 +6,15 @@ from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
 from api.utils.file_paths import _catalog_directory_path
+from api.utils.storage import public_storage
 
 
 class Catalog(models.Model):
     name = models.CharField(max_length=255)
     datasets = models.ManyToManyField("api.Dataset", related_name="catalogs")
-    logo = models.ImageField(upload_to=_catalog_directory_path, blank=True, null=True)
+    logo = models.ImageField(
+        upload_to=_catalog_directory_path, storage=public_storage, blank=True, null=True
+    )
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     homepage = models.URLField(blank=True)

@@ -16,6 +16,7 @@ from api.utils.enums import (
     UseCaseStatus,
 )
 from api.utils.file_paths import _use_case_directory_path
+from api.utils.storage import public_storage
 
 
 class UseCase(models.Model):
@@ -23,7 +24,11 @@ class UseCase(models.Model):
     title = models.CharField(max_length=200, unique=True, blank=True, null=True)
     summary = models.TextField(max_length=200_000, blank=True, null=True)
     logo = models.ImageField(
-        upload_to=_use_case_directory_path, max_length=300, blank=True, null=True
+        upload_to=_use_case_directory_path,
+        storage=public_storage,
+        max_length=300,
+        blank=True,
+        null=True,
     )
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
@@ -71,9 +76,7 @@ class UseCase(models.Model):
             self.title = f"{base_title} ({attempt})"
             self.slug = slugify(cast(str, self.title))
 
-        retry_on_slug_collision(
-            lambda: super(UseCase, self).save(*args, **kwargs), disambiguate
-        )
+        retry_on_slug_collision(lambda: super(UseCase, self).save(*args, **kwargs), disambiguate)
 
     @property
     def is_individual_usecase(self):

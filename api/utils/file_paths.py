@@ -2,6 +2,9 @@ import os
 import uuid
 from typing import Any
 
+# Names are relative to the storage, which already prefixes every key with
+# <env>/public or <env>/private; see api/utils/storage.py.
+
 
 def _organization_directory_path(org: Any, filename: str) -> str:
     """
@@ -11,7 +14,7 @@ def _organization_directory_path(org: Any, filename: str) -> str:
 
     org_name = org.name
     _, extension = os.path.splitext(filename)
-    return f"files/public/organizations/{org_name}/{extension[1:]}/{filename}"
+    return f"organizations/{org_name}/{extension[1:]}/{filename}"
 
 
 def _chart_image_directory_path(chart: Any, filename: str) -> str:
@@ -22,7 +25,7 @@ def _chart_image_directory_path(chart: Any, filename: str) -> str:
 
     chart_name = chart.name
     _, extension = os.path.splitext(filename)
-    return f"files/chart_images/{chart_name}/{extension[1:]}/{filename}"
+    return f"chart_images/{chart_name}/{extension[1:]}/{filename}"
 
 
 def _dataspace_directory_path(ds: Any, filename: str) -> str:
@@ -33,7 +36,7 @@ def _dataspace_directory_path(ds: Any, filename: str) -> str:
 
     ds_name = ds.name
     _, extension = os.path.splitext(filename)
-    return f"files/public/dataspace/{ds_name}/{extension[1:]}/{filename}"
+    return f"dataspace/{ds_name}/{extension[1:]}/{filename}"
 
 
 def _use_case_directory_path(uc: Any, filename: str) -> str:
@@ -44,7 +47,7 @@ def _use_case_directory_path(uc: Any, filename: str) -> str:
 
     uc_name = uc.title
     _, extension = os.path.splitext(filename)
-    return f"files/use_case/{uc_name}/logo/{filename}"
+    return f"use_case/{uc_name}/logo/{filename}"
 
 
 def _user_profile_image_directory_path(user: Any, filename: str) -> str:
@@ -54,7 +57,7 @@ def _user_profile_image_directory_path(user: Any, filename: str) -> str:
     """
     user_name = user.keycloak_id
     _, extension = os.path.splitext(filename)
-    return f"files/user_profile/{user_name}/{extension[1:]}/{filename}"
+    return f"user_profile/{user_name}/{extension[1:]}/{filename}"
 
 
 def _organization_file_directory_path(org: Any, filename: str) -> str:
@@ -65,7 +68,7 @@ def _organization_file_directory_path(org: Any, filename: str) -> str:
 
     org_name = org.name
     _, extension = os.path.splitext(filename)
-    return f"files/resources/{org_name}/sample_data/{extension[1:]}/{filename}"
+    return f"resources/{org_name}/sample_data/{extension[1:]}/{filename}"
 
 
 def _catalog_directory_path(catalog: Any, filename: str) -> str:
@@ -74,7 +77,7 @@ def _catalog_directory_path(catalog: Any, filename: str) -> str:
     """
     catalog_name = catalog.name
     _, extension = os.path.splitext(filename)
-    return f"files/catalog/{catalog_name}/{extension[1:]}/{filename}"
+    return f"catalog/{catalog_name}/{extension[1:]}/{filename}"
 
 
 def _publication_block_directory_path(block: Any, filename: str) -> str:
@@ -86,4 +89,4 @@ def _publication_block_directory_path(block: Any, filename: str) -> str:
     """
     publication_id = block.publication_id
     unique_name = f"{uuid.uuid4().hex}_{filename}"
-    return f"files/public/publications/{publication_id}/{unique_name}"
+    return f"publications/{publication_id}/{unique_name}"

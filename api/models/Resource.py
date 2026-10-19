@@ -12,6 +12,7 @@ from django.utils.text import slugify
 logger = structlog.getLogger(__name__)
 
 from api.utils.enums import DataType
+from api.utils.storage import private_storage
 
 if TYPE_CHECKING:
     from api.models.Dataset import Dataset
@@ -67,7 +68,7 @@ class Resource(models.Model):
 
 class ResourceFileDetails(models.Model):
     resource = models.OneToOneField(Resource, on_delete=models.CASCADE, null=False, blank=False)
-    file = models.FileField(upload_to="resources/", max_length=300)
+    file = models.FileField(upload_to="resources/", storage=private_storage, max_length=300)
     size = models.FloatField(blank=True, null=True)
     sha256 = models.CharField(
         max_length=64,

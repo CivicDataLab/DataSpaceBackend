@@ -4,12 +4,15 @@ from django.db import models
 from django.utils.text import slugify
 
 from api.utils.file_paths import _dataspace_directory_path
+from api.utils.storage import public_storage
 
 
 class DataSpace(models.Model):
     name = models.CharField(max_length=200)
     description = models.CharField(max_length=1000)
-    logo = models.ImageField(upload_to=_dataspace_directory_path, blank=True, null=True)
+    logo = models.ImageField(
+        upload_to=_dataspace_directory_path, storage=public_storage, blank=True, null=True
+    )
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     homepage = models.URLField(blank=True)
