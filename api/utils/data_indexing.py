@@ -9,7 +9,7 @@ from psycopg2 import sql as pg_sql  # type: ignore[import-untyped]
 from api.models.Resource import Resource, ResourceDataTable
 from api.models.ResourceSchema import ResourceSchema
 from api.types.type_preview_data import PreviewData
-from api.utils.file_utils import load_tabular_data
+from api.utils.file_utils import load_tabular_data, local_copy
 
 logger = structlog.get_logger("dataspace.data_indexing")
 
@@ -173,16 +173,19 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
                     signal.alarm(0)
                     signal.signal(signal.SIGALRM, original_handler)
 
-            # Apply timeout only on Unix-based systems where signal.SIGALRM is available
-            try:
-                with timeout(60):  # 60 second timeout for loading data
-                    df = load_tabular_data(file_details.file.path, format)
-            except TimeoutError as te:
-                logger.error(f"Timeout while loading data for resource {resource_id}: {str(te)}")
-                return None
-            except Exception:
-                # Fallback without timeout if signal.SIGALRM is not available (e.g., on Windows)
-                df = load_tabular_data(file_details.file.path, format)
+            with local_copy(file_details.file) as file_path:
+                # Apply timeout only on Unix-based systems where signal.SIGALRM is available
+                try:
+                    with timeout(60):  # 60 second timeout for loading data
+                        df = load_tabular_data(file_path, format)
+                except TimeoutError as te:
+                    logger.error(
+                        f"Timeout while loading data for resource {resource_id}: {str(te)}"
+                    )
+                    return None
+                except Exception:
+                    # Fallback without timeout if signal.SIGALRM is not available (e.g., on Windows)
+                    df = load_tabular_data(file_path, format)
 
             if df is None:
                 logger.error(
@@ -410,29 +413,28 @@ def get_entry_count_from_file(resource: Resource) -> int:
             return 0
 
         fmt = file_details.format.lower()
-        filepath = file_details.file.path
-
-        if fmt in ("yml", "yaml"):
-            import yaml
-
-            with open(filepath, "r") as f:
-                data = yaml.safe_load(f)
-            if isinstance(data, list):
-                return len(data)
-            if isinstance(data, dict):
-                for v in data.values():
-                    if isinstance(v, list):
-                        return len(v)
-                return len(data)
+        if fmt not in FILE_COUNT_FORMATS:
             return 0
 
-        if fmt == "xml":
+        with local_copy(file_details.file) as filepath:
+            if fmt in ("yml", "yaml"):
+                import yaml
+
+                with open(filepath, "r") as f:
+                    data = yaml.safe_load(f)
+                if isinstance(data, list):
+                    return len(data)
+                if isinstance(data, dict):
+                    for v in data.values():
+                        if isinstance(v, list):
+                            return len(v)
+                    return len(data)
+                return 0
+
             import xml.etree.ElementTree as ET
 
             root = ET.parse(filepath).getroot()
             return len(list(root))
-
-        return 0
     except Exception as e:
         logger.error(f"Error counting entries from file for resource {resource.id}: {str(e)}")
         return 0

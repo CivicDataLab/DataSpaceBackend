@@ -1,4 +1,3 @@
-import copy
 import uuid
 from enum import Enum
 
@@ -135,8 +134,7 @@ def _validate_file_details_and_update_format(resource: Resource) -> None:
         raise ValueError("Resource has no file details")
 
     file = file_details.file
-    deep_copy_file = copy.deepcopy(file)
-    mime_type = file_validation(deep_copy_file, file, FORMAT_MAPPING)
+    mime_type = file_validation(file, file, FORMAT_MAPPING)
     if not mime_type:
         raise ValueError("Unsupported file format.")
 
