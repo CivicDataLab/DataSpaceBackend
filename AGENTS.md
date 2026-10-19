@@ -1,40 +1,71 @@
 # AGENTS.md
 
-You are a senior engineer on the DataSpace backend.
+Instructions for AI coding agents (and humans) working on the DataSpace backend.
+Read this file first; the rules here override general habits.
 
-## Persona
+You are a senior engineer on this codebase:
 - You write clean, reusable, maintainable code that reads like the code around it.
-- You understand the codebase and its security risks (authorization, multi-tenant organization data, file uploads, search exposure), and you turn that into clear, actionable insights.
-- Your output: small, well-tested changes and reviews that a teammate can merge with confidence, plus a short explanation of *why* when the reason isn't obvious.
+- You know its security risks (authorization, multi-tenant organization data, file uploads,
+  search exposure) and you turn them into clear, actionable findings.
+- You ship small, well-tested changes a teammate can merge with confidence, and explain *why*
+  when the reason isn't obvious.
+
+## Quick start
+
+```bash
+cp .env.example .env              # settings fail without it (e.g. URL_WHITELIST, STORAGE_*)
+mkdir -p logs                     # the "file" log handler writes logs/dataex.log
+pip install -r requirements.txt
+pip install pytest pytest-django  # test-only, not in requirements.txt
+```
+
+- **Run (Docker, hot reload):** `docker compose -f docker-compose.yml -f docker-compose.hotreload.yml up --build`
+- **Run (venv):** `python manage.py runserver`
 
 ## Commands
-- **Run locally (Docker, hot reload):** `docker compose -f docker-compose.yml -f docker-compose.hotreload.yml up --build`
-- **Run locally (venv):** copy `.env.example` to `.env`, then `python manage.py runserver`
-- **Test:** `pytest tests/` uses SQLite in-memory with `--nomigrations` (see `pytest.ini`). It needs `pytest pytest-django`, which are not in `requirements.txt`. CI runs it with `--ignore=tests/object_types/charts --deselect tests/schema/test_dataset_schema.py::TestAddUpdateDatasetMetadata` (known-broken, see #189).
-- **Single test:** `pytest tests/test_slug_collision.py -k usecase`
-- **Format:** `black .` and `isort --profile black .` (line length 100, set in `pyproject.toml`; that file is the SDK's packaging config, but black reads it for the whole repo)
-- **Type check:** `mypy --config-file=mypy.ini .`
-- **All hooks:** `pre-commit run --all-files` (whitespace, black, isort, mypy, `debug-statements`)
-- **Migrations:** `python manage.py makemigrations api`, then `python manage.py migrate`
-- **Search mappings:** `python manage.py sync_search_mappings` after changing anything in `search/documents/`
-- **API testing:** Postman CLI is installed; collections live in `postman/collections/`
+
+| Task | Command |
+|---|---|
+| Tests (as CI runs them) | `pytest tests/ --ignore=tests/object_types/charts --deselect tests/schema/test_dataset_schema.py::TestAddUpdateDatasetMetadata` |
+| Single test | `pytest tests/test_slug_collision.py -k usecase` |
+| SDK tests (no Django) | `pytest tests/test_auth.py tests/test_base.py tests/test_client.py tests/test_datasets.py tests/test_aimodels.py tests/test_usecases.py tests/test_exceptions.py -p no:django -o addopts= --override-ini=django_find_project=false --noconftest` |
+| All hooks | `pre-commit run --all-files` (whitespace, black, isort, mypy, `debug-statements`) |
+| Format | `black .` and `isort --profile black .` (line length 100, from `pyproject.toml`) |
+| Type check | `mypy --config-file=mypy.ini .` |
+| Migrations | `python manage.py makemigrations api`, then `python manage.py migrate` |
+| Search mappings | `python manage.py sync_search_mappings` after any change in `search/documents/` |
+| API testing | Postman CLI; collections live in `postman/collections/` |
+
+Notes:
+- Tests use SQLite in memory with `--nomigrations` (`pytest.ini`, settings in
+  `tests/test_settings.py`). All media storages are `InMemoryStorage`, so tests never reach S3.
+- The CI exclusions above are known-broken tests (#189). Don't add to them.
+- pre-commit hooks pin `python3.11`. If it isn't installed, pre-commit can't build its
+  environments: run black, isort and mypy from the venv on the files you changed, and say so.
+- mypy results depend on its cache. To tell new errors from old ones, compare runs with a fresh
+  `--cache-dir`, or check only errors in the files you touched.
 
 ## Definition of done
-Before you call a change finished:
-1. `pre-commit run --all-files` is clean.
-2. The tests pass with the CI flags above, and a bug fix has a regression test.
-3. Every new or changed GraphQL query/mutation has the right permission guard (see Rules).
-4. If a model changed: its search document, signals, cache invalidation and SDK still match.
+
+A change is finished only when:
+1. `pre-commit run --all-files` is clean (or the fallback above is clean for the touched files).
+2. Tests pass with the CI flags, and a bug fix has a regression test.
+3. Every new or changed GraphQL query/mutation has the right permission guard (see Security).
+4. If a model changed, its migration, search document, signals, cache invalidation, GraphQL type
+   and SDK resource all still match (see "Changing a model").
 
 ## Project knowledge
 
-**What it is:** DataSpace is CivicDataLab's platform for publishing and discovering datasets, use cases, AI models, collaboratives and publications. This repo is the backend: a GraphQL API (main surface) plus REST endpoints for search, downloads, auth and activity. It also ships a Python client, `dataspace_sdk`, published to PyPI.
+**What it is:** DataSpace is CivicDataLab's platform for publishing and discovering datasets,
+use cases, AI models, collaboratives and publications. This repo is the backend: a GraphQL API
+(main surface) plus REST endpoints for search, downloads, auth and activity. It also ships a
+Python client, `dataspace_sdk`, published to PyPI.
 
 **Tech stack:**
 - Python 3.11, Django 5.0, PostgreSQL
 - GraphQL: `strawberry-graphql` 0.235 + `strawberry-graphql-django` 0.42 (endpoint `/api/graphql`)
 - REST: Django REST Framework 3.14, `drf-yasg` for API docs
-- Auth: Keycloak (`python-keycloak` 5.5); every request needs a real Keycloak JWT, with no dev-mode fallback
+- Auth: Keycloak (`python-keycloak` 5.5). Every request needs a real Keycloak JWT; there is no dev-mode fallback.
 - Search: Elasticsearch 8 via `django-elasticsearch-dsl`
 - Cache: Redis (`django-redis`, `django-cacheops`)
 - Activity feed: `django-activity-stream`
@@ -43,58 +74,121 @@ Before you call a change finished:
 - Media: S3 only, via `django-storages` (`public`/`private` storages in `api/utils/storage.py`; keys prefixed by `STORAGE_ENV`)
 - Runtime: uvicorn/gunicorn in Docker, deployed to AWS (ECS / EC2 via `scripts/ci-*.sh`)
 
-**File structure:**
+**Layout:**
 - `DataSpace/`: Django project (`settings.py`, `urls.py`, `asgi.py`, `cache_settings.py`)
 - `api/`: main app
-  - `models/`: one model per file (`Dataset.py`, `Organization.py`, `UseCase.py`, …), exported from `models/__init__.py`
-  - `schema/`: Strawberry `Query`/`Mutation` classes per domain (`*_schema.py`), stitched together in `schema/schema.py`. `base_mutation.py` holds `BaseMutation`/`MutationResponse`. `extensions.py` holds `TrackActivity`/`TrackModelActivity`.
+  - `models/`: one model per file (`Dataset.py`, `UseCase.py`, …), exported from `models/__init__.py`
+  - `schema/`: Strawberry `Query`/`Mutation` classes per domain (`*_schema.py`), merged with
+    `merge_types` in `schema/schema.py`. `base_mutation.py` holds `BaseMutation`/`MutationResponse`;
+    `extensions.py` holds `TrackActivity`/`TrackModelActivity`.
   - `types/`: Strawberry output types (`type_*.py`)
-  - `views/`: REST views (search, downloads, charts, health, auth)
+  - `views/`: REST views (search, downloads, charts, health, auth, legacy media redirect)
   - `services/`: business logic kept out of resolvers (publication, platform import, metadata mapping/export, model clients)
-  - `activities/`: activity-stream handlers and display per domain (`dataset.py`, `organization.py`, …), wired up in `registry.py`
-  - `signals/`: post-save hooks (search indexing, cache invalidation)
+  - `activities/`: activity-stream handlers and display per domain, wired up in `registry.py`
+  - `signals/`: post-save hooks per domain (search indexing, cache invalidation)
   - `middleware/`, `utils/middleware.py`: request validation, rate limiting, structured logging, organization/dataspace context from headers
-  - `utils/`: shared helpers (`graphql_utils.py`, `keycloak_utils.py`, `search_query.py`, `search_cache.py`, `enums.py`, …)
-  - `management/commands/`: `sync_search_mappings`, `update_dataindex`, `seed_resource_types`, `populate_geographies`, …
+  - `utils/`: shared helpers (`graphql_utils.py`, `keycloak_utils.py`, `storage.py`, `file_utils.py`, `file_paths.py`, `search_query.py`, `search_cache.py`, `enums.py`, …)
+  - `management/commands/`: `sync_search_mappings`, `update_dataindex`, `migrate_media_to_s3`, `seed_resource_types`, …
   - `migrations/`: numbered sequentially (`00NN_*`)
 - `authorization/`: Keycloak integration, roles, `OrganizationMembership`, consent/activity middleware
   - `permissions.py`: both the DRF permission classes and the Strawberry `*GraphQL` ones
   - `schema/`: user/membership GraphQL schema; `schema/permissions.py` holds `HasOrganizationAdminRole`
   - `graphql_permissions.py`: legacy duplicate of the GraphQL classes; don't add new uses
 - `search/documents/`: Elasticsearch document definitions and analysers
-- `dataspace_sdk/`: standalone Python SDK (its own version in `pyproject.toml`; depends only on `requests`)
-- `tests/`: pytest suite (`test_*.py`, `tests/schema/`, `tests/journeys/`), settings in `tests/test_settings.py`
+- `dataspace_sdk/`: standalone Python SDK (`client.py`, `resources/<domain>.py`; own version in `pyproject.toml`; depends only on `requests`)
+- `tests/`: pytest suite (`test_*.py`, `tests/schema/`, `tests/journeys/`). `test_auth.py`, `test_base.py`, `test_client.py`, `test_datasets.py`, `test_aimodels.py`, `test_usecases.py` and `test_exceptions.py` test the SDK.
 - `docs/`: feature docs (Keycloak, unified search, charts, activity stream, SDK)
-- `postman/`: Postman collections and fixtures for API testing
+- `postman/`: Postman collections and fixtures
 - `aws/`, `scripts/`, `.github/workflows/`: infra, deploy scripts, CI
-- Root-level `migrate_*.py`, `populate_sdgs.py`, `test_geography_hierarchy.py`: one-off scripts. Leave them alone, and put new code in `api/management/commands/` instead.
+- Root-level `migrate_*.py`, `populate_sdgs.py`, `test_geography_hierarchy.py`: one-off scripts.
+  Leave them alone; new scripts go in `api/management/commands/`.
 
-## Standards
+## Code standards
 
-**Naming conventions:**
-- Functions, methods, variables: snake_case (`create_organization`, `get_current_user`)
-- Classes: PascalCase (`OrganizationInput`, `HasOrganizationRole`)
-- Constants: UPPER_SNAKE_CASE (`MAX_RETRIES`)
-- Strawberry output types: `Type<Model>` in `api/types/type_<model>.py`
-- Model files: PascalCase, one model per file (`api/models/UseCase.py`)
-- GraphQL fields are snake_case in Python. Strawberry exposes them as camelCase (`create_organization` → `createOrganization`).
+**Naming:**
+- Functions, methods, variables: snake_case. Classes: PascalCase. Constants: UPPER_SNAKE_CASE.
+- Strawberry output types: `Type<Model>` in `api/types/type_<model>.py`.
+- Model files: PascalCase, one model per file (`api/models/UseCase.py`).
+- GraphQL fields are snake_case in Python; Strawberry exposes them as camelCase
+  (`create_organization` → `createOrganization`).
 
-**Rules:**
-- Type-annotate every function. mypy runs in pre-commit, so don't add new `# type: ignore` or `mypy.ini` exemptions without a reason in a comment. The existing `# type: ignore[list-item]` on `permission_classes` lists that mix in `HasOrganizationRoleGraphQL` subclasses is the accepted pattern.
-  - mypy skips `tests/` and is relaxed for `api.models`, `api.activities` and the resource, use case and dataset schemas (see `mypy.ini`). Still annotate new code there.
-- Every GraphQL query and mutation that touches non-public data needs `permission_classes`. Don't rely on the ORM to reject anonymous users.
-  - Import from `authorization.permissions`: `IsAuthenticated`, `IsOrganizationMemberGraphQL`, `HasOrganizationRoleGraphQL`, or a domain class built on them (`CreateDatasetPermission`, `ChangePublicationPermission`, the `Change/DeleteOrganizationPermission` subclasses in `organization_schema.py`, …).
-  - The plain `IsOrganizationMember` and `HasOrganizationRole` in `authorization/permissions.py` are DRF classes for REST views. They don't work in Strawberry `permission_classes`. Schemas alias the GraphQL versions instead (`HasOrganizationRoleGraphQL as HasOrganizationRole`).
-  - `HasOrganizationRoleGraphQL` checks the organization from the request header (or an `organization_id` argument), not the object an `input.id` points at. When a mutation loads an object by id, also check the caller's membership in that object's organization inside the resolver.
-- Scope querysets to what the user can see (organization membership, dataspace, published status). Superuser bypass goes through `is_superuser(info)` from `api/utils/graphql_utils.py`.
-- Keep resolvers thin. Put reusable logic in `api/services/` or `api/utils/`, and reuse existing helpers before writing new ones.
+**Style:**
+- Type-annotate every function. Don't add `# type: ignore` or `mypy.ini` exemptions without a
+  reason in a comment. The existing `# type: ignore[list-item]` on `permission_classes` lists that
+  mix in `HasOrganizationRoleGraphQL` subclasses is the accepted pattern.
+  mypy skips `tests/` and is relaxed for `api.models`, `api.activities` and the resource, use case
+  and dataset schemas; still annotate new code there.
+- Keep resolvers thin. Put reusable logic in `api/services/` or `api/utils/`, and reuse existing
+  helpers before writing new ones.
 - Wrap multi-step writes in `transaction.atomic()`.
-- Return clean client errors (400/404, or `MutationResponse.error_response`) instead of letting `IntegrityError`, `ValueError` or `DoesNotExist` surface as a 500.
-- Log with the existing logger and `structlog`, without tokens or PII.
-- Comments explain *why* (constraints, past incidents), not *what*. Match the density of the surrounding file.
-- Write regression tests in the style of `tests/test_slug_collision.py`: a module docstring with the root cause and the fix, then small focused tests.
+- Return clean client errors (400/404, or `MutationResponse.error_response`). Never let
+  `IntegrityError`, `ValueError` or `DoesNotExist` surface as a 500, and never return raw
+  exception text to clients.
+- Log with the module's existing `structlog` logger. Never log tokens, secrets or PII.
+- Comments explain *why* (constraints, past incidents), not *what*. Match the density of the
+  surrounding file.
+- Make the smallest change that solves the problem. Don't reformat, rename or refactor
+  unrelated code in the same change.
 
-**Code style example:**
+## Security
+
+- Every GraphQL query and mutation that touches non-public data needs `permission_classes`.
+  Don't rely on the ORM to reject anonymous users.
+  - Import from `authorization.permissions`: `IsAuthenticated`, `IsOrganizationMemberGraphQL`,
+    `HasOrganizationRoleGraphQL`, or a domain class built on them (`CreateDatasetPermission`,
+    `ChangePublicationPermission`, the `Change/DeleteOrganizationPermission` subclasses in
+    `organization_schema.py`, …).
+  - The plain `IsOrganizationMember` and `HasOrganizationRole` in `authorization/permissions.py`
+    are DRF classes for REST views and don't work in Strawberry `permission_classes`. Schemas
+    alias the GraphQL versions instead (`HasOrganizationRoleGraphQL as HasOrganizationRole`).
+  - `HasOrganizationRoleGraphQL` checks the organization from the request header (or an
+    `organization_id` argument), **not** the object an `input.id` points at. When a mutation loads
+    an object by id, also check the caller's access to that object's organization/dataset inside
+    the resolver (e.g. `AuthorizationService.check_dataset_permission`).
+- Scope querysets to what the user may see (organization membership, dataspace, published
+  status). Superuser bypass goes through `is_superuser(info)` from `api/utils/graphql_utils.py`.
+- Search must not expose non-public objects. Documents gate this in `should_index_object`; keep
+  that check in sync when you add a status or visibility field.
+
+## Files and media
+
+- Media lives only in S3. Every `FileField`/`ImageField` sets `storage=public_storage` or
+  `storage=private_storage` from `api/utils/storage.py`. Use **private** unless the file is meant
+  to be world-readable (logos, cover images, profile pictures, published publication files).
+- Never use `FieldFile.path`: S3 has no local path (and tests use `InMemoryStorage`). Use
+  `file.open("rb")`/`file.chunks()`, `file.storage.exists(file.name)`, or
+  `api.utils.file_utils.local_copy(file)` for libraries that need a real path (pandas, libmagic,
+  YAML/XML parsers).
+- Serve downloads with `FileResponse(file.open("rb"))`, not `HttpResponse(file.read())`.
+- `upload_to` helpers in `api/utils/file_paths.py` return names relative to the storage; don't
+  prefix them with `files/` or `public/`.
+- Validate uploads with the domain's existing validator before saving (`file_validation` in
+  `api/utils/file_utils.py` for resources, `validate_publication_file` in
+  `api/utils/publication_uploads.py` for publication blocks). Don't trust the extension alone.
+
+## Task checklists
+
+**Adding or changing a GraphQL mutation**
+1. Put it in the domain's `api/schema/<domain>_schema.py`; logic in `api/services/` if non-trivial.
+2. Add `permission_classes` and an object-level check in the resolver when it loads by id.
+3. Add `TrackModelActivity`/`TrackActivity` if the action belongs in the activity feed.
+4. Test the allowed caller **and** a denied caller (anonymous, non-member, wrong organization).
+
+**Changing a model** (ask first: see Boundaries)
+1. Edit `api/models/<Model>.py`, then `python manage.py makemigrations api` and review the file.
+2. Update the `Type<Model>` in `api/types/` and any input types in the schema.
+3. Update `search/documents/` if the field is indexed, then `sync_search_mappings`.
+4. Check `api/signals/` and cache invalidation still cover the change.
+5. Update the SDK resource in `dataspace_sdk/resources/` if the field is exposed through the API.
+
+**Fixing a bug**
+1. Reproduce it with a failing test first.
+2. Write the regression test in the style of `tests/test_slug_collision.py`: a module docstring
+   with the root cause and the fix, then small focused tests.
+3. Fix the cause, not the symptom.
+
+## Code style example
+
 ```python
 from api.schema.extensions import TrackModelActivity
 from api.utils.graphql_utils import is_superuser
@@ -154,26 +248,35 @@ def update_org(self, info, input):
     return org
 ```
 
-## Git & PRs
-- Branch from `dev` with `fix/…`, `feat/…` or `chore/…`. PRs go into `dev`. Releases go from `dev` to `main`, gated by `pr-gate.yml`.
-- Do not make any commits utill asked for it.
-- Use Conventional Commits with a scope: `fix(api): …`, `feat(usecase): …`.
-- Never use claude co-author while doing commit.
-- When a merge brings in migrations with clashing numbers, renumber yours after the latest one on `dev` and fix the `dependencies`.
+## Git and PRs
+
+- Don't commit until asked.
+- Branch from `dev` with `fix/…`, `feat/…` or `chore/…`. PRs go into `dev`. Releases go from
+  `dev` to `main`, gated by `pr-gate.yml`.
+- Conventional Commits with a scope: `fix(api): …`, `feat(usecase): …`; mark breaking changes
+  with `!` and a `BREAKING CHANGE:` footer. The body says *why*, not a list of files.
+- Split large work into commits that each build and pass tests on their own.
+- Never add a Claude (or any AI) `Co-Authored-By` trailer to commits.
+- Never `git stash`, `reset` or `checkout --` the user's uncommitted work. To compare against a
+  baseline, use `git worktree add <tmp-dir> HEAD` (copy `.env` and create `logs/` there).
+- When a merge brings in migrations with clashing numbers, renumber yours after the latest one on
+  `dev` and fix the `dependencies`.
 
 ## Boundaries
-- ✅ **Always:** write code in `api/`, `authorization/`, `search/`, `dataspace_sdk/` and `tests/`. Run `pytest` and `pre-commit` before committing.
+
+- ✅ **Always:** work in `api/`, `authorization/`, `search/`, `dataspace_sdk/` and `tests/`. Run
+  the tests and hooks before saying a change is done.
 - ⚠️ **Ask first:**
-  - model or schema changes and new migrations
+  - model or schema changes, and new migrations
   - changes to permission classes, Keycloak/auth middleware or rate limits
   - changes to Elasticsearch mappings (these need a reindex)
-  - adding or upgrading dependencies
+  - adding, removing or upgrading dependencies
   - bumping the SDK version or publishing it
   - touching `.github/workflows/`, `aws/`, `scripts/ci-*.sh`, `Dockerfile` or `docker-compose.yml`
-  - anything that runs against a deployed environment
+  - anything that runs against a deployed environment or a real S3 bucket
 - 🚫 **Never:**
   - commit `.env`, secrets, Keycloak client secrets or tokens. Use `.env.example` for new variables.
   - edit or delete already-merged migrations. Add a new migration instead.
-  - disable an auth check or a failing test to get green. Fix the cause, or ask.
+  - disable an auth check, skip or delete a failing test to get green. Fix the cause, or ask.
   - edit `.venv/`, `files/` (user uploads) or `logs/`
   - force-push to `dev` or `main`
