@@ -308,11 +308,6 @@ PLATFORM_IMPORT_TIMEOUT = float(os.getenv("PLATFORM_IMPORT_TIMEOUT", "15"))
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://civicdataspace.in")
 PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.datakeep.civicdays.in")
 
-# DVC settings
-DVC_REPO_PATH = os.path.join(BASE_DIR, "dvc")
-DVC_REMOTE_NAME = os.getenv("DVC_REMOTE_NAME", None)
-DVC_REMOTE_URL = os.getenv("DVC_REMOTE_URL", None)
-
 # Django REST Framework settings
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
