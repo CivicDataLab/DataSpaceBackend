@@ -1,6 +1,5 @@
 """Layer 1/3/4 tests for content blocks: add/reorder/remove/replace + download gate."""
 
-import os
 from datetime import date
 
 import pytest
@@ -22,11 +21,6 @@ from api.views.publication_download_view import publication_block_download
 from authorization.models import OrganizationMembership, Role, User
 
 VIDEO = "https://youtu.be/dQw4w9WgXcQ"
-
-
-@pytest.fixture(autouse=True)
-def media_root(settings, tmp_path):
-    settings.MEDIA_ROOT = str(tmp_path)
 
 
 @pytest.fixture
@@ -117,27 +111,27 @@ class TestReorderAndRemove:
 class TestReplaceFile:
     def test_replace_swaps_file_and_removes_the_old_one(self, publication):
         block = add_file_block(publication, _pdf("first.pdf"))
-        old_path = block.file.path
+        storage, old_name = block.file.storage, block.file.name
         old_id = block.id
-        assert os.path.exists(old_path)
+        assert storage.exists(old_name)
 
         replace_block_file(block, _pdf("second.pdf"))
 
         assert block.id == old_id  # same row, in-place
         assert block.file_name == "second.pdf"
-        assert not os.path.exists(old_path)  # old file removed from disk
+        assert not storage.exists(old_name)  # old file removed from storage
 
 
 @pytest.mark.django_db
 class TestDeleteRemovesFile:
     def test_deleting_a_block_removes_its_file(self, publication):
         block = add_file_block(publication, _pdf())
-        path = block.file.path
-        assert os.path.exists(path)
+        storage, name = block.file.storage, block.file.name
+        assert storage.exists(name)
 
         block.delete()
 
-        assert not os.path.exists(path)  # post_delete signal cleaned it up
+        assert not storage.exists(name)  # post_delete signal cleaned it up
 
 
 # --------------------------------------------------------------------------- #
