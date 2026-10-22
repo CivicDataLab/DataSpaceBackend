@@ -58,8 +58,8 @@ from api.utils.graphql_telemetry import trace_resolver
 from api.utils.qs_utils import (
     FilterSpec,
     SortSpec,
-    apply_filters,
     get_pagination_window,
+    status_counts,
 )
 from authorization.models import DatasetPermission, OrganizationMembership, Role, User
 from authorization.permissions import (
@@ -539,20 +539,12 @@ class Query:
             sort_options=sort_options or [SortSpec(field="created", direction="desc")],
             sorting_allowed_fields=DATASETS_TABLE_SORT_FIELDS,
         )
-        # Tab labels: counts per status under every filter except status itself.
-        without_status = [f for f in (filters or []) if f.field.strip() != "status"]
-        status_rows = (
-            apply_filters(visible, without_status, DATASETS_TABLE_FILTER_FIELDS)
-            .order_by()
-            .values("status")
-            .annotate(n=Count("id", distinct=True))
-        )
         return DatasetResponse(
             data=TypeDataset.from_django_list(window["data"]),
             total_items_count=window["total_items_count"],
-            status_counts=[
-                DatasetStatusCount(status=row["status"], count=row["n"]) for row in status_rows
-            ],
+            status_counts=status_counts(
+                visible, filters, DATASETS_TABLE_FILTER_FIELDS, item_type=DatasetStatusCount
+            ),
         )
 
     @strawberry.field(

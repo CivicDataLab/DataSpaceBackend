@@ -8,7 +8,7 @@ which fields may be filtered or sorted. Anything outside that allowlist is a
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Type
 
 import strawberry
 from django.db.models import Count, Q, QuerySet
@@ -141,9 +141,11 @@ def status_counts(
     filters: Optional[Sequence[FilterSpec]] = None,
     allowed_fields: Optional[Sequence[str]] = None,
     status_field: str = "status",
-) -> List[StatusCount]:
+    item_type: Type[Any] = StatusCount,
+) -> List[Any]:
     """Count rows per status under every filter except the status one, so tab
-    labels stay the same whichever tab is open."""
+    labels stay the same whichever tab is open. ``item_type`` lets a module keep
+    its own GraphQL type name (``DatasetStatusCount``)."""
     others = [f for f in (filters or []) if (f.field or "").strip() != status_field]
     rows = (
         apply_filters(queryset, others, allowed_fields)
@@ -151,4 +153,4 @@ def status_counts(
         .values(status_field)
         .annotate(n=Count("pk", distinct=True))
     )
-    return [StatusCount(status=row[status_field], count=row["n"]) for row in rows]
+    return [item_type(status=row[status_field], count=row["n"]) for row in rows]
