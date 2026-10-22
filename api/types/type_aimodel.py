@@ -30,6 +30,7 @@ from api.utils.enums import (
     HFModelClass,
     PromptDomain,
 )
+from api.utils.qs_utils import StatusCount
 from authorization.types import TypeUser
 
 logger = structlog.get_logger("dataspace.type_aimodel")
@@ -334,3 +335,17 @@ class TypeAIModelVersion(BaseType):
             return TypeAIModel.from_django(django_instance.ai_model)
         except Exception:
             return None
+
+
+@strawberry.type
+class AIModelResponse:
+    """One page of a table listing (`aiModelsTable`): rows, the total after
+    filters, and per-status counts for tab labels."""
+
+    data: List[TypeAIModel]
+    total_items_count: int
+    status_counts: List[StatusCount] = strawberry.field(
+        default_factory=list,
+        description="Counts per status with the same filters applied, except any status filter, "
+        "so tab labels stay stable when switching tabs.",
+    )

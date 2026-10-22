@@ -8,10 +8,10 @@ which fields may be filtered or sorted. Anything outside that allowlist is a
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Type
 
 import strawberry
-from django.db.models import Q, QuerySet
+from django.db.models import Count, Q, QuerySet
 
 MAX_LIMIT = 100
 
@@ -48,6 +48,12 @@ class FilterSpec:
 class SortSpec:
     field: str
     direction: str = "asc"
+
+
+@strawberry.type(description="Rows per status, for a table's tab labels.")
+class StatusCount:
+    status: str
+    count: int
 
 
 def _check_allowed(kind: str, field: str, allowed: Optional[Sequence[str]]) -> None:
@@ -128,3 +134,23 @@ def get_pagination_window(
     if sort_options:
         queryset = apply_sorting(queryset, sort_options, sorting_allowed_fields)
     return apply_pagination(queryset, limit, offset)
+
+
+def status_counts(
+    queryset: QuerySet,
+    filters: Optional[Sequence[FilterSpec]] = None,
+    allowed_fields: Optional[Sequence[str]] = None,
+    status_field: str = "status",
+    item_type: Type[Any] = StatusCount,
+) -> List[Any]:
+    """Count rows per status under every filter except the status one, so tab
+    labels stay the same whichever tab is open. ``item_type`` lets a module keep
+    its own GraphQL type name (``DatasetStatusCount``)."""
+    others = [f for f in (filters or []) if (f.field or "").strip() != status_field]
+    rows = (
+        apply_filters(queryset, others, allowed_fields)
+        .order_by()
+        .values(status_field)
+        .annotate(n=Count("pk", distinct=True))
+    )
+    return [item_type(status=row[status_field], count=row["n"]) for row in rows]

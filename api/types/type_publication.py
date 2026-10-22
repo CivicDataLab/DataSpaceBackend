@@ -25,6 +25,7 @@ from api.utils.enums import (
     PublicationStatus,
     UseCaseStatus,
 )
+from api.utils.qs_utils import StatusCount
 from authorization.types import TypeUser
 
 
@@ -236,3 +237,17 @@ class TypePublication(BaseType):
             return usecases + collabs
         except (AttributeError, Publication.DoesNotExist):
             return 0
+
+
+@strawberry.type
+class PublicationResponse:
+    """One page of a table listing (`publicationsTable`): rows, the total after
+    filters, and per-status counts for tab labels."""
+
+    data: List[TypePublication]
+    total_items_count: int
+    status_counts: List[StatusCount] = strawberry.field(
+        default_factory=list,
+        description="Counts per status with the same filters applied, except any status filter, "
+        "so tab labels stay stable when switching tabs.",
+    )
