@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 import strawberry
 import strawberry_django
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import QuerySet
 from strawberry.types import Info
 from strawberry_django.pagination import OffsetPaginationInput
 
@@ -21,6 +22,7 @@ from api.types.type_aimodel import (
     AIModelLifecycleStageEnum,
     AIModelOrder,
     AIModelProviderEnum,
+    AIModelResponse,
     AIModelStatusEnum,
     AIModelTypeEnum,
     AIModelVersionFilter,
@@ -34,6 +36,12 @@ from api.types.type_aimodel import (
     TypeVersionProvider,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.qs_utils import (
+    FilterSpec,
+    SortSpec,
+    get_pagination_window,
+    status_counts,
+)
 from authorization.graphql_permissions import IsAuthenticated
 from authorization.models import OrganizationMembership, Role
 
@@ -281,6 +289,57 @@ class UpdateVersionProviderInput:
     config: Optional[strawberry.scalars.JSON] = None
 
 
+# Fields a table client may filter or sort on. Explicit allowlists are what
+# stop arbitrary columns (and relations) from becoming queryable.
+AI_MODELS_TABLE_FILTER_FIELDS = [
+    "id",
+    "name",
+    "display_name",
+    "status",
+    "model_type",
+    "provider",
+    "domain",
+    "organization",
+    "organization__slug",
+    "sectors__id",
+    "sectors__slug",
+    "sectors__name",
+    "geographies__id",
+    "geographies__name",
+    "geographies__code",
+    "tags__value",
+    "created_at",
+    "updated_at",
+]
+AI_MODELS_TABLE_SORT_FIELDS = [
+    "name",
+    "display_name",
+    "created_at",
+    "updated_at",
+    "status",
+    "model_type",
+    "provider",
+]
+
+
+def _visible_ai_models(info: Info, include_public: Optional[bool] = False) -> QuerySet:
+    """The AI models a caller may list. Same rules as `aiModels`."""
+    organization = info.context.context.get("organization")
+    user = info.context.user
+    public = AIModel.objects.filter(is_public=True, is_active=True)
+    if organization:
+        queryset = AIModel.objects.filter(organization=organization)
+    elif not user.is_authenticated:
+        queryset = public
+    elif user.is_superuser:
+        queryset = AIModel.objects.all()
+    else:
+        queryset = AIModel.objects.filter(user=user, organization=None)
+    if include_public:
+        queryset = queryset | public
+    return queryset.distinct()
+
+
 @strawberry.type
 class Query:
     """Queries for AI Models."""
@@ -329,6 +388,42 @@ class Query:
             queryset = strawberry_django.pagination.apply(pagination, queryset)
 
         return TypeAIModel.from_django_list(list(queryset))
+
+    @strawberry.field
+    @trace_resolver(name="ai_models_table", attributes={"component": "aimodel"})
+    def ai_models_table(
+        self,
+        info: Info,
+        filters: Optional[List[FilterSpec]] = None,
+        sort_options: Optional[List[SortSpec]] = None,
+        limit: int = 50,
+        offset: int = 0,
+        include_public: Optional[bool] = False,
+    ) -> AIModelResponse:
+        """AI models for a table UI: client-driven filters, sortable columns and
+        page controls backed by a real total count.
+
+        Additive next to `aiModels`, with the same visibility rules, plus
+        public, active models when `include_public` is set. Filters are `{field,
+        condition, value}` and sorts are `{field, direction}`, limited to the
+        allowlists above; anything else is a GraphQL error naming the allowed
+        fields. Default order: newest first.
+        """
+        visible = _visible_ai_models(info, include_public)
+        window = get_pagination_window(
+            visible,
+            limit=limit,
+            offset=offset,
+            filters=filters,
+            filtering_allowed_fields=AI_MODELS_TABLE_FILTER_FIELDS,
+            sort_options=sort_options or [SortSpec(field="created_at", direction="desc")],
+            sorting_allowed_fields=AI_MODELS_TABLE_SORT_FIELDS,
+        )
+        return AIModelResponse(
+            data=TypeAIModel.from_django_list(window["data"]),
+            total_items_count=window["total_items_count"],
+            status_counts=status_counts(visible, filters, AI_MODELS_TABLE_FILTER_FIELDS),
+        )
 
     @strawberry.field
     @trace_resolver(name="get_ai_model", attributes={"component": "aimodel"})
