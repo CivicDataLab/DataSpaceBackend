@@ -1,23 +1,18 @@
 import hashlib
-import os
-import random
 import uuid
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
 import structlog
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from django.utils.text import slugify
 
 logger = structlog.getLogger(__name__)
 
-from api.managers.dvc_manager import DVCManager
 from api.utils.enums import DataType
-from api.utils.version_detection import detect_version_change_type
+from api.utils.storage import private_storage
 
 if TYPE_CHECKING:
     from api.models.Dataset import Dataset
@@ -73,7 +68,7 @@ class Resource(models.Model):
 
 class ResourceFileDetails(models.Model):
     resource = models.OneToOneField(Resource, on_delete=models.CASCADE, null=False, blank=False)
-    file = models.FileField(upload_to="resources/", max_length=300)
+    file = models.FileField(upload_to="resources/", storage=private_storage, max_length=300)
     size = models.FloatField(blank=True, null=True)
     sha256 = models.CharField(
         max_length=64,
@@ -166,160 +161,6 @@ def hash_resource_file(sender, instance: ResourceFileDetails, **kwargs):
         if stored_name == instance.file.name:
             return  # same file as before
     instance.sha256 = compute_sha256(instance.file)
-
-
-@receiver(post_save, sender=ResourceFileDetails)
-def version_resource_with_dvc(sender, instance: ResourceFileDetails, created, **kwargs):
-    """Create a new version using DVC when resource is updated"""
-    # Initialize DVC manager
-    dvc = DVCManager(settings.DVC_REPO_PATH)
-
-    # Skip if this is just being created (first version)
-    if created:
-        # For first version, we just track it
-        try:
-            # Use chunked mode for large files (over 100MB)
-            file_size = (
-                instance.file.size
-                if hasattr(instance.file, "size")
-                else os.path.getsize(instance.file.path)
-            )
-            use_chunked = file_size > 100 * 1024 * 1024  # 100MB threshold
-
-            dvc_file = dvc.track_resource(instance.file.path, chunked=use_chunked)
-            message = f"Add resource: {instance.resource.name} version {instance.resource.version}"
-            dvc.commit_version(dvc_file, message)
-            dvc.tag_version(f"{instance.resource.name}-{instance.resource.version}")
-
-            # Create first version record
-            ResourceVersion.objects.create(
-                resource=instance.resource,
-                version_number=instance.resource.version,
-                change_description=f"Initial version of {instance.resource.name}",
-            )
-        except Exception as e:
-            logger.error(f"Failed to version resource: {str(e)}")
-            # Continue without versioning if it fails
-            # This allows the resource to be created even if DVC fails
-            pass
-    else:
-        # For updates, check if the file has actually changed before creating a new version
-        try:
-            # Skip versioning if the file hasn't changed
-            if dvc.verify_file(instance.file.path):
-                logger.info(
-                    f"No changes detected for {instance.resource.name}, skipping version creation"
-                )
-                return
-
-            # Get the latest version
-            last_version: Optional[ResourceVersion] = instance.resource.versions.order_by(
-                "-created_at"
-            ).first()
-
-            # Handle case when there are no versions yet
-            if last_version is None:
-                new_version = "v1.0.0"
-            else:
-                # Determine appropriate version increment type by analyzing changes
-                try:
-                    # Get the previous version file path
-                    # We need to create a temporary copy of the previous version
-                    import shutil
-                    import tempfile
-
-                    from django.core.files.storage import default_storage
-
-                    # Create a temporary directory for the previous version
-                    with tempfile.TemporaryDirectory() as temp_dir:
-                        # Get the previous version file path
-                        file_name = instance.file.name
-                        if not file_name:
-                            raise ValueError("File name is missing")
-                        prev_file_name = (
-                            f"prev_version_{instance.resource.id}.{file_name.split('.')[-1]}"
-                        )
-                        prev_file_path = os.path.join(temp_dir, prev_file_name)
-
-                        # Use DVC to get the previous version
-                        try:
-                            # Try to checkout the previous version using DVC
-                            rel_path = Path(instance.file.path).relative_to(settings.DVC_REPO_PATH)
-                            tag_name = f"{instance.resource.name}-{last_version.version_number}"
-
-                            # Save current file to temp location
-                            current_file_path = instance.file.path
-                            temp_current = os.path.join(temp_dir, "current_file")
-                            shutil.copy2(current_file_path, temp_current)
-
-                            # Checkout previous version
-                            dvc.rollback_to_version(instance.file.path, tag_name)
-
-                            # Copy the previous version to our temp location
-                            shutil.copy2(instance.file.path, prev_file_path)
-
-                            # Restore current file
-                            shutil.copy2(temp_current, current_file_path)
-
-                            # Detect version change type
-                            increment_type = detect_version_change_type(
-                                prev_file_path, current_file_path
-                            )
-                            logger.info(
-                                f"Detected version change type: {increment_type} for {instance.resource.name}"
-                            )
-                        except Exception as e:
-                            logger.warning(
-                                f"Could not analyze version changes: {str(e)}, defaulting to minor version"
-                            )
-                            increment_type = "minor"
-                except Exception as e:
-                    logger.warning(
-                        f"Error in version detection: {str(e)}, defaulting to minor version"
-                    )
-                    increment_type = "minor"
-
-                # Increment version based on detected change type
-                new_version = _increment_version(
-                    last_version.version_number, increment_type=increment_type
-                )
-
-            # Use chunked mode for large files (over 100MB)
-            file_size = (
-                instance.file.size
-                if hasattr(instance.file, "size")
-                else os.path.getsize(instance.file.path)
-            )
-            use_chunked = file_size > 100 * 1024 * 1024  # 100MB threshold
-
-            # Update using DVC
-            dvc_file = dvc.track_resource(instance.file.path, chunked=use_chunked)
-            message = f"Update resource: {instance.resource.name} to version {new_version}"
-            dvc.commit_version(dvc_file, message)
-            dvc.tag_version(f"{instance.resource.name}-{new_version}")
-
-            # Create version record
-            ResourceVersion.objects.create(
-                resource=instance.resource,
-                version_number=new_version,
-                change_description=f"Updated version of {instance.resource.name}",
-            )
-
-            # Update resource version field
-            instance.resource.version = new_version
-            instance.resource.save(update_fields=["version"])
-
-            # Optional: Trigger garbage collection periodically
-            # This could be moved to a scheduled task instead
-            if random.random() < 0.05:  # 5% chance to run GC on version update
-                try:
-                    dvc.gc_cache()
-                except Exception as e:
-                    logger.warning(f"Failed to run garbage collection: {str(e)}")
-        except Exception as e:
-            logger.error(f"Failed to update resource version: {str(e)}")
-            # Continue without versioning if it fails
-            pass
 
 
 def _increment_version(version: str, increment_type: str = "minor") -> str:

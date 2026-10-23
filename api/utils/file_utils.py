@@ -1,8 +1,9 @@
 import mimetypes
 import os
-from functools import lru_cache
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Iterator, Optional, Union
 
 import magic
 import pandas as pd
@@ -16,18 +17,36 @@ def check_ext(file_object: Any) -> Optional[str]:
     return ext_type
 
 
+@contextmanager
+def local_copy(fieldfile: Any) -> Iterator[str]:
+    """Yield the path of a temporary local copy of a stored file.
+
+    Media lives in S3, which has no local path, but pandas, libmagic and the
+    YAML/XML parsers need one. The copy keeps the file's extension (some
+    readers sniff it) and is removed on exit, even if the caller raises.
+    """
+    suffix = os.path.splitext(fieldfile.name)[1]
+    with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
+        fieldfile.open("rb")
+        try:
+            for chunk in fieldfile.chunks():
+                tmp.write(chunk)
+        finally:
+            fieldfile.close()
+        tmp.flush()
+        yield tmp.name
+
+
 def check_mime_type(file_object: Any) -> Any:
     # Prefer from_file: libmagic 5.46 misidentifies zip buffers as
     # application/octet-stream via from_buffer, while from_file works.
-    file_path = getattr(file_object, "path", None)
-    if file_path:
-        return magic.from_file(file_path, mime=True)
+    if hasattr(file_object, "storage"):
+        with local_copy(file_object) as file_path:
+            return magic.from_file(file_path, mime=True)
     return magic.from_buffer(file_object.read(), mime=True)
 
 
-def file_validation(
-    file_object: Any, ext_object: Any, mapping: Dict[str, str]
-) -> Optional[Any]:
+def file_validation(file_object: Any, ext_object: Any, mapping: Dict[str, str]) -> Optional[Any]:
     ext_type = check_ext(ext_object)
     print("ext--", ext_type)
     mime_type = check_mime_type(file_object)
@@ -78,7 +97,6 @@ def normalize_path(path: Union[str, Path]) -> str:
     return os.path.normpath(str(path))
 
 
-@lru_cache()
 def load_csv(filepath: str) -> pd.DataFrame:
     """Load CSV file into a pandas DataFrame.
 
@@ -91,7 +109,6 @@ def load_csv(filepath: str) -> pd.DataFrame:
     return pd.read_csv(filepath)
 
 
-@lru_cache()
 def load_excel(filepath: str) -> pd.DataFrame:
     """Load Excel file into a pandas DataFrame.
 
@@ -104,7 +121,6 @@ def load_excel(filepath: str) -> pd.DataFrame:
     return pd.read_excel(filepath)
 
 
-@lru_cache()
 def load_ods(filepath: str) -> pd.DataFrame:
     """Load ODS file into a pandas DataFrame.
 
@@ -117,7 +133,6 @@ def load_ods(filepath: str) -> pd.DataFrame:
     return pd.read_excel(filepath, engine="odf")
 
 
-@lru_cache()
 def load_parquet(filepath: str) -> pd.DataFrame:
     """Load Parquet file into a pandas DataFrame.
 
@@ -130,7 +145,6 @@ def load_parquet(filepath: str) -> pd.DataFrame:
     return pd.read_parquet(filepath)
 
 
-@lru_cache()
 def load_feather(filepath: str) -> pd.DataFrame:
     """Load Feather file into a pandas DataFrame.
 
@@ -143,7 +157,6 @@ def load_feather(filepath: str) -> pd.DataFrame:
     return pd.read_feather(filepath)
 
 
-@lru_cache()
 def load_json(filepath: str) -> pd.DataFrame:
     """Load JSON file into a pandas DataFrame.
 
@@ -156,7 +169,6 @@ def load_json(filepath: str) -> pd.DataFrame:
     return pd.read_json(filepath)
 
 
-@lru_cache()
 def load_tsv(filepath: str) -> pd.DataFrame:
     """Load TSV file into a pandas DataFrame.
 
@@ -169,7 +181,6 @@ def load_tsv(filepath: str) -> pd.DataFrame:
     return pd.read_csv(filepath, sep="\t")
 
 
-@lru_cache()
 def load_tabular_data(filepath: str, format: str) -> Optional[pd.DataFrame]:
     """Load tabular data from various file formats into a pandas DataFrame.
 

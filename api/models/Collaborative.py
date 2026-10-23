@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 from api.utils.django_utils import retry_on_slug_collision
 from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from api.utils.file_paths import _use_case_directory_path
+from api.utils.storage import public_storage
 
 slug_validator = RegexValidator(
     regex=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
@@ -25,10 +26,18 @@ class Collaborative(models.Model):
     title = models.CharField(max_length=200, unique=True, blank=True, null=True)
     summary = models.TextField(max_length=200_000, blank=True, null=True)
     logo = models.ImageField(
-        upload_to=_use_case_directory_path, max_length=300, blank=True, null=True
+        upload_to=_use_case_directory_path,
+        storage=public_storage,
+        max_length=300,
+        blank=True,
+        null=True,
     )
     cover_image = models.ImageField(
-        upload_to=_use_case_directory_path, max_length=300, blank=True, null=True
+        upload_to=_use_case_directory_path,
+        storage=public_storage,
+        max_length=300,
+        blank=True,
+        null=True,
     )
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)

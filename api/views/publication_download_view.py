@@ -15,7 +15,8 @@ import os
 from typing import Any
 
 from django.db.models import F
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import FileResponse, HttpRequest, JsonResponse
+from django.http.response import HttpResponseBase
 
 from api.models import Publication, PublicationBlock
 from api.services.publication_blocks import can_access_block_file
@@ -25,7 +26,7 @@ from api.utils.enums import PublicationBlockType
 _INLINE_CONTENT_TYPES = {".pdf": "application/pdf"}
 
 
-def publication_block_download(request: HttpRequest, block_id: Any) -> HttpResponse:
+def publication_block_download(request: HttpRequest, block_id: Any) -> HttpResponseBase:
     """Serve a block's file if the caller may see its resource, else 404."""
     # Find the block and its parent resource.
     try:
@@ -52,7 +53,7 @@ def publication_block_download(request: HttpRequest, block_id: Any) -> HttpRespo
     return _build_file_response(block)
 
 
-def _build_file_response(block: PublicationBlock) -> HttpResponse:
+def _build_file_response(block: PublicationBlock) -> FileResponse:
     """Build the HTTP file response with the right content type and disposition."""
     stored_name = block.file.name or ""
     extension = os.path.splitext(stored_name)[1].lower()
@@ -60,6 +61,6 @@ def _build_file_response(block: PublicationBlock) -> HttpResponse:
     disposition = "inline" if extension in _INLINE_CONTENT_TYPES else "attachment"
 
     filename = block.file_name or os.path.basename(stored_name)
-    response = HttpResponse(block.file.read(), content_type=content_type)
+    response = FileResponse(block.file.open("rb"), content_type=content_type)
     response["Content-Disposition"] = f'{disposition}; filename="{filename}"'
     return response

@@ -255,8 +255,39 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
 # This STATIC_URL setting is overridden below
+# Uploaded media lives only in S3 (see STORAGES below). MEDIA_URL is kept as the
+# prefix of the legacy /public/<name> redirect route for links issued before S3.
 MEDIA_URL = "public/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "files", "public")
+
+# S3 media storage. STORAGE_ENV prefixes every key (local, dev, prod) so one
+# bucket can hold several environments. Empty keys fall back to the boto3
+# credential chain, which is what ECS/EC2 task roles use.
+STORAGE_BUCKET = env("STORAGE_BUCKET")
+STORAGE_REGION = env("STORAGE_REGION")
+STORAGE_ENV = env("STORAGE_ENV")
+STORAGE_PUBLIC_BASE_URL = env("STORAGE_PUBLIC_BASE_URL", default="")
+
+_S3_OPTIONS = {
+    "bucket_name": STORAGE_BUCKET,
+    "region_name": STORAGE_REGION,
+    "access_key": env("STORAGE_ACCESS_KEY_ID", default="") or None,
+    "secret_key": env("STORAGE_SECRET_ACCESS_KEY", default="") or None,
+    "file_overwrite": False,
+    # The bucket enforces object ownership; access is granted by bucket policy, not ACLs.
+    "default_acl": None,
+}
+_S3_PUBLIC_OPTIONS = {
+    **_S3_OPTIONS,
+    "location": f"{STORAGE_ENV}/public",
+    "querystring_auth": False,
+    "custom_domain": STORAGE_PUBLIC_BASE_URL.split("://", 1)[-1].rstrip("/") or None,
+}
+_S3_PRIVATE_OPTIONS = {
+    **_S3_OPTIONS,
+    "location": f"{STORAGE_ENV}/private",
+    "querystring_auth": True,
+    "querystring_expire": 300,
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
@@ -307,11 +338,6 @@ PLATFORM_IMPORT_TIMEOUT = float(os.getenv("PLATFORM_IMPORT_TIMEOUT", "15"))
 # download links). Override on any environment that is not production.
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://civicdataspace.in")
 PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.datakeep.civicdays.in")
-
-# DVC settings
-DVC_REPO_PATH = os.path.join(BASE_DIR, "dvc")
-DVC_REMOTE_NAME = os.getenv("DVC_REMOTE_NAME", None)
-DVC_REMOTE_URL = os.getenv("DVC_REMOTE_URL", None)
 
 # Django REST Framework settings
 REST_FRAMEWORK = {
@@ -377,6 +403,9 @@ LOGGING = {
             "level": "DEBUG" if DEBUG else "INFO",
             "propagate": True,
         },
+        # At DEBUG the AWS SDK logs every signed request, Authorization header
+        # included, and floods the log on each S3 call.
+        **{name: {"level": "WARNING"} for name in ("boto3", "botocore", "s3transfer", "urllib3")},
     },
 }
 
@@ -490,8 +519,16 @@ MIDDLEWARE.insert(
     "whitenoise.middleware.WhiteNoiseMiddleware",
 )
 
-# Use the simplest WhiteNoise storage configuration to avoid MIME type issues
-STATICFILES_STORAGE = "whitenoise.storage.StaticFilesStorage"
+# "public"/"private" are what model fields name through api.utils.storage. The
+# default is private so anything that falls back to default_storage is never
+# world-readable by accident.
+STORAGES = {
+    "default": {"BACKEND": "storages.backends.s3.S3Storage", "OPTIONS": _S3_PRIVATE_OPTIONS},
+    "public": {"BACKEND": "storages.backends.s3.S3Storage", "OPTIONS": _S3_PUBLIC_OPTIONS},
+    "private": {"BACKEND": "storages.backends.s3.S3Storage", "OPTIONS": _S3_PRIVATE_OPTIONS},
+    # Use the simplest WhiteNoise storage configuration to avoid MIME type issues
+    "staticfiles": {"BACKEND": "whitenoise.storage.StaticFilesStorage"},
+}
 
 # Disable compression to avoid MIME type issues
 WHITENOISE_ENABLE_COMPRESSION = False

@@ -7,6 +7,7 @@ from django.utils.text import slugify
 
 from api.utils.enums import DatasetLicense, PublicationBlockType, PublicationStatus
 from api.utils.file_paths import _publication_block_directory_path
+from api.utils.storage import public_storage
 
 if TYPE_CHECKING:
     from api.models.Organization import Organization
@@ -149,6 +150,7 @@ class PublicationBlock(models.Model):
     # FILE block fields.
     file = models.FileField(
         upload_to=_publication_block_directory_path,
+        storage=public_storage,
         max_length=300,
         blank=True,
     )

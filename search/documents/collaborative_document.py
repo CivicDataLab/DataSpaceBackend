@@ -246,12 +246,12 @@ class CollaborativeDocument(Document):
 
     def prepare_logo(self, instance: Collaborative) -> str:
         if instance.logo:
-            return str(instance.logo.path.replace("/code/files/", ""))
+            return str(instance.logo.url)
         return ""
 
     def prepare_cover_image(self, instance: Collaborative) -> str:
         if instance.cover_image:
-            return str(instance.cover_image.path.replace("/code/files/", ""))
+            return str(instance.cover_image.url)
         return ""
 
     def prepare_dataset_count(self, instance: Collaborative) -> int:

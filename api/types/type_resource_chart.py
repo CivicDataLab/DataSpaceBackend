@@ -1,7 +1,9 @@
 # mypy: disable-error-code="valid-type"
 
 import json
+
 from pyecharts.globals import CurrentConfig
+
 CurrentConfig.ONLINE_HOST = "file:///code/"
 import uuid
 from datetime import datetime
@@ -20,7 +22,6 @@ from api.types.charts.chart_registry import CHART_REGISTRY
 from api.types.type_dataset import TypeDataset
 from api.types.type_resource import TypeResource, TypeResourceSchema
 from api.utils.enums import ChartStatus, ChartTypes
-from api.utils.file_utils import load_csv
 
 logger = structlog.get_logger(__name__)
 T = TypeVar("T", bound="TypeResourceChart")
@@ -41,8 +42,10 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
             logger.error("invalid resource format")
             return None
 
-        data = load_csv(file_details.file.path)
-    except (AttributeError, FileNotFoundError):
+        # Charts read the indexed data table, not the file; only require that it exists.
+        if not file_details.file.storage.exists(file_details.file.name):
+            return None
+    except AttributeError:
         return None
 
     chart_class = CHART_REGISTRY.get(chart_details.chart_type)
