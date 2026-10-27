@@ -19,8 +19,10 @@ from api.types.base_type import BaseType
 from api.types.charts.chart_registry import CHART_REGISTRY
 from api.types.type_dataset import TypeDataset
 from api.types.type_resource import TypeResource, TypeResourceSchema
+from api.types.type_resource_chart_image import TypeResourceChartImage
 from api.utils.enums import ChartStatus, ChartTypes
 from api.utils.file_utils import load_csv
+from api.utils.qs_utils import StatusCount
 
 logger = structlog.get_logger(__name__)
 T = TypeVar("T", bound="TypeResourceChart")
@@ -362,3 +364,17 @@ class TypeResourceChart(BaseType):
             height=chart_instance.height,
             renderer=chart_instance.renderer,
         )
+
+
+@strawberry.type
+class ChartResponse:
+    """One page of the charts table (`chartsTable`): built charts and chart
+    images in one list, the total after filters, and per-status counts."""
+
+    data: List[Union[TypeResourceChartImage, TypeResourceChart]]
+    total_items_count: int
+    status_counts: List[StatusCount] = strawberry.field(
+        default_factory=list,
+        description="Counts per status with the same filters applied, except any status filter, "
+        "so tab labels do not change when switching tabs.",
+    )

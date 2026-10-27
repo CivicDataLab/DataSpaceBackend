@@ -6,16 +6,79 @@ from typing import Any, Dict, List, Optional
 
 import strawberry
 import strawberry_django
+from django.db.models import CharField, QuerySet, Value
 from strawberry.types import Info
 from strawberry_django.mutations import mutations
 
-from api.models import Resource, ResourceChartDetails, ResourceSchema
+from api.models import (
+    Resource,
+    ResourceChartDetails,
+    ResourceChartImage,
+    ResourceSchema,
+)
+from api.schema.dataset_schema import ChartDataPermission
 from api.schema.extensions import TrackModelActivity
-from api.types.type_resource_chart import TypeResourceChart
+from api.types.type_resource_chart import ChartResponse, TypeResourceChart
+from api.types.type_resource_chart_image import TypeResourceChartImage
 from api.utils.enums import AggregateType, ChartStatus, ChartTypes
+from api.utils.graphql_telemetry import trace_resolver
+from api.utils.qs_utils import (
+    FilterSpec,
+    SortSpec,
+    StatusCount,
+    apply_filters,
+    apply_pagination,
+    apply_sorting,
+    status_counts,
+)
 
 ChartTypeEnum = strawberry.enum(ChartTypes)
 AggregateTypeEnum = strawberry.enum(AggregateType)
+
+# Fields chartsTable accepts. Names are the chart image's; a built chart reaches
+# its dataset through its resource, so `dataset…` is rewritten for it.
+# `kind` is CHART (built in the wizard) or IMAGE (uploaded).
+CHARTS_TABLE_FILTER_FIELDS = [
+    "id",
+    "name",
+    "status",
+    "chart_type",
+    "kind",
+    "dataset",
+    "dataset__slug",
+    "dataset__title",
+    "modified",
+]
+CHARTS_TABLE_SORT_FIELDS = ["name", "status", "chart_type", "kind", "modified"]
+
+# Columns shared by both tables for the UNION. Model fields first, then the
+# annotations, so both sides select them in the same order.
+_CHART_COLUMNS = ("id", "name", "status", "modified", "chart_type", "kind")
+
+
+def _for_built_charts(field: str) -> str:
+    if field == "dataset" or field.startswith("dataset__"):
+        return f"resource__{field}"
+    return field
+
+
+def _visible_charts(info: Info) -> "tuple[QuerySet, QuerySet]":
+    """Built charts and chart images the caller may list: the same rules as
+    `getChartData` without a dataset (the organisation's, else the user's)."""
+    organization = info.context.context.get("organization")
+    user = info.context.user
+    if organization:
+        charts = ResourceChartDetails.objects.filter(resource__dataset__organization=organization)
+        images = ResourceChartImage.objects.filter(dataset__organization=organization)
+    else:
+        charts = ResourceChartDetails.objects.filter(resource__dataset__user=user)
+        images = ResourceChartImage.objects.filter(dataset__user=user)
+    charts = charts.annotate(kind=Value("CHART", output_field=CharField()))
+    images = images.annotate(
+        chart_type=Value(None, output_field=CharField()),
+        kind=Value("IMAGE", output_field=CharField()),
+    )
+    return charts, images
 
 
 @strawberry.type(name="Query")
@@ -29,6 +92,80 @@ class Query:
     def resource_chart(self, info: Info, chart_details_id: uuid.UUID) -> TypeResourceChart:
         chart = ResourceChartDetails.objects.get(id=chart_details_id)
         return TypeResourceChart.from_django(chart)
+
+    @strawberry.field(
+        permission_classes=[ChartDataPermission],  # type: ignore[list-item]
+    )
+    @trace_resolver(name="charts_table", attributes={"component": "chart"})
+    def charts_table(
+        self,
+        info: Info,
+        filters: Optional[List[FilterSpec]] = None,
+        sort_options: Optional[List[SortSpec]] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> ChartResponse:
+        """Built charts and chart images in one table: client-driven filters,
+        sortable columns and page controls backed by a real total count.
+
+        Additive next to `getChartData`, with the same visibility rules. Both
+        tables are merged in one SQL UNION, so counting, sorting and slicing
+        happen in the database; only the rows of the page are then loaded.
+        Default order: last modified first.
+        """
+        visible_charts, visible_images = _visible_charts(info)
+        # Images first: their field names are the public ones, so a disallowed
+        # field is reported with the allowlist as clients know it.
+        images = apply_filters(visible_images, filters or [], CHARTS_TABLE_FILTER_FIELDS)
+        chart_filters = [
+            FilterSpec(field=_for_built_charts(f.field or ""), condition=f.condition, value=f.value)
+            for f in filters or []
+        ]
+        chart_fields = [_for_built_charts(f) for f in CHARTS_TABLE_FILTER_FIELDS]
+        charts = apply_filters(visible_charts, chart_filters, chart_fields)
+
+        # order_by() drops the models' default ordering, not allowed inside a UNION.
+        rows = (
+            charts.order_by()
+            .values(*_CHART_COLUMNS)
+            .union(images.order_by().values(*_CHART_COLUMNS))
+        )
+        rows = apply_sorting(
+            rows,
+            sort_options or [SortSpec(field="modified", direction="desc")],
+            CHARTS_TABLE_SORT_FIELDS,
+        )
+        # Tie-breaker so equal sort values do not move rows between pages.
+        rows = rows.order_by(*rows.query.order_by, "id")
+        window = apply_pagination(rows, limit, offset)
+        page = list(window["data"])
+
+        # from_django reads every foreign key of the chart's dataset.
+        built = ResourceChartDetails.objects.select_related(
+            "resource__dataset__organization",
+            "resource__dataset__user",
+            "resource__dataset__dataspace",
+        ).in_bulk([r["id"] for r in page if r["kind"] == "CHART"])
+        uploaded = ResourceChartImage.objects.select_related("dataset").in_bulk(
+            [r["id"] for r in page if r["kind"] == "IMAGE"]
+        )
+        data: List[Any] = []
+        for r in page:
+            if r["kind"] == "CHART" and r["id"] in built:
+                data.append(TypeResourceChart.from_django(built[r["id"]]))
+            elif r["kind"] == "IMAGE" and r["id"] in uploaded:
+                data.append(TypeResourceChartImage.from_django(uploaded[r["id"]]))
+
+        counts: Dict[str, int] = {}
+        for item in status_counts(visible_charts, chart_filters, chart_fields) + status_counts(
+            visible_images, filters, CHARTS_TABLE_FILTER_FIELDS
+        ):
+            counts[item.status] = counts.get(item.status, 0) + item.count
+        return ChartResponse(
+            data=data,
+            total_items_count=window["total_items_count"],
+            status_counts=[StatusCount(status=k, count=v) for k, v in sorted(counts.items())],
+        )
 
 
 @strawberry.input
