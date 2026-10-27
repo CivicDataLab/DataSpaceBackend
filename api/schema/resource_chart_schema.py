@@ -27,8 +27,7 @@ from api.utils.qs_utils import (
     SortSpec,
     StatusCount,
     apply_filters,
-    apply_pagination,
-    apply_sorting,
+    get_pagination_window,
     status_counts,
 )
 
@@ -130,14 +129,14 @@ class Query:
             .values(*_CHART_COLUMNS)
             .union(images.order_by().values(*_CHART_COLUMNS))
         )
-        rows = apply_sorting(
+        # Filters are already applied per table above (not allowed after a UNION).
+        window = get_pagination_window(
             rows,
-            sort_options or [SortSpec(field="modified", direction="desc")],
-            CHARTS_TABLE_SORT_FIELDS,
+            limit=limit,
+            offset=offset,
+            sort_options=sort_options or [SortSpec(field="modified", direction="desc")],
+            sorting_allowed_fields=CHARTS_TABLE_SORT_FIELDS,
         )
-        # Tie-breaker so equal sort values do not move rows between pages.
-        rows = rows.order_by(*rows.query.order_by, "id")
-        window = apply_pagination(rows, limit, offset)
         page = list(window["data"])
 
         # from_django reads every foreign key of the chart's dataset.
