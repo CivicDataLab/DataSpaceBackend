@@ -197,6 +197,11 @@ class PublicationStatus(models.TextChoices):
     PUBLISHED = "PUBLISHED"
 
 
+class EventStatus(models.TextChoices):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+
+
 class PublicationBlockType(models.TextChoices):
     FILE = "FILE"
     YOUTUBE = "YOUTUBE"
