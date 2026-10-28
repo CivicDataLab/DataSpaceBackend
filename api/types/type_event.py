@@ -89,7 +89,7 @@ class TypeEvent(BaseType):
     @strawberry.field
     def is_individual_event(self) -> bool:
         """True when owned by an individual rather than an organization."""
-        return self.organization is None
+        return self.organization is None and self.user is not None
 
 
 @strawberry.type
