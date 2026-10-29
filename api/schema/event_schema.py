@@ -25,6 +25,7 @@ from api.services.event_service import (
 from api.types.type_event import EventResponse, TypeEvent
 from api.utils.enums import EventStatus
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
     SortSpec,
@@ -166,9 +167,17 @@ class Query:
     @strawberry.field
     @trace_resolver(name="event_by_slug", attributes={"component": "event"})
     def event_by_slug(self, info: Info, slug: str) -> Optional[TypeEvent]:
-        """Published event for a public page. Drafts and unknown slugs return null."""
+        """Published event for a public page, found by its link (``urlSlug``).
+
+        Only the publicId at the end of the link is used, so a link with old
+        title words still works. Drafts, unknown ids and links without an id
+        return null.
+        """
+        public_id = parse_public_id(slug)
+        if public_id is None:
+            return None
         event = (
-            Event.objects.filter(slug=slug, status=EventStatus.PUBLISHED)
+            Event.objects.filter(public_id=public_id, status=EventStatus.PUBLISHED)
             .select_related("organization", "user")
             .first()
         )
