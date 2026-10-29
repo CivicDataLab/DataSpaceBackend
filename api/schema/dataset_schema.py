@@ -44,6 +44,7 @@ from api.types.type_prompt_metadata import TypePromptDataset, prompt_task_type_e
 from api.types.type_resource import TypeResource
 from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
+from api.utils.dataset_access import ChangeDatasetPartPermission
 from api.utils.enums import (
     DatasetAccessType,
     DatasetLicense,
@@ -260,6 +261,21 @@ class UpdateDatasetPermission(BasePermission):
 
         except Dataset.DoesNotExist:
             return False
+
+
+class ChangePromptResourcePermission(ChangeDatasetPartPermission):
+    """Prompt details of a file need edit rights on the file's dataset."""
+
+    message = "You don't have permission to update this dataset"
+
+    def datasets(self, kwargs: Any) -> Optional[list]:
+        resource_id = getattr(kwargs.get("update_input"), "resource", None)
+        resource = (
+            Resource.objects.select_related("dataset").filter(id=resource_id).first()
+            if resource_id
+            else None
+        )
+        return [resource.dataset] if resource else None
 
 
 @strawberry.input
@@ -855,7 +871,7 @@ class Mutation:
         return MutationResponse.success_response(TypePromptDataset.from_django(prompt_dataset))
 
     @strawberry.mutation(
-        permission_classes=[IsAuthenticated],
+        permission_classes=[ChangePromptResourcePermission],
     )
     @trace_resolver(
         name="update_prompt_resource",

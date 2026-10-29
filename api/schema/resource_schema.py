@@ -4,7 +4,7 @@ from enum import Enum
 
 # mypy: disable-error-code=operator
 # mypy: disable-error-code=valid-type
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import strawberry
 import strawberry_django
@@ -27,10 +27,43 @@ from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.types.type_resource import TypeResource
 from api.utils.constants import FORMAT_MAPPING
 from api.utils.data_indexing import index_resource_data
+from api.utils.dataset_access import ChangeDatasetPartPermission, can_view_dataset
 from api.utils.file_utils import file_validation
 from api.utils.graphql_telemetry import trace_resolver
 
 logger = structlog.get_logger("dataspace.resource_schema")
+
+
+def _dataset_from_arguments(kwargs: Any) -> Optional[Dataset]:
+    """The dataset a resource mutation acts on, from whichever argument it takes."""
+    data = (
+        kwargs.get("file_resource_input")
+        or kwargs.get("schema_update_input")
+        or kwargs.get("input")
+    )
+    dataset_id = getattr(data, "dataset", None)
+    if dataset_id:
+        return Dataset.objects.filter(id=dataset_id).first()
+    resource_id = (
+        kwargs.get("resource_id")
+        or getattr(data, "id", None)
+        or getattr(data, "resource", None)
+        or getattr(data, "resource_id", None)
+    )
+    if not resource_id:
+        return None
+    resource = Resource.objects.select_related("dataset").filter(id=resource_id).first()
+    return resource.dataset if resource else None
+
+
+class ChangeResourcePermission(ChangeDatasetPartPermission):
+    """Adding, changing or deleting a dataset's resources needs edit rights on the dataset."""
+
+    message = "You don't have permission to change this dataset's resources"
+
+    def datasets(self, kwargs: Any) -> Optional[list]:
+        dataset = _dataset_from_arguments(kwargs)
+        return [dataset] if dataset else None
 
 
 @strawberry.input
@@ -114,14 +147,20 @@ class Query:
     @trace_resolver(name="get_dataset_resources", attributes={"component": "resource"})
     def dataset_resources(self, info: Info, dataset_id: uuid.UUID) -> List[TypeResource]:
         """Get resources for a dataset."""
-        resources = Resource.objects.filter(dataset_id=dataset_id)
+        dataset = Dataset.objects.filter(id=dataset_id).first()
+        if not dataset or not can_view_dataset(info.context.user, dataset):
+            return []
+        resources = Resource.objects.filter(dataset=dataset)
         return [TypeResource.from_django(resource) for resource in resources]
 
     @strawberry_django.field
     @trace_resolver(name="get_resource_by_id", attributes={"component": "resource"})
     def resource_by_id(self, info: Info, resource_id: uuid.UUID) -> TypeResource:
         """Get a resource by ID."""
-        resource = Resource.objects.get(id=resource_id)
+        resource = Resource.objects.select_related("dataset").get(id=resource_id)
+        if not can_view_dataset(info.context.user, resource.dataset):
+            # Same answer as a missing ID, so drafts' resources are not revealed.
+            raise Resource.DoesNotExist("Resource matching query does not exist.")
         return TypeResource.from_django(resource)
 
 
@@ -222,6 +261,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=False,
+        permission_classes=[ChangeResourcePermission],
         extensions=[
             TrackModelActivity(
                 verb="created",
@@ -258,6 +298,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeResourcePermission],
         extensions=[
             TrackModelActivity(
                 verb="created",
@@ -285,6 +326,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeResourcePermission],
         extensions=[
             TrackModelActivity(
                 verb="updated",
@@ -343,7 +385,10 @@ class Mutation:
 
         return TypeResource.from_django(resource)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        permission_classes=[ChangeResourcePermission],
+    )
     @trace_resolver(name="update_file_resource_schema", attributes={"component": "resource"})
     def update_file_resource_schema(
         self, info: Info, schema_update_input: SchemaUpdateInput
@@ -357,7 +402,10 @@ class Mutation:
         _update_file_resource_schema(resource, schema_update_input.updates)
         return TypeResource.from_django(resource)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        permission_classes=[ChangeResourcePermission],
+    )
     @trace_resolver(name="reset_file_resource_schema", attributes={"component": "resource"})
     def reset_file_resource_schema(self, info: Info, resource_id: uuid.UUID) -> TypeResource:
         """Reset file resource schema."""
@@ -372,6 +420,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=False,
+        permission_classes=[ChangeResourcePermission],
         extensions=[
             TrackActivity(
                 verb="deleted",
@@ -393,6 +442,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeResourcePermission],
         extensions=[
             TrackModelActivity(
                 verb="versioned",
