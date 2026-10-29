@@ -56,7 +56,6 @@ class TypeEvent(BaseType):
 
     id: uuid.UUID
     name: str
-    slug: str
     public_id: str
     location: str
     start_date: Optional[date]

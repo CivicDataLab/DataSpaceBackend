@@ -160,7 +160,7 @@ PUBLISHED = """
 query Published($organizationSlug: String) {
   publishedEvents(organizationSlug: $organizationSlug) {
     totalItemsCount
-    data { name slug status organization { slug } }
+    data { name urlSlug status organization { slug } }
   }
 }
 """

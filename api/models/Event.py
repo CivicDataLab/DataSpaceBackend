@@ -2,7 +2,6 @@ import uuid
 from typing import Any
 
 from django.db import models
-from django.utils.text import slugify
 
 from api.utils.enums import EventStatus
 from api.utils.public_links import PUBLIC_ID_LENGTH, build_url_slug, save_with_public_id
@@ -11,14 +10,13 @@ from api.utils.public_links import PUBLIC_ID_LENGTH, build_url_slug, save_with_p
 class Event(models.Model):
     """A Luma-backed event owned by an organization or an individual user.
 
-    Peer to Publication: a UUID/slug entity with a draft/publish status. The
-    embed is stored as whitelisted iframe attributes, never as raw HTML.
+    Peer to Publication: a UUID entity with a draft/publish status, linked by
+    ``public_id``. The embed is stored as whitelisted iframe attributes, never
+    as raw HTML.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=300, blank=True)
-    # Readable words only; not unique. Links and lookups use public_id.
-    slug = models.SlugField(max_length=255)
     public_id = models.CharField(max_length=PUBLIC_ID_LENGTH, unique=True, editable=False)
     location = models.CharField(max_length=300, blank=True)
     start_date = models.DateField(null=True, blank=True)
@@ -49,8 +47,6 @@ class Event(models.Model):
     modified = models.DateTimeField(auto_now=True)
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        if not self.slug:
-            self.slug = slugify(self.name)[:255] or "untitled"
         save_with_public_id(self, lambda: super(Event, self).save(*args, **kwargs))
 
     @property

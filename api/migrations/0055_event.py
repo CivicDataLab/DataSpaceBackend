@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("name", models.CharField(blank=True, max_length=300)),
-                ("slug", models.SlugField(max_length=255, unique=True)),
+                ("public_id", models.CharField(editable=False, max_length=12, unique=True)),
                 ("location", models.CharField(blank=True, max_length=300)),
                 ("start_date", models.DateField(blank=True, null=True)),
                 ("end_date", models.DateField(blank=True, null=True)),
