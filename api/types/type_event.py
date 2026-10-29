@@ -1,6 +1,6 @@
 import uuid
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Optional, cast
 
 import strawberry
 import strawberry_django
@@ -57,6 +57,7 @@ class TypeEvent(BaseType):
     id: uuid.UUID
     name: str
     slug: str
+    public_id: str
     location: str
     start_date: Optional[date]
     end_date: Optional[date]
@@ -85,6 +86,11 @@ class TypeEvent(BaseType):
             referrerpolicy=_text(raw.get("referrerpolicy")),
             loading=_text(raw.get("loading")),
         )
+
+    @strawberry.field
+    def url_slug(self) -> str:
+        """Public link part: title words plus publicId. Use it in event page URLs."""
+        return cast(Event, self).url_slug
 
     @strawberry.field
     def is_individual_event(self) -> bool:
