@@ -44,7 +44,11 @@ from api.types.type_prompt_metadata import TypePromptDataset, prompt_task_type_e
 from api.types.type_resource import TypeResource
 from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
-from api.utils.dataset_access import ChangeDatasetPartPermission
+from api.utils.dataset_access import (
+    ChangeDatasetPartPermission,
+    can_change_dataset,
+    can_list_organization,
+)
 from api.utils.enums import (
     DatasetAccessType,
     DatasetLicense,
@@ -229,38 +233,10 @@ class UpdateDatasetPermission(BasePermission):
         if not update_dataset_input or not hasattr(update_dataset_input, "dataset"):
             return False
 
-        dataset_id = update_dataset_input.dataset
-
-        try:
-            dataset = Dataset.objects.get(id=dataset_id)
-
-            # Check if user owns the dataset
-            if dataset.user and dataset.user == user:
-                return True
-
-            # If organization-owned, check organization permissions
-            if dataset.organization:
-                # Get the roles with names 'admin' or 'editor'
-                admin_editor_roles = Role.objects.filter(
-                    name__in=["admin", "editor", "owner"]
-                ).values_list("id", flat=True)
-
-                # Check if user is a member of the dataset's organization with appropriate role
-                org_member = OrganizationMembership.objects.filter(
-                    user=user,
-                    organization=dataset.organization,
-                    role__id__in=admin_editor_roles,
-                ).exists()
-
-                if org_member:
-                    return True
-
-            # Check dataset-specific permissions
-            dataset_perm = DatasetPermission.objects.filter(user=user, dataset=dataset).first()
-            return dataset_perm and dataset_perm.role.can_change and dataset.status == DatasetStatus.DRAFT.value  # type: ignore
-
-        except Dataset.DoesNotExist:
+        dataset = Dataset.objects.filter(id=update_dataset_input.dataset).first()
+        if not dataset:
             return False
+        return can_change_dataset(user, dataset)
 
 
 class ChangePromptResourcePermission(ChangeDatasetPartPermission):
@@ -451,7 +427,11 @@ def _visible_datasets(info: Info, include_public: Optional[bool] = False) -> Que
     organization = info.context.context.get("organization")
     user = info.context.user
     if organization:
-        queryset = Dataset.objects.filter(organization=organization)
+        queryset = (
+            Dataset.objects.filter(organization=organization)
+            if can_list_organization(user, organization)
+            else Dataset.objects.none()
+        )
     elif not user.is_authenticated:
         queryset = Dataset.objects.none()
     elif user.is_superuser:
@@ -480,24 +460,17 @@ class Query:
         user = info.context.user
 
         if organization:
-            queryset = Dataset.objects.filter(organization=organization)
+            # Only members whose role can view may list an organisation's datasets
+            if can_list_organization(user, organization):
+                queryset = Dataset.objects.filter(organization=organization)
+            else:
+                queryset = Dataset.objects.none()
         else:
             # If user is authenticated
             if user.is_authenticated:
                 # If user is superuser, show all datasets
                 if user.is_superuser:
                     queryset = Dataset.objects.all()
-                elif organization:
-                    # Check id user has access to organization
-                    org_member = OrganizationMembership.objects.get(
-                        user=user, organization=organization
-                    )
-                    if org_member.exists() and org_member.role.can_view:  # type: ignore
-                        # Show only datasets from current organization
-                        queryset = Dataset.objects.filter(organization=organization)
-                    else:
-                        # if user is not a member of the organization, return empty queryset
-                        queryset = Dataset.objects.none()
                 else:
                     # For non-organization authenticated users, only owned datasets
                     queryset = Dataset.objects.filter(user=user, organization=None)

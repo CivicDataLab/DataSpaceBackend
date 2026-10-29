@@ -392,15 +392,6 @@ class CreateDatasetPermission(BasePermission):
         return True
 
 
-class ResourcePermissionGraphQL(HasOrganizationRoleGraphQL):  # type: ignore[misc]
-    """
-    Permission class specifically for Resource objects.
-    """
-
-    def _get_organization(self, obj: Any) -> Optional[Organization]:
-        return obj.dataset.organization if hasattr(obj, "dataset") else None  # type: ignore[attr-defined,no-any-return]
-
-
 class PublishDatasetPermission(BasePermission):
     """Permission class for publishing a dataset.
     Checks if the user has permission to publish the dataset.
