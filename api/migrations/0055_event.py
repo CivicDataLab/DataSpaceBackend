@@ -8,7 +8,6 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("api", "0049_merge_publication_and_accessmodel"),
         ("api", "0054_add_source_identifier_metadata"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
