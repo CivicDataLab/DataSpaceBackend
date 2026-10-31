@@ -179,11 +179,131 @@ class DatasetAccessType(models.TextChoices):
 
 
 class DatasetLicense(models.TextChoices):
-    GOVERNMENT_OPEN_DATA_LICENSE = "GOVERNMENT_OPEN_DATA_LICENSE"
-    CC_BY_4_0_ATTRIBUTION = "CC_BY_4_0_ATTRIBUTION"
-    CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE = "CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE"
-    OPEN_DATA_COMMONS_BY_ATTRIBUTION = "OPEN_DATA_COMMONS_BY_ATTRIBUTION"
-    OPEN_DATABASE_LICENSE = "OPEN_DATABASE_LICENSE"
+    """One value per row of contracts/licenses.csv (matched by its dataspace_enum alt code)."""
+
+    GOVERNMENT_OPEN_DATA_LICENSE = (
+        "GOVERNMENT_OPEN_DATA_LICENSE",
+        "Government Open Data License – India",
+    )
+    CC_BY_4_0_ATTRIBUTION = "CC_BY_4_0_ATTRIBUTION", "Creative Commons Attribution 4.0"
+    CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE = (
+        "CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE",
+        "Creative Commons Attribution-ShareAlike 4.0",
+    )
+    OPEN_DATA_COMMONS_BY_ATTRIBUTION = (
+        "OPEN_DATA_COMMONS_BY_ATTRIBUTION",
+        "Open Data Commons Attribution License 1.0",
+    )
+    OPEN_DATABASE_LICENSE = "OPEN_DATABASE_LICENSE", "Open Database License 1.0"
+    CC_PDM_1_0 = "CC_PDM_1_0", "Creative Commons Public Domain Mark 1.0 Universal"
+    CC_BY_1_0 = "CC_BY_1_0", "Creative Commons Attribution 1.0 Generic"
+    CC_BY_2_0 = "CC_BY_2_0", "Creative Commons Attribution 2.0 Generic"
+    CC_BY_2_5_AU = "CC_BY_2_5_AU", "Creative Commons Attribution 2.5 Australia"
+    CC_BY_2_5 = "CC_BY_2_5", "Creative Commons Attribution 2.5 Generic"
+    CC_BY_3_0_AU = "CC_BY_3_0_AU", "Creative Commons Attribution 3.0 Australia"
+    CC_BY_3_0_AT = "CC_BY_3_0_AT", "Creative Commons Attribution 3.0 Austria"
+    CC_BY_3_0_DE = "CC_BY_3_0_DE", "Creative Commons Attribution 3.0 Germany"
+    CC_BY_3_0_IGO = "CC_BY_3_0_IGO", "Creative Commons Attribution 3.0 IGO"
+    CC_BY_3_0_NL = "CC_BY_3_0_NL", "Creative Commons Attribution 3.0 Netherlands"
+    CC_BY_3_0_US = "CC_BY_3_0_US", "Creative Commons Attribution 3.0 United States"
+    CC_BY_3_0 = "CC_BY_3_0", "Creative Commons Attribution 3.0 Unported"
+    CC_BY_ND_1_0 = "CC_BY_ND_1_0", "Creative Commons Attribution No Derivatives 1.0 Generic"
+    CC_BY_ND_2_0 = "CC_BY_ND_2_0", "Creative Commons Attribution No Derivatives 2.0 Generic"
+    CC_BY_ND_2_5 = "CC_BY_ND_2_5", "Creative Commons Attribution No Derivatives 2.5 Generic"
+    CC_BY_ND_3_0_DE = "CC_BY_ND_3_0_DE", "Creative Commons Attribution No Derivatives 3.0 Germany"
+    CC_BY_ND_3_0 = "CC_BY_ND_3_0", "Creative Commons Attribution No Derivatives 3.0 Unported"
+    CC_BY_ND_4_0 = "CC_BY_ND_4_0", "Creative Commons Attribution No Derivatives 4.0 International"
+    CC_BY_NC_1_0 = "CC_BY_NC_1_0", "Creative Commons Attribution Non Commercial 1.0 Generic"
+    CC_BY_NC_2_0 = "CC_BY_NC_2_0", "Creative Commons Attribution Non Commercial 2.0 Generic"
+    CC_BY_NC_2_5 = "CC_BY_NC_2_5", "Creative Commons Attribution Non Commercial 2.5 Generic"
+    CC_BY_NC_3_0_DE = "CC_BY_NC_3_0_DE", "Creative Commons Attribution Non Commercial 3.0 Germany"
+    CC_BY_NC_3_0_IGO = "CC_BY_NC_3_0_IGO", "Creative Commons Attribution Non Commercial 3.0 IGO"
+    CC_BY_NC_3_0 = "CC_BY_NC_3_0", "Creative Commons Attribution Non Commercial 3.0 Unported"
+    CC_BY_NC_4_0 = "CC_BY_NC_4_0", "Creative Commons Attribution Non Commercial 4.0 International"
+    CC_BY_NC_ND_1_0 = (
+        "CC_BY_NC_ND_1_0",
+        "Creative Commons Attribution Non Commercial No Derivatives 1.0 Generic",
+    )
+    CC_BY_NC_ND_2_0 = (
+        "CC_BY_NC_ND_2_0",
+        "Creative Commons Attribution Non Commercial No Derivatives 2.0 Generic",
+    )
+    CC_BY_NC_ND_2_5 = (
+        "CC_BY_NC_ND_2_5",
+        "Creative Commons Attribution Non Commercial No Derivatives 2.5 Generic",
+    )
+    CC_BY_NC_ND_3_0_DE = (
+        "CC_BY_NC_ND_3_0_DE",
+        "Creative Commons Attribution Non Commercial No Derivatives 3.0 Germany",
+    )
+    CC_BY_NC_ND_3_0_IGO = (
+        "CC_BY_NC_ND_3_0_IGO",
+        "Creative Commons Attribution Non Commercial No Derivatives 3.0 IGO",
+    )
+    CC_BY_NC_ND_3_0 = (
+        "CC_BY_NC_ND_3_0",
+        "Creative Commons Attribution Non Commercial No Derivatives 3.0 Unported",
+    )
+    CC_BY_NC_ND_4_0 = (
+        "CC_BY_NC_ND_4_0",
+        "Creative Commons Attribution Non Commercial No Derivatives 4.0 International",
+    )
+    CC_BY_NC_SA_1_0 = (
+        "CC_BY_NC_SA_1_0",
+        "Creative Commons Attribution Non Commercial Share Alike 1.0 Generic",
+    )
+    CC_BY_NC_SA_2_0_UK = (
+        "CC_BY_NC_SA_2_0_UK",
+        "Creative Commons Attribution Non Commercial Share Alike 2.0 England and Wales",
+    )
+    CC_BY_NC_SA_2_0 = (
+        "CC_BY_NC_SA_2_0",
+        "Creative Commons Attribution Non Commercial Share Alike 2.0 Generic",
+    )
+    CC_BY_NC_SA_2_0_DE = (
+        "CC_BY_NC_SA_2_0_DE",
+        "Creative Commons Attribution Non Commercial Share Alike 2.0 Germany",
+    )
+    CC_BY_NC_SA_2_5 = (
+        "CC_BY_NC_SA_2_5",
+        "Creative Commons Attribution Non Commercial Share Alike 2.5 Generic",
+    )
+    CC_BY_NC_SA_3_0_DE = (
+        "CC_BY_NC_SA_3_0_DE",
+        "Creative Commons Attribution Non Commercial Share Alike 3.0 Germany",
+    )
+    CC_BY_NC_SA_3_0_IGO = (
+        "CC_BY_NC_SA_3_0_IGO",
+        "Creative Commons Attribution Non Commercial Share Alike 3.0 IGO",
+    )
+    CC_BY_NC_SA_3_0 = (
+        "CC_BY_NC_SA_3_0",
+        "Creative Commons Attribution Non Commercial Share Alike 3.0 Unported",
+    )
+    CC_BY_NC_SA_4_0 = (
+        "CC_BY_NC_SA_4_0",
+        "Creative Commons Attribution Non Commercial Share Alike 4.0 International",
+    )
+    CC_BY_SA_1_0 = "CC_BY_SA_1_0", "Creative Commons Attribution Share Alike 1.0 Generic"
+    CC_BY_SA_2_0_UK = (
+        "CC_BY_SA_2_0_UK",
+        "Creative Commons Attribution Share Alike 2.0 England and Wales",
+    )
+    CC_BY_SA_2_0 = "CC_BY_SA_2_0", "Creative Commons Attribution Share Alike 2.0 Generic"
+    CC_BY_SA_2_1_JP = "CC_BY_SA_2_1_JP", "Creative Commons Attribution Share Alike 2.1 Japan"
+    CC_BY_SA_2_5 = "CC_BY_SA_2_5", "Creative Commons Attribution Share Alike 2.5 Generic"
+    CC_BY_SA_3_0_AT = "CC_BY_SA_3_0_AT", "Creative Commons Attribution Share Alike 3.0 Austria"
+    CC_BY_SA_3_0_DE = "CC_BY_SA_3_0_DE", "Creative Commons Attribution Share Alike 3.0 Germany"
+    CC_BY_SA_3_0 = "CC_BY_SA_3_0", "Creative Commons Attribution Share Alike 3.0 Unported"
+    CC_BY_NC_SA_2_0_FR = (
+        "CC_BY_NC_SA_2_0_FR",
+        "Creative Commons Attribution-NonCommercial-ShareAlike 2.0 France",
+    )
+    CC_BY_SA_3_0_IGO = "CC_BY_SA_3_0_IGO", "Creative Commons Attribution-ShareAlike 3.0 IGO"
+    CC_PDDC = "CC_PDDC", "Creative Commons Public Domain Dedication and Certification"
+    CC_SA_1_0 = "CC_SA_1_0", "Creative Commons Share Alike 1.0 Generic"
+    CC0_1_0 = "CC0_1_0", "Creative Commons Zero v1.0 Universal"
+    PDDL_1_0 = "PDDL_1_0", "Open Data Commons Public Domain Dedication & License 1.0"
 
 
 class UseCaseStatus(models.TextChoices):
