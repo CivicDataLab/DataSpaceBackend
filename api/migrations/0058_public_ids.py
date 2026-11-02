@@ -1,4 +1,3 @@
-import django.core.validators
 from django.db import migrations, models
 
 MODELS = ["aimodel", "collaborative", "dataset", "publication", "usecase"]
@@ -7,9 +6,10 @@ MODELS = ["aimodel", "collaborative", "dataset", "publication", "usecase"]
 class Migration(migrations.Migration):
     """Add public_id (nullable for now) to every public module.
 
-    Also drops the unique rule on slugs and on use case / collaborative titles:
-    links use public_id, so titles may repeat. Filled for existing rows in
-    0057, made unique and required in 0058.
+    Also drops the unique rule on dataset, publication and use case slugs and
+    on use case / collaborative titles: links use public_id, so titles may
+    repeat. Collaborative slugs stay unique (the slug is also the subdomain).
+    Filled for existing rows in 0059, made unique and required in 0060.
     """
 
     dependencies = [
@@ -25,24 +25,6 @@ class Migration(migrations.Migration):
             )
             for model in MODELS
         ],
-        migrations.AlterField(
-            model_name="collaborative",
-            name="slug",
-            field=models.SlugField(
-                blank=True,
-                max_length=75,
-                null=True,
-                validators=[
-                    django.core.validators.RegexValidator(
-                        message=(
-                            "Slug must be lowercase and contain only alphanumeric "
-                            "characters and hyphens."
-                        ),
-                        regex="^[a-z0-9]+(?:-[a-z0-9]+)*$",
-                    )
-                ],
-            ),
-        ),
         migrations.AlterField(
             model_name="collaborative",
             name="title",

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, cast
 
 from django.core.validators import RegexValidator
-from django.db import models
+from django.db import IntegrityError, models, transaction
 from django.utils.text import slugify
 
 if TYPE_CHECKING:
@@ -12,13 +12,23 @@ if TYPE_CHECKING:
 
 from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from api.utils.file_paths import _use_case_directory_path
-from api.utils.public_links import PUBLIC_ID_LENGTH, build_url_slug, save_with_public_id
+from api.utils.public_links import (
+    PUBLIC_ID_LENGTH,
+    build_url_slug,
+    generate_public_id,
+    save_with_public_id,
+)
 from api.utils.storage import public_storage
 
 slug_validator = RegexValidator(
     regex=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
     message="Slug must be lowercase and contain only alphanumeric characters and hyphens.",
 )
+
+
+def _slug_with_suffix(base: str) -> str:
+    """``base`` plus 4 random characters, kept within the 75-character limit."""
+    return f"{base[:70].rstrip('-')}-{generate_public_id()[:4]}"
 
 
 class Collaborative(models.Model):
@@ -43,8 +53,10 @@ class Collaborative(models.Model):
     modified = models.DateTimeField(auto_now=True)
     website = models.URLField(blank=True)
     contact_email = models.EmailField(blank=True, null=True)
-    # Kept for old links and older readers; no longer unique. Links use public_id.
-    slug = models.SlugField(max_length=75, null=True, blank=True, validators=[slug_validator])
+    # Unique: the slug is also the collaborative's subdomain. Page links use public_id.
+    slug = models.SlugField(
+        max_length=75, null=True, blank=True, unique=True, validators=[slug_validator]
+    )
     public_id = models.CharField(max_length=PUBLIC_ID_LENGTH, unique=True, editable=False)
     user = models.ForeignKey("authorization.User", on_delete=models.CASCADE)
     organization = models.ForeignKey(
@@ -77,15 +89,30 @@ class Collaborative(models.Model):
     platform_url = models.URLField(blank=True, null=True)
 
     def save(self, *args: Any, **kwargs: Any) -> None:
+        base = ""
         if self.title and not self.slug:
-            self.slug = slugify(cast(str, self.title))[:75].strip("-")
+            base = slugify(cast(str, self.title))[:75].strip("-")
+            if base:
+                taken = Collaborative.objects.filter(slug=base).exclude(pk=self.pk).exists()
+                self.slug = _slug_with_suffix(base) if taken else base
 
         def do_save() -> None:
             # public_id clashes are caught by the database and retried, not here.
             self.full_clean(exclude=["public_id"])
             super(Collaborative, self).save(*args, **kwargs)
 
-        save_with_public_id(self, do_save)
+        # Titles may repeat but slugs may not. A slug made from the title that
+        # another save took in the meantime gets a new suffix; a slug the owner
+        # typed is never changed (full_clean refuses it if taken).
+        for attempt in range(3):
+            try:
+                with transaction.atomic():
+                    save_with_public_id(self, do_save)
+                return
+            except IntegrityError as exc:
+                if not base or "slug" not in str(exc) or attempt == 2:
+                    raise
+                self.slug = _slug_with_suffix(base)
 
     @property
     def url_slug(self) -> str:

@@ -2,6 +2,8 @@ import types
 
 import pytest
 from django.contrib.auth.models import AnonymousUser
+from django.core.exceptions import ValidationError
+from django.db.models import QuerySet
 
 from api.models import AIModel, Collaborative, Publication, UseCase
 from api.schema.schema import schema
@@ -119,11 +121,34 @@ def test_collaborative_public_id_does_not_fall_back_to_slug(owner) -> None:
     assert res.errors
 
 
-def test_collaborative_old_slug_with_duplicates_gives_oldest(owner) -> None:
+def test_collaborative_same_title_gets_its_own_slug(owner) -> None:
+    # The slug is also the subdomain, so a repeated title gets a suffix.
     first = Collaborative.objects.create(title="Clean Rivers", user=owner)
+    second = Collaborative.objects.create(title="Clean Rivers", user=owner)
+    assert first.slug == "clean-rivers"
+    assert second.slug.startswith("clean-rivers-") and len(second.slug) == len("clean-rivers") + 5
+    for c in [first, second]:
+        res = run(CB, {"s": c.slug})
+        assert res.data["collaborativeBySlug"]["id"] == str(c.id)
+
+
+def test_collaborative_taken_slug_is_refused(owner) -> None:
     Collaborative.objects.create(title="Clean Rivers", user=owner)
-    res = run(CB, {"s": "clean-rivers"})
-    assert res.data["collaborativeBySlug"]["id"] == str(first.id)
+    other = Collaborative.objects.create(title="Something else", user=owner)
+    other.slug = "clean-rivers"
+    with pytest.raises(ValidationError):
+        other.save()
+
+
+def test_collaborative_slug_race_gets_a_new_suffix(owner, monkeypatch) -> None:
+    # Another save takes the slug between the check and the insert.
+    Collaborative.objects.create(title="Clean Rivers", user=owner)
+    monkeypatch.setattr(Collaborative, "full_clean", lambda self, **kw: None)
+    real_exists = QuerySet.exists
+    monkeypatch.setattr(QuerySet, "exists", lambda self: False)
+    c = Collaborative.objects.create(title="Clean Rivers", user=owner)
+    monkeypatch.setattr(QuerySet, "exists", real_exists)
+    assert c.slug.startswith("clean-rivers-")
 
 
 def test_collaborative_unknown_link_errors(owner) -> None:

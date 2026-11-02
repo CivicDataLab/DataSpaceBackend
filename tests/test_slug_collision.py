@@ -51,5 +51,7 @@ def test_collaborative_same_second_title_does_not_collide():
     second = Collaborative.objects.create(title=same_title, user=user)
 
     assert first.title == second.title == same_title
+    # The slug is also the subdomain, so it stays unique.
+    assert first.slug != second.slug
     assert first.public_id != second.public_id
     assert first.url_slug != second.url_slug
