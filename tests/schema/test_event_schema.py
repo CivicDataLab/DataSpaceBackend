@@ -173,8 +173,8 @@ query Published($organizationSlug: String) {
 """
 
 BY_SLUG = """
-query BySlug($slug: String!) {
-  eventBySlug(slug: $slug) { name urlSlug status lumaEmbed { src } }
+query BySlug($publicId: String!) {
+  eventBySlug(publicId: $publicId) { name urlSlug status lumaEmbed { src } }
 }
 """
 
@@ -365,7 +365,7 @@ class TestEventSchema:
     def test_event_by_slug_returns_a_published_event(self, org_a_admin, org_a):
         event = _make_event(org_a_admin, org_a, name="Public night", status=EventStatus.PUBLISHED)
 
-        result = run(BY_SLUG, ctx(AnonymousUser()), {"slug": event.url_slug})
+        result = run(BY_SLUG, ctx(AnonymousUser()), {"publicId": event.url_slug})
 
         assert result.errors is None
         assert result.data["eventBySlug"]["urlSlug"] == event.url_slug
@@ -374,7 +374,7 @@ class TestEventSchema:
     def test_event_by_slug_hides_drafts(self, org_a_admin, org_a):
         event = _make_event(org_a_admin, org_a, name="Draft night")
 
-        result = run(BY_SLUG, ctx(AnonymousUser()), {"slug": event.url_slug})
+        result = run(BY_SLUG, ctx(AnonymousUser()), {"publicId": event.url_slug})
 
         assert result.errors is None
         assert result.data["eventBySlug"] is None

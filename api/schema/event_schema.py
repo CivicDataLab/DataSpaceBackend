@@ -166,18 +166,18 @@ class Query:
 
     @strawberry.field
     @trace_resolver(name="event_by_slug", attributes={"component": "event"})
-    def event_by_slug(self, info: Info, slug: str) -> Optional[TypeEvent]:
-        """Published event for a public page, found by its link (``urlSlug``).
+    def event_by_slug(self, info: Info, public_id: str) -> Optional[TypeEvent]:
+        """Published event for a public page, found by its link.
 
-        Only the publicId at the end of the link is used, so a link with old
-        title words still works. Drafts, unknown ids and links without an id
-        return null.
+        ``public_id`` takes the id itself or the whole link part (``urlSlug``);
+        only the id at the end is used, so a link with old title words still
+        works. Drafts, unknown ids and links without an id return null.
         """
-        public_id = parse_public_id(slug)
-        if public_id is None:
+        parsed = parse_public_id(public_id)
+        if parsed is None:
             return None
         event = (
-            Event.objects.filter(public_id=public_id, status=EventStatus.PUBLISHED)
+            Event.objects.filter(public_id=parsed, status=EventStatus.PUBLISHED)
             .select_related("organization", "user")
             .first()
         )

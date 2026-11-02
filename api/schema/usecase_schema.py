@@ -275,19 +275,17 @@ class Query:
 
     @strawberry_django.field
     @trace_resolver(name="get_use_case_by_slug", attributes={"component": "usecase"})
-    def use_case_by_slug(self, info: Info, slug: str) -> Optional[TypeUseCase]:
-        """Published use case for a public page, found by its link (``urlSlug``).
+    def use_case_by_slug(self, info: Info, public_id: str) -> Optional[TypeUseCase]:
+        """Published use case for a public page, found by its link.
 
-        Only the publicId at the end of the link is used, so a link with old
-        title words still works. Drafts, unknown ids and links without an id
-        return null.
+        ``public_id`` takes the id itself or the whole link part (``urlSlug``);
+        only the id at the end is used, so a link with old title words still
+        works. Drafts, unknown ids and links without an id return null.
         """
-        public_id = parse_public_id(slug)
-        if public_id is None:
+        parsed = parse_public_id(public_id)
+        if parsed is None:
             return None
-        use_case = UseCase.objects.filter(
-            public_id=public_id, status=UseCaseStatus.PUBLISHED
-        ).first()
+        use_case = UseCase.objects.filter(public_id=parsed, status=UseCaseStatus.PUBLISHED).first()
         return TypeUseCase.from_django(use_case) if use_case else None
 
     @strawberry_django.field

@@ -72,7 +72,7 @@ def test_long_collaborative_title_saves(owner) -> None:
 
 # --- use cases -----------------------------------------------------------------
 
-UC = "query($s: String!) { useCaseBySlug(slug: $s) { id publicId urlSlug } }"
+UC = "query($s: String!) { useCaseBySlug(publicId: $s) { id publicId urlSlug } }"
 
 
 def test_use_case_by_link(owner) -> None:
@@ -96,6 +96,7 @@ def test_use_case_by_link_hides_drafts_and_plain_words(owner) -> None:
 # --- collaboratives ------------------------------------------------------------
 
 CB = "query($s: String!) { collaborativeBySlug(slug: $s) { id publicId urlSlug } }"
+CB_ID = "query($s: String!) { collaborativeBySlug(publicId: $s) { id publicId urlSlug } }"
 
 
 def test_collaborative_by_link_and_old_slug(owner) -> None:
@@ -106,6 +107,16 @@ def test_collaborative_by_link_and_old_slug(owner) -> None:
         res = run(CB, {"s": value})
         assert res.errors is None, res.errors
         assert res.data["collaborativeBySlug"]["id"] == str(c.id)
+    for value in [c.url_slug, c.public_id, f"old-words-{c.public_id}"]:
+        res = run(CB_ID, {"s": value})
+        assert res.errors is None, res.errors
+        assert res.data["collaborativeBySlug"]["id"] == str(c.id)
+
+
+def test_collaborative_public_id_does_not_fall_back_to_slug(owner) -> None:
+    c = Collaborative.objects.create(title="Clean Rivers", user=owner)
+    res = run(CB_ID, {"s": c.slug})
+    assert res.errors
 
 
 def test_collaborative_old_slug_with_duplicates_gives_oldest(owner) -> None:

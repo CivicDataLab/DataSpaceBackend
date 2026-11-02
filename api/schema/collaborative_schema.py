@@ -293,21 +293,23 @@ class Query:
         name="get_collaborative_by_slug",
         attributes={"component": "collaborative"},
     )
-    def collaborative_by_slug(self, info: Info, slug: str) -> TypeCollaborative:
-        """Collaborative for its page, found by its link (``urlSlug``).
+    def collaborative_by_slug(
+        self, info: Info, public_id: Optional[str] = None, slug: Optional[str] = None
+    ) -> TypeCollaborative:
+        """Collaborative for its page, found by its link.
 
-        Only the publicId at the end of the link is used, so a link with old
-        title words still works. Links shared before public ids existed carry
-        the old slug, so a value without a matching id falls back to the slug.
+        ``public_id`` takes the id itself or the whole link part (``urlSlug``);
+        only the id at the end is used, so a link with old title words still
+        works. ``slug`` is for links and subdomains made before public ids
+        existed: the id is tried first, then the old slug.
         """
-        public_id = parse_public_id(slug)
-        collaborative = (
-            Collaborative.objects.filter(public_id=public_id).first() if public_id else None
-        )
-        if collaborative is None:
+        value = public_id if public_id is not None else slug
+        parsed = parse_public_id(value)
+        collaborative = Collaborative.objects.filter(public_id=parsed).first() if parsed else None
+        if collaborative is None and public_id is None and slug:
             collaborative = Collaborative.objects.filter(slug=slug).order_by("created").first()
         if collaborative is None:
-            raise ValueError(f"Collaborative with slug {slug} does not exist.")
+            raise ValueError(f"Collaborative {value} does not exist.")
         return TypeCollaborative.from_django(collaborative)
 
 
