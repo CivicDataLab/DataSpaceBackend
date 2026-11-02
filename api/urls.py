@@ -19,6 +19,7 @@ from api.views import (
     search_aimodel,
     search_collaborative,
     search_dataset,
+    search_event,
     search_publication,
     search_publisher,
     search_unified,
@@ -64,6 +65,7 @@ urlpatterns = [
         search_collaborative.SearchCollaborative.as_view(),
         name="search_collaborative",
     ),
+    path("search/event/", search_event.SearchEvent.as_view(), name="search_event"),
     path("search/unified/", search_unified.UnifiedSearch.as_view(), name="search_unified"),
     path("search/publisher/", search_publisher.SearchPublisher.as_view(), name="search_publisher"),
     path(

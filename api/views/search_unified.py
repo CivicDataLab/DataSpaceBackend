@@ -85,6 +85,14 @@ class UnifiedSearchResultSerializer(serializers.Serializer):
     resource_type = serializers.CharField(required=False)
     is_individual_publication = serializers.BooleanField(required=False)
 
+    # Event specific
+    public_id = serializers.CharField(required=False)
+    url_slug = serializers.CharField(required=False)
+    location = serializers.CharField(required=False, allow_blank=True)
+    start_date = serializers.DateTimeField(format="%Y-%m-%d", required=False, allow_null=True)
+    end_date = serializers.DateTimeField(format="%Y-%m-%d", required=False, allow_null=True)
+    is_individual_event = serializers.BooleanField(required=False)
+
     # Collaborative specific
     is_individual_collaborative = serializers.BooleanField(required=False)
     website = serializers.CharField(required=False)
@@ -148,6 +156,12 @@ class UnifiedSearch(APIView):
                 "search.documents.collaborative_document", "collaborative"
             )
             index_names.append(collaborative_index)
+
+        if "event" in types_list:
+            event_index = settings.ELASTICSEARCH_INDEX_NAMES.get(
+                "search.documents.event_document", "event"
+            )
+            index_names.append(event_index)
 
         if "publisher" in types_list:
             org_publisher_index = settings.ELASTICSEARCH_INDEX_NAMES.get(
@@ -327,6 +341,8 @@ class UnifiedSearch(APIView):
             result["type"] = "publication"
         elif "collaborative" in index_name:
             result["type"] = "collaborative"
+        elif "event" in index_name:
+            result["type"] = "event"
         elif "publisher" in index_name:
             result["type"] = "publisher"
         else:
@@ -356,6 +372,12 @@ class UnifiedSearch(APIView):
                 result["description"] = result.get("summary", "")
             if "title" not in result:
                 result["title"] = ""
+        elif result["type"] == "event":
+            result["title"] = result.get("name", "")
+            result["description"] = result.get("location") or ""
+            result.setdefault("tags", [])
+            result.setdefault("sectors", [])
+            result.setdefault("geographies", [])
         elif result["type"] == "publisher":
             if "name" in result:
                 result["title"] = result.get("name", "")
@@ -441,6 +463,8 @@ class UnifiedSearch(APIView):
                         aggregations["types"]["publication"] = bucket["doc_count"]
                     elif "collaborative" in index_name:
                         aggregations["types"]["collaborative"] = bucket["doc_count"]
+                    elif "event" in index_name:
+                        aggregations["types"]["event"] = bucket["doc_count"]
                     elif "publisher" in index_name:
                         # Combine both organization and user publisher counts
                         if "publisher" not in aggregations["types"]:
@@ -464,7 +488,7 @@ class UnifiedSearch(APIView):
             "page": request.GET.get("page", "1"),
             "size": request.GET.get("size", "10"),
             "types": request.GET.get(
-                "types", "dataset,usecase,aimodel,publication,collaborative,publisher"
+                "types", "dataset,usecase,aimodel,publication,collaborative,event,publisher"
             ),
             "filters": str(sorted(request.GET.dict().items())),
             "version": str(cache.get(SEARCH_CACHE_VERSION_KEY, 0)),
@@ -484,7 +508,7 @@ class UnifiedSearch(APIView):
             page: int = int(request.GET.get("page", 1))
             size: int = int(request.GET.get("size", 10))
             entity_types: str = request.GET.get(
-                "types", "dataset,usecase,aimodel,publication,collaborative,publisher"
+                "types", "dataset,usecase,aimodel,publication,collaborative,event,publisher"
             )  # Which entity types to search
 
             types_list = [t.strip() for t in entity_types.split(",")]

@@ -18,9 +18,12 @@ existing documents are filled in place with an update-by-query that runs in the
 background on the Elasticsearch side (no rebuild, no downtime; until it
 finishes, searches on the new sub-fields simply match fewer documents).
 
-It skips indexes that do not exist yet (those are created with the full mapping
-on first use) and never fails the process: problems are logged and reported,
-so a search outage cannot stop the backend from starting.
+A registered document whose index does not exist yet (a new search type, such
+as events) gets its index created, empty, with the full mapping and analysers.
+Without that, the first published item would make Elasticsearch create the
+index itself with guessed field types, and aggregations and sorting on it would
+fail. The command never fails the process: problems are logged and reported, so
+a search outage cannot stop the backend from starting.
 
     python manage.py sync_search_mappings            # apply
     python manage.py sync_search_mappings --dry-run  # report only
@@ -77,7 +80,12 @@ class Command(BaseCommand):
             try:
                 es = document._get_connection()
                 if not es.indices.exists(index=index_name):
-                    self.stdout.write(f"{index_name}: no index yet, skipped")
+                    if dry_run:
+                        self.stdout.write(f"{index_name}: would create the index")
+                        continue
+                    document._index.create(using=es)
+                    self.stdout.write(self.style.SUCCESS(f"{index_name}: created the index"))
+                    logger.info("search_index_created", index=index_name)
                     continue
                 live = es.indices.get_mapping(index=index_name)
                 existing: Dict[str, Any] = {}
