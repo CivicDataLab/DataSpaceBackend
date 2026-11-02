@@ -13,7 +13,6 @@ from typing import Iterable, Optional
 
 import structlog
 from django.db import transaction
-from django.utils.text import slugify
 
 from api.models import (
     Dataset,
@@ -82,19 +81,6 @@ def find_existing_import(
         qs = qs.filter(dataset__organization__isnull=True, dataset__user=user)
     source = qs.first()
     return source.dataset if source else None
-
-
-def _unique_dataset_slug(title: str) -> str:
-    """Pick a free slug up front. Dataset.save() retries on a slug collision,
-    but only a handful of times; platform titles ("Iris", "Wine Reviews")
-    repeat across organisations far more often than timestamped native ones,
-    so choose a free slug before saving rather than rely on the retry."""
-    base = slugify(title)[:240] or "imported-dataset"
-    slug, counter = base, 2
-    while Dataset.objects.filter(slug=slug).exists():
-        slug = f"{base}-{counter}"
-        counter += 1
-    return slug
 
 
 PLATFORM_LABELS = {"HUGGINGFACE": "Hugging Face", "KAGGLE": "Kaggle", "GITHUB": "GitHub"}
@@ -191,7 +177,6 @@ def _create_import(
     display_title = (title or "").strip()[:300] or info.title
     dataset = Dataset.objects.create(
         title=display_title,
-        slug=_unique_dataset_slug(display_title),
         description=info.description,
         user=user,
         organization=organization,

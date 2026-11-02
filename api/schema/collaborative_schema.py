@@ -50,6 +50,7 @@ from api.types.type_organization import TypeOrganization
 from api.types.type_usecase import TypeUseCase
 from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
     SortSpec,
@@ -293,11 +294,21 @@ class Query:
         attributes={"component": "collaborative"},
     )
     def collaborative_by_slug(self, info: Info, slug: str) -> TypeCollaborative:
-        try:
-            collaborative = Collaborative.objects.get(slug=slug)
-            return TypeCollaborative.from_django(collaborative)
-        except Collaborative.DoesNotExist:
+        """Collaborative for its page, found by its link (``urlSlug``).
+
+        Only the publicId at the end of the link is used, so a link with old
+        title words still works. Links shared before public ids existed carry
+        the old slug, so a value without a matching id falls back to the slug.
+        """
+        public_id = parse_public_id(slug)
+        collaborative = (
+            Collaborative.objects.filter(public_id=public_id).first() if public_id else None
+        )
+        if collaborative is None:
+            collaborative = Collaborative.objects.filter(slug=slug).order_by("created").first()
+        if collaborative is None:
             raise ValueError(f"Collaborative with slug {slug} does not exist.")
+        return TypeCollaborative.from_django(collaborative)
 
 
 @trace_resolver(name="update_collaborative_tags", attributes={"component": "collaborative"})

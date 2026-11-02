@@ -39,6 +39,8 @@ class UnifiedSearchResultSerializer(serializers.Serializer):
     title = serializers.CharField()
     description = serializers.CharField()
     slug = serializers.CharField(required=False)
+    public_id = serializers.CharField(required=False, allow_null=True)
+    url_slug = serializers.CharField(required=False, allow_null=True)
     created = serializers.DateTimeField(required=False)
     modified = serializers.DateTimeField(required=False)
     created_at = serializers.DateTimeField(required=False)

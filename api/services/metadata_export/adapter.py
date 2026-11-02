@@ -127,7 +127,7 @@ def dataset_to_record(dataset: Dataset) -> Dict[str, Any]:
     source = getattr(dataset, "source", None)
     org = dataset.organization
     user = dataset.user
-    landing = f"{_public_base()}/datasets/{dataset.slug}"
+    landing = f"{_public_base()}/datasets/{dataset.url_slug}"
 
     sectors = [vocab.concept(s.name, vocab.sector_uri(s.name)) for s in dataset.sectors.all()]
     geographies = [

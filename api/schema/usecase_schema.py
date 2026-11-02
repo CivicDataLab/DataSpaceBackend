@@ -53,6 +53,7 @@ from api.utils.enums import (
     UseCaseStatus,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
     SortSpec,
@@ -271,6 +272,23 @@ class Query:
                 results = results[offset:]
 
         return TypeUseCase.from_django_list(results)
+
+    @strawberry_django.field
+    @trace_resolver(name="get_use_case_by_slug", attributes={"component": "usecase"})
+    def use_case_by_slug(self, info: Info, slug: str) -> Optional[TypeUseCase]:
+        """Published use case for a public page, found by its link (``urlSlug``).
+
+        Only the publicId at the end of the link is used, so a link with old
+        title words still works. Drafts, unknown ids and links without an id
+        return null.
+        """
+        public_id = parse_public_id(slug)
+        if public_id is None:
+            return None
+        use_case = UseCase.objects.filter(
+            public_id=public_id, status=UseCaseStatus.PUBLISHED
+        ).first()
+        return TypeUseCase.from_django(use_case) if use_case else None
 
     @strawberry_django.field
     @trace_resolver(name="get_datasets_by_use_case", attributes={"component": "usecase"})

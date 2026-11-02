@@ -18,6 +18,11 @@ existing documents are filled in place with an update-by-query that runs in the
 background on the Elasticsearch side (no rebuild, no downtime; until it
 finishes, searches on the new sub-fields simply match fewer documents).
 
+When top-level fields were added, their values come from the database, which
+Elasticsearch cannot compute itself. Existing documents are then updated in
+place with just those fields (a partial update per record, not a reindex), so
+for example search results for old datasets get ``url_slug`` right away.
+
 A registered document whose index does not exist yet (a new search type, such
 as events) gets its index created, empty, with the full mapping and analysers.
 Without that, the first published item would make Elasticsearch create the
@@ -33,11 +38,12 @@ Runs from docker-entrypoint.sh after migrations.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterator, List
 
 import structlog
 from django.core.management.base import BaseCommand
 from django_elasticsearch_dsl.registries import registry
+from elasticsearch.helpers import bulk
 
 logger = structlog.get_logger("dataspace.search_mappings")
 
@@ -65,6 +71,39 @@ def missing_subfields(existing: Dict[str, Any], desired: Dict[str, Any]) -> Dict
         if new:
             updates[name] = {**live, "fields": {**have, **new}}
     return updates
+
+
+def refill_fields(document: Any, es: Any, index_name: str, names: List[str]) -> int:
+    """Write the current values of ``names`` into every existing document.
+
+    Only the given fields are sent (a partial update), computed the same way
+    the document computes them when a record is saved. Records that are not in
+    the index (for example ones the document never indexes) are skipped.
+    Returns the number of documents updated.
+    """
+    doc = document()
+    preparers = [(name, fn) for name, _field, fn in doc._prepared_fields if name in names]
+    if not preparers:
+        return 0
+
+    def actions() -> Iterator[Dict[str, Any]]:
+        for instance in doc.get_queryset().iterator(chunk_size=500):
+            try:
+                values = {name: fn(instance) for name, fn in preparers}
+            except Exception as exc:  # one bad record must not stop the rest
+                logger.warning(
+                    "search_refill_skipped", index=index_name, pk=str(instance.pk), error=str(exc)
+                )
+                continue
+            yield {
+                "_op_type": "update",
+                "_index": index_name,
+                "_id": instance.pk,
+                "doc": values,
+            }
+
+    updated, _failed = bulk(es, actions(), raise_on_error=False, stats_only=True)
+    return int(updated)
 
 
 class Command(BaseCommand):
@@ -105,8 +144,9 @@ class Command(BaseCommand):
                     added += [f"{name}.{sub}" for sub in sorted(spec["fields"]) if sub not in have]
                 names = ", ".join(added)
                 if dry_run:
-                    refill = " and refill existing documents" if subfield_updates else ""
-                    self.stdout.write(f"{index_name}: would add {names}{refill}")
+                    self.stdout.write(
+                        f"{index_name}: would add {names} and refill existing documents"
+                    )
                     continue
 
                 es.indices.put_mapping(
@@ -120,6 +160,9 @@ class Command(BaseCommand):
                         index=index_name, conflicts="proceed", wait_for_completion=False
                     )
                     message += f"; refilling existing documents (task {task.get('task')})"
+                if fields_to_add:
+                    count = refill_fields(document, es, index_name, sorted(fields_to_add))
+                    message += f"; filled new fields in {count} existing documents"
                 self.stdout.write(self.style.SUCCESS(message))
                 logger.info("search_mapping_fields_added", index=index_name, fields=added)
             except Exception as exc:  # never block start-up on search problems

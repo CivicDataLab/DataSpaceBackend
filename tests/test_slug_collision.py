@@ -1,17 +1,12 @@
 """Regression test for the same-second slug/title collision.
 
-Root cause: auto-generated titles (e.g. "New dataset 17 Sep 2026 - 09:43:04")
-have one-second resolution, and Dataset.slug / UseCase.title+slug /
-Collaborative.title+slug are unique columns. Two creates landing in the same
-second (routine under concurrent CI load - e.g. `-n 3`) previously raised an
-IntegrityError/ValidationError that the create mutation surfaced as a bare
-`success: False` with no usable error, which is what made
-test_prv_006_org_create_dataset and test_prv_007_org_create_usecase in
-CivicDataSpace-test fail under concurrent load (DataSpaceBackend #199).
+Auto-generated titles (e.g. "New dataset 17 Sep 2026 - 09:43:04") have
+one-second resolution, so two creates in the same second get the same title.
+Titles and slugs used to be unique, so the second create failed under
+concurrent load (DataSpaceBackend #199).
 
-Model.save() now retries with a disambiguated title/slug on collision
-(api/utils/django_utils.py:retry_on_slug_collision), so this same-second
-create no longer fails.
+Titles and slugs no longer need to be unique: each record gets its own
+public_id, and links are found by that id. Two records may share a title.
 """
 
 import pytest
@@ -22,12 +17,16 @@ from authorization.models import User
 
 @pytest.mark.django_db
 def test_dataset_same_second_title_does_not_collide():
+    # Dataset slugs are no longer unique; each dataset is found by its own
+    # public_id, so two datasets may share a title and slug.
     same_title = "New dataset 18 Sep 2026 - 09:43:04"
     first = Dataset.objects.create(title=same_title)
     second = Dataset.objects.create(title=same_title)
 
-    assert first.slug != second.slug
-    assert second.slug.startswith(first.slug)
+    assert first.slug == second.slug
+    assert first.public_id and second.public_id
+    assert first.public_id != second.public_id
+    assert first.url_slug != second.url_slug
 
 
 @pytest.mark.django_db
@@ -38,9 +37,9 @@ def test_usecase_same_second_title_does_not_collide():
     first = UseCase.objects.create(title=same_title, user=user)
     second = UseCase.objects.create(title=same_title, user=user)
 
-    assert first.title == same_title
-    assert second.title != same_title
-    assert second.slug != first.slug
+    assert first.title == second.title == same_title
+    assert first.public_id != second.public_id
+    assert first.url_slug != second.url_slug
 
 
 @pytest.mark.django_db
@@ -51,6 +50,6 @@ def test_collaborative_same_second_title_does_not_collide():
     first = Collaborative.objects.create(title=same_title, user=user)
     second = Collaborative.objects.create(title=same_title, user=user)
 
-    assert first.title == same_title
-    assert second.title != same_title
-    assert second.slug != first.slug
+    assert first.title == second.title == same_title
+    assert first.public_id != second.public_id
+    assert first.url_slug != second.url_slug
