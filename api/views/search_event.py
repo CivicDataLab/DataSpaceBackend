@@ -58,6 +58,8 @@ class EventDocumentSerializer(serializers.ModelSerializer):
     start_date = serializers.DateTimeField(format="%Y-%m-%d", allow_null=True)
     end_date = serializers.DateTimeField(format="%Y-%m-%d", allow_null=True)
     is_individual_event = serializers.BooleanField()
+    # Luma cover image (https URL on images.lumacdn.com), null when unknown.
+    cover_url = serializers.CharField(default=None, allow_null=True)
 
     class OrganizationSerializer(serializers.Serializer):
         name = serializers.CharField()
@@ -83,6 +85,7 @@ class EventDocumentSerializer(serializers.ModelSerializer):
             "end_date",
             "status",
             "is_individual_event",
+            "cover_url",
             "created",
             "modified",
             "organization",

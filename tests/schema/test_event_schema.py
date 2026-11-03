@@ -27,6 +27,13 @@ def _no_activity_recording():
         yield
 
 
+@pytest.fixture(autouse=True)
+def _no_luma_requests():
+    """Publishing builds the search document, which asks Luma for the cover."""
+    with patch("search.documents.event_document.fetch_luma_cover", return_value=None):
+        yield
+
+
 @pytest.fixture
 def roles(db):
     admin = Role.objects.create(

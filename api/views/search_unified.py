@@ -92,6 +92,7 @@ class UnifiedSearchResultSerializer(serializers.Serializer):
     start_date = serializers.DateTimeField(format="%Y-%m-%d", required=False, allow_null=True)
     end_date = serializers.DateTimeField(format="%Y-%m-%d", required=False, allow_null=True)
     is_individual_event = serializers.BooleanField(required=False)
+    cover_url = serializers.CharField(required=False, allow_null=True)
 
     # Collaborative specific
     is_individual_collaborative = serializers.BooleanField(required=False)
@@ -375,6 +376,7 @@ class UnifiedSearch(APIView):
         elif result["type"] == "event":
             result["title"] = result.get("name", "")
             result["description"] = result.get("location") or ""
+            result.setdefault("cover_url", None)
             result.setdefault("tags", [])
             result.setdefault("sectors", [])
             result.setdefault("geographies", [])
