@@ -185,6 +185,9 @@ jobs:
               -e SECRET_KEY=ci-sanity-check-not-a-real-key \
               -e URL_WHITELIST=http://localhost \
               -e DB_ENGINE=django.db.backends.sqlite3 \
+              -e STORAGE_BUCKET=ci-sanity-check \
+              -e STORAGE_REGION=ap-south-1 \
+              -e STORAGE_ENV=ci \
               --entrypoint python \
               "${{ steps.ref.outputs.image_ref }}" \
               manage.py check; then
