@@ -1,8 +1,10 @@
 """Elasticsearch document for Event.
 
 Indexes published events only: name, location, dates, link (``public_id`` /
-``url_slug``) and owner. The Luma embed is not indexed; the event page fetches
-it with ``eventBySlug``.
+``url_slug``), owner and ``cover_url``. The cover is looked up on Luma every
+time the document is built (``prepare_cover_url``), including the deploy's
+``search_index --populate``; it is display-only (not searchable). The Luma
+embed itself is not indexed; the event page fetches it with ``eventBySlug``.
 """
 
 from typing import Any, Dict, List, Optional, Union
@@ -12,6 +14,7 @@ from django_elasticsearch_dsl import Document, Index, KeywordField, fields
 from api.models.Event import Event
 from api.models.Organization import Organization
 from api.utils.enums import EventStatus
+from api.utils.luma_cover import fetch_luma_cover
 from authorization.models import User
 from DataSpace import settings
 from search.documents.analysers import ngram_analyser, title_subfields
@@ -36,6 +39,7 @@ class EventDocument(Document):
     public_id = fields.KeywordField()
     url_slug = fields.KeywordField(attr="url_slug")
     is_individual_event = fields.BooleanField(attr="is_individual_event")
+    cover_url = fields.KeywordField(index=False)
 
     organization = fields.NestedField(
         properties={
@@ -54,6 +58,11 @@ class EventDocument(Document):
     def prepare_location(self, instance: Event) -> Optional[str]:
         """Blank locations are left out, so they never show up as a filter option."""
         return instance.location or None
+
+    def prepare_cover_url(self, instance: Event) -> Optional[str]:
+        """Cover image from Luma for the stored embed; None when Luma has none or fails."""
+        embed = instance.luma_embed if isinstance(instance.luma_embed, dict) else {}
+        return fetch_luma_cover(embed.get("src"))
 
     def prepare_organization(self, instance: Event) -> Optional[Dict[str, str]]:
         """Prepare the owning organization for indexing."""
