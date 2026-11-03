@@ -9,7 +9,7 @@ import api.utils.storage
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("api", "0055_event"),
+        ("api", "0057_repair_event_search_index"),
     ]
 
     operations = [
