@@ -31,6 +31,7 @@ from api.utils.enums import (
     OrganizationRelationshipType,
     PublicationStatus,
 )
+from api.utils.qs_utils import StatusCount
 from authorization.types import TypeUser
 
 collaborative_status = strawberry.enum(CollaborativeStatus)  # type: ignore
@@ -261,3 +262,17 @@ class TypeCollaborative(BaseType):
             return TypeOrganization.from_django_list(organizations)
         except Exception:
             return []
+
+
+@strawberry.type
+class CollaborativeResponse:
+    """One page of a table listing (`collaborativesTable`): rows, the total after
+    filters, and per-status counts for tab labels."""
+
+    data: List[TypeCollaborative]
+    total_items_count: int
+    status_counts: List[StatusCount] = strawberry.field(
+        default_factory=list,
+        description="Counts per status with the same filters applied, except any status filter, "
+        "so tab labels stay stable when switching tabs.",
+    )

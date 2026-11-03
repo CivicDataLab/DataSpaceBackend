@@ -5,8 +5,8 @@ from rest_framework import permissions
 from strawberry.permission import BasePermission
 from strawberry.types import Info
 
-from api.models import Dataset, Organization, Publication
-from api.utils.enums import PublicationStatus
+from api.models import Dataset, Event, Organization, Publication
+from api.utils.enums import EventStatus, PublicationStatus
 from authorization.models import DatasetPermission, OrganizationMembership, Role
 
 # Roles that may publish/unpublish and edit an org-owned publication, by name.
@@ -621,4 +621,138 @@ class AllowPublishedPublications(BasePermission):  # type: ignore[misc]
         if hasattr(source, "status"):
             if source.status == PublicationStatus.PUBLISHED.value:
                 return True
+        return bool(getattr(request, "user", None) and request.user.is_authenticated)
+
+
+# ---------------------------------------------------------------------------
+# Event permissions — same ownership rules as publications.
+# ---------------------------------------------------------------------------
+
+
+def _resolve_event_id(kwargs: Any) -> Optional[Any]:
+    """Pull the target event id out of a mutation's arguments."""
+    event_id = kwargs.get("event_id")
+    if event_id:
+        return event_id
+    payload = kwargs.get("input")
+    if payload is not None and getattr(payload, "id", None):
+        return payload.id
+    return None
+
+
+def _user_manages_event(user: Any, event: Event, operation: str) -> bool:
+    """Whether a user may perform ``operation`` on an event."""
+    if user.is_superuser:
+        return True
+    if event.user and event.user == user:
+        return True
+    if not event.organization:
+        return False
+
+    membership = OrganizationMembership.objects.filter(
+        user=user, organization=event.organization
+    ).first()
+    if not membership:
+        return False
+
+    role = membership.role
+    if operation == "publish":
+        return role.name in PUBLICATION_MANAGER_ROLE_NAMES
+    if operation == "delete":
+        return role.can_delete
+    return role.can_change
+
+
+class EventPermissionGraphQL(BasePermission):  # type: ignore[misc]
+    """Base event mutation permission — keys on the event id in kwargs."""
+
+    message = "You don't have permission to modify this event"
+    operation = "change"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        user = info.context.user
+        if not getattr(user, "is_authenticated", False):
+            return False
+
+        event_id = _resolve_event_id(kwargs)
+        if not event_id:
+            return False
+
+        try:
+            event = Event.objects.get(id=event_id)
+        except Event.DoesNotExist:
+            return False
+
+        return _user_manages_event(user, event, self.operation)
+
+
+class ChangeEventPermission(EventPermissionGraphQL):
+    operation = "change"
+
+
+class DeleteEventPermission(EventPermissionGraphQL):
+    message = "You don't have permission to delete this event"
+    operation = "delete"
+
+
+class PublishEventPermission(EventPermissionGraphQL):
+    message = "You don't have permission to publish this event"
+    operation = "publish"
+
+
+class CreateEventPermission(BasePermission):  # type: ignore[misc]
+    """Any authenticated user may create an individual event.
+
+    Creating inside an organization requires the ``add`` role.
+    """
+
+    message = "You don't have permission to create an event"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        user = info.context.user
+        if not getattr(user, "is_authenticated", False):
+            return False
+
+        organization = info.context.context.get("organization")
+        if organization:
+            membership = OrganizationMembership.objects.filter(
+                user=user, organization=organization
+            ).first()
+            return bool(membership and membership.role.can_add)
+
+        return True
+
+
+class AllowPublishedEvents(BasePermission):  # type: ignore[misc]
+    """A published event is world-readable. A draft is visible to its owner."""
+
+    message = "You need to be authenticated to access non-published events"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        request = info.context
+        event_id = kwargs.get("event_id")
+
+        if event_id:
+            try:
+                event = Event.objects.get(id=event_id)
+            except Event.DoesNotExist:
+                return True
+
+            if event.status == EventStatus.PUBLISHED.value:
+                return True
+
+            user = request.user
+            if not user.is_authenticated:
+                return False
+            if user.is_superuser:
+                return True
+            if event.user and event.user == user:
+                return True
+            if event.organization:
+                membership = OrganizationMembership.objects.filter(
+                    user=user, organization=event.organization
+                ).first()
+                return bool(membership and membership.role.can_view)
+            return False
+
         return bool(getattr(request, "user", None) and request.user.is_authenticated)

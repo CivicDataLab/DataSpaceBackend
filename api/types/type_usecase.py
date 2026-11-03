@@ -30,6 +30,7 @@ from api.utils.enums import (
     PublicationStatus,
     UseCaseStatus,
 )
+from api.utils.qs_utils import StatusCount
 from authorization.types import TypeUser
 
 use_case_status = strawberry.enum(UseCaseStatus)  # type: ignore
@@ -240,3 +241,17 @@ class TypeUseCase(BaseType):
             return TypeUseCaseDashboard.from_django_list(usecase_dashboards)
         except Exception:
             return []
+
+
+@strawberry.type
+class UseCaseResponse:
+    """One page of a table listing (`useCasesTable`): rows, the total after
+    filters, and per-status counts for tab labels."""
+
+    data: List[TypeUseCase]
+    total_items_count: int
+    status_counts: List[StatusCount] = strawberry.field(
+        default_factory=list,
+        description="Counts per status with the same filters applied, except any status filter, "
+        "so tab labels stay stable when switching tabs.",
+    )

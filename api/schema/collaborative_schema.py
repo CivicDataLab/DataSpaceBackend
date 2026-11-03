@@ -9,6 +9,7 @@ from typing import List, Optional
 import strawberry
 import strawberry_django
 from django.db import models
+from django.db.models import QuerySet
 from strawberry import auto
 from strawberry.file_uploads import Upload
 from strawberry.types import Info
@@ -37,6 +38,7 @@ from api.services.publication_linking import (
 from api.types.type_collaborative import (
     CollaborativeFilter,
     CollaborativeOrder,
+    CollaborativeResponse,
     TypeCollaborative,
 )
 from api.types.type_collaborative_organization import (
@@ -48,6 +50,12 @@ from api.types.type_organization import TypeOrganization
 from api.types.type_usecase import TypeUseCase
 from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.qs_utils import (
+    FilterSpec,
+    SortSpec,
+    get_pagination_window,
+    status_counts,
+)
 from authorization.models import User
 from authorization.types import TypeUser
 
@@ -95,6 +103,55 @@ class CollaborativeInputPartial:
     completed_on: Optional[datetime.date] = None
 
 
+# Fields a table client may filter or sort on. Explicit allowlists are what
+# stop arbitrary columns (and relations) from becoming queryable.
+COLLABORATIVES_TABLE_FILTER_FIELDS = [
+    "id",
+    "title",
+    "status",
+    "organization",
+    "organization__slug",
+    "sectors__id",
+    "sectors__slug",
+    "sectors__name",
+    "geographies__id",
+    "geographies__name",
+    "geographies__code",
+    "tags__value",
+    "sdgs__code",
+    "sdgs__slug",
+    "started_on",
+    "completed_on",
+    "created",
+    "modified",
+]
+COLLABORATIVES_TABLE_SORT_FIELDS = [
+    "title",
+    "created",
+    "modified",
+    "status",
+    "started_on",
+    "completed_on",
+]
+
+
+def _visible_collaboratives(info: Info, include_public: Optional[bool] = False) -> QuerySet:
+    """The collaboratives a caller may list. Same rules as `collaboratives`."""
+    user = info.context.user
+    organization = info.context.context.get("organization")
+    if organization:
+        queryset = Collaborative.objects.filter(organization=organization)
+    elif user.is_superuser:
+        queryset = Collaborative.objects.all()
+    elif user.is_authenticated:
+        queryset = Collaborative.objects.filter(user=user)
+    else:
+        queryset = Collaborative.objects.filter(status=CollaborativeStatus.PUBLISHED)
+    if include_public:
+        queryset = queryset | Collaborative.objects.filter(status=CollaborativeStatus.PUBLISHED)
+    return queryset.distinct()
+
+
 @strawberry.type(name="Query")
 class Query:
     """Queries for collaboratives."""
@@ -137,6 +194,42 @@ class Query:
             queryset = strawberry_django.pagination.apply(pagination, queryset)
 
         return TypeCollaborative.from_django_list(queryset)
+
+    @strawberry.field
+    @trace_resolver(name="collaboratives_table", attributes={"component": "collaborative"})
+    def collaboratives_table(
+        self,
+        info: Info,
+        filters: Optional[List[FilterSpec]] = None,
+        sort_options: Optional[List[SortSpec]] = None,
+        limit: int = 50,
+        offset: int = 0,
+        include_public: Optional[bool] = False,
+    ) -> CollaborativeResponse:
+        """Collaboratives for a table UI: client-driven filters, sortable columns and
+        page controls backed by a real total count.
+
+        Additive next to `collaboratives`, with the same visibility rules, plus
+        published collaboratives when `include_public` is set. Filters are `{field,
+        condition, value}` and sorts are `{field, direction}`, limited to the
+        allowlists above; anything else is a GraphQL error naming the allowed
+        fields. Default order: newest first.
+        """
+        visible = _visible_collaboratives(info, include_public)
+        window = get_pagination_window(
+            visible,
+            limit=limit,
+            offset=offset,
+            filters=filters,
+            filtering_allowed_fields=COLLABORATIVES_TABLE_FILTER_FIELDS,
+            sort_options=sort_options or [SortSpec(field="created", direction="desc")],
+            sorting_allowed_fields=COLLABORATIVES_TABLE_SORT_FIELDS,
+        )
+        return CollaborativeResponse(
+            data=TypeCollaborative.from_django_list(window["data"]),
+            total_items_count=window["total_items_count"],
+            status_counts=status_counts(visible, filters, COLLABORATIVES_TABLE_FILTER_FIELDS),
+        )
 
     @strawberry_django.field
     @trace_resolver(name="get_published_collaboratives", attributes={"component": "collaborative"})

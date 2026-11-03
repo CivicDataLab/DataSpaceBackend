@@ -9,7 +9,7 @@ import api.utils.storage
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("api", "0053_alter_collaborative_summary"),
+        ("api", "0055_event"),
     ]
 
     operations = [
