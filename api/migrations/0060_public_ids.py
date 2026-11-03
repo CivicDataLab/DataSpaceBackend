@@ -9,11 +9,11 @@ class Migration(migrations.Migration):
     Also drops the unique rule on dataset, publication and use case slugs and
     on use case / collaborative titles: links use public_id, so titles may
     repeat. Collaborative slugs stay unique (the slug is also the subdomain).
-    Filled for existing rows in 0059, made unique and required in 0060.
+    Filled for existing rows in 0061, made unique and required in 0062.
     """
 
     dependencies = [
-        ("api", "0057_repair_event_search_index"),
+        ("api", "0059_event_search_cover_url"),
     ]
 
     operations = [

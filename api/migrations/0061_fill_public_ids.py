@@ -12,7 +12,7 @@ def fill(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("api", "0058_public_ids"),
+        ("api", "0060_public_ids"),
     ]
 
     operations = [

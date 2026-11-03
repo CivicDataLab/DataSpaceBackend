@@ -5,7 +5,7 @@ MODELS = ["aimodel", "collaborative", "dataset", "publication", "usecase"]
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("api", "0059_fill_public_ids"),
+        ("api", "0061_fill_public_ids"),
     ]
 
     operations = [
