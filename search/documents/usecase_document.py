@@ -226,7 +226,7 @@ class UseCaseDocument(Document):
     def prepare_logo(self, instance: UseCase) -> str:
         """Prepare logo URL for indexing."""
         if instance.logo:
-            return str(instance.logo.path.replace("/code/files/", ""))
+            return str(instance.logo.url)
         return ""
 
     def should_index_object(self, obj: UseCase) -> bool:
