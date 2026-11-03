@@ -50,6 +50,7 @@ from api.types.type_organization import TypeOrganization
 from api.types.type_usecase import TypeUseCase
 from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
     SortSpec,
@@ -292,12 +293,24 @@ class Query:
         name="get_collaborative_by_slug",
         attributes={"component": "collaborative"},
     )
-    def collaborative_by_slug(self, info: Info, slug: str) -> TypeCollaborative:
-        try:
-            collaborative = Collaborative.objects.get(slug=slug)
-            return TypeCollaborative.from_django(collaborative)
-        except Collaborative.DoesNotExist:
-            raise ValueError(f"Collaborative with slug {slug} does not exist.")
+    def collaborative_by_slug(
+        self, info: Info, public_id: Optional[str] = None, slug: Optional[str] = None
+    ) -> TypeCollaborative:
+        """Collaborative for its page, found by its link.
+
+        ``public_id`` takes the id itself or the whole link part (``urlSlug``);
+        only the id at the end is used, so a link with old title words still
+        works. ``slug`` is for links and subdomains made before public ids
+        existed: the id is tried first, then the old slug.
+        """
+        value = public_id if public_id is not None else slug
+        parsed = parse_public_id(value)
+        collaborative = Collaborative.objects.filter(public_id=parsed).first() if parsed else None
+        if collaborative is None and public_id is None and slug:
+            collaborative = Collaborative.objects.filter(slug=slug).order_by("created").first()
+        if collaborative is None:
+            raise ValueError(f"Collaborative {value} does not exist.")
+        return TypeCollaborative.from_django(collaborative)
 
 
 @trace_resolver(name="update_collaborative_tags", attributes={"component": "collaborative"})

@@ -115,6 +115,7 @@ class TypeAIModel(BaseType):
     """GraphQL type for AI Model."""
 
     id: int
+    public_id: str
     name: str
     display_name: str
     version: Optional[str]
@@ -141,6 +142,10 @@ class TypeAIModel(BaseType):
     created_at: datetime
     updated_at: datetime
     last_tested_at: Optional[datetime]
+
+    @strawberry.field(description="Link part for the AI model page: title words + publicId.")
+    def url_slug(self) -> str:
+        return cast(AIModel, self).url_slug
 
     @strawberry.field
     def endpoints(self, info: Info) -> List[TypeModelEndpoint]:

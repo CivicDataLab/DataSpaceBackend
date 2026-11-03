@@ -55,6 +55,8 @@ class CollaborativeMetadataSerializer(serializers.ModelSerializer):
 
 
 class CollaborativeDocumentSerializer(serializers.ModelSerializer):
+    public_id = serializers.CharField(required=False, allow_null=True)
+    url_slug = serializers.CharField(required=False, allow_null=True)
     metadata = CollaborativeMetadataSerializer(many=True)
     tags = serializers.ListField()
     sectors = serializers.ListField(default=[])
@@ -107,6 +109,8 @@ class CollaborativeDocumentSerializer(serializers.ModelSerializer):
         model = Collaborative
         fields = [
             "id",
+            "public_id",
+            "url_slug",
             "title",
             "summary",
             "slug",

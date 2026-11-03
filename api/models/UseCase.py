@@ -9,19 +9,19 @@ if TYPE_CHECKING:
     from api.models.Organization import Organization
     from authorization.models import User
 
-from api.utils.django_utils import retry_on_slug_collision
 from api.utils.enums import (
     OrganizationRelationshipType,
     UseCaseRunningStatus,
     UseCaseStatus,
 )
 from api.utils.file_paths import _use_case_directory_path
+from api.utils.public_links import PUBLIC_ID_LENGTH, build_url_slug, save_with_public_id
 from api.utils.storage import public_storage
 
 
 class UseCase(models.Model):
     id = models.AutoField(primary_key=True)
-    title = models.CharField(max_length=200, unique=True, blank=True, null=True)
+    title = models.CharField(max_length=200, blank=True, null=True)
     summary = models.TextField(max_length=200_000, blank=True, null=True)
     logo = models.ImageField(
         upload_to=_use_case_directory_path,
@@ -34,7 +34,9 @@ class UseCase(models.Model):
     modified = models.DateTimeField(auto_now=True)
     website = models.URLField(blank=True)
     contact_email = models.EmailField(blank=True, null=True)
-    slug = models.SlugField(max_length=75, null=True, blank=True, unique=True)
+    # Kept for older readers; no longer unique. Links use public_id (see url_slug).
+    slug = models.SlugField(max_length=75, null=True, blank=True)
+    public_id = models.CharField(max_length=PUBLIC_ID_LENGTH, unique=True, editable=False)
     user = models.ForeignKey("authorization.User", on_delete=models.CASCADE)
     organization = models.ForeignKey(
         "api.Organization", on_delete=models.CASCADE, null=True, blank=True
@@ -69,14 +71,12 @@ class UseCase(models.Model):
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if self.title and not self.slug:
-            self.slug = slugify(cast(str, self.title))
-        base_title = self.title
+            self.slug = slugify(cast(str, self.title))[:75].strip("-")
+        save_with_public_id(self, lambda: super(UseCase, self).save(*args, **kwargs))
 
-        def disambiguate(attempt: int) -> None:
-            self.title = f"{base_title} ({attempt})"
-            self.slug = slugify(cast(str, self.title))
-
-        retry_on_slug_collision(lambda: super(UseCase, self).save(*args, **kwargs), disambiguate)
+    @property
+    def url_slug(self) -> str:
+        return build_url_slug(self.title, self.public_id)
 
     @property
     def is_individual_usecase(self):

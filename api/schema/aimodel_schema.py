@@ -36,6 +36,7 @@ from api.types.type_aimodel import (
     TypeVersionProvider,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
     SortSpec,
@@ -427,11 +428,22 @@ class Query:
 
     @strawberry.field
     @trace_resolver(name="get_ai_model", attributes={"component": "aimodel"})
-    def get_ai_model(self, info: Info, model_id: int) -> Optional[TypeAIModel]:
-        """Get an AI model by ID."""
+    def get_ai_model(
+        self,
+        info: Info,
+        model_id: Optional[int] = None,
+        public_id: Optional[str] = None,
+    ) -> Optional[TypeAIModel]:
+        """Get an AI model by ID, or by its link (``urlSlug``) or ``publicId``."""
         user = info.context.user
         try:
-            model = AIModel.objects.get(id=model_id)
+            if model_id is not None:
+                model = AIModel.objects.get(id=model_id)
+            else:
+                parsed = parse_public_id(public_id)
+                if parsed is None:
+                    return None
+                model = AIModel.objects.get(public_id=parsed)
 
             # Check permissions
             if model.is_public and model.is_active:
