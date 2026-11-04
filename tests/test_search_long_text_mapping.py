@@ -18,6 +18,7 @@ from django.core.cache import cache
 from api.views.search_usecase import SearchUseCase
 from search.documents.aimodel_document import AIModelDocument
 from search.documents.collaborative_document import CollaborativeDocument
+from search.documents.dataset_document import DatasetDocument
 from search.documents.publication_document import PublicationDocument
 from search.documents.publisher_document import (
     OrganizationPublisherDocument,
@@ -28,6 +29,7 @@ from search.documents.usecase_document import UseCaseDocument
 LONG_TEXT_FIELDS = [
     (UseCaseDocument, "summary"),
     (CollaborativeDocument, "summary"),
+    (DatasetDocument, "description"),
     (AIModelDocument, "description"),
     (PublicationDocument, "description"),
     (OrganizationPublisherDocument, "description"),
