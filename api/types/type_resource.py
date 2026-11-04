@@ -27,6 +27,7 @@ from api.utils.data_indexing import (
     get_preview_data,
     get_row_count,
 )
+from api.utils.enums import PromptFormat
 from api.utils.graphql_telemetry import trace_resolver
 
 logger = structlog.get_logger(__name__)
@@ -220,7 +221,11 @@ class TypeResource(BaseType):
             prompt_resource = PromptResource.objects.filter(resource_id=self.id).first()
             if prompt_resource:
                 return TypePromptResourceDetails(
-                    prompt_format=prompt_resource.prompt_format,
+                    prompt_format=(
+                        PromptFormat(prompt_resource.prompt_format)
+                        if prompt_resource.prompt_format
+                        else None
+                    ),
                     has_system_prompt=prompt_resource.has_system_prompt,
                     has_example_responses=prompt_resource.has_example_responses,
                     avg_prompt_length=prompt_resource.avg_prompt_length,
