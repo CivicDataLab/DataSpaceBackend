@@ -63,12 +63,8 @@ class CollaborativeDocument(Document):
         fields=title_subfields(),
     )
 
-    summary = fields.TextField(
-        analyzer=html_strip,
-        fields={
-            "raw": fields.TextField(analyzer="keyword"),
-        },
-    )
+    # No keyword-analyzed sub-field: summaries can exceed Lucene's 32,766-byte token limit
+    summary = fields.TextField(analyzer=html_strip)
 
     logo = fields.TextField(analyzer=ngram_analyser)
     cover_image = fields.TextField(analyzer=ngram_analyser)
