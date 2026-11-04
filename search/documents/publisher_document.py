@@ -27,12 +27,8 @@ class PublisherDocument(Document):
         },
     )
 
-    description = fields.TextField(
-        analyzer=html_strip,
-        fields={
-            "raw": fields.TextField(analyzer="keyword"),
-        },
-    )
+    # No keyword-analyzed sub-field: user bios can exceed Lucene's 32,766-byte token limit
+    description = fields.TextField(analyzer=html_strip)
 
     publisher_type = fields.KeywordField()  # 'organization' or 'user'
 
@@ -47,12 +43,8 @@ class PublisherDocument(Document):
     location = fields.TextField(analyzer=ngram_analyser)
 
     # User specific fields
-    bio = fields.TextField(
-        analyzer=html_strip,
-        fields={
-            "raw": fields.TextField(analyzer="keyword"),
-        },
-    )
+    # No keyword-analyzed sub-field: bios can exceed Lucene's 32,766-byte token limit
+    bio = fields.TextField(analyzer=html_strip)
     profile_picture = fields.TextField(analyzer=ngram_analyser)
     username = fields.KeywordField()
     email = fields.KeywordField()

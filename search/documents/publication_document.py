@@ -35,10 +35,8 @@ class PublicationDocument(Document):
         analyzer=ngram_analyser,
         fields=title_subfields(),
     )
-    description = fields.TextField(
-        analyzer=html_strip,
-        fields={"raw": fields.TextField(analyzer="keyword")},
-    )
+    # No keyword-analyzed sub-field: descriptions can exceed Lucene's 32,766-byte token limit
+    description = fields.TextField(analyzer=html_strip)
     status = fields.KeywordField()
 
     # Resource Type facet (name).
