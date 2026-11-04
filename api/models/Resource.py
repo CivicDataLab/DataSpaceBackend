@@ -41,7 +41,9 @@ class Resource(models.Model):
     )
     name = models.CharField(max_length=200, unique=False, blank=False)
     description = models.TextField(blank=True, null=True)
-    slug = models.SlugField(max_length=255, unique=True)
+    # Not unique: nothing looks a resource up by slug, and a unique slug made
+    # simultaneous uploads of the same file name fail (#229).
+    slug = models.SlugField(max_length=255)
     url = models.URLField(max_length=500)
     is_active = models.BooleanField(default=True)
     preview_enabled = models.BooleanField(default=False)
@@ -53,13 +55,7 @@ class Resource(models.Model):
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
-            base_slug = slugify(self.name)
-            slug = base_slug
-            counter = 1
-            while Resource.objects.filter(slug=slug).exclude(pk=self.pk).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-            self.slug = slug
+            self.slug = slugify(self.name)[:255]
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:

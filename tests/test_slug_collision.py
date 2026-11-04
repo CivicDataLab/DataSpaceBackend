@@ -11,7 +11,7 @@ public_id, and links are found by that id. Two records may share a title.
 
 import pytest
 
-from api.models import Collaborative, Dataset, UseCase
+from api.models import Collaborative, Dataset, Resource, UseCase
 from authorization.models import User
 
 
@@ -55,3 +55,23 @@ def test_collaborative_same_second_title_does_not_collide():
     assert first.slug != second.slug
     assert first.public_id != second.public_id
     assert first.url_slug != second.url_slug
+
+
+@pytest.mark.django_db
+def test_resources_with_the_same_name_do_not_collide():
+    # Resource slugs are no longer unique (#229): two uploads of the same file
+    # name used to race on the unique rule.
+    dataset = Dataset.objects.create(title="Resource collision")
+    first = Resource.objects.create(dataset=dataset, name="data.csv")
+    second = Resource.objects.create(dataset=dataset, name="data.csv")
+
+    assert first.slug == second.slug == "datacsv"
+    assert first.pk != second.pk
+
+
+@pytest.mark.django_db
+def test_resource_with_a_preset_slug_keeps_it():
+    dataset = Dataset.objects.create(title="Resource preset slug")
+    resource = Resource.objects.create(dataset=dataset, name="data.csv", slug="my-file")
+
+    assert resource.slug == "my-file"
