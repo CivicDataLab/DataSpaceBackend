@@ -163,7 +163,6 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
 
         searchable_fields = [
             "title",
-            "summary",
             "tags",
             "sectors",
             "user.name",
