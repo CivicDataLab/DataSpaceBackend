@@ -61,6 +61,9 @@ class UseCaseMetadataSerializer(serializers.ModelSerializer):
 class UseCaseDocumentSerializer(serializers.ModelSerializer):
     """Serializer for UseCase document."""
 
+    public_id = serializers.CharField(required=False, allow_null=True)
+    url_slug = serializers.CharField(required=False, allow_null=True)
+
     metadata = UseCaseMetadataSerializer(many=True)
     tags = serializers.ListField()
     logo = serializers.CharField()
@@ -109,6 +112,8 @@ class UseCaseDocumentSerializer(serializers.ModelSerializer):
         model = UseCase
         fields = [
             "id",
+            "public_id",
+            "url_slug",
             "title",
             "summary",
             "slug",

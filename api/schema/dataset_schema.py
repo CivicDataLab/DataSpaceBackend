@@ -1,4 +1,5 @@
 # mypy: disable-error-code=union-attr
+# mypy: disable-error-code=valid-type
 import datetime
 import uuid
 from typing import Any, List, Optional, Union
@@ -43,6 +44,11 @@ from api.types.type_prompt_metadata import TypePromptDataset, prompt_task_type_e
 from api.types.type_resource import TypeResource
 from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
+from api.utils.dataset_access import (
+    ChangeDatasetPartPermission,
+    can_change_dataset,
+    can_list_organization,
+)
 from api.utils.enums import (
     DatasetAccessType,
     DatasetLicense,
@@ -54,11 +60,12 @@ from api.utils.enums import (
     UseCaseStatus,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
     SortSpec,
-    apply_filters,
     get_pagination_window,
+    status_counts,
 )
 from authorization.models import DatasetPermission, OrganizationMembership, Role, User
 from authorization.permissions import (
@@ -74,6 +81,14 @@ DatasetTypeENUM = strawberry.enum(DatasetType)  # type: ignore
 PromptTaskTypeENUM = strawberry.enum(PromptTaskType)  # type: ignore
 PromptFormatENUM = strawberry.enum(PromptFormat)  # type: ignore
 PromptPurposeENUM = strawberry.enum(PromptPurpose)  # type: ignore
+
+
+def _find_dataset(dataset_id: Optional[uuid.UUID], public_id: Optional[str]) -> Optional[Dataset]:
+    """The dataset for a UUID or a public link part, or None if there is none."""
+    if dataset_id:
+        return Dataset.objects.filter(id=dataset_id).first()
+    parsed = parse_public_id(public_id)
+    return Dataset.objects.filter(public_id=parsed).first() if parsed else None
 
 
 # Create permission classes dynamically with different operations
@@ -113,19 +128,19 @@ class AllowPublishedDatasets(BasePermission):
         # For queries/mutations that don't have a source yet (e.g., getting a dataset by ID)
         if source is None:
             dataset_id = kwargs.get("dataset_id")
-            if dataset_id:
-                try:
-                    dataset = Dataset.objects.get(id=dataset_id)
-                    # Allow access to published datasets for everyone
-                    if dataset.status == DatasetStatus.PUBLISHED.value:
-                        return True
-                except Dataset.DoesNotExist:
-                    pass  # Let the resolver handle the non-existent dataset
+            public_id = kwargs.get("public_id")
+            if dataset_id or public_id:
+                dataset = _find_dataset(dataset_id, public_id)
+                # Allow access to published datasets for everyone
+                if dataset is not None and dataset.status == DatasetStatus.PUBLISHED.value:
+                    return True
 
                 # For non-published datasets, require authentication
                 user = request.user
                 if not user.is_authenticated:
                     return False
+                if dataset is None:
+                    return True  # the resolver returns null for a missing dataset
                 if user.is_superuser:
                     return True
                 dataset_perm = DatasetPermission.objects.filter(user=user, dataset=dataset).first()
@@ -227,38 +242,25 @@ class UpdateDatasetPermission(BasePermission):
         if not update_dataset_input or not hasattr(update_dataset_input, "dataset"):
             return False
 
-        dataset_id = update_dataset_input.dataset
-
-        try:
-            dataset = Dataset.objects.get(id=dataset_id)
-
-            # Check if user owns the dataset
-            if dataset.user and dataset.user == user:
-                return True
-
-            # If organization-owned, check organization permissions
-            if dataset.organization:
-                # Get the roles with names 'admin' or 'editor'
-                admin_editor_roles = Role.objects.filter(
-                    name__in=["admin", "editor", "owner"]
-                ).values_list("id", flat=True)
-
-                # Check if user is a member of the dataset's organization with appropriate role
-                org_member = OrganizationMembership.objects.filter(
-                    user=user,
-                    organization=dataset.organization,
-                    role__id__in=admin_editor_roles,
-                ).exists()
-
-                if org_member:
-                    return True
-
-            # Check dataset-specific permissions
-            dataset_perm = DatasetPermission.objects.filter(user=user, dataset=dataset).first()
-            return dataset_perm and dataset_perm.role.can_change and dataset.status == DatasetStatus.DRAFT.value  # type: ignore
-
-        except Dataset.DoesNotExist:
+        dataset = Dataset.objects.filter(id=update_dataset_input.dataset).first()
+        if not dataset:
             return False
+        return can_change_dataset(user, dataset)
+
+
+class ChangePromptResourcePermission(ChangeDatasetPartPermission):
+    """Prompt details of a file need edit rights on the file's dataset."""
+
+    message = "You don't have permission to update this dataset"
+
+    def datasets(self, kwargs: Any) -> Optional[list]:
+        resource_id = getattr(kwargs.get("update_input"), "resource", None)
+        resource = (
+            Resource.objects.select_related("dataset").filter(id=resource_id).first()
+            if resource_id
+            else None
+        )
+        return [resource.dataset] if resource else None
 
 
 @strawberry.input
@@ -434,7 +436,11 @@ def _visible_datasets(info: Info, include_public: Optional[bool] = False) -> Que
     organization = info.context.context.get("organization")
     user = info.context.user
     if organization:
-        queryset = Dataset.objects.filter(organization=organization)
+        queryset = (
+            Dataset.objects.filter(organization=organization)
+            if can_list_organization(user, organization)
+            else Dataset.objects.none()
+        )
     elif not user.is_authenticated:
         queryset = Dataset.objects.none()
     elif user.is_superuser:
@@ -463,24 +469,17 @@ class Query:
         user = info.context.user
 
         if organization:
-            queryset = Dataset.objects.filter(organization=organization)
+            # Only members whose role can view may list an organisation's datasets
+            if can_list_organization(user, organization):
+                queryset = Dataset.objects.filter(organization=organization)
+            else:
+                queryset = Dataset.objects.none()
         else:
             # If user is authenticated
             if user.is_authenticated:
                 # If user is superuser, show all datasets
                 if user.is_superuser:
                     queryset = Dataset.objects.all()
-                elif organization:
-                    # Check id user has access to organization
-                    org_member = OrganizationMembership.objects.get(
-                        user=user, organization=organization
-                    )
-                    if org_member.exists() and org_member.role.can_view:  # type: ignore
-                        # Show only datasets from current organization
-                        queryset = Dataset.objects.filter(organization=organization)
-                    else:
-                        # if user is not a member of the organization, return empty queryset
-                        queryset = Dataset.objects.none()
                 else:
                     # For non-organization authenticated users, only owned datasets
                     queryset = Dataset.objects.filter(user=user, organization=None)
@@ -538,33 +537,31 @@ class Query:
             sort_options=sort_options or [SortSpec(field="created", direction="desc")],
             sorting_allowed_fields=DATASETS_TABLE_SORT_FIELDS,
         )
-        # Tab labels: counts per status under every filter except status itself.
-        without_status = [f for f in (filters or []) if f.field.strip() != "status"]
-        status_rows = (
-            apply_filters(visible, without_status, DATASETS_TABLE_FILTER_FIELDS)
-            .order_by()
-            .values("status")
-            .annotate(n=Count("id", distinct=True))
-        )
         return DatasetResponse(
             data=TypeDataset.from_django_list(window["data"]),
             total_items_count=window["total_items_count"],
-            status_counts=[
-                DatasetStatusCount(status=row["status"], count=row["n"]) for row in status_rows
-            ],
+            status_counts=status_counts(
+                visible, filters, DATASETS_TABLE_FILTER_FIELDS, item_type=DatasetStatusCount
+            ),
         )
 
     @strawberry.field(
         permission_classes=[AllowPublishedDatasets],  # type: ignore[list-item]
     )
     @trace_resolver(name="get_dataset", attributes={"component": "dataset"})
-    def get_dataset(self, info: Info, dataset_id: uuid.UUID) -> Optional[TypeDataset]:
-        """Get a dataset by ID."""
-        try:
-            dataset = Dataset.objects.get(id=dataset_id)
-            return TypeDataset.from_django(dataset)
-        except Dataset.DoesNotExist:
-            return None
+    def get_dataset(
+        self,
+        info: Info,
+        dataset_id: Optional[uuid.UUID] = None,
+        public_id: Optional[str] = None,
+    ) -> Optional[TypeDataset]:
+        """Get a dataset by ID, or by its public link.
+
+        ``public_id`` takes the id itself or the whole link part
+        (``city-air-quality-index-k3x9m2qa7b1z``); only the id at the end is used.
+        """
+        dataset = _find_dataset(dataset_id, public_id)
+        return TypeDataset.from_django(dataset) if dataset is not None else None
 
     @strawberry.field(
         permission_classes=[ChartDataPermission],  # type: ignore[list-item]
@@ -862,7 +859,7 @@ class Mutation:
         return MutationResponse.success_response(TypePromptDataset.from_django(prompt_dataset))
 
     @strawberry.mutation(
-        permission_classes=[IsAuthenticated],
+        permission_classes=[ChangePromptResourcePermission],
     )
     @trace_resolver(
         name="update_prompt_resource",

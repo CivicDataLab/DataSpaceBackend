@@ -6,7 +6,14 @@ import magic
 from asgiref.sync import sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.uploadedfile import UploadedFile
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import (
+    FileResponse,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseRedirect,
+    JsonResponse,
+)
+from django.http.response import HttpResponseBase
 from pyecharts.charts.chart import Chart
 from pyecharts.render import make_snapshot
 from selenium import webdriver
@@ -46,7 +53,7 @@ def get_chart_image(id: uuid.UUID) -> ResourceChartImage:
 @sync_to_async
 def get_resource_response(
     resource: Resource, request: Optional[HttpRequest] = None
-) -> HttpResponse:
+) -> HttpResponseBase:
     """Get file response for a resource."""
     # Link-only (platform-imported) resources: we hold no bytes, send the
     # user to the file on the source platform. Still counts as a download.
@@ -62,7 +69,8 @@ def get_resource_response(
     if not file_details or not file_details.file:
         return JsonResponse({"error": "File not found"}, status=404)
 
-    response = HttpResponse(file_details.file.read(), content_type="application/octet-stream")
+    # Stream from storage instead of reading the whole object into memory.
+    response = FileResponse(file_details.file.open("rb"), content_type="application/octet-stream")
 
     # Handle filename and basename explicitly
     default_name = f"resource_{resource.name}.csv"
@@ -98,12 +106,12 @@ def _track_download(resource: Resource, request: Optional[HttpRequest]) -> None:
 
 
 @sync_to_async
-def get_chart_image_response(chart_image: ResourceChartImage) -> HttpResponse:
+def get_chart_image_response(chart_image: ResourceChartImage) -> HttpResponseBase:
     """Get file response for a chart image."""
     if not chart_image.image:
         return JsonResponse({"error": "File not found"}, status=404)
 
-    response = HttpResponse(chart_image.image.read(), content_type="application/octet-stream")
+    response = FileResponse(chart_image.image.open("rb"), content_type="application/octet-stream")
 
     # Handle filename and basename explicitly
     default_name = f"chart_{chart_image.id}.png"
@@ -119,7 +127,7 @@ def get_chart_image_response(chart_image: ResourceChartImage) -> HttpResponse:
     return response
 
 
-async def download(request: HttpRequest, type: str, id: uuid.UUID) -> HttpResponse:
+async def download(request: HttpRequest, type: str, id: uuid.UUID) -> HttpResponseBase:
     """Handle download requests for resources, chart images, and charts."""
     try:
         if type == "resource":

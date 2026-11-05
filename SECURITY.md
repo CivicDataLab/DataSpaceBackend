@@ -134,21 +134,20 @@ When contributing to this project, please follow these security guidelines:
 - **GraphQL**: Implements query complexity limits and depth restrictions
 - **REST API**: Rate limiting and throttling enabled
 - **File Uploads**: Validated for type, size, and content
-- **Data Versioning**: DVC integration for data versioning and tracking
 
 ### Data Protection
 - **Encryption**: All data encrypted in transit (TLS 1.2+)
 - **Database**: PostgreSQL with proper access controls
 - **Search**: Elasticsearch with authentication enabled
 - **Caching**: Redis with secure configuration
-- **File Storage**: Secure file handling and validation
+- **File Storage**: Media in S3; public assets via unsigned URLs, private files via presigned URLs or gated views
 
 ### Third-Party Services
 - **Keycloak**: Ensure proper realm and client configuration
 - **Elasticsearch**: Enable security features and authentication
 - **Redis**: Use password protection and disable dangerous commands
 - **OpenTelemetry**: Configure to exclude sensitive data
-- **DVC**: Secure data versioning and storage
+- **S3**: Block public access except the `*/public/*` prefix; least-privilege task role
 
 ## Security Checklist for Pull Requests
 

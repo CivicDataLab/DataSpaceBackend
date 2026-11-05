@@ -29,6 +29,8 @@ INDEX.settings(number_of_shards=1, number_of_replicas=0)
 class PublicationDocument(Document):
     """Elasticsearch document for a published Resource."""
 
+    public_id = fields.KeywordField()
+    url_slug = fields.KeywordField(attr="url_slug")
     title = fields.TextField(
         analyzer=ngram_analyser,
         fields=title_subfields(),

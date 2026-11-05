@@ -1,3 +1,5 @@
+# mypy: disable-error-code="valid-type"
+
 import uuid
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
@@ -16,6 +18,11 @@ from api.models import (
     ResourceSchema,
 )
 from api.types.type_access_model import TypeAccessModel
+from api.utils.dataset_access import (
+    ChangeDatasetPartPermission,
+    can_view_dataset,
+    viewable_datasets_q,
+)
 from api.utils.enums import AccessTypes
 
 AccessTypesEnum = strawberry.enum(AccessTypes)  # type: ignore
@@ -49,16 +56,36 @@ class EditAccessModelInput:
 @strawberry.type(name="Query")
 class Query:
     @strawberry_django.field
-    def access_model_resources(
-        self, info: Info, dataset_id: uuid.UUID
-    ) -> List[TypeAccessModel]:
-        models = AccessModel.objects.filter(dataset_id=dataset_id)
+    def access_model_resources(self, info: Info, dataset_id: uuid.UUID) -> List[TypeAccessModel]:
+        models = AccessModel.objects.filter(dataset_id=dataset_id).filter(
+            viewable_datasets_q(info.context.user, prefix="dataset__")
+        )
         return [TypeAccessModel.from_django(model) for model in models]
 
     @strawberry_django.field
     def access_model(self, info: Info, access_model_id: uuid.UUID) -> TypeAccessModel:
-        model = AccessModel.objects.get(id=access_model_id)
+        model = AccessModel.objects.select_related("dataset").get(id=access_model_id)
+        if not can_view_dataset(info.context.user, model.dataset):
+            # Same answer as a missing ID.
+            raise AccessModel.DoesNotExist("AccessModel matching query does not exist.")
         return TypeAccessModel.from_django(model)
+
+
+class ChangeAccessModelPermission(ChangeDatasetPartPermission):
+    """Access models belong to a dataset; changing one needs edit rights on it."""
+
+    message = "You don't have permission to change this dataset's access models"
+
+    def datasets(self, kwargs: Any) -> Optional[list]:
+        data = kwargs.get("access_model_input")
+        access_model_id = kwargs.get("access_model_id") or getattr(data, "access_model_id", None)
+        if access_model_id:
+            # An existing access model stays in its own dataset whatever the input says.
+            model = AccessModel.objects.select_related("dataset").filter(id=access_model_id).first()
+            return [model.dataset] if model else None
+        dataset_id = getattr(data, "dataset", None)
+        dataset = Dataset.objects.filter(id=dataset_id).first() if dataset_id else None
+        return [dataset] if dataset else None
 
 
 def _add_resource_fields(
@@ -86,18 +113,17 @@ def _add_update_access_model_resources(
         return
     for resource_input in model_input_resources:
         try:
-            dataset_resource = Resource.objects.get(id=resource_input.resource)
-        except Resource.DoesNotExist as e:
-            raise ValueError(
-                f"Resource with ID {resource_input.resource} does not exist."
+            # Only the access model's own dataset's resources.
+            dataset_resource = Resource.objects.get(
+                id=resource_input.resource, dataset_id=access_model.dataset_id
             )
+        except Resource.DoesNotExist as e:
+            raise ValueError(f"Resource with ID {resource_input.resource} does not exist.")
 
         access_model_resource = AccessModelResource.objects.create(
             access_model=access_model, resource=dataset_resource
         )
-        _add_resource_fields(
-            access_model_resource, dataset_resource, resource_input.fields
-        )
+        _add_resource_fields(access_model_resource, dataset_resource, resource_input.fields)
 
 
 def _update_access_model_fields(
@@ -115,29 +141,31 @@ def _update_access_model_fields(
 
 @strawberry.type
 class Mutation:
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeAccessModelPermission]
+    )
     def create_access_model(
         self, info: Info, access_model_input: AccessModelInput
     ) -> TypeAccessModel:
         try:
             dataset = Dataset.objects.get(id=access_model_input.dataset)
         except Dataset.DoesNotExist:
-            raise ValueError(
-                f"Dataset with ID {access_model_input.dataset} does not exist."
-            )
+            raise ValueError(f"Dataset with ID {access_model_input.dataset} does not exist.")
 
         access_model = AccessModel.objects.create(
             dataset=dataset,
             name=access_model_input.name,
             description=access_model_input.description,
-            type=access_model_input.type.value,
+            type=access_model_input.type.value,  # type: ignore[attr-defined]
         )
 
         _update_access_model_fields(access_model, access_model_input)
         _add_update_access_model_resources(access_model, access_model_input.resources)
         return TypeAccessModel.from_django(access_model)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeAccessModelPermission]
+    )
     def edit_access_model(
         self, info: Info, access_model_input: EditAccessModelInput
     ) -> TypeAccessModel:
@@ -145,15 +173,11 @@ class Mutation:
             try:
                 dataset = Dataset.objects.get(id=access_model_input.dataset)
             except Dataset.DoesNotExist as e:
-                raise ValueError(
-                    f"Dataset with ID {access_model_input.dataset} does not exist."
-                )
+                raise ValueError(f"Dataset with ID {access_model_input.dataset} does not exist.")
             access_model = AccessModel.objects.create(dataset=dataset)
         else:
             try:
-                access_model = AccessModel.objects.get(
-                    id=access_model_input.access_model_id
-                )
+                access_model = AccessModel.objects.get(id=access_model_input.access_model_id)
             except AccessModel.DoesNotExist as e:
                 raise ValueError(
                     f"Access Model with ID {access_model_input.access_model_id} does not exist."
@@ -163,7 +187,9 @@ class Mutation:
         _add_update_access_model_resources(access_model, access_model_input.resources)
         return TypeAccessModel.from_django(access_model)
 
-    @strawberry_django.mutation(handle_django_errors=False)
+    @strawberry_django.mutation(
+        handle_django_errors=False, permission_classes=[ChangeAccessModelPermission]
+    )
     def delete_access_model(self, info: Info, access_model_id: uuid.UUID) -> bool:
         try:
             access_model = AccessModel.objects.get(id=access_model_id)

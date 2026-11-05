@@ -1,11 +1,9 @@
 from typing import Any, Optional
 
 import structlog
-from django.conf import settings
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 
-from api.managers.dvc_manager import DVCManager
 from api.models.Dataset import Dataset
 from api.models.Resource import Resource, ResourceVersion, _increment_version
 from api.utils.enums import DatasetStatus
@@ -77,33 +75,19 @@ def handle_dataset_publication(sender: Any, instance: Dataset, **kwargs: Any) ->
                 # Get all resources for this dataset
                 resources = instance.resources.all()
 
-                # Initialize DVC manager
-                dvc = DVCManager(settings.DVC_REPO_PATH)
-
                 # Increment version for each resource
                 for resource in resources:  # type: Resource
                     try:
                         # Get the latest version
-                        last_version: Optional[ResourceVersion] = (
-                            resource.versions.order_by("-created_at").first()
-                        )
+                        last_version: Optional[ResourceVersion] = resource.versions.order_by(
+                            "-created_at"
+                        ).first()
 
                         if last_version:
                             # Increment minor version (publication is a significant change)
                             new_version = _increment_version(
                                 last_version.version_number, increment_type="minor"
                             )
-
-                            # Get the resource file path
-                            file_path: str = resource.resourcefiledetails.file.path
-
-                            # Track with DVC
-                            dvc_file = dvc.track_resource(file_path)
-                            message: str = (
-                                f"Publishing resource: {resource.name} to version {new_version}"
-                            )
-                            dvc.commit_version(dvc_file, message)
-                            dvc.tag_version(f"{resource.name}-{new_version}")
 
                             # Create version record
                             ResourceVersion.objects.create(

@@ -1,5 +1,9 @@
+# mypy: disable-error-code="valid-type"
+
 import json
+
 from pyecharts.globals import CurrentConfig
+
 CurrentConfig.ONLINE_HOST = "file:///code/"
 import uuid
 from datetime import datetime
@@ -17,8 +21,10 @@ from api.types.base_type import BaseType
 from api.types.charts.chart_registry import CHART_REGISTRY
 from api.types.type_dataset import TypeDataset
 from api.types.type_resource import TypeResource, TypeResourceSchema
+from api.types.type_resource_chart_image import TypeResourceChartImage
 from api.utils.enums import ChartStatus, ChartTypes
 from api.utils.file_utils import load_csv
+from api.utils.qs_utils import StatusCount
 
 logger = structlog.get_logger(__name__)
 T = TypeVar("T", bound="TypeResourceChart")
@@ -39,8 +45,10 @@ def chart_base(chart_details: ResourceChartDetails) -> Optional[Chart]:
             logger.error("invalid resource format")
             return None
 
-        data = load_csv(file_details.file.path)
-    except (AttributeError, FileNotFoundError):
+        # Charts read the indexed data table, not the file; only require that it exists.
+        if not file_details.file.storage.exists(file_details.file.name):
+            return None
+    except AttributeError:
         return None
 
     chart_class = CHART_REGISTRY.get(chart_details.chart_type)
@@ -316,9 +324,7 @@ class TypeResourceChart(BaseType):
                 point_size=options_dict.get("point_size"),
                 # Geospatial Map Chart options
                 geospatial_field=(
-                    ensure_type(
-                        options_dict.get("geospatial_field"), TypeResourceSchema
-                    )
+                    ensure_type(options_dict.get("geospatial_field"), TypeResourceSchema)
                     if options_dict.get("geospatial_field")
                     else None
                 ),
@@ -334,9 +340,7 @@ class TypeResourceChart(BaseType):
             return [
                 FilterType(
                     column=(
-                        ensure_type(f["column"], TypeResourceSchema)
-                        if f.get("column")
-                        else None
+                        ensure_type(f["column"], TypeResourceSchema) if f.get("column") else None
                     ),
                     operator=f["operator"],
                     value=f["value"],
@@ -354,9 +358,7 @@ class TypeResourceChart(BaseType):
             return None
 
         # Convert chart to JSON-serializable format
-        chart_options = (
-            chart_instance.dump_options_with_quotes() if chart_instance else None
-        )
+        chart_options = chart_instance.dump_options_with_quotes() if chart_instance else None
         if not chart_options:
             return None
 
@@ -366,3 +368,17 @@ class TypeResourceChart(BaseType):
             height=chart_instance.height,
             renderer=chart_instance.renderer,
         )
+
+
+@strawberry.type
+class ChartResponse:
+    """One page of the charts table (`chartsTable`): built charts and chart
+    images in one list, the total after filters, and per-status counts."""
+
+    data: List[Union[TypeResourceChartImage, TypeResourceChart]]
+    total_items_count: int
+    status_counts: List[StatusCount] = strawberry.field(
+        default_factory=list,
+        description="Counts per status with the same filters applied, except any status filter, "
+        "so tab labels do not change when switching tabs.",
+    )
