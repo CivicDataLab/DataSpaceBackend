@@ -20,6 +20,11 @@ from api.schema.dataset_schema import ChartDataPermission
 from api.schema.extensions import TrackModelActivity
 from api.types.type_resource_chart import ChartResponse, TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
+from api.utils.dataset_access import (
+    ChangeDatasetPartPermission,
+    can_view_dataset,
+    viewable_datasets_q,
+)
 from api.utils.enums import AggregateType, ChartStatus, ChartTypes
 from api.utils.graphql_telemetry import trace_resolver
 from api.utils.qs_utils import (
@@ -84,12 +89,21 @@ def _visible_charts(info: Info) -> "tuple[QuerySet, QuerySet]":
 class Query:
     @strawberry_django.field
     def charts_details(self, info: Info, dataset_id: uuid.UUID) -> List[TypeResourceChart]:
-        charts = ResourceChartDetails.objects.filter(resource__dataset_id=dataset_id)
+        charts = ResourceChartDetails.objects.filter(resource__dataset_id=dataset_id).filter(
+            viewable_datasets_q(info.context.user, prefix="resource__dataset__")
+        )
         return [TypeResourceChart.from_django(chart) for chart in charts]
 
     @strawberry_django.field
     def resource_chart(self, info: Info, chart_details_id: uuid.UUID) -> TypeResourceChart:
-        chart = ResourceChartDetails.objects.get(id=chart_details_id)
+        chart = ResourceChartDetails.objects.select_related("resource__dataset").get(
+            id=chart_details_id
+        )
+        if not can_view_dataset(info.context.user, chart.resource.dataset):
+            # Same answer as a missing ID.
+            raise ResourceChartDetails.DoesNotExist(
+                "ResourceChartDetails matching query does not exist."
+            )
         return TypeResourceChart.from_django(chart)
 
     @strawberry.field(
@@ -165,6 +179,36 @@ class Query:
             total_items_count=window["total_items_count"],
             status_counts=[StatusCount(status=k, count=v) for k, v in sorted(counts.items())],
         )
+
+
+class ChangeChartPermission(ChangeDatasetPartPermission):
+    """Charts belong to a resource's dataset; changing one needs edit rights on it.
+
+    Editing a chart onto another resource needs rights on both datasets.
+    """
+
+    message = "You don't have permission to change this dataset's charts"
+
+    def datasets(self, kwargs: Any) -> Optional[list]:
+        chart_input = kwargs.get("chart_input")
+        found = []
+        for resource_id in (kwargs.get("resource"), getattr(chart_input, "resource", None)):
+            if resource_id:
+                resource = Resource.objects.select_related("dataset").filter(id=resource_id).first()
+                if not resource:
+                    return None
+                found.append(resource.dataset)
+        for chart_id in (kwargs.get("chart_id"), getattr(chart_input, "chart_id", None)):
+            if chart_id:
+                chart = (
+                    ResourceChartDetails.objects.select_related("resource__dataset")
+                    .filter(id=chart_id)
+                    .first()
+                )
+                if not chart:
+                    return None
+                found.append(chart.resource.dataset)
+        return found
 
 
 @strawberry.input
@@ -316,13 +360,15 @@ def _update_chart_fields(
                     "geospatial_field",
                 ]:
                     if value:  # Only process if value is not empty
-                        field = ResourceSchema.objects.get(id=value)
+                        field = ResourceSchema.objects.get(id=value, resource=resource)
                         options[field_name] = field
                 elif field_name == "y_axis_column":
                     if value:  # Only process if list is not empty
                         options[field_name] = [
                             {
-                                "field": ResourceSchema.objects.get(id=column.field_name),
+                                "field": ResourceSchema.objects.get(
+                                    id=column.field_name, resource=resource
+                                ),
                                 "label": column.label,
                                 "color": column.color,
                                 "value_mapping": _update_value_mapping(column.value_mapping),
@@ -344,7 +390,7 @@ def _update_chart_fields(
         for filter_input in chart_input.filters:
             if filter_input.column:
                 filter_dict = {
-                    "column": ResourceSchema.objects.get(id=filter_input.column),
+                    "column": ResourceSchema.objects.get(id=filter_input.column, resource=resource),
                     "operator": filter_input.operator,
                     "value": filter_input.value,
                 }
@@ -355,7 +401,9 @@ def _update_chart_fields(
 
 @strawberry.type
 class Mutation:
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeChartPermission]
+    )
     def add_resource_chart(self, info: Info, resource: uuid.UUID) -> TypeResourceChart:
         try:
             resource_obj = Resource.objects.get(id=resource)
@@ -371,6 +419,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeChartPermission],
         extensions=[
             # Use TrackModelActivity to automatically track the activity
             # The extension will use the returned chart as the action object
@@ -410,6 +459,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeChartPermission],
         extensions=[
             # Track updates to charts
             TrackModelActivity(
@@ -444,7 +494,9 @@ class Mutation:
         _update_chart_fields(chart, chart_input, resource)
         return TypeResourceChart.from_django(chart)
 
-    @strawberry_django.mutation(handle_django_errors=False)
+    @strawberry_django.mutation(
+        handle_django_errors=False, permission_classes=[ChangeChartPermission]
+    )
     def delete_resource_chart(self, info: Info, chart_id: uuid.UUID) -> bool:
         try:
             chart = ResourceChartDetails.objects.get(id=chart_id)
@@ -453,7 +505,9 @@ class Mutation:
         except ResourceChartDetails.DoesNotExist as e:
             raise ValueError(f"Resource Chart with ID {chart_id} does not exist.")
 
-    @strawberry_django.mutation(handle_django_errors=False)
+    @strawberry_django.mutation(
+        handle_django_errors=False, permission_classes=[ChangeChartPermission]
+    )
     def publish_resource_chart(self, info: Info, chart_id: uuid.UUID) -> bool:
         try:
             chart = ResourceChartDetails.objects.get(id=chart_id)
@@ -463,7 +517,9 @@ class Mutation:
         except ResourceChartDetails.DoesNotExist as e:
             raise ValueError(f"Resource Chart with ID {chart_id} does not exist.")
 
-    @strawberry_django.mutation(handle_django_errors=False)
+    @strawberry_django.mutation(
+        handle_django_errors=False, permission_classes=[ChangeChartPermission]
+    )
     def unpublish_resource_chart(self, info: Info, chart_id: uuid.UUID) -> bool:
         try:
             chart = ResourceChartDetails.objects.get(id=chart_id)

@@ -33,6 +33,7 @@ from api.models import Resource, Tag
 from api.types.type_dataset import TypeTag
 from api.types.type_metadata import TypeMetadata
 from api.types.type_resource import TypeResource
+from api.utils.dataset_access import viewable_datasets_q
 from api.utils.graphql_error_extension import ErrorFormatterExtension
 from api.utils.graphql_telemetry import TelemetryExtension, trace_resolver
 from authorization.graphql import Mutation as AuthMutation
@@ -47,7 +48,9 @@ class DefaultQuery:
     @strawberry_django.field
     @trace_resolver(name="resources", attributes={"component": "default"})
     def resources(self, info: Info) -> List[TypeResource]:
-        resources = Resource.objects.all()
+        resources = Resource.objects.filter(
+            viewable_datasets_q(info.context.user, prefix="dataset__")
+        )
         return [TypeResource.from_django(resource) for resource in resources]
 
     @strawberry_django.field
