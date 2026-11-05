@@ -129,6 +129,7 @@ class TypePublication(BaseType):
     title: str
     description: Optional[str]
     slug: str
+    public_id: str
     status: publication_status
     authors: List[str]
     publication_date: Optional[date]
@@ -140,6 +141,10 @@ class TypePublication(BaseType):
     organization: Optional["TypeOrganization"]
     user: Optional["TypeUser"]
     resource_type: Optional["TypeResourceType"]
+
+    @strawberry.field(description="Link part for the publication page: title words + publicId.")
+    def url_slug(self) -> str:
+        return cast(Publication, self).url_slug
 
     @strawberry.field
     def sectors(self, info: Info) -> List["TypeSector"]:

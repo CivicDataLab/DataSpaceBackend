@@ -1,6 +1,6 @@
 # mypy: disable-error-code="valid-type"
 
-from typing import List, Optional
+from typing import List, Optional, cast
 
 import strawberry
 import strawberry_django
@@ -72,6 +72,10 @@ class TypeCollaborative(BaseType):
     platform_url: Optional[str] = strawberry.field(
         description="URL of the platform where this collaborative is published"
     )
+
+    @strawberry.field(description="Link part for the collaborative page: title words + publicId.")
+    def url_slug(self) -> str:
+        return cast(Collaborative, self).url_slug
 
     @strawberry.field(description="Check if this collaborative is created by an individual user.")
     def is_individual_collaborative(self) -> bool:

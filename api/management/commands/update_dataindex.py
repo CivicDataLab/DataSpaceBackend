@@ -51,9 +51,7 @@ class Command(BaseCommand):
                 resource_id = uuid.UUID(resource_id_str)
             except ValueError:
                 self.stdout.write(
-                    self.style.ERROR(
-                        f"Invalid UUID format for resource-id: {resource_id_str}"
-                    )
+                    self.style.ERROR(f"Invalid UUID format for resource-id: {resource_id_str}")
                 )
                 return
 
@@ -62,9 +60,7 @@ class Command(BaseCommand):
                 dataset_id = uuid.UUID(dataset_id_str)
             except ValueError:
                 self.stdout.write(
-                    self.style.ERROR(
-                        f"Invalid UUID format for dataset-id: {dataset_id_str}"
-                    )
+                    self.style.ERROR(f"Invalid UUID format for dataset-id: {dataset_id_str}")
                 )
                 return
 
@@ -163,9 +159,7 @@ class Command(BaseCommand):
         # Print summary
         elapsed_time = time.time() - start_time
         self.stdout.write(
-            self.style.SUCCESS(
-                f"\nDataindex update completed in {elapsed_time:.2f} seconds"
-            )
+            self.style.SUCCESS(f"\nDataindex update completed in {elapsed_time:.2f} seconds")
         )
         self.stdout.write(f"Total resources processed: {total_resources}")
         self.stdout.write(f"Successful updates: {success_count}")

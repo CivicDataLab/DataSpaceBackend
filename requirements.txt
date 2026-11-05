@@ -11,7 +11,9 @@ django-elasticsearch-dsl==8.0
 django-elasticsearch-dsl-drf==0.22.5
 django-nine==0.2.7
 djangorestframework==3.14.0
-dvc==3.59.1
+# S3 media storage
+django-storages[s3]==1.14.4
+boto3==1.43.108
 elastic-transport==8.13.0
 elasticsearch==8.13.0
 elasticsearch-dsl==8.12.0
@@ -71,7 +73,8 @@ selenium==4.16.0
 
 # Security and Environment Management
 python-decouple==3.8
-django-debug-toolbar==4.2.0
+
+django-debug-toolbar==6.0.0  # Downgraded for better Django compatibility
 django-ratelimit==4.1.0
 
 # Caching and Performance
@@ -82,7 +85,7 @@ django-cacheops==7.0.2
 # Code Quality and Type Checking
 mypy==1.7.1
 black==24.2.0
-isort==5.13.2
+isort==7.0.0
 pre-commit==3.6.2
 flake8==7.0.0
 pandas-stubs==2.2.0.240218  # Matched with pandas version

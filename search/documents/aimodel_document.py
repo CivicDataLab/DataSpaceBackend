@@ -24,6 +24,8 @@ class AIModelDocument(Document):
     """Elasticsearch document for AIModel."""
 
     # Basic fields with analyzers
+    public_id = fields.KeywordField()
+    url_slug = fields.KeywordField(attr="url_slug")
     name = fields.TextField(
         analyzer=ngram_analyser,
         fields=title_subfields(),
@@ -34,12 +36,8 @@ class AIModelDocument(Document):
         fields=title_subfields(),
     )
 
-    description = fields.TextField(
-        analyzer=html_strip,
-        fields={
-            "raw": fields.TextField(analyzer="keyword"),
-        },
-    )
+    # No keyword-analyzed sub-field: descriptions can exceed Lucene's 32,766-byte token limit
+    description = fields.TextField(analyzer=html_strip)
 
     version = fields.KeywordField()
     provider = fields.KeywordField()

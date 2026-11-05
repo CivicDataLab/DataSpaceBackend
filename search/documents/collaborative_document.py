@@ -32,6 +32,8 @@ INDEX.settings(number_of_shards=1, number_of_replicas=0)
 class CollaborativeDocument(Document):
     """Elasticsearch document for Collaborative model."""
 
+    public_id = fields.KeywordField()
+    url_slug = fields.KeywordField(attr="url_slug")
     metadata = fields.NestedField(
         properties={
             "value": KeywordField(multi=True),
@@ -61,12 +63,8 @@ class CollaborativeDocument(Document):
         fields=title_subfields(),
     )
 
-    summary = fields.TextField(
-        analyzer=html_strip,
-        fields={
-            "raw": fields.TextField(analyzer="keyword"),
-        },
-    )
+    # No keyword-analyzed sub-field: summaries can exceed Lucene's 32,766-byte token limit
+    summary = fields.TextField(analyzer=html_strip)
 
     logo = fields.TextField(analyzer=ngram_analyser)
     cover_image = fields.TextField(analyzer=ngram_analyser)
@@ -246,12 +244,12 @@ class CollaborativeDocument(Document):
 
     def prepare_logo(self, instance: Collaborative) -> str:
         if instance.logo:
-            return str(instance.logo.path.replace("/code/files/", ""))
+            return str(instance.logo.url)
         return ""
 
     def prepare_cover_image(self, instance: Collaborative) -> str:
         if instance.cover_image:
-            return str(instance.cover_image.path.replace("/code/files/", ""))
+            return str(instance.cover_image.url)
         return ""
 
     def prepare_dataset_count(self, instance: Collaborative) -> int:

@@ -62,6 +62,7 @@ from authorization.permissions import (
     CreatePublicationPermission,
     DeletePublicationPermission,
     PublishPublicationPermission,
+    find_publication,
 )
 
 
@@ -157,12 +158,18 @@ class Query:
         permission_classes=[AllowPublishedPublications],  # type: ignore[list-item]
     )
     @trace_resolver(name="get_publication", attributes={"component": "publication"})
-    def get_publication(self, info: Info, publication_id: uuid.UUID) -> Optional[TypePublication]:
-        """Get a single resource by id (drafts gated to owner/org by the permission)."""
-        try:
-            return TypePublication.from_django(Publication.objects.get(id=publication_id))
-        except Publication.DoesNotExist:
-            return None
+    def get_publication(
+        self,
+        info: Info,
+        publication_id: Optional[uuid.UUID] = None,
+        public_id: Optional[str] = None,
+    ) -> Optional[TypePublication]:
+        """Get a single resource by id, or by its link (``urlSlug``) or ``publicId``.
+
+        Drafts are gated to owner/org by the permission.
+        """
+        publication = find_publication(publication_id, public_id)
+        return TypePublication.from_django(publication) if publication else None
 
     @strawberry.field
     @trace_resolver(name="get_publications", attributes={"component": "publication"})

@@ -14,6 +14,7 @@ from api.utils.enums import (
     HFModelClass,
     PromptDomain,
 )
+from api.utils.public_links import PUBLIC_ID_LENGTH, build_url_slug, save_with_public_id
 
 User = get_user_model()
 
@@ -27,6 +28,7 @@ class AIModel(models.Model):
     # Basic Information
     name = models.CharField(max_length=255, help_text="Model name or identifier")
     display_name = models.CharField(max_length=255, help_text="Human-readable name")
+    public_id = models.CharField(max_length=PUBLIC_ID_LENGTH, unique=True, editable=False)
     version = models.CharField(max_length=50, blank=True, help_text="Model version")
     description = models.TextField(help_text="Description of the model's capabilities")
 
@@ -156,6 +158,13 @@ class AIModel(models.Model):
 
     def __str__(self):
         return f"{self.display_name} ({self.provider})"
+
+    def save(self, *args, **kwargs):
+        save_with_public_id(self, lambda: super(AIModel, self).save(*args, **kwargs))
+
+    @property
+    def url_slug(self) -> str:
+        return build_url_slug(self.display_name or self.name, self.public_id)
 
     @property
     def tags_indexing(self) -> list[str]:

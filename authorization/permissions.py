@@ -7,6 +7,7 @@ from strawberry.types import Info
 
 from api.models import Dataset, Event, Organization, Publication
 from api.utils.enums import EventStatus, PublicationStatus
+from api.utils.public_links import parse_public_id
 from authorization.models import DatasetPermission, OrganizationMembership, Role
 
 # Roles that may publish/unpublish and edit an org-owned publication, by name.
@@ -572,6 +573,14 @@ class CreatePublicationPermission(BasePermission):  # type: ignore[misc]
         return True
 
 
+def find_publication(publication_id: Any, public_id: Optional[str]) -> Optional[Publication]:
+    """The publication for a UUID, or for a public link (``urlSlug`` or ``publicId``)."""
+    if publication_id:
+        return Publication.objects.filter(id=publication_id).first()
+    parsed = parse_public_id(public_id)
+    return Publication.objects.filter(public_id=parsed).first() if parsed else None
+
+
 class AllowPublishedPublications(BasePermission):  # type: ignore[misc]
     """Read gate for a single publication — mirrors AllowPublishedDatasets.
 
@@ -584,11 +593,11 @@ class AllowPublishedPublications(BasePermission):  # type: ignore[misc]
     def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
         request = info.context
         publication_id = kwargs.get("publication_id")
+        public_id = kwargs.get("public_id")
 
-        if publication_id:
-            try:
-                publication = Publication.objects.get(id=publication_id)
-            except Publication.DoesNotExist:
+        if publication_id or public_id:
+            publication = find_publication(publication_id, public_id)
+            if publication is None:
                 return True  # Let the resolver return a clean not-found.
 
             if publication.status == PublicationStatus.PUBLISHED.value:

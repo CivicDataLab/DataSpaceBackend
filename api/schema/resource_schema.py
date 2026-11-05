@@ -1,4 +1,3 @@
-import copy
 import uuid
 from enum import Enum
 
@@ -9,11 +8,11 @@ from typing import Any, List, Optional
 import strawberry
 import strawberry_django
 import structlog
+from django.db import transaction
 from django.db.models import QuerySet
 from strawberry.file_uploads import Upload
 from strawberry.types import Info
 
-from api.managers.dvc_manager import DVCManager
 from api.models import (
     Dataset,
     Resource,
@@ -171,8 +170,7 @@ def _validate_file_details_and_update_format(resource: Resource) -> None:
         raise ValueError("Resource has no file details")
 
     file = file_details.file
-    deep_copy_file = copy.deepcopy(file)
-    mime_type = file_validation(deep_copy_file, file, FORMAT_MAPPING)
+    mime_type = file_validation(file, file, FORMAT_MAPPING)
     if not mime_type:
         raise ValueError("Unsupported file format.")
 
@@ -462,58 +460,28 @@ class Mutation:
         This should be used when significant changes are made to the resource data structure,
         such as schema changes, column additions/removals, or other breaking changes.
         """
-        import os
-
-        from django.conf import settings
-
         try:
-            # Get the resource
-            resource = Resource.objects.get(id=input.resource_id)
+            resource = Resource.objects.select_related("dataset").get(id=input.resource_id)
         except Resource.DoesNotExist:
             raise ValueError(f"Resource with ID {input.resource_id} does not exist")
 
-        # Get the latest version
         last_version = resource.versions.order_by("-created_at").first()
-
         if not last_version:
             logger.warning(
                 f"No previous version found for resource {resource.name}, creating initial version"
             )
             new_version = "v1.0.0"
         else:
-            # Increment major version
             new_version = _increment_version(last_version.version_number, increment_type="major")
 
-        # Initialize DVC manager
-        dvc = DVCManager(settings.DVC_REPO_PATH)
-
-        # Get the resource file path
-        file_path = resource.resourcefiledetails.file.path
-
-        # Determine if file is large and should use chunking
-        file_size = (
-            resource.resourcefiledetails.file.size
-            if hasattr(resource.resourcefiledetails.file, "size")
-            else os.path.getsize(file_path)
-        )
-        use_chunked = file_size > 100 * 1024 * 1024  # 100MB threshold
-
-        # Track with DVC
-        dvc_file = dvc.track_resource(file_path, chunked=use_chunked)
-        message = f"Major version update for resource: {resource.name} to version {new_version}"
-        dvc.commit_version(dvc_file, message)
-        dvc.tag_version(f"{resource.name}-{new_version}")
-
-        # Create version record
-        ResourceVersion.objects.create(
-            resource=resource,
-            version_number=new_version,
-            change_description=input.description,
-        )
-
-        # Update resource version field
-        resource.version = new_version
-        resource.save(update_fields=["version"])
+        with transaction.atomic():
+            ResourceVersion.objects.create(
+                resource=resource,
+                version_number=new_version,
+                change_description=input.description,
+            )
+            resource.version = new_version
+            resource.save(update_fields=["version"])
 
         logger.info(f"Created major version {new_version} for resource {resource.name}")
         return TypeResource.from_django(resource)

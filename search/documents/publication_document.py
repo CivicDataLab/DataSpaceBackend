@@ -29,14 +29,14 @@ INDEX.settings(number_of_shards=1, number_of_replicas=0)
 class PublicationDocument(Document):
     """Elasticsearch document for a published Resource."""
 
+    public_id = fields.KeywordField()
+    url_slug = fields.KeywordField(attr="url_slug")
     title = fields.TextField(
         analyzer=ngram_analyser,
         fields=title_subfields(),
     )
-    description = fields.TextField(
-        analyzer=html_strip,
-        fields={"raw": fields.TextField(analyzer="keyword")},
-    )
+    # No keyword-analyzed sub-field: descriptions can exceed Lucene's 32,766-byte token limit
+    description = fields.TextField(analyzer=html_strip)
     status = fields.KeywordField()
 
     # Resource Type facet (name).

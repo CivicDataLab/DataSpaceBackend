@@ -47,16 +47,14 @@ class DatasetDocument(Document):
         fields=title_subfields(),
     )
 
-    description = fields.TextField(
-        analyzer=html_strip,
-        fields={
-            "raw": fields.TextField(analyzer="keyword"),
-        },
-    )
+    # No keyword-analyzed sub-field: descriptions can exceed Lucene's 32,766-byte token limit
+    description = fields.TextField(analyzer=html_strip)
 
     status = fields.KeywordField()
 
     slug = fields.KeywordField()  # Add slug field
+    public_id = fields.KeywordField()
+    url_slug = fields.KeywordField(attr="url_slug")
 
     tags = fields.TextField(
         attr="tags_indexing",

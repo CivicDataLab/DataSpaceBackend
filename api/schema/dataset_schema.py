@@ -60,6 +60,7 @@ from api.utils.enums import (
     UseCaseStatus,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
     SortSpec,
@@ -80,6 +81,14 @@ DatasetTypeENUM = strawberry.enum(DatasetType)  # type: ignore
 PromptTaskTypeENUM = strawberry.enum(PromptTaskType)  # type: ignore
 PromptFormatENUM = strawberry.enum(PromptFormat)  # type: ignore
 PromptPurposeENUM = strawberry.enum(PromptPurpose)  # type: ignore
+
+
+def _find_dataset(dataset_id: Optional[uuid.UUID], public_id: Optional[str]) -> Optional[Dataset]:
+    """The dataset for a UUID or a public link part, or None if there is none."""
+    if dataset_id:
+        return Dataset.objects.filter(id=dataset_id).first()
+    parsed = parse_public_id(public_id)
+    return Dataset.objects.filter(public_id=parsed).first() if parsed else None
 
 
 # Create permission classes dynamically with different operations
@@ -119,19 +128,19 @@ class AllowPublishedDatasets(BasePermission):
         # For queries/mutations that don't have a source yet (e.g., getting a dataset by ID)
         if source is None:
             dataset_id = kwargs.get("dataset_id")
-            if dataset_id:
-                try:
-                    dataset = Dataset.objects.get(id=dataset_id)
-                    # Allow access to published datasets for everyone
-                    if dataset.status == DatasetStatus.PUBLISHED.value:
-                        return True
-                except Dataset.DoesNotExist:
-                    pass  # Let the resolver handle the non-existent dataset
+            public_id = kwargs.get("public_id")
+            if dataset_id or public_id:
+                dataset = _find_dataset(dataset_id, public_id)
+                # Allow access to published datasets for everyone
+                if dataset is not None and dataset.status == DatasetStatus.PUBLISHED.value:
+                    return True
 
                 # For non-published datasets, require authentication
                 user = request.user
                 if not user.is_authenticated:
                     return False
+                if dataset is None:
+                    return True  # the resolver returns null for a missing dataset
                 if user.is_superuser:
                     return True
                 dataset_perm = DatasetPermission.objects.filter(user=user, dataset=dataset).first()
@@ -540,13 +549,19 @@ class Query:
         permission_classes=[AllowPublishedDatasets],  # type: ignore[list-item]
     )
     @trace_resolver(name="get_dataset", attributes={"component": "dataset"})
-    def get_dataset(self, info: Info, dataset_id: uuid.UUID) -> Optional[TypeDataset]:
-        """Get a dataset by ID."""
-        try:
-            dataset = Dataset.objects.get(id=dataset_id)
-            return TypeDataset.from_django(dataset)
-        except Dataset.DoesNotExist:
-            return None
+    def get_dataset(
+        self,
+        info: Info,
+        dataset_id: Optional[uuid.UUID] = None,
+        public_id: Optional[str] = None,
+    ) -> Optional[TypeDataset]:
+        """Get a dataset by ID, or by its public link.
+
+        ``public_id`` takes the id itself or the whole link part
+        (``city-air-quality-index-k3x9m2qa7b1z``); only the id at the end is used.
+        """
+        dataset = _find_dataset(dataset_id, public_id)
+        return TypeDataset.from_django(dataset) if dataset is not None else None
 
     @strawberry.field(
         permission_classes=[ChartDataPermission],  # type: ignore[list-item]
