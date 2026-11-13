@@ -532,6 +532,18 @@ def get_resource_columns(resource: Resource) -> List[str]:
         return []
 
 
+def _column_ident(column: str) -> pg_sql.Identifier:
+    """Quote a column name for a query that will be run with parameters.
+
+    psycopg2 fills in ``%s`` placeholders by %-formatting the whole query
+    text, quoted names included, so a header like "Literacy rate (%)" breaks
+    the query unless its ``%`` is doubled. Every query in
+    ``fetch_resource_data`` is run with a parameter list, so the doubled
+    ``%%`` always comes back out as ``%``.
+    """
+    return pg_sql.Identifier(column.replace("%", "%%"))
+
+
 def _parse_filter_key(key: str) -> Tuple[str, str]:
     """Split 'col__op' style filter key into (column, op). Defaults op to 'eq'."""
     if "__" in key:
@@ -564,7 +576,7 @@ def _build_where_clause(
             raise DataFetchError(f"Unknown filter column: {col}")
         op_template, transformer = _FILTER_OPERATORS[op]
 
-        col_ident = pg_sql.Identifier(col)
+        col_ident = _column_ident(col)
         if op in ("isnull", "notnull"):
             # Boolean toggle: isnull=true means IS NULL, isnull=false means IS NOT NULL
             truthy = value not in (False, "false", "False", 0, "0", None)
@@ -596,10 +608,13 @@ def _build_order_by(order_by: Optional[List[str]], allowed_columns: List[str]) -
             col = item[1:]
         if col not in allowed_set:
             raise DataFetchError(f"Unknown order_by column: {col}")
-        parts.append(
-            pg_sql.SQL("{col} ").format(col=pg_sql.Identifier(col)) + pg_sql.SQL(direction)
-        )
+        parts.append(pg_sql.SQL("{col} ").format(col=_column_ident(col)) + pg_sql.SQL(direction))
     return pg_sql.SQL(" ORDER BY ") + pg_sql.SQL(", ").join(parts)
+
+
+def _build_select_list(columns: List[str]) -> pg_sql.Composable:
+    """Build the comma-separated list of quoted column names to SELECT."""
+    return pg_sql.SQL(", ").join(_column_ident(c) for c in columns)
 
 
 def fetch_resource_data(
@@ -661,7 +676,7 @@ def fetch_resource_data(
     offset = max(int(offset or 0), 0)
 
     table_ident = pg_sql.Identifier(data_table.table_name)
-    cols_sql = pg_sql.SQL(", ").join(pg_sql.Identifier(c) for c in select_columns)
+    cols_sql = _build_select_list(select_columns)
     where_sql, params = _build_where_clause(filters or {}, allowed_columns)
     order_sql = _build_order_by(order_by, allowed_columns)
 
