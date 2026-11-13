@@ -15,6 +15,7 @@ from psycopg2 import sql as pg_sql
 from api.utils.data_indexing import (
     DataFetchError,
     _build_order_by,
+    _build_select_list,
     _build_where_clause,
     _parse_filter_key,
 )
@@ -122,6 +123,34 @@ class TestBuildOrderBy(unittest.TestCase):
     def test_unknown_column_rejected(self) -> None:
         with self.assertRaises(DataFetchError):
             _build_order_by(["evil"], self.allowed)
+
+
+def _fill_params(query: str, params: list) -> str:
+    """Fill in ``%s`` placeholders the way psycopg2 does before sending a query.
+
+    psycopg2 runs the whole query text through %-formatting whenever a
+    parameter list is passed (even an empty one), so a lone ``%`` anywhere in
+    the text, including inside a quoted column name, breaks it.
+    """
+    return query % tuple(f"'{p}'" for p in params)
+
+
+class TestColumnNamesWithPercentSign(unittest.TestCase):
+    """Indicator tables often have headers like "Literacy rate (%)"."""
+
+    column = "Prevalence of Anaemia Among Women of Age 15 to 49 (%)"
+
+    def test_select_list_keeps_the_column_name_after_params_are_filled(self) -> None:
+        sql = _build_select_list([self.column, "District"])
+        self.assertEqual(_fill_params(_render(sql), []), f'"{self.column}", "District"')
+
+    def test_filter_keeps_the_column_name_after_params_are_filled(self) -> None:
+        sql, params = _build_where_clause({self.column: "Kamrup"}, [self.column])
+        self.assertEqual(_fill_params(_render(sql), params), f" WHERE \"{self.column}\" = 'Kamrup'")
+
+    def test_order_by_keeps_the_column_name_after_params_are_filled(self) -> None:
+        sql = _build_order_by([f"-{self.column}"], [self.column])
+        self.assertEqual(_fill_params(_render(sql), []), f' ORDER BY "{self.column}" DESC')
 
 
 class TestViewQueryParamHelpers(unittest.TestCase):
