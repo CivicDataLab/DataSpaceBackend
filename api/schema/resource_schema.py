@@ -1,18 +1,18 @@
-import copy
 import uuid
 from enum import Enum
 
 # mypy: disable-error-code=operator
-from typing import List, Optional
+# mypy: disable-error-code=valid-type
+from typing import Any, List, Optional
 
 import strawberry
 import strawberry_django
 import structlog
+from django.db import transaction
 from django.db.models import QuerySet
 from strawberry.file_uploads import Upload
 from strawberry.types import Info
 
-from api.managers.dvc_manager import DVCManager
 from api.models import (
     Dataset,
     Resource,
@@ -26,10 +26,43 @@ from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.types.type_resource import TypeResource
 from api.utils.constants import FORMAT_MAPPING
 from api.utils.data_indexing import index_resource_data
+from api.utils.dataset_access import ChangeDatasetPartPermission, can_view_dataset
 from api.utils.file_utils import file_validation
 from api.utils.graphql_telemetry import trace_resolver
 
 logger = structlog.get_logger("dataspace.resource_schema")
+
+
+def _dataset_from_arguments(kwargs: Any) -> Optional[Dataset]:
+    """The dataset a resource mutation acts on, from whichever argument it takes."""
+    data = (
+        kwargs.get("file_resource_input")
+        or kwargs.get("schema_update_input")
+        or kwargs.get("input")
+    )
+    dataset_id = getattr(data, "dataset", None)
+    if dataset_id:
+        return Dataset.objects.filter(id=dataset_id).first()
+    resource_id = (
+        kwargs.get("resource_id")
+        or getattr(data, "id", None)
+        or getattr(data, "resource", None)
+        or getattr(data, "resource_id", None)
+    )
+    if not resource_id:
+        return None
+    resource = Resource.objects.select_related("dataset").filter(id=resource_id).first()
+    return resource.dataset if resource else None
+
+
+class ChangeResourcePermission(ChangeDatasetPartPermission):
+    """Adding, changing or deleting a dataset's resources needs edit rights on the dataset."""
+
+    message = "You don't have permission to change this dataset's resources"
+
+    def datasets(self, kwargs: Any) -> Optional[list]:
+        dataset = _dataset_from_arguments(kwargs)
+        return [dataset] if dataset else None
 
 
 @strawberry.input
@@ -111,18 +144,22 @@ class Query:
 
     @strawberry_django.field
     @trace_resolver(name="get_dataset_resources", attributes={"component": "resource"})
-    def dataset_resources(
-        self, info: Info, dataset_id: uuid.UUID
-    ) -> List[TypeResource]:
+    def dataset_resources(self, info: Info, dataset_id: uuid.UUID) -> List[TypeResource]:
         """Get resources for a dataset."""
-        resources = Resource.objects.filter(dataset_id=dataset_id)
+        dataset = Dataset.objects.filter(id=dataset_id).first()
+        if not dataset or not can_view_dataset(info.context.user, dataset):
+            return []
+        resources = Resource.objects.filter(dataset=dataset)
         return [TypeResource.from_django(resource) for resource in resources]
 
     @strawberry_django.field
     @trace_resolver(name="get_resource_by_id", attributes={"component": "resource"})
     def resource_by_id(self, info: Info, resource_id: uuid.UUID) -> TypeResource:
         """Get a resource by ID."""
-        resource = Resource.objects.get(id=resource_id)
+        resource = Resource.objects.select_related("dataset").get(id=resource_id)
+        if not can_view_dataset(info.context.user, resource.dataset):
+            # Same answer as a missing ID, so drafts' resources are not revealed.
+            raise Resource.DoesNotExist("Resource matching query does not exist.")
         return TypeResource.from_django(resource)
 
 
@@ -133,8 +170,7 @@ def _validate_file_details_and_update_format(resource: Resource) -> None:
         raise ValueError("Resource has no file details")
 
     file = file_details.file
-    deep_copy_file = copy.deepcopy(file)
-    mime_type = file_validation(deep_copy_file, file, FORMAT_MAPPING)
+    mime_type = file_validation(file, file, FORMAT_MAPPING)
     if not mime_type:
         raise ValueError("Unsupported file format.")
 
@@ -162,23 +198,17 @@ def _reset_file_resource_schema(resource: Resource) -> None:
     data_table = index_resource_data(resource)
 
 
-def _update_file_resource_schema(
-    resource: Resource, updated_schema: List[SchemaUpdate]
-) -> None:
+def _update_file_resource_schema(resource: Resource, updated_schema: List[SchemaUpdate]) -> None:
     """Update file resource schema and re-index if necessary."""
     # Check if we need to re-index after schema update
     format_changes = False
 
     # Update schema fields
-    existing_schema: QuerySet[ResourceSchema] = ResourceSchema.objects.filter(
-        resource=resource
-    )
+    existing_schema: QuerySet[ResourceSchema] = ResourceSchema.objects.filter(resource=resource)
 
     for schema in existing_schema:  # type: ResourceSchema
         try:
-            schema_change = next(
-                item for item in updated_schema if item.id == str(schema.id)
-            )
+            schema_change = next(item for item in updated_schema if item.id == str(schema.id))
             # Check if format is changing, which might require re-indexing
             if schema.format != schema_change.format.value:
                 format_changes = True
@@ -188,9 +218,7 @@ def _update_file_resource_schema(
             schema.format = schema_change.format.value
             schema.save()
 
-            logger.info(
-                f"Updated schema field {schema.field_name} for resource {resource.id}"
-            )
+            logger.info(f"Updated schema field {schema.field_name} for resource {resource.id}")
         except StopIteration:
             continue
 
@@ -210,12 +238,8 @@ def _update_resource_preview_details(
     if file_resource_input.preview_details:
         # If preview_details already exists, update it
         if preview_details:
-            preview_details.is_all_entries = (
-                file_resource_input.preview_details.is_all_entries
-            )
-            preview_details.start_entry = (
-                file_resource_input.preview_details.start_entry
-            )
+            preview_details.is_all_entries = file_resource_input.preview_details.is_all_entries
+            preview_details.start_entry = file_resource_input.preview_details.start_entry
             preview_details.end_entry = file_resource_input.preview_details.end_entry
             preview_details.save()
         # Otherwise, create a new one
@@ -235,6 +259,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=False,
+        permission_classes=[ChangeResourcePermission],
         extensions=[
             TrackModelActivity(
                 verb="created",
@@ -260,9 +285,9 @@ class Mutation:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
         for file in file_resource_input.files:
-            resource = Resource.objects.create(name=file.name, dataset=dataset)
+            resource = Resource.objects.create(name=file.name, dataset=dataset)  # type: ignore[attr-defined]
             ResourceFileDetails.objects.create(
-                file=file, size=file.size, resource=resource
+                file=file, size=file.size, resource=resource  # type: ignore[attr-defined]
             )
             _validate_file_details_and_update_format(resource)
             _create_file_resource_schema(resource)
@@ -271,6 +296,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeResourcePermission],
         extensions=[
             TrackModelActivity(
                 verb="created",
@@ -298,6 +324,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeResourcePermission],
         extensions=[
             TrackModelActivity(
                 verb="updated",
@@ -305,11 +332,7 @@ class Mutation:
                     "resource_id": str(result.id),
                     "resource_name": result.name,
                     "updated_fields": {
-                        "name": (
-                            file_resource_input.name
-                            if file_resource_input.name
-                            else None
-                        ),
+                        "name": (file_resource_input.name if file_resource_input.name else None),
                         "description": (
                             file_resource_input.description
                             if file_resource_input.description is not None
@@ -317,8 +340,7 @@ class Mutation:
                         ),
                         "preview_enabled": file_resource_input.preview_enabled,
                         "file_updated": file_resource_input.file is not None,
-                        "preview_details_updated": file_resource_input.preview_details
-                        is not None,
+                        "preview_details_updated": file_resource_input.preview_details is not None,
                     },
                 },
             )
@@ -332,9 +354,7 @@ class Mutation:
         try:
             resource = Resource.objects.get(id=file_resource_input.id)
         except Resource.DoesNotExist as e:
-            raise ValueError(
-                f"Resource with ID {file_resource_input.id} does not exist."
-            )
+            raise ValueError(f"Resource with ID {file_resource_input.id} does not exist.")
 
         if file_resource_input.name:
             resource.name = file_resource_input.name
@@ -347,12 +367,12 @@ class Mutation:
             file_details = getattr(resource, "resourcefiledetails", None)
             if file_details:
                 file_details.file = file_resource_input.file
-                file_details.size = file_resource_input.file.size
+                file_details.size = file_resource_input.file.size  # type: ignore[attr-defined]
                 file_details.save()
             else:
                 ResourceFileDetails.objects.create(
                     file=file_resource_input.file,
-                    size=file_resource_input.file.size,
+                    size=file_resource_input.file.size,  # type: ignore[attr-defined]
                     resource=resource,
                 )
             _validate_file_details_and_update_format(resource)
@@ -363,10 +383,11 @@ class Mutation:
 
         return TypeResource.from_django(resource)
 
-    @strawberry_django.mutation(handle_django_errors=True)
-    @trace_resolver(
-        name="update_file_resource_schema", attributes={"component": "resource"}
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        permission_classes=[ChangeResourcePermission],
     )
+    @trace_resolver(name="update_file_resource_schema", attributes={"component": "resource"})
     def update_file_resource_schema(
         self, info: Info, schema_update_input: SchemaUpdateInput
     ) -> TypeResource:
@@ -374,20 +395,17 @@ class Mutation:
         try:
             resource = Resource.objects.get(id=schema_update_input.resource)
         except Resource.DoesNotExist as e:
-            raise ValueError(
-                f"Resource with ID {schema_update_input.resource} does not exist."
-            )
+            raise ValueError(f"Resource with ID {schema_update_input.resource} does not exist.")
 
         _update_file_resource_schema(resource, schema_update_input.updates)
         return TypeResource.from_django(resource)
 
-    @strawberry_django.mutation(handle_django_errors=True)
-    @trace_resolver(
-        name="reset_file_resource_schema", attributes={"component": "resource"}
+    @strawberry_django.mutation(
+        handle_django_errors=True,
+        permission_classes=[ChangeResourcePermission],
     )
-    def reset_file_resource_schema(
-        self, info: Info, resource_id: uuid.UUID
-    ) -> TypeResource:
+    @trace_resolver(name="reset_file_resource_schema", attributes={"component": "resource"})
+    def reset_file_resource_schema(self, info: Info, resource_id: uuid.UUID) -> TypeResource:
         """Reset file resource schema."""
         try:
             resource = Resource.objects.get(id=resource_id)
@@ -400,6 +418,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=False,
+        permission_classes=[ChangeResourcePermission],
         extensions=[
             TrackActivity(
                 verb="deleted",
@@ -421,6 +440,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeResourcePermission],
         extensions=[
             TrackModelActivity(
                 verb="versioned",
@@ -434,68 +454,34 @@ class Mutation:
         ],
     )
     @trace_resolver(name="create_major_version", attributes={"component": "resource"})
-    def create_major_version(
-        self, info: Info, input: CreateMajorVersionInput
-    ) -> TypeResource:
+    def create_major_version(self, info: Info, input: CreateMajorVersionInput) -> TypeResource:
         """Create a major version for a resource.
 
         This should be used when significant changes are made to the resource data structure,
         such as schema changes, column additions/removals, or other breaking changes.
         """
-        import os
-
-        from django.conf import settings
-
         try:
-            # Get the resource
-            resource = Resource.objects.get(id=input.resource_id)
+            resource = Resource.objects.select_related("dataset").get(id=input.resource_id)
         except Resource.DoesNotExist:
             raise ValueError(f"Resource with ID {input.resource_id} does not exist")
 
-        # Get the latest version
         last_version = resource.versions.order_by("-created_at").first()
-
         if not last_version:
             logger.warning(
                 f"No previous version found for resource {resource.name}, creating initial version"
             )
             new_version = "v1.0.0"
         else:
-            # Increment major version
-            new_version = _increment_version(
-                last_version.version_number, increment_type="major"
+            new_version = _increment_version(last_version.version_number, increment_type="major")
+
+        with transaction.atomic():
+            ResourceVersion.objects.create(
+                resource=resource,
+                version_number=new_version,
+                change_description=input.description,
             )
-
-        # Initialize DVC manager
-        dvc = DVCManager(settings.DVC_REPO_PATH)
-
-        # Get the resource file path
-        file_path = resource.resourcefiledetails.file.path
-
-        # Determine if file is large and should use chunking
-        file_size = (
-            resource.resourcefiledetails.file.size
-            if hasattr(resource.resourcefiledetails.file, "size")
-            else os.path.getsize(file_path)
-        )
-        use_chunked = file_size > 100 * 1024 * 1024  # 100MB threshold
-
-        # Track with DVC
-        dvc_file = dvc.track_resource(file_path, chunked=use_chunked)
-        message = f"Major version update for resource: {resource.name} to version {new_version}"
-        dvc.commit_version(dvc_file, message)
-        dvc.tag_version(f"{resource.name}-{new_version}")
-
-        # Create version record
-        ResourceVersion.objects.create(
-            resource=resource,
-            version_number=new_version,
-            change_description=input.description,
-        )
-
-        # Update resource version field
-        resource.version = new_version
-        resource.save(update_fields=["version"])
+            resource.version = new_version
+            resource.save(update_fields=["version"])
 
         logger.info(f"Created major version {new_version} for resource {resource.name}")
         return TypeResource.from_django(resource)

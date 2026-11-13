@@ -53,6 +53,8 @@ class DatasetDocument(Document):
     status = fields.KeywordField()
 
     slug = fields.KeywordField()  # Add slug field
+    public_id = fields.KeywordField()
+    url_slug = fields.KeywordField(attr="url_slug")
 
     tags = fields.TextField(
         attr="tags_indexing",

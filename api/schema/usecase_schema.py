@@ -1,6 +1,7 @@
 """Schema definitions for use cases."""
 
 # mypy: disable-error-code=operator
+# mypy: disable-error-code=valid-type
 
 import datetime
 import uuid
@@ -9,6 +10,7 @@ from typing import List, Optional
 import strawberry
 import strawberry_django
 from django.db import models
+from django.db.models import QuerySet
 from strawberry import auto
 from strawberry.file_uploads import Upload
 from strawberry.types import Info
@@ -35,7 +37,12 @@ from api.services.publication_linking import (
 )
 from api.types.type_dataset import TypeDataset
 from api.types.type_organization import TypeOrganization
-from api.types.type_usecase import TypeUseCase, UseCaseFilter, UseCaseOrder
+from api.types.type_usecase import (
+    TypeUseCase,
+    UseCaseFilter,
+    UseCaseOrder,
+    UseCaseResponse,
+)
 from api.types.type_usecase_organization import (
     TypeUseCaseOrganizationRelationship,
     relationship_type,
@@ -46,6 +53,13 @@ from api.utils.enums import (
     UseCaseStatus,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.public_links import parse_public_id
+from api.utils.qs_utils import (
+    FilterSpec,
+    SortSpec,
+    get_pagination_window,
+    status_counts,
+)
 from authorization.models import User
 from authorization.types import TypeUser
 
@@ -94,6 +108,57 @@ class UseCaseInputPartial:
     completed_on: Optional[datetime.date] = None
 
 
+# Fields a table client may filter or sort on. Explicit allowlists are what
+# stop arbitrary columns (and relations) from becoming queryable.
+USE_CASES_TABLE_FILTER_FIELDS = [
+    "id",
+    "title",
+    "status",
+    "running_status",
+    "organization",
+    "organization__slug",
+    "sectors__id",
+    "sectors__slug",
+    "sectors__name",
+    "geographies__id",
+    "geographies__name",
+    "geographies__code",
+    "tags__value",
+    "sdgs__code",
+    "sdgs__slug",
+    "started_on",
+    "completed_on",
+    "created",
+    "modified",
+]
+USE_CASES_TABLE_SORT_FIELDS = [
+    "title",
+    "created",
+    "modified",
+    "status",
+    "running_status",
+    "started_on",
+    "completed_on",
+]
+
+
+def _visible_use_cases(info: Info, include_public: Optional[bool] = False) -> QuerySet:
+    """The use cases a caller may list. Same rules as `useCases`."""
+    user = info.context.user
+    organization = info.context.context.get("organization")
+    if organization:
+        queryset = UseCase.objects.filter(organization=organization)
+    elif user.is_superuser:
+        queryset = UseCase.objects.all()
+    elif user.is_authenticated:
+        queryset = UseCase.objects.filter(user=user)
+    else:
+        queryset = UseCase.objects.filter(status=UseCaseStatus.PUBLISHED)
+    if include_public:
+        queryset = queryset | UseCase.objects.filter(status=UseCaseStatus.PUBLISHED)
+    return queryset.distinct()
+
+
 @strawberry.type(name="Query")
 class Query:
     """Queries for use cases."""
@@ -137,6 +202,42 @@ class Query:
 
         return TypeUseCase.from_django_list(queryset)
 
+    @strawberry.field
+    @trace_resolver(name="use_cases_table", attributes={"component": "usecase"})
+    def use_cases_table(
+        self,
+        info: Info,
+        filters: Optional[List[FilterSpec]] = None,
+        sort_options: Optional[List[SortSpec]] = None,
+        limit: int = 50,
+        offset: int = 0,
+        include_public: Optional[bool] = False,
+    ) -> UseCaseResponse:
+        """Use cases for a table UI: client-driven filters, sortable columns and
+        page controls backed by a real total count.
+
+        Additive next to `useCases`, with the same visibility rules, plus
+        published use cases when `include_public` is set. Filters are `{field,
+        condition, value}` and sorts are `{field, direction}`, limited to the
+        allowlists above; anything else is a GraphQL error naming the allowed
+        fields. Default order: newest first.
+        """
+        visible = _visible_use_cases(info, include_public)
+        window = get_pagination_window(
+            visible,
+            limit=limit,
+            offset=offset,
+            filters=filters,
+            filtering_allowed_fields=USE_CASES_TABLE_FILTER_FIELDS,
+            sort_options=sort_options or [SortSpec(field="created", direction="desc")],
+            sorting_allowed_fields=USE_CASES_TABLE_SORT_FIELDS,
+        )
+        return UseCaseResponse(
+            data=TypeUseCase.from_django_list(window["data"]),
+            total_items_count=window["total_items_count"],
+            status_counts=status_counts(visible, filters, USE_CASES_TABLE_FILTER_FIELDS),
+        )
+
     @strawberry_django.field
     @trace_resolver(name="get_published_use_cases", attributes={"component": "usecase"})
     def published_use_cases(
@@ -173,18 +274,29 @@ class Query:
         return TypeUseCase.from_django_list(results)
 
     @strawberry_django.field
-    @trace_resolver(
-        name="get_datasets_by_use_case", attributes={"component": "usecase"}
-    )
+    @trace_resolver(name="get_use_case_by_slug", attributes={"component": "usecase"})
+    def use_case_by_slug(self, info: Info, public_id: str) -> Optional[TypeUseCase]:
+        """Published use case for a public page, found by its link.
+
+        ``public_id`` takes the id itself or the whole link part (``urlSlug``);
+        only the id at the end is used, so a link with old title words still
+        works. Drafts, unknown ids and links without an id return null.
+        """
+        parsed = parse_public_id(public_id)
+        if parsed is None:
+            return None
+        use_case = UseCase.objects.filter(public_id=parsed, status=UseCaseStatus.PUBLISHED).first()
+        return TypeUseCase.from_django(use_case) if use_case else None
+
+    @strawberry_django.field
+    @trace_resolver(name="get_datasets_by_use_case", attributes={"component": "usecase"})
     def dataset_by_use_case(self, info: Info, use_case_id: str) -> list[TypeDataset]:
         """Get datasets by use case."""
         queryset = Dataset.objects.filter(usecase__id=use_case_id)
         return TypeDataset.from_django_list(queryset)
 
     @strawberry_django.field
-    @trace_resolver(
-        name="get_contributors_by_use_case", attributes={"component": "usecase"}
-    )
+    @trace_resolver(name="get_contributors_by_use_case", attributes={"component": "usecase"})
     def contributors_by_use_case(self, info: Info, use_case_id: str) -> list[TypeUser]:
         """Get contributors by use case."""
         try:
@@ -199,9 +311,7 @@ class Query:
 def _update_usecase_tags(usecase: UseCase, tags: List[str]) -> None:
     usecase.tags.clear()
     for tag in tags:
-        usecase.tags.add(
-            Tag.objects.get_or_create(defaults={"value": tag}, value__iexact=tag)[0]
-        )
+        usecase.tags.add(Tag.objects.get_or_create(defaults={"value": tag}, value__iexact=tag)[0])
     usecase.save()
 
 
@@ -245,9 +355,7 @@ def _add_update_usecase_metadata(
             metadata_field = Metadata.objects.get(id=metadata_input_item.id)
             if not metadata_field.enabled:
                 _delete_existing_metadata(usecase)
-                raise ValueError(
-                    f"Metadata with ID {metadata_input_item.id} is not enabled."
-                )
+                raise ValueError(f"Metadata with ID {metadata_input_item.id} is not enabled.")
             uc_metadata = UseCaseMetadata(
                 usecase=usecase,
                 metadata_item=metadata_field,
@@ -256,9 +364,7 @@ def _add_update_usecase_metadata(
             uc_metadata.save()
         except Metadata.DoesNotExist:
             _delete_existing_metadata(usecase)
-            raise ValueError(
-                f"Metadata with ID {metadata_input_item.id} does not exist."
-            )
+            raise ValueError(f"Metadata with ID {metadata_input_item.id} does not exist.")
 
 
 @trace_resolver(name="delete_existing_metadata", attributes={"component": "usecase"})
@@ -334,10 +440,7 @@ class Mutation:
                             else None
                         ),
                         "sectors": (
-                            [
-                                str(sector_id)
-                                for sector_id in update_metadata_input.sectors
-                            ]
+                            [str(sector_id) for sector_id in update_metadata_input.sectors]
                             if update_metadata_input.sectors
                             else []
                         ),
@@ -406,10 +509,7 @@ class Mutation:
             usecase.started_on = data.started_on
         if data.completed_on is not None and data.completed_on is not strawberry.UNSET:
             usecase.completed_on = data.completed_on
-        if (
-            data.running_status is not None
-            and data.running_status is not strawberry.UNSET
-        ):
+        if data.running_status is not None and data.running_status is not strawberry.UNSET:
             usecase.running_status = data.running_status
         if data.logo is not None and data.logo is not strawberry.UNSET:
             usecase.logo = data.logo
@@ -421,9 +521,7 @@ class Mutation:
         extensions=[
             TrackActivity(
                 verb="deleted",
-                get_data=lambda info, use_case_id, **kwargs: {
-                    "usecase_id": use_case_id
-                },
+                get_data=lambda info, use_case_id, **kwargs: {"usecase_id": use_case_id},
             )
         ],
     )
@@ -689,9 +787,7 @@ class Mutation:
                 get_data=lambda result, use_case_id, user_ids, **kwargs: {
                     "usecase_id": use_case_id,
                     "usecase_title": result.title,
-                    "updated_fields": {
-                        "contributors": [str(user_id) for user_id in user_ids]
-                    },
+                    "updated_fields": {"contributors": [str(user_id) for user_id in user_ids]},
                 },
             )
         ],

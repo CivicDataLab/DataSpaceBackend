@@ -1,14 +1,15 @@
-from typing import Any, Dict, Generator, Optional
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import pandas as pd
 import structlog
 from django.db import connections, transaction
 from django.db.utils import ProgrammingError
+from psycopg2 import sql as pg_sql  # type: ignore[import-untyped]
 
 from api.models.Resource import Resource, ResourceDataTable
 from api.models.ResourceSchema import ResourceSchema
 from api.types.type_preview_data import PreviewData
-from api.utils.file_utils import load_tabular_data
+from api.utils.file_utils import load_tabular_data, local_copy
 
 logger = structlog.get_logger("dataspace.data_indexing")
 
@@ -19,6 +20,27 @@ DATA_DB = "data_db"  # This should match the connection name in settings.py
 INDEXED_FORMATS = {"csv", "xls", "xlsx", "ods", "parquet", "feather", "json", "tsv"}
 # Formats counted by parsing the file directly (not indexed into DB)
 FILE_COUNT_FORMATS = {"yml", "yaml", "xml"}
+
+# Allowed comparison operators for column-based filtering on indexed data.
+# Maps operator suffix -> (sql_template_with_{ph}_placeholder, value_transformer)
+_FILTER_OPERATORS: Dict[str, Tuple[str, Any]] = {
+    "eq": ("= %s", lambda v: v),
+    "ne": ("<> %s", lambda v: v),
+    "gt": ("> %s", lambda v: v),
+    "gte": (">= %s", lambda v: v),
+    "lt": ("< %s", lambda v: v),
+    "lte": ("<= %s", lambda v: v),
+    "in": ("= ANY(%s)", lambda v: list(v) if not isinstance(v, list) else v),
+    "nin": ("<> ALL(%s)", lambda v: list(v) if not isinstance(v, list) else v),
+    "contains": ("LIKE %s", lambda v: f"%{v}%"),
+    "icontains": ("ILIKE %s", lambda v: f"%{v}%"),
+    "startswith": ("LIKE %s", lambda v: f"{v}%"),
+    "istartswith": ("ILIKE %s", lambda v: f"{v}%"),
+    "endswith": ("LIKE %s", lambda v: f"%{v}"),
+    "iendswith": ("ILIKE %s", lambda v: f"%{v}"),
+    "isnull": ("IS NULL", None),  # value ignored
+    "notnull": ("IS NOT NULL", None),
+}
 
 
 def get_sql_type(pandas_dtype: str) -> str:
@@ -151,16 +173,19 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
                     signal.alarm(0)
                     signal.signal(signal.SIGALRM, original_handler)
 
-            # Apply timeout only on Unix-based systems where signal.SIGALRM is available
-            try:
-                with timeout(60):  # 60 second timeout for loading data
-                    df = load_tabular_data(file_details.file.path, format)
-            except TimeoutError as te:
-                logger.error(f"Timeout while loading data for resource {resource_id}: {str(te)}")
-                return None
-            except Exception:
-                # Fallback without timeout if signal.SIGALRM is not available (e.g., on Windows)
-                df = load_tabular_data(file_details.file.path, format)
+            with local_copy(file_details.file) as file_path:
+                # Apply timeout only on Unix-based systems where signal.SIGALRM is available
+                try:
+                    with timeout(60):  # 60 second timeout for loading data
+                        df = load_tabular_data(file_path, format)
+                except TimeoutError as te:
+                    logger.error(
+                        f"Timeout while loading data for resource {resource_id}: {str(te)}"
+                    )
+                    return None
+                except Exception:
+                    # Fallback without timeout if signal.SIGALRM is not available (e.g., on Windows)
+                    df = load_tabular_data(file_path, format)
 
             if df is None:
                 logger.error(
@@ -388,29 +413,28 @@ def get_entry_count_from_file(resource: Resource) -> int:
             return 0
 
         fmt = file_details.format.lower()
-        filepath = file_details.file.path
-
-        if fmt in ("yml", "yaml"):
-            import yaml
-
-            with open(filepath, "r") as f:
-                data = yaml.safe_load(f)
-            if isinstance(data, list):
-                return len(data)
-            if isinstance(data, dict):
-                for v in data.values():
-                    if isinstance(v, list):
-                        return len(v)
-                return len(data)
+        if fmt not in FILE_COUNT_FORMATS:
             return 0
 
-        if fmt == "xml":
+        with local_copy(file_details.file) as filepath:
+            if fmt in ("yml", "yaml"):
+                import yaml
+
+                with open(filepath, "r") as f:
+                    data = yaml.safe_load(f)
+                if isinstance(data, list):
+                    return len(data)
+                if isinstance(data, dict):
+                    for v in data.values():
+                        if isinstance(v, list):
+                            return len(v)
+                    return len(data)
+                return 0
+
             import xml.etree.ElementTree as ET
 
             root = ET.parse(filepath).getroot()
             return len(list(root))
-
-        return 0
     except Exception as e:
         logger.error(f"Error counting entries from file for resource {resource.id}: {str(e)}")
         return 0
@@ -474,3 +498,217 @@ def get_preview_data(resource: Resource) -> Optional[PreviewData]:
         )
         return None
 
+
+# Maximum rows that can be returned in a single fetch_resource_data call
+MAX_FETCH_LIMIT = 10000
+DEFAULT_FETCH_LIMIT = 100
+
+
+class DataFetchError(Exception):
+    """Raised when fetch_resource_data receives invalid input."""
+
+
+def get_resource_columns(resource: Resource) -> List[str]:
+    """Return the list of indexed column names for a resource.
+
+    Falls back to inspecting the data_db table if no ResourceSchema rows exist.
+    """
+    cols = list(
+        ResourceSchema.objects.filter(resource=resource).values_list("field_name", flat=True)
+    )
+    if cols:
+        return cols
+    # Fallback: introspect the table directly
+    try:
+        data_table = ResourceDataTable.objects.get(resource=resource)
+        with connections[DATA_DB].cursor() as cursor:
+            cursor.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = %s ORDER BY ordinal_position",
+                [data_table.table_name],
+            )
+            return [row[0] for row in cursor.fetchall()]
+    except ResourceDataTable.DoesNotExist:
+        return []
+
+
+def _column_ident(column: str) -> pg_sql.Identifier:
+    """Quote a column name for a query that will be run with parameters.
+
+    psycopg2 fills in ``%s`` placeholders by %-formatting the whole query
+    text, quoted names included, so a header like "Literacy rate (%)" breaks
+    the query unless its ``%`` is doubled. Every query in
+    ``fetch_resource_data`` is run with a parameter list, so the doubled
+    ``%%`` always comes back out as ``%``.
+    """
+    return pg_sql.Identifier(column.replace("%", "%%"))
+
+
+def _parse_filter_key(key: str) -> Tuple[str, str]:
+    """Split 'col__op' style filter key into (column, op). Defaults op to 'eq'."""
+    if "__" in key:
+        col, op = key.rsplit("__", 1)
+        if op not in _FILTER_OPERATORS:
+            # No valid operator suffix — treat full key as column with eq
+            return key, "eq"
+        return col, op
+    return key, "eq"
+
+
+def _build_where_clause(
+    filters: Dict[str, Any], allowed_columns: List[str]
+) -> Tuple[pg_sql.Composable, List[Any]]:
+    """Build a parameterized WHERE clause from a filters dict.
+
+    Filters are of the form ``{"column": value}`` for equality, or
+    ``{"column__op": value}`` for other operators. Unknown columns are rejected.
+    """
+    if not filters:
+        return pg_sql.SQL(""), []
+
+    allowed_set = set(allowed_columns)
+    clauses: List[pg_sql.Composable] = []
+    params: List[Any] = []
+
+    for raw_key, value in filters.items():
+        col, op = _parse_filter_key(raw_key)
+        if col not in allowed_set:
+            raise DataFetchError(f"Unknown filter column: {col}")
+        op_template, transformer = _FILTER_OPERATORS[op]
+
+        col_ident = _column_ident(col)
+        if op in ("isnull", "notnull"):
+            # Boolean toggle: isnull=true means IS NULL, isnull=false means IS NOT NULL
+            truthy = value not in (False, "false", "False", 0, "0", None)
+            sql_op = "IS NULL" if (op == "isnull") == truthy else "IS NOT NULL"
+            clauses.append(pg_sql.SQL("{col} {op}").format(col=col_ident, op=pg_sql.SQL(sql_op)))
+            continue
+
+        # Compose: <col> <op_template> (where op_template contains %s placeholders)
+        clauses.append(pg_sql.SQL("{col} ").format(col=col_ident) + pg_sql.SQL(op_template))
+        params.append(transformer(value) if transformer else value)
+
+    where_sql = pg_sql.SQL(" WHERE ") + pg_sql.SQL(" AND ").join(clauses)
+    return where_sql, params
+
+
+def _build_order_by(order_by: Optional[List[str]], allowed_columns: List[str]) -> pg_sql.Composable:
+    """Build a parameterised ORDER BY clause. Each entry may be 'col' or '-col'."""
+    if not order_by:
+        return pg_sql.SQL("")
+    allowed_set = set(allowed_columns)
+    parts: List[pg_sql.Composable] = []
+    for item in order_by:
+        direction = "ASC"
+        col = item
+        if item.startswith("-"):
+            direction = "DESC"
+            col = item[1:]
+        elif item.startswith("+"):
+            col = item[1:]
+        if col not in allowed_set:
+            raise DataFetchError(f"Unknown order_by column: {col}")
+        parts.append(pg_sql.SQL("{col} ").format(col=_column_ident(col)) + pg_sql.SQL(direction))
+    return pg_sql.SQL(" ORDER BY ") + pg_sql.SQL(", ").join(parts)
+
+
+def _build_select_list(columns: List[str]) -> pg_sql.Composable:
+    """Build the comma-separated list of quoted column names to SELECT."""
+    return pg_sql.SQL(", ").join(_column_ident(c) for c in columns)
+
+
+def fetch_resource_data(
+    resource: Resource,
+    filters: Optional[Dict[str, Any]] = None,
+    columns: Optional[List[str]] = None,
+    limit: int = DEFAULT_FETCH_LIMIT,
+    offset: int = 0,
+    order_by: Optional[List[str]] = None,
+    count: bool = True,
+) -> Dict[str, Any]:
+    """Fetch indexed data for a Resource from data_db with column-level filtering.
+
+    Returns a dict::
+
+        {
+            "columns": [...],  # selected column names
+            "rows": [[...], ...],  # list of rows (one list per row)
+            "total": <int or None>,  # total matching rows (None if count=False)
+            "limit": <int>,
+            "offset": <int>,
+        }
+
+    Args:
+        resource: The Resource whose indexed data should be fetched.
+        filters: Optional dict of ``{"col": val}`` or ``{"col__op": val}`` filters.
+        columns: Optional list of columns to project. Defaults to all columns.
+        limit: Max rows to return (capped at MAX_FETCH_LIMIT).
+        offset: Number of rows to skip.
+        order_by: Optional list of columns; prefix with ``-`` for DESC.
+        count: When True (default) also returns the total matching row count.
+
+    Raises:
+        DataFetchError: If the resource has no indexed data, or filters/columns
+            reference unknown columns.
+    """
+    try:
+        data_table = ResourceDataTable.objects.get(resource=resource)
+    except ResourceDataTable.DoesNotExist:
+        raise DataFetchError(f"Resource {resource.id} has no indexed data table")
+
+    allowed_columns = get_resource_columns(resource)
+    if not allowed_columns:
+        raise DataFetchError(f"Resource {resource.id} has no schema/columns available")
+
+    # Validate and resolve projected columns
+    if columns:
+        unknown = [c for c in columns if c not in allowed_columns]
+        if unknown:
+            raise DataFetchError(f"Unknown columns: {unknown}")
+        select_columns = columns
+    else:
+        select_columns = allowed_columns
+
+    # Clamp pagination
+    if limit is None or limit <= 0:
+        limit = DEFAULT_FETCH_LIMIT
+    limit = min(int(limit), MAX_FETCH_LIMIT)
+    offset = max(int(offset or 0), 0)
+
+    table_ident = pg_sql.Identifier(data_table.table_name)
+    cols_sql = _build_select_list(select_columns)
+    where_sql, params = _build_where_clause(filters or {}, allowed_columns)
+    order_sql = _build_order_by(order_by, allowed_columns)
+
+    select_query = (
+        pg_sql.SQL("SELECT ")
+        + cols_sql
+        + pg_sql.SQL(" FROM ")
+        + table_ident
+        + where_sql
+        + order_sql
+        + pg_sql.SQL(" LIMIT %s OFFSET %s")
+    )
+
+    total: Optional[int] = None
+    with connections[DATA_DB].cursor() as cursor:
+        # Safety: cap query time
+        cursor.execute("SET statement_timeout = 10000")
+
+        if count:
+            count_query = pg_sql.SQL("SELECT COUNT(*) FROM ") + table_ident + where_sql
+            cursor.execute(count_query, params)
+            row = cursor.fetchone()
+            total = int(row[0]) if row else 0
+
+        cursor.execute(select_query, params + [limit, offset])
+        result_columns = [desc[0] for desc in cursor.description]
+        rows = [list(r) for r in cursor.fetchall()]
+
+    return {
+        "columns": result_columns,
+        "rows": rows,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
