@@ -336,7 +336,7 @@ n/a — all assertions are deterministic.
 
 ## Limitations & future work
 - **A failed re-upload still reports success to the uploader.** This is existing behaviour: the mutations ignore the indexing result. Now the old data stays served while the download serves the new file, until a successful re-upload. Surfacing the failure would change the upload API's contract and is left for a decision.
-- **Two long headers that differ only after 63 bytes** become one column in Postgres, so the build fails. Devanagari headers hit this at about 21 characters. This existed before and is not fixed here.
+- **TODO — two long headers that differ only after 63 bytes** become one column in Postgres, so the build fails and that file never gets a table (the upload still reports success; see the first item). Devanagari headers hit this at about 21 characters. This existed before and is not fixed yet. A fix would catch names that only clash once cut to 63 bytes during column clean-up, and either shorten them uniquely (keeping the stored column names in step) or refuse the file with a clear reason. A `TODO` comment marks the spot in `_clean_column_names` (`data_tables.py`).
 - **Access-model column selections are reset** whenever column rows are rebuilt (every re-upload, and migration rebuilds). Carrying them over by column name would be a small follow-up.
 - **Readers still use f-string table names.** That is safe for `rdt_` names; they were left as they are deliberately.
 - The plan's failure table said 5 s for the rename lock timeout. The design and the code use 2 s for renames and 5 s for drops.

@@ -185,6 +185,9 @@ def _load_with_timeout(
 
 
 def _clean_column_names(columns: List[Any]) -> List[str]:
+    # TODO: Postgres keeps only the first 63 bytes of a column name, so two headers that
+    # differ only after that (about 21 Devanagari characters) become one column and the
+    # file never gets a table. Known, not fixed yet: data_indexing_architecture.md, Limitations.
     cleaned = [str(c).replace('"', "").replace("\n", " ").replace("\t", " ") for c in columns]
     seen: Counter = Counter()
     unique = []
