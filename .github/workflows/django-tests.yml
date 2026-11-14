@@ -16,6 +16,20 @@ jobs:
   django-tests:
     runs-on: ubuntu-latest
 
+    # The data database: tests marked data_db build real tables in it.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
 
@@ -40,6 +54,10 @@ jobs:
       # tests/object_types/charts and the dataset metadata tests were left
       # behind by the chart consolidation and fail on main: see #189.
       - name: Run tests
+        env:
+          TEST_DATA_DB_URL: postgres://postgres:postgres@localhost:5432/postgres
+          # Fail the run instead of skipping the data_db tests if the database is missing.
+          REQUIRE_DATA_DB_TESTS: "1"
         run: |
           pytest tests/ \
             --ignore=tests/object_types/charts \

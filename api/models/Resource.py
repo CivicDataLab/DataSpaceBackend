@@ -11,6 +11,7 @@ from django.utils.text import slugify
 
 logger = structlog.getLogger(__name__)
 
+from api.utils.data_table_names import data_table_name
 from api.utils.enums import DataType
 from api.utils.storage import private_storage
 
@@ -101,11 +102,8 @@ class ResourceDataTable(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.table_name:
-            # Generate a unique table name based on resource ID
-            safe_name = slugify(self.resource.name)[:50]
-            safe_title = slugify(self.resource.dataset.title)[:50]
-            resource_id = self.resource.id.hex[:8]  # Use shorter ID
-            self.table_name = f"{safe_name}_{safe_title}_{resource_id}"
+            # Named from this row's own id: unique, and never cut by Postgres's 63-byte limit.
+            self.table_name = data_table_name(self.id)
         super().save(*args, **kwargs)
 
 
