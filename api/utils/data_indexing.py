@@ -28,7 +28,7 @@ from api.utils.data_tables import (  # noqa: F401 — DATA_DB, INDEXED_FORMATS, 
     build_data_table,
     data_table_row_exists,
     describe_data_table,
-    drop_data_table,
+    drop_unswitched_table,
     error_fields,
     get_sql_type,
     has_indexable_file,
@@ -139,9 +139,10 @@ def index_resource_data(
     except Exception as error:
         logger.error("data_index_failed", resource_id=resource_id, **error_fields(error))
     finally:
-        # Anything short of a confirmed switch leaves this build's table unused: drop it.
+        # Short of a confirmed switch, drop this build's table, unless its row was saved
+        # after all (e.g. a run stopped while the old table's drop was waiting).
         if not switched:
-            drop_data_table(new_row.table_name)
+            drop_unswitched_table(new_row)
 
     if not switched:
         return None

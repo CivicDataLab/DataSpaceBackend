@@ -359,6 +359,29 @@ def drop_data_table(table_name: str) -> bool:
     return True
 
 
+def drop_unswitched_table(row: ResourceDataTable) -> None:
+    """Drop the table of a build whose switch wasn't confirmed, unless its row was saved after all.
+
+    The switch can commit and still not be confirmed: a run stopped (Ctrl+C)
+    while the old table's after-commit drop was waiting, or a commit that went
+    through but reported an error. So the row is checked first; if it exists,
+    the table is the resource's live data and stays. If the check itself fails,
+    the table is left for the migration command's orphan audit. Never raises
+    an Exception.
+    """
+    try:
+        saved = data_table_row_exists(row.pk)
+    except Exception as error:
+        logger.error(
+            "data_index_switch_check_failed", table_name=row.table_name, **error_fields(error)
+        )
+        return
+    if saved:
+        logger.warning("data_index_switch_saved_after_all", table_name=row.table_name)
+        return
+    drop_data_table(row.table_name)
+
+
 def drop_data_table_if_unshared(table_name: str, row_id: Any) -> None:
     """Drop a deleted row's table, unless another row still uses the same physical table.
 

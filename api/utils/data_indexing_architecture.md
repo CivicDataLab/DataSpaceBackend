@@ -48,7 +48,7 @@ A publisher uploads or replaces a tabular file. Visitors then preview it, chart 
    4. save the new row, carrying over the old row's `created` (see "Dataset default table" below);
    5. rebuild the `ResourceSchema` column rows (descriptions people wrote are kept by column name). Errors escape, and a header longer than the 255-character `field_name` is refused up front.
 7. **Confirm the switch.** It counts only if the new row exists after the transaction.
-8. **`finally`: drop this build's table unless step 7 confirmed the switch.** That covers a failed build, a failed switch, a newer file, a missing row, and even `KeyboardInterrupt`.
+8. **`finally`: drop this build's table unless step 7 confirmed the switch.** That covers a failed build, a failed switch, a newer file, a missing row, and even `KeyboardInterrupt`. Before dropping, it checks the database: if the new row was saved after all (a command stopped with Ctrl+C while the old table's after-commit drop waited for a reader, or a commit that went through but reported an error), the table is the resource's live data and stays. If the check itself fails, the table is left for the orphan audit.
 9. After the commit, the receiver drops the old table (see Delete clean-up).
 
 Returns the new `ResourceDataTable`, or None when the resource was not switched (each reason logged).
@@ -72,6 +72,7 @@ Returns the new `ResourceDataTable`, or None when the resource was not switched 
 - `save_data_table_row(row, created)`: inserts, then sets `created` with a queryset update (it's `auto_now_add`).
 - `rebuild_resource_schema(resource, frame)`: replaces column rows. Raises `ValueError("column N header is longer than 255 characters")` and lets DB errors escape.
 - `data_table_row_exists(row_id) -> bool`.
+- `drop_unswitched_table(row)`: the flow's clean-up. It drops the build's table only if its row isn't saved, and leaves it when the check fails. Never raises.
 - `drop_data_table(name) -> bool`: `DROP TABLE IF EXISTS` with `SET LOCAL lock_timeout = '5s'`. Never raises: a failure is logged (`data_table_drop_failed`) and the table is left as an orphan for the migration command to report.
 - `error_fields(error) -> dict`: `error_type`, Postgres `error_code`, and `where` (innermost frame in `api/`). **Never the message**, because COPY errors quote the offending cell value.
 - `get_sql_type(dtype) -> str`: BIGINT / DOUBLE PRECISION / TIMESTAMP / BOOLEAN / TEXT (moved here; still importable from `data_indexing`, as are `DATA_DB` and `INDEXED_FORMATS`).
@@ -167,6 +168,7 @@ No file contents or values appear in the report.
 2. Off-peak: `python manage.py migrate_data_table_names --report dry.json`. Review `counts`, `shared_groups`, `needs_manual_fix` (restore files first if you can), `unverified_tables` and `orphans`.
 3. `python manage.py migrate_data_table_names --apply --report apply1.json`. Rerun until it prints "nothing to do".
    - `skipped_lock` and `failed` rows are retried.
+   - A row that comes back `failed` on two runs in a row needs a person: its file is stored and in a supported format but won't load or switch (it doesn't parse, has only a header, or has a header over 255 characters). Find it under `rows` with outcome `failed`, using the resource id and the `data_index_failed` / `data_index_load_failed` log lines. Its old table keeps serving unmarked, and a long one may hold another resource's data.
    - A shared table whose file is missing is marked on the run after its sharers move.
 4. At least an hour later: `python manage.py migrate_data_table_names --report orphans.json`. Review the orphan list and remove from the file any table you want kept.
 5. `python manage.py migrate_data_table_names --apply --drop-orphans --from-report orphans.json --report drop.json`.
@@ -241,6 +243,7 @@ How the setup works:
 - **Uploads:** a first upload creates the row, the table, the column rows and the comment. A re-upload switches to a new table, drops the old one and keeps custom descriptions.
 - **Switch timing:** at the moment of the switch the new table is full and the old one still exists, and the lock is taken inside the switch transaction. The old table is dropped only after commit, with no transaction open and the new row saved.
 - **Failures keep the old data:** a value out of range mid-copy keeps the old row and table, leaves no new table, and logs error code 22003 without the value. A 300-character header fails the switch, keeps the old row, table and column rows, and drops the new table.
+- **Stopped runs:** a run stopped (KeyboardInterrupt) while the old table's after-commit drop waits keeps the new table the resource already points at. The clean-up keeps a table whose row is saved, drops one whose row isn't, and leaves it when the check fails.
 - **Readers and races:** a reader still holding the old name gets "does not exist", never new rows. A slower build of an older file backs off when a newer file was saved, and the newer one stays.
 - **Transaction and default:** indexing inside an outer transaction is refused and builds nothing. A re-upload keeps the row's `created` and the dataset's default table in the data API.
 - **Deletes:** deleting a resource drops its table; deleting a dataset drops all its tables; a rolled-back delete keeps the table. Two legacy rows sharing a table: the table is kept until the last one is deleted. A drop of a table that's already gone doesn't fail. A drop blocked past the lock timeout is logged and the delete still succeeds.
@@ -274,7 +277,7 @@ How the setup works:
 
 ### Layer 3 — Flow tests
 - **Upload flow order:** load → name → build → lock → file check → retire → save → rebuild columns → confirm.
-- **Clean-up:** this build's table is dropped when the build, lock, retire or column rebuild fails, on a newer file, when the row is missing after commit, and on `KeyboardInterrupt`. It is never dropped after a confirmed switch.
+- **Clean-up:** the unswitched-build clean-up runs when the build, lock, retire or column rebuild fails, on a newer file, when the row is missing after commit, and on `KeyboardInterrupt`. It never runs after a confirmed switch.
 - **Nothing to index:** nothing is built when inside a transaction, when there is no indexable file, or when nothing loaded.
 - **Receiver:** schedules one guarded drop per deleted row, via `on_commit(robust=True)`.
 - **Command:** the safety check runs first; a dry run changes nothing and writes the report; `--apply` runs row updates → renames → rebuilds (in plan order) → re-indexes; a failed safety check stops before any read; orphans are dropped only with `--apply` and a reviewed report.

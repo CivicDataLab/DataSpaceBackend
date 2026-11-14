@@ -28,6 +28,8 @@ from api.utils.data_indexing import index_resource_data
 from api.utils.data_tables import (
     FileIdentity,
     LoadedFile,
+    build_data_table,
+    drop_unswitched_table,
     has_indexable_file,
     load_resource_frame,
     rebuild_resource_schema,
@@ -183,6 +185,46 @@ def test_a_reader_still_holding_the_old_name_gets_does_not_exist_not_new_rows(
 
 
 @uses_data_db
+def test_a_run_stopped_while_the_old_table_is_dropped_keeps_the_new_table(
+    add_resource: Any, tables: Any
+) -> None:
+    resource = add_resource("cases.csv", "districts_v1.csv")
+    old = index_resource_data(resource)
+    replace_file(resource, "districts_v2.csv")
+
+    def stopped_by_the_operator(table_name: str, row_id: Any) -> None:
+        raise KeyboardInterrupt  # Ctrl+C while the old table's drop waits for a reader
+
+    with patch(
+        "api.signals.data_table_signals.drop_data_table_if_unshared", stopped_by_the_operator
+    ):
+        with pytest.raises(KeyboardInterrupt):
+            index_resource_data(resource)
+
+    current = ResourceDataTable.objects.get(resource=resource)
+    assert current.pk != old.pk  # the switch had committed
+    assert tables.exists(current.table_name)
+    assert len(tables.rows(current.table_name)) == 4
+
+
+@uses_data_db
+def test_dropping_an_unswitched_build_checks_the_row_first(add_resource: Any, tables: Any) -> None:
+    resource = add_resource("cases.csv", "districts_v1.csv")
+    saved = index_resource_data(resource)
+    unsaved = data_tables.new_data_table_row(resource)
+    build_data_table(unsaved.table_name, pd.DataFrame({"a": [1]}), "{}")
+
+    drop_unswitched_table(saved)
+    drop_unswitched_table(unsaved)
+    assert tables.exists(saved.table_name)
+    assert not tables.exists(unsaved.table_name)
+
+    with patch("api.utils.data_tables.data_table_row_exists", side_effect=RuntimeError("db gone")):
+        drop_unswitched_table(saved)  # can't tell: leave it for the orphan audit
+    assert tables.exists(saved.table_name)
+
+
+@uses_data_db
 def test_a_slower_build_of_an_older_file_backs_off_when_a_newer_file_was_saved(
     add_resource: Any, tables: Any
 ) -> None:
@@ -319,7 +361,7 @@ FLOW_HELPERS = [
     "save_data_table_row",
     "rebuild_resource_schema",
     "data_table_row_exists",
-    "drop_data_table",
+    "drop_unswitched_table",
 ]
 FILE = FileIdentity("resources/cases.csv", "abc123")
 
@@ -385,7 +427,7 @@ def test_flow_drops_its_table_when_a_step_fails(flow: Any, helper: str) -> None:
 
     assert index_resource_data(MagicMock()) is None
 
-    flow.drop_data_table.assert_called_once_with("rdt_new")
+    flow.drop_unswitched_table.assert_called_once_with(flow.new_data_table_row.return_value)
 
 
 def test_flow_drops_its_table_when_a_newer_file_was_saved(flow: Any) -> None:
@@ -394,7 +436,7 @@ def test_flow_drops_its_table_when_a_newer_file_was_saved(flow: Any) -> None:
     assert index_resource_data(MagicMock()) is None
 
     flow.retire_data_table_row.assert_not_called()
-    flow.drop_data_table.assert_called_once_with("rdt_new")
+    flow.drop_unswitched_table.assert_called_once_with(flow.new_data_table_row.return_value)
 
 
 def test_flow_drops_its_table_when_the_new_row_is_missing_after_the_commit(flow: Any) -> None:
@@ -402,7 +444,7 @@ def test_flow_drops_its_table_when_the_new_row_is_missing_after_the_commit(flow:
 
     assert index_resource_data(MagicMock()) is None
 
-    flow.drop_data_table.assert_called_once_with("rdt_new")
+    flow.drop_unswitched_table.assert_called_once_with(flow.new_data_table_row.return_value)
 
 
 def test_flow_drops_its_table_even_when_interrupted(flow: Any) -> None:
@@ -411,12 +453,12 @@ def test_flow_drops_its_table_even_when_interrupted(flow: Any) -> None:
     with pytest.raises(KeyboardInterrupt):
         index_resource_data(MagicMock())
 
-    flow.drop_data_table.assert_called_once_with("rdt_new")
+    flow.drop_unswitched_table.assert_called_once_with(flow.new_data_table_row.return_value)
 
 
 def test_flow_keeps_the_table_after_a_confirmed_switch(flow: Any) -> None:
     index_resource_data(MagicMock())
-    flow.drop_data_table.assert_not_called()
+    flow.drop_unswitched_table.assert_not_called()
 
 
 @pytest.mark.parametrize("stop_at", ["inside_transaction", "no_file", "nothing_loaded"])
@@ -431,4 +473,4 @@ def test_flow_builds_nothing_when_there_is_nothing_to_index(flow: Any, stop_at: 
     assert index_resource_data(MagicMock()) is None
 
     flow.build_data_table.assert_not_called()
-    flow.drop_data_table.assert_not_called()
+    flow.drop_unswitched_table.assert_not_called()
