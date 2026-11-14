@@ -1,23 +1,50 @@
-from typing import Any, Dict, Generator, List, Optional, Tuple
+"""Copying tabular uploads into the data database, and reading them back.
+
+The upload flow is ``index_resource_data`` below; its helpers live in
+./data_tables.py. The rest of this module reads the tables (row count,
+preview, column list, the data API's filtered fetch, chart queries); every
+reader looks the table up from the resource's ResourceDataTable row.
+
+Docs: ./data_indexing_architecture.md
+"""
+
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import structlog
 from django.db import connections, transaction
 from django.db.utils import ProgrammingError
+from django.utils import timezone
 from psycopg2 import sql as pg_sql  # type: ignore[import-untyped]
 
 from api.models.Resource import Resource, ResourceDataTable
 from api.models.ResourceSchema import ResourceSchema
 from api.types.type_preview_data import PreviewData
-from api.utils.file_utils import load_tabular_data, local_copy
+from api.utils.data_tables import (  # noqa: F401 — DATA_DB, INDEXED_FORMATS, get_sql_type re-exported
+    DATA_DB,
+    INDEXED_FORMATS,
+    LOAD_TIMEOUT_SECONDS,
+    NewerFileSaved,
+    build_data_table,
+    data_table_row_exists,
+    describe_data_table,
+    drop_unswitched_table,
+    error_fields,
+    get_sql_type,
+    has_indexable_file,
+    is_inside_transaction,
+    load_resource_frame,
+    lock_resource,
+    new_data_table_row,
+    rebuild_resource_schema,
+    retire_data_table_row,
+    save_data_table_row,
+    stored_file_identity,
+)
+from api.utils.file_utils import local_copy
 
 logger = structlog.get_logger("dataspace.data_indexing")
 
-# Use a separate database for data tables
-DATA_DB = "data_db"  # This should match the connection name in settings.py
-
-# Formats indexed into ResourceDataTable (queryable via get_row_count)
-INDEXED_FORMATS = {"csv", "xls", "xlsx", "ods", "parquet", "feather", "json", "tsv"}
 # Formats counted by parsing the file directly (not indexed into DB)
 FILE_COUNT_FORMATS = {"yml", "yaml", "xml"}
 
@@ -43,313 +70,84 @@ _FILTER_OPERATORS: Dict[str, Tuple[str, Any]] = {
 }
 
 
-def get_sql_type(pandas_dtype: str) -> str:
-    """Convert pandas dtype to SQL type."""
-    if "int" in pandas_dtype:
-        return "BIGINT"
-    elif "float" in pandas_dtype:
-        return "DOUBLE PRECISION"
-    elif "datetime" in pandas_dtype:
-        return "TIMESTAMP"
-    elif "bool" in pandas_dtype:
-        return "BOOLEAN"
-    else:
-        return "TEXT"
+def index_resource_data(
+    resource: Resource, load_timeout: Optional[int] = LOAD_TIMEOUT_SECONDS
+) -> Optional[ResourceDataTable]:
+    """Copy a resource's tabular file into a table of its own in the data database.
 
+    Every upload gets a new table, named from its new ResourceDataTable row.
+    The table is built in full first; then one main-database commit points the
+    resource at it and rebuilds the column list. The old table is dropped after
+    that commit by the row's delete receiver. Readers see the complete old data
+    until the commit, then the complete new data. If anything fails, the old
+    data stays as it was and this build's table is dropped.
 
-def create_table_for_resource(resource: Resource, df: pd.DataFrame) -> Optional[ResourceDataTable]:
-    """Create a database table for the resource data and index it."""
-    try:
-        # Create ResourceDataTable entry first to get the table name
-        data_table = ResourceDataTable.objects.create(resource=resource)
-        table_name = data_table.table_name
-
-        # Get column types
-        column_types = {col: get_sql_type(str(df[col].dtype)) for col in df.columns}
-
-        # Create table in the data database
-        with connections[DATA_DB].cursor() as cursor:
-            # Drop table if exists
-            cursor.execute(f'DROP TABLE IF EXISTS "{table_name}"')
-
-            # Create table with proper column types
-            columns = [f'"{col}" {dtype}' for col, dtype in column_types.items()]
-            create_table_sql = f'CREATE TABLE "{table_name}" ({", ".join(columns)})'
-            cursor.execute(create_table_sql)
-
-            # Create temporary table for COPY
-            temp_table = f"temp_{table_name}"
-            cursor.execute(f'CREATE TEMP TABLE "{temp_table}" (LIKE "{table_name}")')
-
-            # Copy data to temp table
-            quoted_columns = [f'"{col}"' for col in df.columns]
-            # Use StringIO to create a file-like object for the CSV data
-            from io import StringIO
-
-            csv_data = StringIO()
-            df.to_csv(csv_data, index=False, header=False)
-            csv_data.seek(0)
-
-            copy_sql = f'COPY "{temp_table}" ({",".join(quoted_columns)}) FROM STDIN WITH CSV'
-            cursor.copy_expert(copy_sql, csv_data)
-
-            # Insert from temp to main table with validation
-            cursor.execute(f'INSERT INTO "{table_name}" SELECT * FROM "{temp_table}"')
-            cursor.execute(f'DROP TABLE "{temp_table}"')
-
-        return data_table
-
-    except Exception as e:
-        logger.error(f"Error creating table for resource {resource.id}: {str(e)}")
-        if "data_table" in locals():
-            data_table.delete()
-        return None
-
-
-def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
-    """Index a resource's CSV data into a database table.
-
-    This function handles the indexing process gracefully, catching and logging
-    specific errors at each stage of the process without crashing.
-
-    Args:
-        resource: The Resource object to index
-
-    Returns:
-        Optional[ResourceDataTable]: The created data table or None if indexing failed
+    Must be called outside any transaction, so "committed" really means
+    committed. ``load_timeout`` limits reading the file (seconds; None for no
+    limit, as the migration command uses). Returns the new ResourceDataTable,
+    or None when the resource was not switched over.
     """
-    resource_id = getattr(resource, "id", "unknown")
+    resource_id = str(resource.id)
 
-    try:
-        # Check if resource is a supported tabular file
-        try:
-            file_details = resource.resourcefiledetails
-            if not file_details:
-                logger.info(f"Resource {resource_id} has no file details, skipping indexing")
-                return None
-        except Exception as e:
-            logger.error(f"Failed to access file details for resource {resource_id}: {str(e)}")
-            return None
-
-        # Check file format
-        try:
-            format = file_details.format.lower()
-            supported_formats = [
-                "csv",
-                "xls",
-                "xlsx",
-                "ods",
-                "parquet",
-                "feather",
-                "json",
-                "tsv",
-            ]
-            if format not in supported_formats:
-                logger.info(
-                    f"Resource {resource_id} has unsupported format: {format}, skipping indexing"
-                )
-                return None
-        except Exception as e:
-            logger.error(f"Failed to determine format for resource {resource_id}: {str(e)}")
-            return None
-
-        # Load tabular data with timeout protection
-        try:
-            import signal
-            from contextlib import contextmanager
-
-            @contextmanager
-            def timeout(seconds: int) -> Generator[None, None, None]:
-                def handler(signum: int, frame: Any) -> None:
-                    raise TimeoutError(f"Loading data timed out after {seconds} seconds")
-
-                # Set the timeout handler
-                original_handler = signal.getsignal(signal.SIGALRM)
-                signal.signal(signal.SIGALRM, handler)
-                signal.alarm(seconds)
-                try:
-                    yield
-                finally:
-                    signal.alarm(0)
-                    signal.signal(signal.SIGALRM, original_handler)
-
-            with local_copy(file_details.file) as file_path:
-                # Apply timeout only on Unix-based systems where signal.SIGALRM is available
-                try:
-                    with timeout(60):  # 60 second timeout for loading data
-                        df = load_tabular_data(file_path, format)
-                except TimeoutError as te:
-                    logger.error(
-                        f"Timeout while loading data for resource {resource_id}: {str(te)}"
-                    )
-                    return None
-                except Exception:
-                    # Fallback without timeout if signal.SIGALRM is not available (e.g., on Windows)
-                    df = load_tabular_data(file_path, format)
-
-            if df is None:
-                logger.error(
-                    f"Failed to load data for resource {resource_id}: Data loading returned None"
-                )
-                return None
-            if df.empty:
-                logger.info(f"Resource {resource_id} has empty data, skipping indexing")
-                return None
-
-            # Check for problematic column names and sanitize them
-            try:
-                # Replace problematic characters in column names
-                # Create a new list of sanitized column names
-                sanitized_columns = [
-                    str(col).replace('"', "").replace("\n", " ").replace("\t", " ")
-                    for col in df.columns
-                ]
-                # Assign to df.columns using pandas Index constructor
-                df.columns = pd.Index(sanitized_columns)
-
-                # Check for duplicate column names after sanitization
-                if len(df.columns) != len(set(df.columns)):
-                    # Handle duplicate columns by adding suffixes
-                    from collections import Counter
-
-                    col_counter = Counter(df.columns)
-                    for col, count in col_counter.items():
-                        if count > 1:
-                            # Find all occurrences of this column name
-                            indices = [i for i, x in enumerate(df.columns) if x == col]
-                            # Rename all but the first occurrence
-                            for i, idx in enumerate(indices[1:], 1):
-                                df.columns.values[idx] = f"{col}_{i}"
-                    logger.warning(f"Renamed duplicate columns in resource {resource_id}")
-            except Exception as e:
-                logger.error(
-                    f"Failed to sanitize column names for resource {resource_id}: {str(e)}"
-                )
-                return None
-
-        except Exception as e:
-            import traceback
-
-            logger.error(
-                f"Failed to load data for resource {resource_id}: {str(e)}\n{traceback.format_exc()}"
-            )
-            return None
-
-        # Create and index table within transaction
-        try:
-            with transaction.atomic():
-                # Delete existing table if any
-                try:
-                    existing_table = ResourceDataTable.objects.get(resource=resource)
-                    try:
-                        with connections[DATA_DB].cursor() as cursor:
-                            cursor.execute(f'DROP TABLE IF EXISTS "{existing_table.table_name}"')
-                    except Exception as drop_error:
-                        logger.error(
-                            f"Failed to drop existing table for resource {resource_id}: {str(drop_error)}"
-                        )
-                        # Continue anyway as we'll try to recreate the table
-
-                    existing_table.delete()
-                except ResourceDataTable.DoesNotExist:
-                    pass
-                except Exception as e:
-                    logger.error(
-                        f"Error handling existing table for resource {resource_id}: {str(e)}"
-                    )
-                    # Continue with table creation
-
-                # Create new table
-                data_table = create_table_for_resource(resource, df)
-                if not data_table:
-                    logger.error(f"Failed to create table for resource {resource_id}")
-                    return None
-
-                # Update resource schema
-                try:
-                    # Store existing schema descriptions to preserve them during re-indexing
-                    existing_schemas: Dict[str, Dict[str, Optional[str]]] = {}
-                    for schema in ResourceSchema.objects.filter(
-                        resource=resource
-                    ):  # type: ResourceSchema
-                        existing_schemas[schema.field_name] = {
-                            "description": schema.description,
-                            "format": schema.format,
-                        }
-
-                    # Clear existing schema for this resource
-                    ResourceSchema.objects.filter(resource=resource).delete()
-
-                    # Then create new schema entries for each column, preserving descriptions where possible
-                    schema_success_count = 0
-                    schema_error_count = 0
-
-                    for col in df.columns:
-                        try:
-                            # Determine format - always use the detected format from the data
-                            sql_type = get_sql_type(str(df[col].dtype))
-
-                            # Map SQL types to FieldTypes enum values
-                            if sql_type == "BIGINT":
-                                format_value = "INTEGER"
-                            elif sql_type == "DOUBLE PRECISION":
-                                format_value = "NUMBER"
-                            elif sql_type == "TIMESTAMP":
-                                format_value = "DATE"
-                            elif sql_type == "BOOLEAN":
-                                format_value = "BOOLEAN"
-                            else:  # TEXT or any other type
-                                format_value = "STRING"
-
-                            # For description, preserve existing if available, otherwise auto-generate
-                            description = f"Description of column {col}"
-                            if col in existing_schemas:
-                                existing_description = existing_schemas[col]["description"]
-                                # Check for None and non-auto-generated descriptions
-                                if existing_description is not None:
-                                    description = existing_description
-                                    logger.debug(f"Preserved custom description for column {col}")
-
-                            # Create the schema entry
-                            ResourceSchema.objects.create(
-                                resource=resource,
-                                field_name=col,
-                                format=format_value,
-                                description=description,
-                            )
-                            schema_success_count += 1
-                        except Exception as schema_error:
-                            schema_error_count += 1
-                            logger.error(
-                                f"Error creating schema for column {col} in resource {resource_id}: {str(schema_error)}"
-                            )
-                            # Continue with other columns even if one fails
-
-                    logger.info(
-                        f"Resource {resource_id} schema creation: {schema_success_count} columns succeeded, {schema_error_count} failed"
-                    )
-                except Exception as schema_error:
-                    logger.error(
-                        f"Failed to update schema for resource {resource_id}: {str(schema_error)}"
-                    )
-                    # Continue and return the data_table even if schema update fails
-
-                return data_table
-        except Exception as tx_error:
-            import traceback
-
-            logger.error(
-                f"Transaction error for resource {resource_id}: {str(tx_error)}\n{traceback.format_exc()}"
-            )
-            return None
-
-    except Exception as e:
-        import traceback
-
-        logger.error(
-            f"Unexpected error indexing resource {resource_id}: {str(e)}\n{traceback.format_exc()}"
-        )
+    # Refuse to run inside someone else's transaction: the switch would only release a savepoint.
+    if is_inside_transaction():
+        logger.error("data_index_refused_inside_transaction", resource_id=resource_id)
         return None
+
+    # Only supported tabular files (csv, xlsx, parquet, ...) get a table.
+    if not has_indexable_file(resource):
+        return None
+
+    # Read the file into a frame, remembering exactly which stored file it was.
+    loaded = load_resource_frame(resource, timeout=load_timeout)
+    if loaded is None:
+        return None
+
+    # This upload's own row, and with it its own table name.
+    new_row = new_data_table_row(resource)
+    switched = False
+    try:
+        # Build the complete new table; readers keep using the old one meanwhile.
+        build_data_table(
+            new_row.table_name, loaded.frame, describe_data_table(resource, built_at=timezone.now())
+        )
+
+        # Switch the resource over to the new table in one commit.
+        with transaction.atomic():
+            # Hold the resource, so two uploads of it switch one after the other.
+            lock_resource(resource)
+
+            # If a newer file was saved while we built, that upload wins: back off.
+            if stored_file_identity(resource) != loaded.file:
+                raise NewerFileSaved()
+
+            # Retire the old row; its table is dropped once this commits.
+            previous_created = retire_data_table_row(resource)
+
+            # Point the resource at the new table, keeping its place as the dataset's default.
+            save_data_table_row(new_row, created=previous_created)
+
+            # Rebuild the column list, keeping the descriptions people wrote.
+            rebuild_resource_schema(resource, loaded.frame)
+
+        # It only counts as switched if the new row really is there after the commit.
+        switched = data_table_row_exists(new_row.pk)
+        if not switched:
+            logger.error("data_index_switch_not_saved", resource_id=resource_id)
+    except NewerFileSaved:
+        logger.info("data_index_skipped_newer_file", resource_id=resource_id)
+    except Exception as error:
+        logger.error("data_index_failed", resource_id=resource_id, **error_fields(error))
+    finally:
+        # Short of a confirmed switch, drop this build's table, unless its row was saved
+        # after all (e.g. a run stopped while the old table's drop was waiting).
+        if not switched:
+            drop_unswitched_table(new_row)
+
+    if not switched:
+        return None
+    logger.info("data_index_switched", resource_id=resource_id, table_name=new_row.table_name)
+    return new_row
 
 
 def query_resource_data(resource: Resource, query: str) -> Optional[pd.DataFrame]:

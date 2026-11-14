@@ -184,6 +184,12 @@ def _validate_file_details_and_update_format(resource: Resource) -> None:
 
 def _create_file_resource_schema(resource: Resource) -> None:
     """Create file resource schema."""
+    # TODO: a failed indexing (the file saved, but its rows couldn't be loaded) still
+    # reports success, so the download serves the new file while previews, charts and
+    # the data API keep the old one. Pending a product decision: enforce the database's
+    # limits at upload (e.g. column names within 255 characters) and flag problem
+    # columns where people add column descriptions. See
+    # api/utils/data_indexing_architecture.md, Limitations.
     # Try to index CSV data if applicable
     data_table = index_resource_data(resource)
 

@@ -33,6 +33,18 @@ DATABASES = {
     }
 }
 
+# Data tables live in a second Postgres database. Tests that build them
+# (marked ``data_db``) run only when TEST_DATA_DB_URL points at a Postgres
+# server; pytest-django creates and drops its own database there. The router
+# keeps every Django model out of it, as in production.
+_TEST_DATA_DB_URL = os.environ.get("TEST_DATA_DB_URL")
+if _TEST_DATA_DB_URL:
+    DATABASES["data_db"] = {
+        **env.db_url_config(_TEST_DATA_DB_URL),  # noqa: F405 — from DataSpace.settings
+        "TEST": {"NAME": "test_dataspace_data_db"},
+    }
+    DATABASE_ROUTERS = ["tests.data_index.routers.DataDbTestRouter"]
+
 # Disable debug mode
 DEBUG = True
 

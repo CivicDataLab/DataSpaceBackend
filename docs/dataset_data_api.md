@@ -4,7 +4,8 @@ This document describes the HTTP endpoints and SDK methods for fetching the
 *indexed tabular data* that DataSpace stores in the `data_db` PostgreSQL
 database. When a CSV / XLSX / Parquet / JSON resource is uploaded, its rows are
 indexed into a per-resource table so they can be queried, filtered, and
-streamed without re-downloading the source file.
+streamed without re-downloading the source file. How those tables are built,
+named, replaced and cleaned up: `api/utils/data_indexing_architecture.md`.
 
 ## Overview
 
