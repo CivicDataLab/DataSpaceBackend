@@ -26,6 +26,7 @@ from api.views import (
     search_usecase,
     trending_datasets,
 )
+from api.views.query_engine.scope_view import ScopeView
 from api.views.activity import (
     DatasetActivityView,
     GlobalActivityView,
@@ -36,6 +37,8 @@ from api.views.activity import (
 )
 
 urlpatterns = [
+    # Internal, service-only endpoints for the query engine (docs: api/views/query_engine/architecture.md)
+    path("internal/qe/scope/", ScopeView.as_view(), name="qe_scope"),
     # Authentication endpoints
     path("auth/keycloak/login/", auth.KeycloakLoginView.as_view(), name="keycloak_login"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

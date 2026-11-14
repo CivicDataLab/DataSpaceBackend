@@ -21,6 +21,7 @@ googleapis-common-protos==1.65.0
 graphql-core==3.2.3
 gunicorn==23.0.0
 grpcio==1.68.1
+httpx==0.28.1  # query-engine embeddings and reranker clients (was only installed transitively)
 idna==3.6
 importlib-metadata==6.11.0
 numpy==1.26.4

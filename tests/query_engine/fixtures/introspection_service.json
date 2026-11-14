@@ -1,0 +1,23 @@
+{
+  "exp": 0,
+  "iat": 0,
+  "jti": "redacted-jti",
+  "iss": "https://auth.example.org/realms/DataSpace",
+  "sub": "00000000-0000-0000-0000-000000000001",
+  "typ": "Bearer",
+  "azp": "dataspace-query-engine-service",
+  "acr": "1",
+  "realm_access": {
+    "roles": ["default-roles-dataspace", "offline_access", "uma_authorization", "query-engine-service"]
+  },
+  "resource_access": {"account": {"roles": ["manage-account", "view-profile"]}},
+  "scope": "profile email",
+  "email_verified": false,
+  "clientHost": "10.0.0.1",
+  "preferred_username": "service-account-dataspace-query-engine-service",
+  "clientAddress": "10.0.0.1",
+  "client_id": "dataspace-query-engine-service",
+  "username": "service-account-dataspace-query-engine-service",
+  "token_type": "Bearer",
+  "active": true
+}

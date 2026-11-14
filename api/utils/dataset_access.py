@@ -14,7 +14,7 @@ from strawberry.permission import BasePermission
 from strawberry.types import Info
 
 from api.models import Dataset
-from api.utils.enums import DatasetStatus
+from api.utils.enums import DatasetAccessType, DatasetStatus, DatasetType
 from authorization.models import DatasetPermission, OrganizationMembership
 
 logger = structlog.get_logger(__name__)
@@ -88,6 +88,21 @@ def viewable_datasets_q(user: Any, prefix: str = "") -> Q:
         | Q(**{f"{prefix}organization_id__in": orgs.values("organization_id")})
         | Q(**{f"{prefix}id__in": shared.values("dataset_id")})
         | Q(**{f"{prefix}id__in": draft_editors.values("dataset_id")})
+    )
+
+
+def public_published_datasets_q(prefix: str = "") -> Q:
+    """Published, public, data-type datasets: everything anyone may read, as a filter.
+
+    The query engine's corpus. Prompt collections (``PROMPT`` datasets) are left
+    out. ``prefix`` reaches the dataset, e.g. "dataset__".
+    """
+    return Q(
+        **{
+            f"{prefix}status": DatasetStatus.PUBLISHED.value,
+            f"{prefix}access_type": DatasetAccessType.PUBLIC.value,
+            f"{prefix}dataset_type": DatasetType.DATA.value,
+        }
     )
 
 

@@ -324,6 +324,49 @@ ELASTICSEARCH_INDEX_NAMES = {
     "search.documents.publisher_document.UserPublisherDocument": "user_publisher",
 }
 
+# Query-engine data layer: internal, service-only endpoints under /api/internal/qe/
+# for the query engine (civicdataspace-assistant). Docs: api/views/query_engine/architecture.md
+INTERNAL_QE_PATH_PREFIX = "/api/internal/qe/"
+# The engine's Keycloak service client, and the role its service account must hold
+# (a realm role, or a client role on KEYCLOAK_CLIENT_ID).
+QE_SERVICE_CLIENT_ID = env("QE_SERVICE_CLIENT_ID", default="")
+QE_SERVICE_ROLE = env("QE_SERVICE_ROLE", default="query-engine-service")
+# Rollout: sector slugs platform scope is narrowed to (sub-sectors included) and the
+# collaborative public ids that may be a scope. Empty = no narrowing.
+# Entries are trimmed, so "climate-action, water" works as written.
+QE_PLATFORM_SECTORS = [s.strip() for s in env.list("QE_PLATFORM_SECTORS", default=[]) if s.strip()]
+QE_ENABLED_COLLABORATIVES = [
+    c.strip() for c in env.list("QE_ENABLED_COLLABORATIVES", default=[]) if c.strip()
+]
+# AI search: the index alias, the embedding model and the reranker (OpenRouter by default).
+QE_SEARCH_INDEX = env("QE_SEARCH_INDEX", default="qe_catalog")
+QE_EMBEDDINGS_URL = env("QE_EMBEDDINGS_URL", default="https://openrouter.ai/api/v1")
+QE_EMBEDDINGS_MODEL = env("QE_EMBEDDINGS_MODEL", default="google/gemini-embedding-2")
+QE_EMBEDDINGS_API_KEY = env("QE_EMBEDDINGS_API_KEY", default="")
+QE_EMBEDDINGS_DIMS = env.int("QE_EMBEDDINGS_DIMS", default=1536)
+QE_EMBEDDINGS_BATCH_SIZE = env.int("QE_EMBEDDINGS_BATCH_SIZE", default=32)
+QE_EMBEDDINGS_QUERY_INPUT_TYPE = env("QE_EMBEDDINGS_QUERY_INPUT_TYPE", default="")
+QE_EMBEDDINGS_DOC_INPUT_TYPE = env("QE_EMBEDDINGS_DOC_INPUT_TYPE", default="")
+QE_EMBEDDINGS_QUERY_PREFIX = env("QE_EMBEDDINGS_QUERY_PREFIX", default="")
+QE_EMBEDDINGS_DOC_PREFIX = env("QE_EMBEDDINGS_DOC_PREFIX", default="")
+QE_RERANK_URL = env("QE_RERANK_URL", default="https://openrouter.ai/api/v1")
+QE_RERANK_API_KEY = env("QE_RERANK_API_KEY", default="")
+QE_RERANK_MODEL = env("QE_RERANK_MODEL", default="cohere/rerank-5-pro")
+QE_RERANK_DOC_CHARS = env.int("QE_RERANK_DOC_CHARS", default=4000)
+# Weak-match thresholds; QE_WEAK_MATCH_RERANK overrides the active reranker's own value.
+QE_WEAK_MATCH_SIMILARITY = env.float("QE_WEAK_MATCH_SIMILARITY", default=0.55)
+QE_WEAK_MATCH_RERANK = env.float("QE_WEAK_MATCH_RERANK", default=None)
+# Reading data_db: per-statement time limits and the row cap of one query.
+QE_QUERY_TIMEOUT_MS = env.int("QE_QUERY_TIMEOUT_MS", default=5000)
+QE_PROFILE_TIMEOUT_MS = env.int("QE_PROFILE_TIMEOUT_MS", default=8000)
+QE_LOCK_TIMEOUT_MS = env.int("QE_LOCK_TIMEOUT_MS", default=2000)
+QE_QUERY_MAX_ROWS = env.int("QE_QUERY_MAX_ROWS", default=500)
+# The qe_sync background process: pass interval, time budget and per-pass caps.
+QE_SYNC_INTERVAL_SECONDS = env.int("QE_SYNC_INTERVAL_SECONDS", default=120)
+QE_SYNC_MAX_SECONDS = env.int("QE_SYNC_MAX_SECONDS", default=100)
+QE_PROFILES_PER_PASS = env.int("QE_PROFILES_PER_PASS", default=50)
+QE_DOCS_PER_PASS = env.int("QE_DOCS_PER_PASS", default=200)
+
 
 # Third-party platform imports (link-only). All three platforms work with no
 # key for public datasets. KAGGLE_* adds a file count to Kaggle imports,

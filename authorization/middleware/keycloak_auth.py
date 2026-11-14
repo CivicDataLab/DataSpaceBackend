@@ -1,6 +1,7 @@
 from typing import Any, Callable, cast
 
 import structlog
+from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest, HttpResponse
 
@@ -25,6 +26,11 @@ class KeycloakAuthenticationMiddleware:
         # Skip authentication for OPTIONS requests
         if request.method == "OPTIONS":
             logger.debug("Skipping authentication for OPTIONS request")
+            return self.get_response(request)
+
+        # Internal query-engine endpoints check the engine's service token themselves
+        # (authorization/service_auth.py); a user sync here would fail for a service account.
+        if request.path.startswith(settings.INTERNAL_QE_PATH_PREFIX):
             return self.get_response(request)
 
         # Process the request before the view is called
