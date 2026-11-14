@@ -5,6 +5,8 @@ resource's file, builds a brand-new table for it, then switches the resource's
 ResourceDataTable row over to that table in one main-database commit. Old tables
 are dropped after the commit by the row's delete receiver
 (api/signals/data_table_signals.py). Each helper here does one step of that.
+The last few (listing the data database's tables, the "is this really a
+separate database?" check) serve the ``migrate_data_table_names`` command.
 
 Tables live in the separate ``data_db`` database (its statements autocommit);
 the rows that point at them (ResourceDataTable, ResourceSchema) live in the
@@ -23,10 +25,11 @@ import traceback
 from collections import Counter
 from datetime import datetime
 from io import StringIO
-from typing import Any, Dict, List, NamedTuple, Optional
+from typing import Any, Dict, List, NamedTuple, Optional, Set
 
 import pandas as pd
 import structlog
+from django.apps import apps
 from django.db import connections, transaction
 from psycopg2 import sql as pg_sql  # type: ignore[import-untyped]
 
@@ -130,21 +133,23 @@ def has_indexable_file(resource: Resource) -> bool:
     return True
 
 
-def load_resource_frame(resource: Resource) -> Optional[LoadedFile]:
+def load_resource_frame(
+    resource: Resource, timeout: Optional[int] = LOAD_TIMEOUT_SECONDS
+) -> Optional[LoadedFile]:
     """Read the resource's stored file into a frame and note which file it was.
 
     Column names are cleaned the way tables have always needed them: double
     quotes removed, line breaks and tabs turned into spaces, and names that
     then collide get "_1", "_2", ... suffixes.
 
-    Returns None when the file can't be read, takes longer than
-    LOAD_TIMEOUT_SECONDS, or has no rows (each case logged).
+    Returns None when the file can't be read, takes longer than ``timeout``
+    seconds (None: no limit), or has no rows (each case logged).
     """
     file_details = resource.resourcefiledetails
     identity = FileIdentity(file_details.file.name, file_details.sha256)
     try:
         with local_copy(file_details.file) as path:
-            frame = _load_with_timeout(path, file_details.format.lower())
+            frame = _load_with_timeout(path, file_details.format.lower(), timeout)
     except Exception as error:
         logger.error("data_index_load_failed", resource_id=str(resource.id), **error_fields(error))
         return None
@@ -158,17 +163,20 @@ def load_resource_frame(resource: Resource) -> Optional[LoadedFile]:
     return LoadedFile(frame, identity)
 
 
-def _load_with_timeout(path: str, file_format: str) -> Optional[pd.DataFrame]:
+def _load_with_timeout(
+    path: str, file_format: str, timeout: Optional[int]
+) -> Optional[pd.DataFrame]:
     # SIGALRM only works in a Unix process's main thread; elsewhere (a server
     # worker thread) the file loads without a limit, as it always has.
-    if threading.current_thread() is not threading.main_thread() or not hasattr(signal, "SIGALRM"):
+    in_main_thread = threading.current_thread() is threading.main_thread()
+    if timeout is None or not in_main_thread or not hasattr(signal, "SIGALRM"):
         return load_tabular_data(path, file_format)
 
     def on_alarm(signum: int, frame: Any) -> None:
-        raise TimeoutError(f"loading took longer than {LOAD_TIMEOUT_SECONDS} seconds")
+        raise TimeoutError(f"loading took longer than {timeout} seconds")
 
     previous = signal.signal(signal.SIGALRM, on_alarm)
-    signal.alarm(LOAD_TIMEOUT_SECONDS)
+    signal.alarm(timeout)
     try:
         return load_tabular_data(path, file_format)
     finally:
@@ -203,21 +211,24 @@ def new_data_table_row(resource: Resource) -> ResourceDataTable:
     return row
 
 
-def describe_data_table(resource: Resource, built_at: datetime) -> str:
+def describe_data_table(resource: Resource, built_at: datetime, unverified: bool = False) -> str:
     """The comment stored on a new table, so people browsing the data database know what it holds.
 
     JSON with the resource id and name, the dataset title and the build time;
     the migration command reads ``built_at`` to leave freshly built tables alone.
+    ``unverified`` marks an old table the migration kept without rebuilding it
+    (its file was missing), which may hold another resource's data; the mark
+    stays until the resource's next upload replaces the table.
     """
-    return json.dumps(
-        {
-            "resource_id": str(resource.id),
-            "resource": resource.name,
-            "dataset": resource.dataset.title,
-            "built_at": built_at.isoformat(),
-        },
-        ensure_ascii=False,
-    )
+    description: Dict[str, Any] = {
+        "resource_id": str(resource.id),
+        "resource": resource.name,
+        "dataset": resource.dataset.title,
+        "built_at": built_at.isoformat(),
+    }
+    if unverified:
+        description["unverified"] = True
+    return json.dumps(description, ensure_ascii=False)
 
 
 def build_data_table(table_name: str, frame: pd.DataFrame, comment: str) -> None:
@@ -376,3 +387,67 @@ def _another_row_uses(table_name: str, row_id: Any) -> bool:
         .values_list("table_name", flat=True)
     )
     return any(physical_table_name(name) == physical for name in candidates)
+
+
+class DataDbTable(NamedTuple):
+    """A table in the data database's public schema."""
+
+    name: str
+    size_bytes: int
+    comment: Optional[str]
+
+
+class DataDbNotSeparate(Exception):
+    """The data database looks like (or holds tables of) the main database."""
+
+
+def list_data_db_tables() -> List[DataDbTable]:
+    """Every ordinary table in the data database's public schema, with its size and comment."""
+    with connections[DATA_DB].cursor() as cursor:
+        cursor.execute(
+            "SELECT c.relname, pg_total_relation_size(c.oid), obj_description(c.oid, 'pg_class') "
+            "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "WHERE n.nspname = 'public' AND c.relkind = 'r' ORDER BY c.relname"
+        )
+        return [DataDbTable(name, int(size), comment) for name, size, comment in cursor.fetchall()]
+
+
+def django_table_names() -> Set[str]:
+    """The tables Django's own models use (plus its migration log)."""
+    models_tables = {m._meta.db_table for m in apps.get_models(include_auto_created=True)}
+    return models_tables | {"django_migrations"}
+
+
+def assert_data_db_is_separate() -> None:
+    """Raise DataDbNotSeparate unless the data database is clearly not the main one.
+
+    Refused when both connections name the same host, port and database, or
+    when the data database holds ``django_migrations`` or any table a Django
+    model uses — either way, every application table would look like an
+    unused data table to the orphan sweep.
+    """
+    main = connections["default"].settings_dict
+    data = connections[DATA_DB].settings_dict
+    if all(
+        str(main.get(key) or "") == str(data.get(key) or "") for key in ("HOST", "PORT", "NAME")
+    ):
+        raise DataDbNotSeparate("the data database connection points at the main database")
+    found = sorted(django_table_names() & {table.name for table in list_data_db_tables()})
+    if found:
+        raise DataDbNotSeparate(f"the data database holds Django tables: {', '.join(found[:5])}")
+
+
+def table_built_at(comment: Optional[str]) -> Optional[datetime]:
+    """When a per-upload table was built, read from its comment (None if unreadable)."""
+    try:
+        return datetime.fromisoformat(json.loads(comment or "")["built_at"])
+    except (ValueError, KeyError, TypeError):
+        return None
+
+
+def table_is_unverified(comment: Optional[str]) -> bool:
+    """Whether a table's comment carries the migration's "unverified" mark."""
+    try:
+        return json.loads(comment or "").get("unverified") is True
+    except (ValueError, AttributeError):
+        return False

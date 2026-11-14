@@ -23,6 +23,7 @@ from api.types.type_preview_data import PreviewData
 from api.utils.data_tables import (  # noqa: F401 — DATA_DB, INDEXED_FORMATS, get_sql_type re-exported
     DATA_DB,
     INDEXED_FORMATS,
+    LOAD_TIMEOUT_SECONDS,
     NewerFileSaved,
     build_data_table,
     data_table_row_exists,
@@ -69,7 +70,9 @@ _FILTER_OPERATORS: Dict[str, Tuple[str, Any]] = {
 }
 
 
-def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
+def index_resource_data(
+    resource: Resource, load_timeout: Optional[int] = LOAD_TIMEOUT_SECONDS
+) -> Optional[ResourceDataTable]:
     """Copy a resource's tabular file into a table of its own in the data database.
 
     Every upload gets a new table, named from its new ResourceDataTable row.
@@ -80,8 +83,9 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
     data stays as it was and this build's table is dropped.
 
     Must be called outside any transaction, so "committed" really means
-    committed. Returns the new ResourceDataTable, or None when the resource
-    was not switched over.
+    committed. ``load_timeout`` limits reading the file (seconds; None for no
+    limit, as the migration command uses). Returns the new ResourceDataTable,
+    or None when the resource was not switched over.
     """
     resource_id = str(resource.id)
 
@@ -95,7 +99,7 @@ def index_resource_data(resource: Resource) -> Optional[ResourceDataTable]:
         return None
 
     # Read the file into a frame, remembering exactly which stored file it was.
-    loaded = load_resource_frame(resource)
+    loaded = load_resource_frame(resource, timeout=load_timeout)
     if loaded is None:
         return None
 
