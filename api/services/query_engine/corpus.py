@@ -23,7 +23,19 @@ sector descendants are resolved in Python from the small sector table.
 Docs: api/views/query_engine/architecture.md
 """
 
-from typing import TYPE_CHECKING, Any, Dict, FrozenSet, Iterator, List, Optional, Set, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    FrozenSet,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    TypeVar,
+)
 from uuid import UUID
 
 from django.conf import settings
@@ -181,3 +193,69 @@ def _one_or_not_found(rows: List[T], reason: str, **ids: Any) -> T:
     if not rows:
         raise NotFound(reason=reason, **ids)
     return rows[0]
+
+
+def _sector_tree() -> Dict[UUID, Tuple[str, Optional[UUID]]]:
+    return {
+        sid: (str(slug or ""), parent)
+        for sid, slug, parent in Sector.objects.values_list("id", "slug", "parent_id")
+    }
+
+
+def sector_slugs_with_parents() -> Dict[UUID, List[str]]:
+    """Each sector's slug followed by its parents' slugs (one query), for search documents."""
+    tree = _sector_tree()
+    found: Dict[UUID, List[str]] = {}
+    for sector_id in tree:
+        slugs: List[str] = []
+        current: Optional[UUID] = sector_id
+        while current is not None and current in tree and tree[current][0] not in slugs:
+            slugs.append(tree[current][0])
+            current = tree[current][1]
+        found[sector_id] = slugs
+    return found
+
+
+def platform_sector_slugs(sector_ids: Optional[FrozenSet[UUID]]) -> Optional[List[str]]:
+    """The slugs of an already-resolved platform scope's sectors (None: no narrowing)."""
+    if sector_ids is None:
+        return None
+    tree = _sector_tree()
+    return sorted(tree[sid][0] for sid in sector_ids if sid in tree)
+
+
+def keep_in_scope(
+    dataset_ids: Iterable[str], resource_ids: Iterable[str], scope: "ResolvedScope"
+) -> Tuple[Dict[str, Dataset], Dict[str, Resource]]:
+    """The search hits still allowed now: corpus datasets in scope, and analysable tables in scope.
+
+    The database check after Elasticsearch, so a stale index entry (unpublished,
+    made private, moved out of the collaborative, deleted) is never served.
+    Two queries on primary keys (at most 100 ids each).
+    """
+    resources = {
+        str(r.id): r
+        for r in Resource.objects.select_related("resourcedatatable", "qe_profile").filter(
+            Q(pk__in=_uuids(resource_ids))
+            & analysable_resource_q()
+            & dataset_in_scope_q(scope, "dataset__")
+        )
+    }
+    wanted = set(_uuids(dataset_ids)) | {r.dataset_id for r in resources.values()}
+    datasets = {
+        str(d.id): d
+        for d in Dataset.objects.select_related("organization", "qe_profile").filter(
+            Q(pk__in=wanted) & dataset_in_scope_q(scope)
+        )
+    }
+    return datasets, {rid: r for rid, r in resources.items() if str(r.dataset_id) in datasets}
+
+
+def _uuids(values: Iterable[str]) -> List[UUID]:
+    found: List[UUID] = []
+    for value in values:
+        try:
+            found.append(UUID(str(value)))
+        except ValueError:
+            continue
+    return found

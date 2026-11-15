@@ -81,3 +81,19 @@ class QueryBodyField(serializers.DictField):
 
 class QueryRequestSerializer(serializers.Serializer):
     body = QueryBodyField()
+
+
+class SearchRequestSerializer(serializers.Serializer):
+    scope = ScopeField()
+    query = serializers.CharField(min_length=1, max_length=500)
+    size = serializers.IntegerField(min_value=1, max_value=10, default=5)
+    geographies = serializers.ListField(
+        child=serializers.CharField(max_length=75), required=False, max_length=10, default=list
+    )
+    year_from = serializers.IntegerField(min_value=1900, max_value=2100, required=False)
+    year_to = serializers.IntegerField(min_value=1900, max_value=2100, required=False)
+
+    def validate(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        if data.get("year_from") and data.get("year_to") and data["year_from"] > data["year_to"]:
+            raise serializers.ValidationError({"year_from": "after year_to"}, code="year_range")
+        return data

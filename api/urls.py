@@ -29,6 +29,7 @@ from api.views import (
 from api.views.query_engine.profile_views import DatasetProfileView, ResourceProfileView
 from api.views.query_engine.query_view import ResourceQueryView
 from api.views.query_engine.scope_view import ScopeView
+from api.views.query_engine.search_view import SearchView
 from api.views.activity import (
     DatasetActivityView,
     GlobalActivityView,
@@ -41,6 +42,7 @@ from api.views.activity import (
 urlpatterns = [
     # Internal, service-only endpoints for the query engine (docs: api/views/query_engine/architecture.md)
     path("internal/qe/scope/", ScopeView.as_view(), name="qe_scope"),
+    path("internal/qe/search/", SearchView.as_view(), name="qe_search"),
     path(
         "internal/qe/datasets/<uuid:dataset_id>/profile/",
         DatasetProfileView.as_view(),

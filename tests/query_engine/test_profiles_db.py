@@ -215,7 +215,9 @@ def test_a_failed_retry_keeps_a_working_profile_serving(
     resource = make_resource(make_dataset())
     save_resource_profile_if_current(resource, resource.resourcedatatable.id, STATS)
 
-    profile = record_profile_failure(resource, resource.resourcedatatable.id, "query_too_slow", now=NOW)
+    profile = record_profile_failure(
+        resource, resource.resourcedatatable.id, "query_too_slow", now=NOW
+    )
 
     assert profile.status == ResourceProfileStatus.READY
     assert profile.stats == STATS

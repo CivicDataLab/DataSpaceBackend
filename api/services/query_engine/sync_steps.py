@@ -15,6 +15,14 @@
   dataset in a chunk and store the hashes that changed. Run every pass, so
   metadata edits (descriptions, titles, tags, an organisation renamed by a
   bulk update) are picked up without any signal.
+- Search index: ``open_search_index`` (create when missing; skip when
+  Elasticsearch is down or the vector size changed), ``read_index_states``,
+  ``chunk_cards`` + ``plan_index_changes`` (queue new/changed cards first,
+  then ones missing a vector, at most QE_DOCS_PER_PASS), ``apply_index_plan``
+  (delete documents no longer in the processing set, then write the queue;
+  embeddings down → new/changed written without vectors, filled in on a later
+  pass). ``write_cards``
+  is also what ``--rebuild-index`` uses.
 
 Logs carry ids, counts and error codes only.
 
@@ -24,13 +32,17 @@ Docs: api/views/query_engine/architecture.md
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 from uuid import UUID
 
 import structlog
+from django.conf import settings
+from django.utils import timezone
 
 from api.models import Dataset, Resource, ResourceProfile
 from api.models.ResourceProfile import ResourceProfileStatus
+from api.services.query_engine.cards import Card, build_cards
+from api.services.query_engine.embeddings import EmbeddingsUnavailable, embed_texts
 from api.services.query_engine.errors import QueryEngineError
 from api.services.query_engine.corpus import processing_set_q
 from api.services.query_engine.facts import dataset_facts, facts_hash, resource_facts
@@ -45,6 +57,16 @@ from api.services.query_engine.profiles import (
     write_resource_facts_hash,
 )
 from api.utils.data_tables import error_fields
+from search.documents.qe_catalog_document import VECTOR_FIELD
+from search.query_engine.index import (
+    DocState,
+    IndexDimsMismatch,
+    SearchIndexError,
+    delete_docs,
+    ensure_search_index,
+    read_doc_states,
+    upsert_docs,
+)
 
 logger = structlog.get_logger("dataspace.query_engine.sync")
 
@@ -90,9 +112,7 @@ class SyncReport:
 
 
 def _has_table(resource: Resource) -> bool:
-    return (
-        resource.is_active and getattr(resource, "resourcedatatable", None) is not None
-    )
+    return resource.is_active and getattr(resource, "resourcedatatable", None) is not None
 
 
 def _is_stale(resource: Resource, now: datetime) -> bool:
@@ -139,9 +159,7 @@ def mark_for_reprofile(now: datetime) -> int:
 
 
 def profile_one(
-    resource: Resource,
-    geography: GeographyIndex,
-    time_budget_seconds: Optional[float] = None,
+    resource: Resource, geography: GeographyIndex, time_budget_seconds: Optional[float] = None
 ) -> str:
     """Profile one table and save it if still current.
 
@@ -154,23 +172,17 @@ def profile_one(
         stats = build_resource_stats(resource, geography, time_budget_seconds)
     except QueryEngineError as error:
         _store_failure(resource, data_table_id, error.code)
-        logger.warning(
-            "qe_profile_failed", resource_id=str(resource.id), code=error.code
-        )
+        logger.warning("qe_profile_failed", resource_id=str(resource.id), code=error.code)
         return f"{FAILED}:{error.code}"
     except Exception as error:
         _store_failure(resource, data_table_id, "profile_failed")
-        logger.error(
-            "qe_profile_failed", resource_id=str(resource.id), **error_fields(error)
-        )
+        logger.error("qe_profile_failed", resource_id=str(resource.id), **error_fields(error))
         return f"{FAILED}:profile_failed"
     if not save_resource_profile_if_current(resource, data_table_id, stats):
         logger.info("qe_profile_table_moved", resource_id=str(resource.id))
         return TABLE_MOVED
     resource.qe_profile = ResourceProfile.objects.get(resource_id=resource.pk)
-    write_resource_facts_hash(
-        resource.qe_profile, facts_hash(resource_facts(resource, stats))
-    )
+    write_resource_facts_hash(resource.qe_profile, facts_hash(resource_facts(resource, stats)))
     return PROFILED
 
 
@@ -189,8 +201,130 @@ def refresh_facts(datasets: List[Dataset]) -> Dict[str, int]:
             new_hash = facts_hash(resource_facts(resource, stats))
             if write_resource_facts_hash(resource.qe_profile, new_hash):
                 changed["resources"] += 1
-        if write_dataset_facts_hash(
-            dataset, facts_hash(dataset_facts(dataset, tables))
-        ):
+        if write_dataset_facts_hash(dataset, facts_hash(dataset_facts(dataset, tables))):
             changed["datasets"] += 1
     return changed
+
+
+# --- AI-search index steps (2 and 6-8 of the pass) ---------------------------------
+
+
+def open_search_index() -> Optional[str]:
+    """The live search index, created when missing; None (logged) when it can't be written."""
+    try:
+        return ensure_search_index(int(settings.QE_EMBEDDINGS_DIMS))
+    except IndexDimsMismatch:
+        logger.error("qe_sync_index_skipped", reason="vector_size_changed_run_rebuild_index")
+        return None
+    except SearchIndexError:
+        logger.warning("qe_sync_index_skipped", reason="search_unavailable")
+        return None
+
+
+def read_index_states(index: str) -> Optional[Dict[str, DocState]]:
+    """Every document's card hash and vector flag; None (logged) when Elasticsearch fails."""
+    try:
+        return read_doc_states(index)
+    except SearchIndexError:
+        logger.warning("qe_sync_index_skipped", reason="search_unavailable")
+        return None
+
+
+def chunk_cards(datasets: List[Dataset], sector_slugs: Dict[UUID, List[str]]) -> List[Card]:
+    """The search cards of every dataset in a chunk and of its profiled tables."""
+    cards: List[Card] = []
+    for dataset in datasets:
+        cards.extend(build_cards(dataset, dataset_tables(dataset), sector_slugs))
+    return cards
+
+
+@dataclass
+class IndexPlan:
+    """What the pass will write: every card it built, and the ones that need writing.
+
+    New and changed cards come first; cards that only lack a vector get the
+    slots left over, so an embeddings outage can never keep new datasets out
+    of the index.
+    """
+
+    cap: int
+    seen: Set[str] = field(default_factory=set)
+    changed: List[Card] = field(default_factory=list)
+    missing_vector: List[Card] = field(default_factory=list)
+    over_cap: int = 0
+
+    @property
+    def refills(self) -> List[Card]:
+        """The vector-only cards that fit after the changed ones."""
+        return self.missing_vector[: max(0, self.cap - len(self.changed))]
+
+    @property
+    def upserts(self) -> List[Card]:
+        return self.changed + self.refills
+
+
+def plan_index_changes(
+    plan: IndexPlan, cards: List[Card], states: Dict[str, DocState], embeddings_on: bool
+) -> None:
+    """Note the chunk's cards; queue new and changed ones first, then ones still missing a vector."""
+    for card in cards:
+        plan.seen.add(card.doc_id)
+        state = states.get(card.doc_id)
+        if state is None or state.card_hash != card.card_hash:
+            if len(plan.changed) < plan.cap:
+                plan.changed.append(card)
+            else:
+                plan.over_cap += 1
+        elif embeddings_on and not state.has_embedding and len(plan.missing_vector) < plan.cap:
+            plan.missing_vector.append(card)
+
+
+def stale_doc_ids(plan: IndexPlan, states: Dict[str, DocState]) -> List[str]:
+    """Indexed documents no card was built for this pass (left the processing set, or deleted)."""
+    return sorted(doc_id for doc_id in states if doc_id not in plan.seen)
+
+
+def doc_body(card: Card, vector: Optional[List[float]]) -> Dict[str, Any]:
+    """The document written for a card, with its vector when there is one."""
+    body: Dict[str, Any] = {
+        **card.fields,
+        "has_embedding": vector is not None,
+        "embedding_model": settings.QE_EMBEDDINGS_MODEL if vector is not None else None,
+        "indexed_at": timezone.now().isoformat(),
+    }
+    if vector is not None:
+        body[VECTOR_FIELD] = vector
+    return body
+
+
+def write_cards(index: str, cards: List[Card], refills: Sequence[Card] = ()) -> Tuple[int, int]:
+    """Embed and write cards: (written, written without a vector). Raises SearchIndexError.
+
+    ``refills`` are cards already indexed without a vector, written again only
+    if they now get one. When the embeddings service fails, ``cards`` are
+    written without vectors (still found by keywords) and get their vectors on
+    a later pass; ``refills`` are left as they are.
+    """
+    batch = list(cards) + list(refills)
+    if not batch:
+        return 0, 0
+    try:
+        vectors: List[Optional[List[float]]] = list(embed_texts([card.text for card in batch]))
+    except EmbeddingsUnavailable:
+        batch = list(cards)
+        vectors = [None] * len(batch)
+    written = upsert_docs(index, [(c.doc_id, doc_body(c, v)) for c, v in zip(batch, vectors)])
+    return written, sum(1 for v in vectors if v is None)
+
+
+def apply_index_plan(index: str, plan: IndexPlan, states: Dict[str, DocState]) -> Dict[str, int]:
+    """Delete stale documents, then write the queued cards; Elasticsearch failing mid-way is logged."""
+    done = {"deleted": 0, "upserted": 0, "without_vector": 0}
+    try:
+        done["deleted"] = delete_docs(index, stale_doc_ids(plan, states))
+        done["upserted"], done["without_vector"] = write_cards(index, plan.changed, plan.refills)
+    except SearchIndexError:
+        logger.warning("qe_sync_index_write_failed", **done)
+    if plan.over_cap:
+        logger.info("qe_sync_docs_left_for_next_pass", count=plan.over_cap)
+    return done

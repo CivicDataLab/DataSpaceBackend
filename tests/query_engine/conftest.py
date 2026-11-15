@@ -7,7 +7,8 @@ replaced by answers captured from dev Keycloak, an ops task), and an API
 client that sends a bearer token whose introspection the test chooses.
 
 Every test starts from known query-engine settings, so a developer's .env
-(or CI's copy of .env.example) never changes what a test sees.
+(or CI's copy of .env.example) never changes what a test sees, and no test
+reaches a real embeddings service, reranker or Elasticsearch.
 """
 
 import copy
@@ -54,6 +55,12 @@ def qe_settings(settings: Any) -> Any:
     settings.QE_SERVICE_ROLE = SERVICE_ROLE
     settings.QE_PLATFORM_SECTORS = []
     settings.QE_ENABLED_COLLABORATIVES = []
+    # No model service configured (default endpoints, no keys), so nothing is even tried;
+    # tests of the clients set their own URL and a mock transport.
+    settings.QE_EMBEDDINGS_URL = "https://openrouter.ai/api/v1"
+    settings.QE_EMBEDDINGS_API_KEY = ""
+    settings.QE_RERANK_URL = "https://openrouter.ai/api/v1"
+    settings.QE_RERANK_API_KEY = ""
     settings.CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -61,6 +68,29 @@ def qe_settings(settings: Any) -> Any:
         }
     }
     return settings
+
+
+@pytest.fixture(autouse=True)
+def no_real_elasticsearch() -> Iterator[None]:
+    """Elasticsearch is never real here: the gateway's connection fails unless a test patches it."""
+
+    def unreachable() -> Any:
+        raise ConnectionError("tests never reach Elasticsearch")
+
+    with mock.patch("search.query_engine.index._es", side_effect=unreachable):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def no_real_http() -> Iterator[None]:
+    """No real HTTP request leaves a test (clients under test use httpx.MockTransport)."""
+    import httpx
+
+    def refuse(self: Any, request: Any) -> Any:
+        raise httpx.ConnectError("tests never make real HTTP requests", request=request)
+
+    with mock.patch.object(httpx.HTTPTransport, "handle_request", refuse):
+        yield
 
 
 @pytest.fixture

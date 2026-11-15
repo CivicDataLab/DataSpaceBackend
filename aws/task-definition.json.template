@@ -35,6 +35,9 @@
         { "name": "APP_PORT", "value": "${APP_PORT}" },
         { "name": "DB_ENGINE", "value": "${DB_ENGINE}" },
         { "name": "DB_PORT", "value": "${DB_PORT}" },
+        { "name": "QE_SERVICE_CLIENT_ID", "value": "${QE_SERVICE_CLIENT_ID}" },
+        { "name": "QE_PLATFORM_SECTORS", "value": "${QE_PLATFORM_SECTORS}" },
+        { "name": "QE_ENABLED_COLLABORATIVES", "value": "${QE_ENABLED_COLLABORATIVES}" },
         { "name": "TELEMETRY_URL", "value": "${TELEMETRY_URL}" }
       ],
       "secrets": [
@@ -64,6 +67,45 @@
         "timeout": 5,
         "retries": 3,
         "startPeriod": 60
+      }
+    },
+    {
+      "name": "qe-sync",
+      "image": "${ECR_REPOSITORY}:${IMAGE_TAG}",
+      "essential": false,
+      "memoryReservation": 512,
+      "entryPoint": ["python", "manage.py"],
+      "command": ["qe_sync", "--loop"],
+      "environment": [
+        { "name": "DEBUG", "value": "${DEBUG_MODE}" },
+        { "name": "APP_PORT", "value": "${APP_PORT}" },
+        { "name": "DB_ENGINE", "value": "${DB_ENGINE}" },
+        { "name": "DB_PORT", "value": "${DB_PORT}" },
+        { "name": "QE_SERVICE_CLIENT_ID", "value": "${QE_SERVICE_CLIENT_ID}" },
+        { "name": "QE_PLATFORM_SECTORS", "value": "${QE_PLATFORM_SECTORS}" },
+        { "name": "QE_ENABLED_COLLABORATIVES", "value": "${QE_ENABLED_COLLABORATIVES}" },
+        { "name": "TELEMETRY_URL", "value": "${TELEMETRY_URL}" }
+      ],
+      "secrets": [
+        { "name": "DB_HOST", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/DB_HOST" },
+        { "name": "DB_NAME", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/DB_NAME" },
+        { "name": "DB_USER", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/DB_USER" },
+        { "name": "DB_PASSWORD", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/DB_PASSWORD" },
+        { "name": "ELASTICSEARCH_INDEX", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/ELASTICSEARCH_INDEX" },
+        { "name": "ELASTICSEARCH_USERNAME", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/ELASTICSEARCH_USERNAME" },
+        { "name": "ELASTICSEARCH_PASS", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/ELASTICSEARCH_PASS" },
+        { "name": "REDIS_HOST", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/REDIS_HOST" },
+        { "name": "SECRET_KEY", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/SECRET_KEY" },
+        { "name": "URL_WHITELIST", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/URL_WHITELIST" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/dataspace",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "qe-sync",
+          "awslogs-create-group": "true"
+        }
       }
     }
   ],

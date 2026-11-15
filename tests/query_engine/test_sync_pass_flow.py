@@ -34,15 +34,26 @@ def helpers(settings: Any) -> Iterator[mock.MagicMock]:
     calls.find_stale_profiles.return_value = ["table-a", "table-b", "table-c"]
     calls.profile_one.return_value = "profiled"
     calls.refresh_facts.return_value = {"resources": 2, "datasets": 1}
+    calls.open_search_index.return_value = "qe_catalog_v1"
+    calls.read_index_states.return_value = {"d:old": "state"}
+    calls.embeddings_configured.return_value = True
+    calls.apply_index_plan.return_value = {"deleted": 1, "upserted": 2, "without_vector": 0}
     with mock.patch.multiple(
         FLOW,
         close_old_connections=calls.close_old_connections,
         sync_lock=lock,
+        open_search_index=calls.open_search_index,
+        read_index_states=calls.read_index_states,
         load_geography_index=calls.load_geography_index,
+        sector_slugs_with_parents=calls.sector_slugs_with_parents,
         load_corpus=calls.load_corpus,
         find_stale_profiles=calls.find_stale_profiles,
         profile_one=calls.profile_one,
         refresh_facts=calls.refresh_facts,
+        chunk_cards=calls.chunk_cards,
+        plan_index_changes=calls.plan_index_changes,
+        embeddings_configured=calls.embeddings_configured,
+        apply_index_plan=calls.apply_index_plan,
     ):
         yield calls
 
@@ -54,27 +65,28 @@ def call_names(calls: mock.MagicMock) -> List[str]:
 def test_a_pass_runs_its_steps_in_order(helpers: mock.MagicMock) -> None:
     report = sync_pass.run_sync_pass()
 
-    names = call_names(helpers)
-    assert names[:4] == [
+    assert call_names(helpers) == [
         "close_old_connections",
         "lock",
+        "open_search_index",
+        "read_index_states",
         "load_geography_index",
+        "sector_slugs_with_parents",
         "load_corpus",
-    ]
-    assert names[4:] == [
         "find_stale_profiles",
         "profile_one",
         "profile_one",
         "profile_one",
         "refresh_facts",
+        "chunk_cards",
+        "embeddings_configured",
+        "plan_index_changes",
+        "apply_index_plan",
         "unlock",
     ]
+    assert (report.docs_deleted, report.docs_upserted) == (1, 2)
     assert report.profiles == {"profiled": 3}
-    assert (
-        report.datasets,
-        report.resource_facts_changed,
-        report.dataset_facts_changed,
-    ) == (
+    assert (report.datasets, report.resource_facts_changed, report.dataset_facts_changed) == (
         2,
         2,
         1,
@@ -121,9 +133,7 @@ def test_the_profile_cap_holds(helpers: mock.MagicMock, settings: Any) -> None:
     helpers.refresh_facts.assert_called_once()
 
 
-def test_the_time_budget_stops_profiling(
-    helpers: mock.MagicMock, settings: Any
-) -> None:
+def test_the_time_budget_stops_profiling(helpers: mock.MagicMock, settings: Any) -> None:
     settings.QE_SYNC_MAX_SECONDS = 0
 
     sync_pass.run_sync_pass()
@@ -147,3 +157,87 @@ def test_the_lock_is_released_when_a_step_raises(helpers: mock.MagicMock) -> Non
         sync_pass.run_sync_pass()
 
     assert call_names(helpers)[-1] == "unlock"
+
+
+def test_with_search_down_profiles_and_facts_still_refresh(helpers: mock.MagicMock) -> None:
+    helpers.open_search_index.return_value = None
+
+    report = sync_pass.run_sync_pass()
+
+    helpers.read_index_states.assert_not_called()
+    helpers.chunk_cards.assert_not_called()
+    helpers.apply_index_plan.assert_not_called()
+    assert helpers.profile_one.call_count == 3
+    helpers.refresh_facts.assert_called_once()
+    assert report.index_ready is False
+
+
+def test_when_reading_the_index_fails_no_documents_are_written(helpers: mock.MagicMock) -> None:
+    helpers.read_index_states.return_value = None
+
+    sync_pass.run_sync_pass()
+
+    helpers.chunk_cards.assert_not_called()
+    helpers.apply_index_plan.assert_not_called()
+    helpers.refresh_facts.assert_called_once()
+
+
+@pytest.fixture
+def rebuild(helpers: mock.MagicMock) -> Iterator[mock.MagicMock]:
+    helpers.create_next_index.return_value = ("qe_catalog_v2", "qe_catalog_v1")
+    helpers.load_corpus.return_value = iter([[SimpleNamespace(id=1)], [SimpleNamespace(id=2)]])
+    helpers.write_cards.return_value = (3, 1)
+    with mock.patch.multiple(
+        FLOW,
+        create_next_index=helpers.create_next_index,
+        write_cards=helpers.write_cards,
+        swap_alias=helpers.swap_alias,
+        delete_index=helpers.delete_index,
+    ):
+        yield helpers
+
+
+def test_a_rebuild_moves_the_alias_only_after_the_new_index_is_full(
+    rebuild: mock.MagicMock,
+) -> None:
+    # Embeddings not configured: writing without vectors is expected, not a failure.
+    rebuild.embeddings_configured.return_value = False
+    report = sync_pass.run_index_rebuild()
+
+    names = [
+        n
+        for n in call_names(rebuild)
+        if n in ("write_cards", "swap_alias", "delete_index", "create_next_index")
+    ]
+    assert names == [
+        "create_next_index",
+        "write_cards",
+        "write_cards",
+        "swap_alias",
+        "delete_index",
+    ]
+    rebuild.swap_alias.assert_called_once_with("qe_catalog_v2", "qe_catalog_v1")
+    rebuild.delete_index.assert_called_once_with("qe_catalog_v1")
+    assert (report.docs_upserted, report.docs_without_vector) == (6, 2)
+
+
+def test_a_failed_rebuild_leaves_the_alias_and_drops_the_new_index(rebuild: mock.MagicMock) -> None:
+    rebuild.write_cards.side_effect = [(3, 0), RuntimeError("cluster went away")]
+
+    with pytest.raises(RuntimeError):
+        sync_pass.run_index_rebuild()
+
+    rebuild.swap_alias.assert_not_called()
+    rebuild.delete_index.assert_called_once_with("qe_catalog_v2")
+    assert call_names(rebuild)[-1] == "unlock"
+
+
+def test_a_rebuild_without_vectors_while_embeddings_are_configured_leaves_the_old_index(
+    rebuild: mock.MagicMock,
+) -> None:
+    rebuild.write_cards.return_value = (3, 3)
+    with mock.patch(f"{FLOW}.embeddings_configured", return_value=True):
+        with pytest.raises(sync_pass.RebuildIncomplete):
+            sync_pass.run_index_rebuild()
+    rebuild.swap_alias.assert_not_called()
+    rebuild.delete_index.assert_called_once_with("qe_catalog_v2")

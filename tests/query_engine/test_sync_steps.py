@@ -16,10 +16,7 @@ from api.models.ResourceProfile import ResourceProfileStatus
 from api.services.query_engine.corpus import load_corpus
 from api.services.query_engine.errors import QueryTooSlow
 from api.services.query_engine.geography_match import GeographyIndex
-from api.services.query_engine.profiles import (
-    PROFILER_VERSION,
-    save_resource_profile_if_current,
-)
+from api.services.query_engine.profiles import PROFILER_VERSION, save_resource_profile_if_current
 from api.services.query_engine.sync_pass import run_sync_pass
 from api.services.query_engine.sync_steps import (
     FAILED,
@@ -41,9 +38,7 @@ STATS = {
     "row_count": 2,
     "layout": "long",
     "analysable": True,
-    "columns": [
-        {"name": "IMR", "profiled": True, "kind": "numeric", "role": "measure"}
-    ],
+    "columns": [{"name": "IMR", "profiled": True, "kind": "numeric", "role": "measure"}],
 }
 
 
@@ -75,12 +70,8 @@ class TestFindStaleProfiles:
         uploaded = make_resource(dataset, name="Re-uploaded")
         old_version = make_resource(dataset, name="Old profiler")
         for resource in (uploaded, old_version):
-            save_resource_profile_if_current(
-                resource, resource.resourcedatatable.id, STATS
-            )
-        ResourceProfile.objects.filter(resource=uploaded).update(
-            data_table_id=uuid.uuid4()
-        )
+            save_resource_profile_if_current(resource, resource.resourcedatatable.id, STATS)
+        ResourceProfile.objects.filter(resource=uploaded).update(data_table_id=uuid.uuid4())
         ResourceProfile.objects.filter(resource=old_version).update(
             profiler_version=PROFILER_VERSION - 1
         )
@@ -132,30 +123,21 @@ class TestFindStaleProfiles:
         assert [r.name for r in only] == ["First"]
 
     def test_a_reprofile_request_is_stored_so_passes_finish_every_table(
-        self,
-        make_dataset: Callable,
-        make_resource: Callable,
-        monkeypatch: Any,
-        settings: Any,
+        self, make_dataset: Callable, make_resource: Callable, monkeypatch: Any, settings: Any
     ) -> None:
         dataset = make_dataset()
         resources = [make_resource(dataset, name=f"Table {i}") for i in range(5)]
         for resource in resources:
-            save_resource_profile_if_current(
-                resource, resource.resourcedatatable.id, STATS
-            )
+            save_resource_profile_if_current(resource, resource.resourcedatatable.id, STATS)
         monkeypatch.setattr(
             "api.services.query_engine.sync_pass.close_old_connections", lambda: None
         )
         monkeypatch.setattr("api.services.query_engine.sync_pass.sync_lock", _free_lock)
         monkeypatch.setattr(
-            "api.services.query_engine.sync_pass.open_search_index",
-            lambda: None,
-            raising=False,
+            "api.services.query_engine.sync_pass.open_search_index", lambda: None, raising=False
         )
         monkeypatch.setattr(
-            "api.services.query_engine.sync_steps.build_resource_stats",
-            lambda r, g, t=None: STATS,
+            "api.services.query_engine.sync_steps.build_resource_stats", lambda r, g, t=None: STATS
         )
         settings.QE_PROFILES_PER_PASS = 2
 
@@ -174,8 +156,7 @@ class TestProfileOne:
     ) -> None:
         resource = make_resource(make_dataset())
         monkeypatch.setattr(
-            "api.services.query_engine.sync_steps.build_resource_stats",
-            lambda r, g, t=None: STATS,
+            "api.services.query_engine.sync_steps.build_resource_stats", lambda r, g, t=None: STATS
         )
 
         assert profile_one(resource, GeographyIndex()) == PROFILED
@@ -188,14 +169,10 @@ class TestProfileOne:
     ) -> None:
         resource = make_resource(make_dataset())
 
-        def too_slow(
-            resource: Resource, geography: GeographyIndex, budget: Any = None
-        ) -> Dict:
+        def too_slow(resource: Resource, geography: GeographyIndex, budget: Any = None) -> Dict:
             raise QueryTooSlow()
 
-        monkeypatch.setattr(
-            "api.services.query_engine.sync_steps.build_resource_stats", too_slow
-        )
+        monkeypatch.setattr("api.services.query_engine.sync_steps.build_resource_stats", too_slow)
 
         assert profile_one(resource, GeographyIndex()) == "failed:query_too_slow"
         stored = ResourceProfile.objects.get(resource=resource)
@@ -210,14 +187,10 @@ class TestProfileOne:
     ) -> None:
         resource = make_resource(make_dataset())
 
-        def broken(
-            resource: Resource, geography: GeographyIndex, budget: Any = None
-        ) -> Dict:
+        def broken(resource: Resource, geography: GeographyIndex, budget: Any = None) -> Dict:
             raise KeyError("cell value")
 
-        monkeypatch.setattr(
-            "api.services.query_engine.sync_steps.build_resource_stats", broken
-        )
+        monkeypatch.setattr("api.services.query_engine.sync_steps.build_resource_stats", broken)
 
         assert profile_one(resource, GeographyIndex()) == "failed:profile_failed"
         assert ResourceProfile.objects.get(resource=resource).error == "profile_failed"
@@ -227,9 +200,7 @@ class TestProfileOne:
 class TestRefreshFacts:
     def _profiled(self, make_dataset: Callable, make_resource: Callable) -> Resource:
         resource = make_resource(make_dataset())
-        ResourceSchema.objects.create(
-            resource=resource, field_name="IMR", format="NUMBER"
-        )
+        ResourceSchema.objects.create(resource=resource, field_name="IMR", format="NUMBER")
         save_resource_profile_if_current(resource, resource.resourcedatatable.id, STATS)
         return resource
 
@@ -247,9 +218,7 @@ class TestRefreshFacts:
         resource = self._profiled(make_dataset, make_resource)
         refresh_facts(chunk())
         before = ResourceProfile.objects.get(resource=resource)
-        ResourceSchema.objects.filter(resource=resource).update(
-            description="Infant mortality"
-        )
+        ResourceSchema.objects.filter(resource=resource).update(description="Infant mortality")
 
         assert stale_names() == []
         assert refresh_facts(chunk())["resources"] == 1
@@ -263,9 +232,7 @@ class TestRefreshFacts:
     ) -> None:
         resource = self._profiled(make_dataset, make_resource)
         refresh_facts(chunk())
-        Organization.objects.filter(pk=resource.dataset.organization_id).update(
-            name="Renamed Org"
-        )
+        Organization.objects.filter(pk=resource.dataset.organization_id).update(name="Renamed Org")
 
         assert refresh_facts(chunk()) == {"resources": 1, "datasets": 1}
 
@@ -314,6 +281,61 @@ def test_an_incomplete_profile_is_tried_again_later(
 
     chunk = [d for page in load_corpus() for d in page]
     assert find_stale_profiles(chunk, profile.retry_after - timedelta(minutes=1)) == []
-    assert [r.id for r in find_stale_profiles(chunk, profile.retry_after)] == [
-        resource.id
-    ]
+    assert [r.id for r in find_stale_profiles(chunk, profile.retry_after)] == [resource.id]
+
+
+def test_embeddings_down_means_documents_are_written_without_vectors(monkeypatch: Any) -> None:
+    from types import SimpleNamespace
+
+    from api.services.query_engine import sync_steps
+    from api.services.query_engine.embeddings import EmbeddingsUnavailable
+
+    written: List[Any] = []
+
+    def down(texts: Any) -> Any:
+        raise EmbeddingsUnavailable("status_503")
+
+    monkeypatch.setattr(sync_steps, "embed_texts", down)
+    monkeypatch.setattr(
+        sync_steps, "upsert_docs", lambda index, docs: written.extend(docs) or len(written)
+    )
+    cards = [SimpleNamespace(doc_id="d:a", fields={"title": "A"}, text="A", card_hash="h")]
+    refills = [SimpleNamespace(doc_id="d:old", fields={"title": "Old"}, text="Old", card_hash="h")]
+
+    assert sync_steps.write_cards("qe_catalog_v1", cards, refills) == (1, 1)
+    assert written[0][1]["has_embedding"] is False
+    # Documents that only lacked a vector are not rewritten while embeddings are down.
+    assert [doc_id for doc_id, _ in written] == ["d:a"]
+
+
+def test_stale_documents_are_deleted_before_new_ones_are_written(monkeypatch: Any) -> None:
+    from types import SimpleNamespace
+
+    from api.services.query_engine import sync_steps
+    from search.query_engine.index import DocState
+
+    calls: List[str] = []
+    monkeypatch.setattr(
+        sync_steps, "delete_docs", lambda index, ids: calls.append(f"delete {list(ids)}") or 1
+    )
+    monkeypatch.setattr(
+        sync_steps,
+        "write_cards",
+        lambda index, cards, refills=(): calls.append("write") or (len(cards), 0),
+    )
+    plan = sync_steps.IndexPlan(cap=5)
+    sync_steps.plan_index_changes(
+        plan,
+        [SimpleNamespace(doc_id="d:kept", card_hash="new")],
+        {"d:kept": DocState("old", True), "r:unpublished": DocState("h", True)},
+        embeddings_on=True,
+    )
+
+    done = sync_steps.apply_index_plan(
+        "qe_catalog_v1",
+        plan,
+        {"d:kept": DocState("old", True), "r:unpublished": DocState("h", True)},
+    )
+
+    assert calls == ["delete ['r:unpublished']", "write"]
+    assert done == {"deleted": 1, "upserted": 1, "without_vector": 0}
