@@ -97,3 +97,14 @@ class SearchRequestSerializer(serializers.Serializer):
         if data.get("year_from") and data.get("year_to") and data["year_from"] > data["year_to"]:
             raise serializers.ValidationError({"year_from": "after year_to"}, code="year_range")
         return data
+
+
+class PendingSummariesSerializer(serializers.Serializer):
+    limit = serializers.IntegerField(min_value=1, max_value=20, default=10)
+
+
+class SummaryWriteSerializer(serializers.Serializer):
+    facts_hash = serializers.CharField(min_length=64, max_length=64)
+    text = serializers.CharField(max_length=5000, trim_whitespace=True)
+    model = serializers.CharField(max_length=200)
+    prompt_version = serializers.CharField(max_length=64)

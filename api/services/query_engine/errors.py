@@ -101,6 +101,13 @@ class SummaryRejected(QueryEngineError):
     message = "The summary was not accepted."
 
 
+class UntracedNumbers(SummaryRejected):
+    code = "untraced_numbers"
+    message = (
+        "The summary states numbers that aren't in the facts; copy numbers from the facts exactly."
+    )
+
+
 class InternalQueryError(QueryEngineError):
     """Something that should be impossible, such as a write reaching the data database."""
 

@@ -30,6 +30,7 @@ from api.views.query_engine.profile_views import DatasetProfileView, ResourcePro
 from api.views.query_engine.query_view import ResourceQueryView
 from api.views.query_engine.scope_view import ScopeView
 from api.views.query_engine.search_view import SearchView
+from api.views.query_engine.summary_views import PendingSummariesView, SummaryWriteView
 from api.views.activity import (
     DatasetActivityView,
     GlobalActivityView,
@@ -43,6 +44,16 @@ urlpatterns = [
     # Internal, service-only endpoints for the query engine (docs: api/views/query_engine/architecture.md)
     path("internal/qe/scope/", ScopeView.as_view(), name="qe_scope"),
     path("internal/qe/search/", SearchView.as_view(), name="qe_search"),
+    path(
+        "internal/qe/summaries/pending/",
+        PendingSummariesView.as_view(),
+        name="qe_summaries_pending",
+    ),
+    path(
+        "internal/qe/summaries/<str:level>/<uuid:item_id>/",
+        SummaryWriteView.as_view(),
+        name="qe_summary_write",
+    ),
     path(
         "internal/qe/datasets/<uuid:dataset_id>/profile/",
         DatasetProfileView.as_view(),
