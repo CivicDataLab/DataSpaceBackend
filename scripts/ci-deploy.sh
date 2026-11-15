@@ -171,5 +171,14 @@ until curl -fsS -o /dev/null --max-time 10 "$HEALTH_CHECK_URL"; do
   sleep 5
 done
 
+# --- the query engine's sync process, when it is running ----------
+# qe_sync (docker-compose.yml, profile "query-engine") is started by ops.
+# Once it runs, each healthy deploy moves it to the new image too, after the
+# migrations above; otherwise it would keep running the old code.
+QE_COMPOSE="$COMPOSE --profile query-engine"
+if [ -n "$($QE_COMPOSE ps -q qe_sync 2>/dev/null)" ]; then
+  $QE_COMPOSE up -d --no-build --no-deps --force-recreate qe_sync
+fi
+
 printf "%s" "$IMAGE_REF" > .deploy/current_image
 echo "Deploy healthy: $IMAGE_REF"

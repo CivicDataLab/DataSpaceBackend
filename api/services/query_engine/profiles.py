@@ -14,7 +14,9 @@
   resource still points at the data table they were computed from (checked
   under the resource's row lock, the same lock an upload's switch takes).
 - ``record_profile_failure`` stores an error code with a back-off of 2ⁿ minutes
-  (at most 24 h), reset when the data table changes.
+  (at most 24 h), reset when the data table changes. A failed retry of a READY
+  profile for the same data table (a re-profile, an incomplete one) keeps it
+  READY and serving.
 - ``write_resource_facts_hash`` / ``write_dataset_facts_hash`` store a new
   facts hash with one conditional UPDATE on the previous hash, and mark the
   summary as needed.
@@ -39,7 +41,6 @@ from api.models import (
     Resource,
     ResourceDataTable,
     ResourceProfile,
-    ResourceSchema,
 )
 from api.models.ResourceProfile import ResourceProfileStatus
 from api.services.query_engine.column_roles import (
@@ -254,12 +255,16 @@ def record_profile_failure(
     attempts = previous.failed_attempts + 1 if previous is not None and same_table else 1
     defaults: Dict[str, Any] = {
         "data_table_id": data_table_id,
-        "profiler_version": PROFILER_VERSION,
-        "status": ResourceProfileStatus.FAILED,
         "error": error_code[:64],
         "failed_attempts": attempts,
         "retry_after": now + timedelta(minutes=min(2**attempts, MAX_BACKOFF_MINUTES)),
     }
+    keeps_ready = (
+        same_table and previous is not None and previous.status == ResourceProfileStatus.READY
+    )
+    if not keeps_ready:
+        defaults["status"] = ResourceProfileStatus.FAILED
+        defaults["profiler_version"] = PROFILER_VERSION
     if not same_table:
         defaults["stats"] = None
     profile, _ = ResourceProfile.objects.update_or_create(
@@ -341,11 +346,12 @@ def require_ready_profile(resource: Resource) -> ResourceProfile:
 
 
 def load_dataset_tables(dataset: Dataset) -> List[Tuple[Resource, Optional[Dict[str, Any]]]]:
-    """Prefetch the dataset's resources and metadata in a fixed number of queries; its tables."""
+    """Prefetch the dataset's resources and metadata in a fixed number of queries; its tables.
+
+    Column rows are not loaded: a dataset's facts and view don't use them.
+    """
     resources = Resource.objects.select_related(
         "resourcedatatable", "resourcefiledetails", "qe_profile"
-    ).prefetch_related(
-        Prefetch("resourceschema_set", queryset=ResourceSchema.objects.order_by("id"))
     )
     prefetch_related_objects(
         [dataset], Prefetch("resources", queryset=resources), "tags", "sectors", "geographies"

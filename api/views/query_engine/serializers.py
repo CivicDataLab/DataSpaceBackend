@@ -13,6 +13,7 @@ from typing import Any, Dict, Type
 from rest_framework import serializers
 
 from api.services.query_engine.errors import BadRequest
+from api.services.query_engine.profile_views import MAX_DETAIL_COLUMNS
 
 SCOPE_MAX_LENGTH = 64
 
@@ -52,3 +53,17 @@ class ScopeField(serializers.CharField):
 class ScopeRequestSerializer(serializers.Serializer):
     scope = ScopeField()
     include_dataset_ids = serializers.BooleanField(required=False, default=False)
+
+
+class ScopeOnlySerializer(serializers.Serializer):
+    scope = ScopeField()
+
+
+class ResourceProfileRequestSerializer(serializers.Serializer):
+    scope = ScopeField()
+    columns = serializers.ListField(
+        child=serializers.CharField(max_length=255, trim_whitespace=False),
+        required=False,
+        max_length=MAX_DETAIL_COLUMNS,
+    )
+

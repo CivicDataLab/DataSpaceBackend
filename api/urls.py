@@ -26,6 +26,7 @@ from api.views import (
     search_usecase,
     trending_datasets,
 )
+from api.views.query_engine.profile_views import DatasetProfileView, ResourceProfileView
 from api.views.query_engine.scope_view import ScopeView
 from api.views.activity import (
     DatasetActivityView,
@@ -39,6 +40,16 @@ from api.views.activity import (
 urlpatterns = [
     # Internal, service-only endpoints for the query engine (docs: api/views/query_engine/architecture.md)
     path("internal/qe/scope/", ScopeView.as_view(), name="qe_scope"),
+    path(
+        "internal/qe/datasets/<uuid:dataset_id>/profile/",
+        DatasetProfileView.as_view(),
+        name="qe_dataset_profile",
+    ),
+    path(
+        "internal/qe/resources/<uuid:resource_id>/profile/",
+        ResourceProfileView.as_view(),
+        name="qe_resource_profile",
+    ),
     # Authentication endpoints
     path("auth/keycloak/login/", auth.KeycloakLoginView.as_view(), name="keycloak_login"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

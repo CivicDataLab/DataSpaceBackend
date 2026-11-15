@@ -207,3 +207,17 @@ class TestReadyStatsAndRollup:
         assert rollup["tables"][0]["analysable"] is True
         assert rollup["other_resources"] == [{"name": "Methodology note", "format": "file"}]
 
+
+@pytest.mark.django_db
+def test_a_failed_retry_keeps_a_working_profile_serving(
+    make_dataset: Callable, make_resource: Callable
+) -> None:
+    resource = make_resource(make_dataset())
+    save_resource_profile_if_current(resource, resource.resourcedatatable.id, STATS)
+
+    profile = record_profile_failure(resource, resource.resourcedatatable.id, "query_too_slow", now=NOW)
+
+    assert profile.status == ResourceProfileStatus.READY
+    assert profile.stats == STATS
+    assert (profile.error, profile.failed_attempts) == ("query_too_slow", 1)
+    assert profile.retry_after == NOW + timedelta(minutes=2)

@@ -19,6 +19,8 @@ SOME_ID = str(uuid.uuid4())
 # (method, path, body) for every internal endpoint; later phases add theirs here.
 ENDPOINTS: List[Tuple[str, str, Optional[Dict[str, Any]]]] = [
     ("get", "/api/internal/qe/scope/?scope=platform", None),
+    ("get", f"/api/internal/qe/datasets/{SOME_ID}/profile/?scope=platform", None),
+    ("get", f"/api/internal/qe/resources/{SOME_ID}/profile/?scope=platform", None),
 ]
 
 
