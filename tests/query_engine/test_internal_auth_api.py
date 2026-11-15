@@ -21,6 +21,7 @@ ENDPOINTS: List[Tuple[str, str, Optional[Dict[str, Any]]]] = [
     ("get", "/api/internal/qe/scope/?scope=platform", None),
     ("get", f"/api/internal/qe/datasets/{SOME_ID}/profile/?scope=platform", None),
     ("get", f"/api/internal/qe/resources/{SOME_ID}/profile/?scope=platform", None),
+    ("post", f"/api/internal/qe/resources/{SOME_ID}/query/", {"scope": "platform"}),
 ]
 
 

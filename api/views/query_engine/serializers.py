@@ -67,3 +67,17 @@ class ResourceProfileRequestSerializer(serializers.Serializer):
         max_length=MAX_DETAIL_COLUMNS,
     )
 
+
+class QueryBodyField(serializers.DictField):
+    """The query body: a JSON object with a valid-length ``scope`` (the spec is checked later)."""
+
+    def to_internal_value(self, data: Any) -> Dict[str, Any]:
+        value = super().to_internal_value(data)
+        scope = value.get("scope")
+        if not isinstance(scope, str) or not scope or len(scope) > SCOPE_MAX_LENGTH:
+            raise serializers.ValidationError("scope is required", code="scope")
+        return dict(value)
+
+
+class QueryRequestSerializer(serializers.Serializer):
+    body = QueryBodyField()
