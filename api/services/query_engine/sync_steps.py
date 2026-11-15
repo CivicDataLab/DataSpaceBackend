@@ -42,7 +42,11 @@ from django.utils import timezone
 from api.models import Dataset, Resource, ResourceProfile
 from api.models.ResourceProfile import ResourceProfileStatus
 from api.services.query_engine.cards import Card, build_cards
-from api.services.query_engine.embeddings import EmbeddingsUnavailable, embed_texts
+from api.services.query_engine.embeddings import (
+    EmbeddingsUnavailable,
+    embed_texts,
+    embeddings_configured,
+)
 from api.services.query_engine.errors import QueryEngineError
 from api.services.query_engine.corpus import processing_set_q
 from api.services.query_engine.facts import dataset_facts, facts_hash, resource_facts
@@ -308,11 +312,17 @@ def write_cards(index: str, cards: List[Card], refills: Sequence[Card] = ()) -> 
     batch = list(cards) + list(refills)
     if not batch:
         return 0, 0
-    try:
-        vectors: List[Optional[List[float]]] = list(embed_texts([card.text for card in batch]))
-    except EmbeddingsUnavailable:
+    vectors: List[Optional[List[float]]]
+    if not embeddings_configured():
+        # No embeddings service set up: keyword-only documents, without calling anyone.
         batch = list(cards)
         vectors = [None] * len(batch)
+    else:
+        try:
+            vectors = list(embed_texts([card.text for card in batch]))
+        except EmbeddingsUnavailable:
+            batch = list(cards)
+            vectors = [None] * len(batch)
     written = upsert_docs(index, [(c.doc_id, doc_body(c, v)) for c, v in zip(batch, vectors)])
     return written, sum(1 for v in vectors if v is None)
 

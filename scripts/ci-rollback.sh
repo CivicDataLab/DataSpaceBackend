@@ -53,6 +53,12 @@ until curl -fsS -o /dev/null --max-time 10 "$HEALTH_CHECK_URL"; do
   sleep 5
 done
 
+# The query engine's sync process goes back to the previous image too, when it runs.
+QE_COMPOSE="$COMPOSE --profile query-engine"
+if [ -n "$($QE_COMPOSE ps -q qe_sync 2>/dev/null)" ]; then
+  $QE_COMPOSE up -d --no-build --no-deps --force-recreate qe_sync
+fi
+
 printf "%s" "$PREV_REF" > .deploy/current_image
 echo "Rolled back to $PREV_REF"
 echo "NOTE: migrations applied by the failed deploy were NOT reverted:"

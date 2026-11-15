@@ -240,3 +240,28 @@ class TestLeaks:
 
         assert api().get(resource_url(resource.id), scope).status_code == 404
         assert api().get(dataset_url(resource.dataset_id), scope).status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_dataset_view_carries_each_tables_current_summary(
+    api: Callable, make_dataset: Callable, make_resource: Callable
+) -> None:
+    dataset = make_dataset("FemHealth indicators")
+    fresh = ready(make_resource(dataset, name="Anaemia"))
+    stale = ready(make_resource(dataset, name="Stunting"))
+    ResourceProfile.objects.filter(resource=fresh).update(
+        facts_hash="f1", summary_facts_hash="f1", summary_text="Anaemia among women. " * 20
+    )
+    ResourceProfile.objects.filter(resource=stale).update(
+        facts_hash="new", summary_facts_hash="old", summary_text="Written for older data."
+    )
+
+    tables = {
+        t["name"]: t
+        for t in api().get(dataset_url(dataset.id), {"scope": "platform"}).json()["tables"]
+    }
+
+    summary = tables["Anaemia"]["summary"]
+    assert summary["generated"] is True and summary["text"].startswith("Anaemia among women.")
+    assert len(summary["text"]) <= 200
+    assert tables["Stunting"]["summary"] is None

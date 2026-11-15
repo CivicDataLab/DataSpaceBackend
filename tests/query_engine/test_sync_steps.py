@@ -296,6 +296,7 @@ def test_embeddings_down_means_documents_are_written_without_vectors(monkeypatch
         raise EmbeddingsUnavailable("status_503")
 
     monkeypatch.setattr(sync_steps, "embed_texts", down)
+    monkeypatch.setattr(sync_steps, "embeddings_configured", lambda: True)
     monkeypatch.setattr(
         sync_steps, "upsert_docs", lambda index, docs: written.extend(docs) or len(written)
     )
@@ -339,3 +340,23 @@ def test_stale_documents_are_deleted_before_new_ones_are_written(monkeypatch: An
 
     assert calls == ["delete ['r:unpublished']", "write"]
     assert done == {"deleted": 1, "upserted": 1, "without_vector": 0}
+
+
+def test_without_an_embeddings_key_no_call_is_made(monkeypatch: Any) -> None:
+    from types import SimpleNamespace
+
+    from api.services.query_engine import sync_steps
+
+    written: List[Any] = []
+
+    def must_not_call(texts: Any) -> Any:
+        raise AssertionError("embeddings called without a key")
+
+    monkeypatch.setattr(sync_steps, "embed_texts", must_not_call)
+    monkeypatch.setattr(
+        sync_steps, "upsert_docs", lambda index, docs: written.extend(docs) or len(written)
+    )
+    cards = [SimpleNamespace(doc_id="d:a", fields={"title": "A"}, text="A", card_hash="h")]
+
+    assert sync_steps.write_cards("qe_catalog_v1", cards) == (1, 1)
+    assert written[0][1]["has_embedding"] is False
