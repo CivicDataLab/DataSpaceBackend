@@ -358,7 +358,8 @@ QE_WEAK_MATCH_SIMILARITY = env.float("QE_WEAK_MATCH_SIMILARITY", default=0.55)
 QE_WEAK_MATCH_RERANK = env.float("QE_WEAK_MATCH_RERANK", default=None)
 # Reading data_db: per-statement time limits and the row cap of one query.
 QE_QUERY_TIMEOUT_MS = env.int("QE_QUERY_TIMEOUT_MS", default=5000)
-QE_PROFILE_TIMEOUT_MS = env.int("QE_PROFILE_TIMEOUT_MS", default=8000)
+# Kept under the 5 s a re-upload waits to drop the old table (api/utils/data_tables.py).
+QE_PROFILE_TIMEOUT_MS = env.int("QE_PROFILE_TIMEOUT_MS", default=4000)
 QE_LOCK_TIMEOUT_MS = env.int("QE_LOCK_TIMEOUT_MS", default=2000)
 QE_QUERY_MAX_ROWS = env.int("QE_QUERY_MAX_ROWS", default=500)
 # The qe_sync background process: pass interval, time budget and per-pass caps.

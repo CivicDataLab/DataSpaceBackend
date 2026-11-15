@@ -19,16 +19,21 @@ from typing import Any, Callable, Dict, Iterable, Iterator, Optional
 from unittest import mock
 
 import pytest
+from django.core.files.base import ContentFile
 from rest_framework.test import APIClient
 
 from api.models import (
     Collaborative,
     Dataset,
+    Geography,
     Organization,
     Resource,
     ResourceDataTable,
+    ResourceFileDetails,
     Sector,
 )
+from api.services.query_engine.geography_match import GeographyIndex, load_geography_index
+from api.utils.data_indexing import index_resource_data
 from api.utils.enums import (
     CollaborativeStatus,
     DatasetAccessType,
@@ -188,3 +193,36 @@ def api(keycloak_introspect: mock.MagicMock) -> Callable[[Optional[str]], APICli
         return api_client
 
     return client
+
+
+@pytest.fixture
+def make_table_resource(make_dataset: Callable[..., Dataset]) -> Callable[..., Resource]:
+    """A resource whose CSV (a fixture file name or raw bytes) the real producer copied into data_db.
+
+    Needs a ``uses_data_db`` test. Returns the resource with its dataset and data table loaded.
+    """
+
+    def make(
+        csv: Any, dataset: Optional[Dataset] = None, name: str = "Indicators by district"
+    ) -> Resource:
+        content = (FIXTURES / csv).read_bytes() if isinstance(csv, str) else csv
+        resource = Resource.objects.create(dataset=dataset or make_dataset(), name=name)
+        ResourceFileDetails.objects.create(
+            resource=resource,
+            file=ContentFile(content, name=f"{resource.id.hex}.csv"),
+            size=len(content),
+            format="csv",
+        )
+        assert index_resource_data(resource) is not None, "the producer did not build a table"
+        return Resource.objects.select_related("dataset", "resourcedatatable").get(pk=resource.pk)
+
+    return make
+
+
+@pytest.fixture
+def geography(db: Any) -> GeographyIndex:
+    """Assam and four of its districts, loaded into a place index."""
+    assam = Geography.objects.create(name="Assam", type="STATE")
+    for name in ("Kamrup", "Kamrup Metropolitan", "Dibrugarh", "Nagaon"):
+        Geography.objects.create(name=name, type="DISTRICT", parent_id=assam)
+    return load_geography_index()

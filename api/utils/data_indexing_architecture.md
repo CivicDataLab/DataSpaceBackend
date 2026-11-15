@@ -234,7 +234,7 @@ How the setup works:
 - **Database:** `tests/test_settings.py` adds the `data_db` alias only when `TEST_DATA_DB_URL` is set. pytest-django creates and drops `test_dataspace_data_db`, and `tests.data_index.routers.DataDbTestRouter` keeps Django models out of it.
 - **Skipping:** without the URL these tests are skipped, unless `REQUIRE_DATA_DB_TESTS=1` (set in CI, which runs a `postgres:16` service). Then the run fails, because a run that skipped them proves nothing.
 - **Clean-up:** an autouse fixture drops every `public` table after each such test, since pytest-django only empties tables of models routed there, and there are none.
-- **Where it applies:** the skip/fail hook and that fixture live in `tests/data_index/conftest.py`, and `uses_data_db` in `tests/data_index/support.py`. Tests elsewhere that need them must move both into a shared conftest.
+- **Where it applies:** the skip/fail hook and that fixture live in the shared `tests/conftest.py` (used by `tests/data_index/` and `tests/query_engine/`), and `uses_data_db` in `tests/data_index/support.py`.
 - **Main database:** stays in-memory SQLite, so row locks are no-ops there.
 - **Locally:** if `drf_yasg` fails with "No module named pkg_resources", install `setuptools<81` (CI installs it).
 

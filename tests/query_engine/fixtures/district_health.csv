@@ -1,0 +1,9 @@
+State,District,Year,Survey round,IMR (%),Stunting (%),Population,Remarks
+Assam,Kamrup,2015,2015-16,32.5,40.0,"1,23,456",good
+Assam,Kamrup,2019,2019-20,30.5,35.0,"1,30,000",fair
+Assam,Kamrup Metro,2015,2015-16,25.0,30.0,n.a.,good
+Assam,Kamrup Metro,2019,2019-20,22.0,28.0,-,12
+Assam,Dibrugarh,2015,2015-16,40.0,45.0,"2,00,000",poor
+Assam,Dibrugarh,2019,2019-20,38.0,41.0,"2,10,500",fair
+Assam,Total,2015,2015-16,33.0,38.0,"5,00,000",
+Assam,Total,2019,2019-20,30.0,35.0,"5,40,500",
