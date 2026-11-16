@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.models.AIModel import AIModel, ModelEndpoint
+from api.utils.aimodel_access import can_view_ai_model
 
 AIMODEL_DETAIL_CACHE_TTL = 60 * 15  # 15 minutes
 
@@ -122,14 +123,18 @@ class AIModelDetailView(APIView):
     def get(self, request: Request, model_id: str) -> Response:
         """Get AI model details."""
         try:
+            # Visibility first: the cache is shared by every caller (#293).
+            model = AIModel.objects.prefetch_related(
+                "tags", "sectors", "geographies", "endpoints", "organization", "user"
+            ).get(id=model_id)
+            if not can_view_ai_model(request.user, model):
+                # Same answer as a missing ID, so drafts are not revealed.
+                return Response({"error": "AI Model not found"}, status=404)
+
             cache_key = f"aimodel_detail:{model_id}"
             cached = cache.get(cache_key)
             if cached:
                 return Response(cached)
-
-            model = AIModel.objects.prefetch_related(
-                "tags", "sectors", "geographies", "endpoints", "organization", "user"
-            ).get(id=model_id)
 
             serializer = AIModelDetailSerializer(model)
             cache.set(cache_key, serializer.data, timeout=AIMODEL_DETAIL_CACHE_TTL)

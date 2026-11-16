@@ -35,6 +35,7 @@ from api.types.type_aimodel import (
     TypeModelEndpoint,
     TypeVersionProvider,
 )
+from api.utils.aimodel_access import can_view_ai_model, published_ai_models
 from api.utils.graphql_telemetry import trace_resolver
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
@@ -327,7 +328,7 @@ def _visible_ai_models(info: Info, include_public: Optional[bool] = False) -> Qu
     """The AI models a caller may list. Same rules as `aiModels`."""
     organization = info.context.context.get("organization")
     user = info.context.user
-    public = AIModel.objects.filter(is_public=True, is_active=True)
+    public = published_ai_models()
     if organization:
         queryset = AIModel.objects.filter(organization=organization)
     elif not user.is_authenticated:
@@ -374,8 +375,8 @@ class Query:
                     # For authenticated users, show their models
                     queryset = AIModel.objects.filter(user=user, organization=None)
             else:
-                # For non-authenticated users, only show public active models
-                queryset = AIModel.objects.filter(is_public=True, is_active=True)
+                # Anonymous callers see published models only, never drafts (#293)
+                queryset = published_ai_models()
 
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
@@ -445,23 +446,8 @@ class Query:
                     return None
                 model = AIModel.objects.get(public_id=parsed)
 
-            # Check permissions
-            if model.is_public and model.is_active:
+            if can_view_ai_model(user, model):
                 return TypeAIModel.from_django(model)
-
-            if not user.is_authenticated:
-                return None
-
-            if user.is_superuser or model.user == user:
-                return TypeAIModel.from_django(model)
-
-            if model.organization:
-                org_member = OrganizationMembership.objects.filter(
-                    user=user, organization=model.organization
-                ).first()
-                if org_member and org_member.role.can_view:
-                    return TypeAIModel.from_django(model)
-
             return None
         except AIModel.DoesNotExist:
             return None
@@ -474,19 +460,8 @@ class Query:
         try:
             model = AIModel.objects.get(id=model_id)
 
-            # Check permissions
-            if not model.is_public and not user.is_authenticated:
+            if not can_view_ai_model(user, model):
                 return []
-
-            if not model.is_public and model.user != user and not user.is_superuser:
-                if model.organization:
-                    org_member = OrganizationMembership.objects.filter(
-                        user=user, organization=model.organization
-                    ).first()
-                    if not org_member or not org_member.role.can_view:
-                        return []
-                else:
-                    return []
 
             endpoints = ModelEndpoint.objects.filter(model=model)
             return TypeModelEndpoint.from_django_list(list(endpoints))

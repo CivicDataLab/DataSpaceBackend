@@ -199,7 +199,8 @@ AM = """query($id: Int, $p: String) {
 
 
 def test_ai_model_by_public_id(owner) -> None:
-    m = make_model(owner, is_public=True, is_active=True)
+    # Published: anonymous callers only see published models (#293).
+    m = make_model(owner, is_public=True, is_active=True, status="ACTIVE")
     for value in [m.url_slug, m.public_id]:
         res = run(AM, {"p": value})
         assert res.errors is None, res.errors
