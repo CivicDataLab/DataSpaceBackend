@@ -96,7 +96,8 @@ class UseCaseInputPartial:
 
     id: str
     logo: Optional[Upload] = strawberry.field(default=None)
-    running_status: Optional[use_case_running_status] = UseCaseRunningStatus.INITIATED
+    # No default: an omitted field must keep the stored value (#291).
+    running_status: Optional[use_case_running_status] = None
     title: Optional[str] = None
     summary: Optional[str] = None
     platform_url: Optional[str] = None
