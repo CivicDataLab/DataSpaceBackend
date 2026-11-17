@@ -36,6 +36,7 @@ from api.models import (
 )
 from api.schema.schema import schema
 from api.utils.enums import (
+    AIModelStatus,
     CollaborativeStatus,
     EventStatus,
     PublicationStatus,
@@ -116,6 +117,8 @@ def w(db):
             organization=org,
             is_public=public,
             is_active=True,
+            # Published = public + active + ACTIVE status (api/utils/aimodel_access.py)
+            status=AIModelStatus.ACTIVE if public else AIModelStatus.REGISTERED,
         )
 
     items = {
