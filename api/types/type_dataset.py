@@ -136,6 +136,7 @@ class TypeDataset(BaseType):
                     "domain": prompt_dataset.domain,
                     "target_model_types": prompt_dataset.target_model_types,
                     "evaluation_criteria": prompt_dataset.evaluation_criteria,
+                    "purpose": prompt_dataset.purpose,
                 }
             return None
         except (AttributeError, PromptDataset.DoesNotExist):

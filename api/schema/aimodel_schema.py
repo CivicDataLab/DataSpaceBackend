@@ -37,6 +37,7 @@ from api.types.type_aimodel import (
 )
 from api.utils.aimodel_access import can_view_ai_model, published_ai_models
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.input_checks import API_TIMEOUT_RANGE, range_error, url_error
 from api.utils.organization_access import can_list_organization
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
@@ -326,6 +327,20 @@ AI_MODELS_TABLE_SORT_FIELDS = [
 ]
 
 
+def _check_input(*messages: Optional[str]) -> None:
+    """Raise the first failed input check (#292): mutations save without full_clean."""
+    for message in messages:
+        if message:
+            raise DjangoValidationError(message)
+
+
+def _provider_checks(endpoint_url: Optional[str], timeout_seconds: Optional[int]) -> None:
+    _check_input(
+        url_error(endpoint_url, "API endpoint URL", schemes=["http", "https"]),
+        range_error(timeout_seconds, "API timeout (seconds)", *API_TIMEOUT_RANGE),
+    )
+
+
 def _visible_ai_models(info: Info, include_public: Optional[bool] = False) -> QuerySet:
     """The AI models a caller may list; `aiModels` and `aiModelsTable` share it."""
     organization = info.context.context.get("organization")
@@ -500,6 +515,8 @@ class Mutation:
         # Prepare metadata
         metadata: Any = input.metadata or {}
 
+        _check_input(range_error(input.max_tokens, "Max tokens", 1))
+
         try:
             model = AIModel.objects.create(
                 name=name,
@@ -587,6 +604,7 @@ class Mutation:
         if input.supports_streaming is not None:
             model.supports_streaming = input.supports_streaming
         if input.max_tokens is not None:
+            _check_input(range_error(input.max_tokens, "Max tokens", 1))
             model.max_tokens = input.max_tokens
         if input.supported_languages is not None:
             model.supported_languages = input.supported_languages
@@ -869,6 +887,8 @@ class Mutation:
                     "You don't have permission to add versions to this model."
                 )
 
+        _check_input(range_error(input.max_tokens, "Max tokens", 1))
+
         # Create the version
         version = AIModelVersion.objects.create(
             ai_model=model,
@@ -935,6 +955,7 @@ class Mutation:
         if input.supports_streaming is not None:
             version.supports_streaming = input.supports_streaming
         if input.max_tokens is not None:
+            _check_input(range_error(input.max_tokens, "Max tokens", 1))
             version.max_tokens = input.max_tokens
         if input.supported_languages is not None:
             version.supported_languages = input.supported_languages
@@ -1062,6 +1083,8 @@ class Mutation:
                     "You don't have permission to add providers to this version."
                 )
 
+        _provider_checks(input.api_endpoint_url, input.api_timeout_seconds)
+
         provider = VersionProvider.objects.create(
             version=version,
             provider=input.provider,
@@ -1137,6 +1160,7 @@ class Mutation:
             provider.is_active = input.is_active
 
         # API Endpoint Configuration
+        _provider_checks(input.api_endpoint_url, input.api_timeout_seconds)
         if input.api_endpoint_url is not None:
             provider.api_endpoint_url = input.api_endpoint_url
         if input.api_http_method is not None:

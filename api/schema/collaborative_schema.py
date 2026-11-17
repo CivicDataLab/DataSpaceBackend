@@ -50,6 +50,7 @@ from api.types.type_organization import TypeOrganization
 from api.types.type_usecase import TypeUseCase
 from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.input_checks import date_order_error
 from api.utils.organization_access import can_list_organization
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
@@ -515,6 +516,10 @@ class Mutation:
             collaborative.started_on = data.started_on
         if data.completed_on is not None and data.completed_on is not strawberry.UNSET:
             collaborative.completed_on = data.completed_on
+        if data.started_on is not None or data.completed_on:
+            date_message = date_order_error(collaborative.started_on, collaborative.completed_on)
+            if date_message:
+                raise ValueError(date_message)
         if data.logo is not None and data.logo is not strawberry.UNSET:
             collaborative.logo = data.logo
         if data.cover_image is not None and data.cover_image is not strawberry.UNSET:
