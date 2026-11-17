@@ -14,7 +14,6 @@ from django.db.models import QuerySet
 from strawberry import auto
 from strawberry.file_uploads import Upload
 from strawberry.types import Info
-from strawberry_django.mutations import mutations
 from strawberry_django.pagination import OffsetPaginationInput
 
 from api.models import (
@@ -29,6 +28,7 @@ from api.models import (
     UseCaseMetadata,
     UseCaseOrganizationRelationship,
 )
+from api.schema.create_in_organization import create_in_organization
 from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.services.publication_linking import (
     assert_can_manage_links,
@@ -53,6 +53,7 @@ from api.utils.enums import (
     UseCaseStatus,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.organization_access import can_list_organization
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
@@ -61,6 +62,7 @@ from api.utils.qs_utils import (
     status_counts,
 )
 from authorization.models import User
+from authorization.permissions import CreateUseCasePermission
 from authorization.types import TypeUser
 
 
@@ -144,11 +146,15 @@ USE_CASES_TABLE_SORT_FIELDS = [
 
 
 def _visible_use_cases(info: Info, include_public: Optional[bool] = False) -> QuerySet:
-    """The use cases a caller may list. Same rules as `useCases`."""
+    """The use cases a caller may list; `useCases` and `useCasesTable` share it."""
     user = info.context.user
     organization = info.context.context.get("organization")
     if organization:
-        queryset = UseCase.objects.filter(organization=organization)
+        queryset = (
+            UseCase.objects.filter(organization=organization)
+            if can_list_organization(user, organization)
+            else UseCase.objects.none()
+        )
     elif user.is_superuser:
         queryset = UseCase.objects.all()
     elif user.is_authenticated:
@@ -180,16 +186,7 @@ class Query:
         order: Optional[UseCaseOrder] = strawberry.UNSET,
     ) -> list[TypeUseCase]:
         """Get all use cases."""
-        user = info.context.user
-        organization = info.context.context.get("organization")
-        if organization:
-            queryset = UseCase.objects.filter(organization=organization)
-        elif user.is_superuser:
-            queryset = UseCase.objects.all()
-        elif user.is_authenticated:
-            queryset = UseCase.objects.filter(user=user)
-        else:
-            queryset = UseCase.objects.filter(status=UseCaseStatus.PUBLISHED)
+        queryset = _visible_use_cases(info)
 
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
@@ -381,11 +378,14 @@ def _delete_existing_metadata(usecase: UseCase) -> None:
 class Mutation:
     """Mutations for use cases."""
 
-    create_use_case: TypeUseCase = mutations.create(UseCaseInput)
+    create_use_case: TypeUseCase = create_in_organization(
+        UseCaseInput, draft_status=UseCaseStatus.DRAFT, permission_classes=[CreateUseCasePermission]
+    )
     # update_use_case: TypeUseCase = mutations.update(UseCaseInputPartial, key_attr="id")
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[CreateUseCasePermission],
         extensions=[
             TrackModelActivity(
                 verb="created",

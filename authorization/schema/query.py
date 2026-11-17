@@ -9,6 +9,7 @@ from django.db import models
 from strawberry.types import Info
 
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.organization_access import can_list_organization
 from authorization.models import DatasetPermission, OrganizationMembership, Role, User
 from authorization.permissions import IsAuthenticated
 from authorization.schema.types import (
@@ -106,9 +107,9 @@ class Query:
 
     @strawberry.field
     def user_by_organization(self, info: Info) -> List[TypeUser]:
-        """Get a list of users with basic information."""
+        """The members of the organisation in the request header, for its own members."""
         organization = info.context.context.get("organization")
-        if not organization:
+        if not organization or not can_list_organization(info.context.user, organization):
             return []
 
         # Get users belonging to this organization
@@ -141,7 +142,9 @@ class Query:
 
     @strawberry.field
     def users(self, info: Info, limit: int = 10, offset: int = 0) -> List[TypeUser]:
-        """Get a list of users with basic information."""
+        """Every user on the platform; superusers only."""
+        if not getattr(info.context.user, "is_superuser", False):
+            return []
         users = User.objects.all()[offset : offset + limit]
         return TypeUser.from_django_list(users)
 
@@ -177,16 +180,28 @@ class Query:
     def search_users(
         self, info: Info, search_term: str, limit: Optional[int] = 10
     ) -> List[TypeUser]:
-        """Search for users by username, first name, last name, or email."""
+        """Pick a user to add, by name, username or full email address; signed-in users only.
+
+        Part of an email never matches and results carry no email (except the
+        caller's own), so the search cannot be used to collect addresses.
+        """
+        viewer = info.context.user
+        if not getattr(viewer, "is_authenticated", False):
+            return []
         if not search_term or len(search_term.strip()) < 2:
             return []
 
         search_term = search_term.strip()
-        queryset = User.objects.filter(
-            models.Q(username__icontains=search_term)
-            | models.Q(first_name__icontains=search_term)
-            | models.Q(last_name__icontains=search_term)
-            | models.Q(email__icontains=search_term)
-        ).distinct()[:limit]
-
-        return TypeUser.from_django_list(queryset)
+        users = list(
+            User.objects.filter(
+                models.Q(username__icontains=search_term)
+                | models.Q(first_name__icontains=search_term)
+                | models.Q(last_name__icontains=search_term)
+                | models.Q(email__iexact=search_term)
+            ).distinct()[:limit]
+        )
+        if not viewer.is_superuser:
+            for user in users:
+                if user.pk != viewer.pk:
+                    user.email = ""  # never saved; only blanks this response
+        return TypeUser.from_django_list(users)

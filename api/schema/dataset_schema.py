@@ -45,11 +45,7 @@ from api.types.type_prompt_metadata import TypePromptDataset, prompt_task_type_e
 from api.types.type_resource import TypeResource
 from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
-from api.utils.dataset_access import (
-    ChangeDatasetPartPermission,
-    can_change_dataset,
-    can_list_organization,
-)
+from api.utils.dataset_access import ChangeDatasetPartPermission, can_change_dataset
 from api.utils.enums import (
     DatasetAccessType,
     DatasetLicense,
@@ -61,6 +57,7 @@ from api.utils.enums import (
     UseCaseStatus,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.organization_access import can_list_organization
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,

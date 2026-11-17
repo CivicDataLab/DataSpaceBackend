@@ -36,6 +36,7 @@ from api.types.type_aimodel import (
     TypeVersionProvider,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.organization_access import can_list_organization
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
@@ -45,6 +46,7 @@ from api.utils.qs_utils import (
 )
 from authorization.graphql_permissions import IsAuthenticated
 from authorization.models import OrganizationMembership, Role
+from authorization.permissions import CreateAIModelPermission
 
 
 @trace_resolver(name="update_aimodel_tags", attributes={"component": "aimodel"})
@@ -324,12 +326,16 @@ AI_MODELS_TABLE_SORT_FIELDS = [
 
 
 def _visible_ai_models(info: Info, include_public: Optional[bool] = False) -> QuerySet:
-    """The AI models a caller may list. Same rules as `aiModels`."""
+    """The AI models a caller may list; `aiModels` and `aiModelsTable` share it."""
     organization = info.context.context.get("organization")
     user = info.context.user
     public = AIModel.objects.filter(is_public=True, is_active=True)
     if organization:
-        queryset = AIModel.objects.filter(organization=organization)
+        queryset = (
+            AIModel.objects.filter(organization=organization)
+            if can_list_organization(user, organization)
+            else AIModel.objects.none()
+        )
     elif not user.is_authenticated:
         queryset = public
     elif user.is_superuser:
@@ -359,23 +365,7 @@ class Query:
         order: Optional[AIModelOrder] = strawberry.UNSET,
     ) -> List[TypeAIModel]:
         """Get all AI models."""
-        organization = info.context.context.get("organization")
-        user = info.context.user
-
-        if organization:
-            queryset = AIModel.objects.filter(organization=organization)
-        else:
-            # If user is authenticated
-            if user.is_authenticated:
-                # If user is superuser, show all models
-                if user.is_superuser:
-                    queryset = AIModel.objects.all()
-                else:
-                    # For authenticated users, show their models
-                    queryset = AIModel.objects.filter(user=user, organization=None)
-            else:
-                # For non-authenticated users, only show public active models
-                queryset = AIModel.objects.filter(is_public=True, is_active=True)
+        queryset = _visible_ai_models(info)
 
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
@@ -500,7 +490,7 @@ class Mutation:
 
     @strawberry.mutation
     @BaseMutation.mutation(
-        permission_classes=[IsAuthenticated],
+        permission_classes=[CreateAIModelPermission],
         trace_name="create_ai_model",
         trace_attributes={"component": "aimodel"},
         track_activity={

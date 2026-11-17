@@ -13,7 +13,6 @@ from django.db.models import QuerySet
 from strawberry import auto
 from strawberry.file_uploads import Upload
 from strawberry.types import Info
-from strawberry_django.mutations import mutations
 from strawberry_django.pagination import OffsetPaginationInput
 
 from api.models import (
@@ -29,6 +28,7 @@ from api.models import (
     Tag,
     UseCase,
 )
+from api.schema.create_in_organization import create_in_organization
 from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.services.publication_linking import (
     assert_can_manage_links,
@@ -50,6 +50,7 @@ from api.types.type_organization import TypeOrganization
 from api.types.type_usecase import TypeUseCase
 from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.organization_access import can_list_organization
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
@@ -58,6 +59,7 @@ from api.utils.qs_utils import (
     status_counts,
 )
 from authorization.models import User
+from authorization.permissions import CreateCollaborativePermission
 from authorization.types import TypeUser
 
 
@@ -137,11 +139,15 @@ COLLABORATIVES_TABLE_SORT_FIELDS = [
 
 
 def _visible_collaboratives(info: Info, include_public: Optional[bool] = False) -> QuerySet:
-    """The collaboratives a caller may list. Same rules as `collaboratives`."""
+    """The collaboratives a caller may list; `collaboratives` and `collaborativesTable` share it."""
     user = info.context.user
     organization = info.context.context.get("organization")
     if organization:
-        queryset = Collaborative.objects.filter(organization=organization)
+        queryset = (
+            Collaborative.objects.filter(organization=organization)
+            if can_list_organization(user, organization)
+            else Collaborative.objects.none()
+        )
     elif user.is_superuser:
         queryset = Collaborative.objects.all()
     elif user.is_authenticated:
@@ -173,16 +179,7 @@ class Query:
         order: Optional[CollaborativeOrder] = strawberry.UNSET,
     ) -> list[TypeCollaborative]:
         """Get all collaboratives."""
-        user = info.context.user
-        organization = info.context.context.get("organization")
-        if organization:
-            queryset = Collaborative.objects.filter(organization=organization)
-        elif user.is_superuser:
-            queryset = Collaborative.objects.all()
-        elif user.is_authenticated:
-            queryset = Collaborative.objects.filter(user=user)
-        else:
-            queryset = Collaborative.objects.filter(status=CollaborativeStatus.PUBLISHED)
+        queryset = _visible_collaboratives(info)
 
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
@@ -379,10 +376,15 @@ def _delete_existing_metadata(collaborative: Collaborative) -> None:
 class Mutation:
     """Mutations for collaboratives."""
 
-    create_collaborative: TypeCollaborative = mutations.create(CollaborativeInput)
+    create_collaborative: TypeCollaborative = create_in_organization(
+        CollaborativeInput,
+        draft_status=CollaborativeStatus.DRAFT,
+        permission_classes=[CreateCollaborativePermission],
+    )
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[CreateCollaborativePermission],
         extensions=[
             TrackModelActivity(
                 verb="created",
