@@ -7,6 +7,7 @@ from strawberry.types import Info
 
 from api.models import Dataset, Event, Organization, Publication
 from api.utils.enums import EventStatus, PublicationStatus
+from api.utils.organization_access import can_add_to_organization
 from api.utils.public_links import parse_public_id
 from authorization.models import DatasetPermission, OrganizationMembership, Role
 
@@ -721,6 +722,34 @@ class CreateEventPermission(BasePermission):  # type: ignore[misc]
             return bool(membership and membership.role.can_add)
 
         return True
+
+
+class CreateInOrganizationPermission(BasePermission):  # type: ignore[misc]
+    """Creating an individual item needs a signed-in user; creating one owned by
+    the organisation in the request header needs the ``add`` role there."""
+
+    message = "You don't have permission to create this"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        user = info.context.user
+        if not getattr(user, "is_authenticated", False):
+            return False
+        organization = info.context.context.get("organization")
+        if organization:
+            return can_add_to_organization(user, organization)
+        return True
+
+
+class CreateUseCasePermission(CreateInOrganizationPermission):
+    message = "You don't have permission to create a use case"
+
+
+class CreateCollaborativePermission(CreateInOrganizationPermission):
+    message = "You don't have permission to create a collaborative"
+
+
+class CreateAIModelPermission(CreateInOrganizationPermission):
+    message = "You don't have permission to create an AI model"
 
 
 class AllowPublishedEvents(BasePermission):  # type: ignore[misc]

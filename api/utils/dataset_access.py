@@ -91,17 +91,6 @@ def viewable_datasets_q(user: Any, prefix: str = "") -> Q:
     )
 
 
-def can_list_organization(user: Any, organization: Any) -> bool:
-    """Whether this user may list an organisation's datasets, drafts included."""
-    if not user or not user.is_authenticated:
-        return False
-    if user.is_superuser:
-        return True
-    return OrganizationMembership.objects.filter(
-        user=user, organization=organization, role__can_view=True
-    ).exists()
-
-
 def log_access_denied(
     info: Info, user: Any, reason: str, dataset: Optional[Dataset] = None
 ) -> bool:
