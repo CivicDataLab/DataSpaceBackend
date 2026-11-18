@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
@@ -26,9 +26,44 @@ slug_validator = RegexValidator(
 )
 
 
+# The slug is the collaborative's subdomain, and a DNS label holds at most 63
+# characters. The column stays at 75 so older, longer slugs still load and save.
+SUBDOMAIN_MAX_LENGTH = 63
+
+# Same names as RESERVED_SUBDOMAINS in the frontend (lib/collaborativesRouting.ts),
+# whose routing never sends these hosts to a collaborative.
+RESERVED_SUBDOMAINS = frozenset(
+    {
+        "www",
+        "dev",
+        "staging",
+        "stage",
+        "test",
+        "qa",
+        "prod",
+        "production",
+        "app",
+        "api",
+        "admin",
+        "assets",
+        "static",
+        "cdn",
+    }
+)
+
+
+def subdomain_error(slug: str) -> Optional[str]:
+    """Message when a slug cannot work as a subdomain, or None (#292)."""
+    if len(slug) > SUBDOMAIN_MAX_LENGTH:
+        return f"Slug cannot be longer than {SUBDOMAIN_MAX_LENGTH} characters."
+    if slug.lower() in RESERVED_SUBDOMAINS:
+        return "This subdomain is reserved. Choose another."
+    return None
+
+
 def _slug_with_suffix(base: str) -> str:
-    """``base`` plus 4 random characters, kept within the 75-character limit."""
-    return f"{base[:70].rstrip('-')}-{generate_public_id()[:4]}"
+    """``base`` plus 4 random characters, kept within the subdomain limit."""
+    return f"{base[:SUBDOMAIN_MAX_LENGTH - 5].rstrip('-')}-{generate_public_id()[:4]}"
 
 
 class Collaborative(models.Model):
@@ -91,9 +126,12 @@ class Collaborative(models.Model):
     def save(self, *args: Any, **kwargs: Any) -> None:
         base = ""
         if self.title and not self.slug:
-            base = slugify(cast(str, self.title))[:75].strip("-")
+            base = slugify(cast(str, self.title))[:SUBDOMAIN_MAX_LENGTH].strip("-")
             if base:
-                taken = Collaborative.objects.filter(slug=base).exclude(pk=self.pk).exists()
+                taken = (
+                    base in RESERVED_SUBDOMAINS
+                    or Collaborative.objects.filter(slug=base).exclude(pk=self.pk).exists()
+                )
                 self.slug = _slug_with_suffix(base) if taken else base
 
         def do_save() -> None:

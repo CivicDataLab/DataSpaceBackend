@@ -28,6 +28,7 @@ from api.models import (
     Tag,
     UseCase,
 )
+from api.models.Collaborative import subdomain_error
 from api.schema.create_in_organization import create_in_organization
 from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.services.publication_linking import (
@@ -499,9 +500,16 @@ class Mutation:
                 raise ValueError("Title cannot be empty.")
             collaborative.title = data.title.strip()
         if data.slug is not None:
-            if data.slug.strip() == "":
+            slug = data.slug.strip()
+            if slug == "":
                 raise ValueError("Slug cannot be empty.")
-            collaborative.slug = data.slug.strip()
+            # Only a new slug is checked, so collaboratives that already have a
+            # longer one can still be edited (#292).
+            if slug != collaborative.slug:
+                slug_message = subdomain_error(slug)
+                if slug_message:
+                    raise ValueError(slug_message)
+            collaborative.slug = slug
         if data.summary is not None:
             summary = data.summary.strip()
             max_summary_length = Collaborative._meta.get_field("summary").max_length
