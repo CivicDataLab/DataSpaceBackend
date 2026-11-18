@@ -33,6 +33,7 @@ from api.schema.base_mutation import (
     MutationResponse,
 )
 from api.schema.extensions import TrackActivity, TrackModelActivity
+from api.services.publish_requirements import assert_dataset_ready
 from api.types.type_dataset import (
     DatasetFilter,
     DatasetOrder,
@@ -973,7 +974,7 @@ class Mutation:
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
-        # TODO: validate dataset
+        assert_dataset_ready(dataset)
         dataset.status = DatasetStatus.PUBLISHED.value
         dataset.save()
         return TypeDataset.from_django(dataset)

@@ -35,6 +35,7 @@ from api.services.publication_linking import (
     get_linkable_publication,
     published_publications,
 )
+from api.services.publish_requirements import assert_collaborative_ready
 from api.types.type_collaborative import (
     CollaborativeFilter,
     CollaborativeOrder,
@@ -770,6 +771,7 @@ class Mutation:
         except Collaborative.DoesNotExist:
             raise ValueError(f"Collaborative with ID {collaborative_id} doesn't exist")
 
+        assert_collaborative_ready(collaborative)
         collaborative.status = CollaborativeStatus.PUBLISHED.value
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
