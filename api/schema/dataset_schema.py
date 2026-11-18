@@ -51,12 +51,14 @@ from api.utils.enums import (
     DatasetLicense,
     DatasetStatus,
     DatasetType,
+    PromptDomain,
     PromptFormat,
     PromptPurpose,
     PromptTaskType,
     UseCaseStatus,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.input_checks import choice_error, range_error, too_long_error
 from api.utils.organization_access import can_list_organization
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
@@ -765,9 +767,11 @@ class Mutation:
         if dataset.status != DatasetStatus.DRAFT.value:
             raise DjangoValidationError(f"Dataset with ID {dataset_id} is not in draft status.")
 
-        tag_error = _tag_length_error(update_metadata_input.tags)
-        if tag_error:
-            raise DjangoValidationError(tag_error)
+        input_error = _tag_length_error(update_metadata_input.tags) or too_long_error(
+            Dataset, "description", update_metadata_input.description, "Description"
+        )
+        if input_error:
+            raise DjangoValidationError(input_error)
 
         if update_metadata_input.description:
             dataset.description = update_metadata_input.description
@@ -820,9 +824,18 @@ class Mutation:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
         if dataset.status != DatasetStatus.DRAFT.value:
             raise ValueError(f"Dataset with ID {dataset_id} is not in draft status.")
-        tag_error = _tag_length_error(update_dataset_input.tags)
-        if tag_error:
-            raise ValueError(tag_error)
+        input_error = (
+            _tag_length_error(update_dataset_input.tags)
+            or too_long_error(Dataset, "title", (update_dataset_input.title or "").strip(), "Title")
+            or too_long_error(
+                Dataset,
+                "description",
+                (update_dataset_input.description or "").strip(),
+                "Description",
+            )
+        )
+        if input_error:
+            raise ValueError(input_error)
         if update_dataset_input.title:
             if update_dataset_input.title.strip() == "":
                 raise ValueError("Title cannot be empty.")
@@ -868,6 +881,12 @@ class Mutation:
         if update_input.target_languages is not None:
             prompt_dataset.target_languages = update_input.target_languages
         if update_input.domain is not None:
+            domain_error = choice_error(update_input.domain, PromptDomain.values, "Domain")
+            if domain_error:
+                # success: false like other refused input, not a GraphQL error (#292).
+                return MutationResponse.error_response(
+                    GraphQLValidationError.from_message(domain_error)
+                )
             prompt_dataset.domain = update_input.domain
         if update_input.target_model_types is not None:
             prompt_dataset.target_model_types = update_input.target_model_types
@@ -903,6 +922,14 @@ class Mutation:
         # Check if the dataset is in draft status
         if resource.dataset.status != DatasetStatus.DRAFT.value:
             raise DjangoValidationError(f"Cannot update resource - dataset is not in draft status.")
+
+        input_error = (
+            choice_error(update_input.prompt_format, PromptFormat.values, "Prompt format")
+            or range_error(update_input.prompt_count, "Prompt count", 0)
+            or range_error(update_input.avg_prompt_length, "Average prompt length", 0)
+        )
+        if input_error:
+            return MutationResponse.error_response(GraphQLValidationError.from_message(input_error))
 
         # Get or create PromptResource
         prompt_resource, created = PromptResource.objects.get_or_create(resource=resource)

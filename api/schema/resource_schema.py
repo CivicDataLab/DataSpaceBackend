@@ -291,11 +291,20 @@ class Mutation:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
         for file in file_resource_input.files:
-            resource = Resource.objects.create(name=file.name, dataset=dataset)  # type: ignore[attr-defined]
-            ResourceFileDetails.objects.create(
-                file=file, size=file.size, resource=resource  # type: ignore[attr-defined]
-            )
-            _validate_file_details_and_update_format(resource)
+            # A refused file must leave nothing behind: the rows roll back and the
+            # stored file is removed (#292).
+            file_details = None
+            try:
+                with transaction.atomic():
+                    resource = Resource.objects.create(name=file.name, dataset=dataset)  # type: ignore[attr-defined]
+                    file_details = ResourceFileDetails.objects.create(
+                        file=file, size=file.size, resource=resource  # type: ignore[attr-defined]
+                    )
+                    _validate_file_details_and_update_format(resource)
+            except Exception:
+                if file_details is not None and file_details.file:
+                    file_details.file.delete(save=False)
+                raise
             _create_file_resource_schema(resource)
             resources.append(TypeResource.from_django(resource))
         return resources

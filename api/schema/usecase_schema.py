@@ -53,6 +53,7 @@ from api.utils.enums import (
     UseCaseStatus,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.input_checks import date_order_error, url_error
 from api.utils.organization_access import can_list_organization
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
@@ -505,11 +506,18 @@ class Mutation:
                 )
             usecase.summary = summary
         if data.platform_url is not None:
+            url_message = url_error(data.platform_url.strip(), "Platform URL")
+            if url_message:
+                raise ValueError(url_message)
             usecase.platform_url = data.platform_url.strip()
         if data.started_on is not None:
             usecase.started_on = data.started_on
         if data.completed_on is not None and data.completed_on is not strawberry.UNSET:
             usecase.completed_on = data.completed_on
+        if data.started_on is not None or data.completed_on:
+            date_message = date_order_error(usecase.started_on, usecase.completed_on)
+            if date_message:
+                raise ValueError(date_message)
         if data.running_status is not None and data.running_status is not strawberry.UNSET:
             usecase.running_status = data.running_status
         if data.logo is not None and data.logo is not strawberry.UNSET:
