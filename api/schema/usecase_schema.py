@@ -35,6 +35,7 @@ from api.services.publication_linking import (
     get_linkable_publication,
     published_publications,
 )
+from api.services.publish_requirements import assert_use_case_ready
 from api.types.type_dataset import TypeDataset
 from api.types.type_organization import TypeOrganization
 from api.types.type_usecase import (
@@ -702,6 +703,7 @@ class Mutation:
         except UseCase.DoesNotExist:
             raise ValueError(f"Use Case with ID {use_case_id} doesn't exist")
 
+        assert_use_case_ready(use_case)
         use_case.status = UseCaseStatus.PUBLISHED.value
         use_case.save()
         return TypeUseCase.from_django(use_case)
