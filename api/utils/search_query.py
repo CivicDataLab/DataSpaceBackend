@@ -126,3 +126,13 @@ def text_query(
         clauses.append(_prefix_clause(text, title_fields))
 
     return clauses[0] if len(clauses) == 1 else ESQ("bool", should=clauses, minimum_should_match=1)
+
+
+def sdg_codes(value: str) -> List[str]:
+    """SDG codes from a comma-separated ``sdgs`` filter value.
+
+    Search stores SDG codes ("SDG3"), not names: two names contain commas
+    ("Industry, Innovation and Infrastructure"), and filter values are split on
+    commas. Case and spaces are ignored, so "sdg3, SDG9" means SDG3 and SDG9.
+    """
+    return [code.strip().upper() for code in value.split(",") if code.strip()]
