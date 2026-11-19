@@ -128,7 +128,8 @@ def test_collaborative_same_title_gets_its_own_slug(owner) -> None:
     assert first.slug == "clean-rivers"
     assert second.slug.startswith("clean-rivers-") and len(second.slug) == len("clean-rivers") + 5
     for c in [first, second]:
-        res = run(CB, {"s": c.slug})
+        # Drafts: only the owner (or a viewing member) may look them up.
+        res = run(CB, {"s": c.slug}, user=owner)
         assert res.data["collaborativeBySlug"]["id"] == str(c.id)
 
 

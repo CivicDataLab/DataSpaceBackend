@@ -15,7 +15,8 @@ from api.types.type_usecase_dashboard import (
     UseCaseDashboardOrder,
 )
 from api.utils.graphql_telemetry import trace_resolver
-from authorization.permissions import IsAuthenticated
+from api.utils.owned_item_access import find_visible, viewable_items_q
+from authorization.permissions import ChangeUseCaseDashboardPermission, IsAuthenticated
 
 
 @strawberry.input
@@ -49,7 +50,7 @@ class Mutation:
 
     @strawberry.mutation
     @BaseMutation.mutation(
-        permission_classes=[IsAuthenticated],
+        permission_classes=[IsAuthenticated, ChangeUseCaseDashboardPermission],
         trace_name="add_usecase_dashboards",
         trace_attributes={"component": "usecase_dashboard"},
         track_activity={
@@ -88,7 +89,7 @@ class Mutation:
 
     @strawberry.mutation
     @BaseMutation.mutation(
-        permission_classes=[IsAuthenticated],
+        permission_classes=[IsAuthenticated, ChangeUseCaseDashboardPermission],
         trace_name="add_usecase_dashboard",
         trace_attributes={"component": "usecase_dashboard"},
         track_activity={
@@ -128,7 +129,7 @@ class Mutation:
 
     @strawberry.mutation
     @BaseMutation.mutation(
-        permission_classes=[IsAuthenticated],
+        permission_classes=[IsAuthenticated, ChangeUseCaseDashboardPermission],
         trace_name="update_usecase_dashboard",
         trace_attributes={"component": "usecase_dashboard"},
         track_activity={
@@ -157,7 +158,7 @@ class Mutation:
 
     @strawberry.mutation
     @BaseMutation.mutation(
-        permission_classes=[IsAuthenticated],
+        permission_classes=[IsAuthenticated, ChangeUseCaseDashboardPermission],
         trace_name="delete_usecase_dashboard",
         trace_attributes={"component": "usecase_dashboard"},
         track_activity={
@@ -198,8 +199,10 @@ class Query:
         pagination: OffsetPaginationInput = strawberry.UNSET,
         order: UseCaseDashboardOrder = strawberry.UNSET,
     ) -> list[TypeUseCaseDashboard]:
-        """Get all usecase dashboards."""
-        queryset = UseCaseDashboard.objects.all()
+        """Get all usecase dashboards (of use cases the caller may see)."""
+        queryset = UseCaseDashboard.objects.filter(
+            viewable_items_q(info.context.user, prefix="usecase__")
+        )
 
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
@@ -231,6 +234,9 @@ class Query:
         self, info: Info, usecase_id: int
     ) -> list[TypeUseCaseDashboard]:
         """Get dashboards for a specific usecase."""
+        # A draft the caller may not see answers like a missing id.
+        if find_visible(UseCase, usecase_id, info.context.user) is None:
+            raise Exception(f"Usecase with ID {usecase_id} does not exist")
         try:
             # Check if usecase exists
             usecase = UseCase.objects.get(id=usecase_id)
