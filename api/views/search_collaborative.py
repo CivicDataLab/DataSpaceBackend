@@ -9,7 +9,7 @@ from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 
 from api.models import Collaborative, CollaborativeMetadata, Geography, Metadata
-from api.utils.search_query import nested_paths, text_query
+from api.utils.search_query import nested_paths, sdg_codes, text_query
 from api.utils.telemetry_utils import trace_method
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
 from search.documents import CollaborativeDocument
@@ -258,6 +258,10 @@ class SearchCollaborative(PaginatedElasticSearchAPIView):
         for filter in filters:
             if filter in excluded_labels:
                 continue
+            elif filter == "sdgs":
+                sdg_values = sdg_codes(filters[filter])
+                if sdg_values:
+                    search = search.filter("terms", sdgs=sdg_values)
             elif filter in ["tags", "sectors", "geographies"]:
                 raw_filter = filter + ".raw"
                 if raw_filter in self.aggregations:
