@@ -19,6 +19,7 @@ from api.types.type_dataset import TypeTag
 from api.types.type_geo import TypeGeo
 from api.types.type_organization import TypeOrganization
 from api.types.type_sector import TypeSector
+from api.utils.aimodel_access import can_read_model_secrets
 from api.utils.enums import (
     AIModelFramework,
     AIModelLifecycleStage,
@@ -57,7 +58,6 @@ class TypeModelEndpoint(BaseType):
     http_method: EndpointHTTPMethodEnum
     auth_type: EndpointAuthTypeEnum
     auth_header_name: str
-    headers: strawberry.scalars.JSON
     request_template: strawberry.scalars.JSON
     response_path: Optional[str]
     timeout_seconds: int
@@ -71,6 +71,11 @@ class TypeModelEndpoint(BaseType):
     failed_requests: int
     created_at: datetime
     updated_at: datetime
+
+    @strawberry.field(description="Extra request headers; empty unless you can edit the model.")
+    def headers(self, info: Info) -> strawberry.scalars.JSON:
+        endpoint = cast(ModelEndpoint, self)
+        return endpoint.headers if can_read_model_secrets(info, endpoint.model) else {}
 
     @strawberry.field
     def success_rate(self) -> Optional[float]:
@@ -142,6 +147,11 @@ class TypeAIModel(BaseType):
     created_at: datetime
     updated_at: datetime
     last_tested_at: Optional[datetime]
+
+    @strawberry_django.field(description="Hugging Face token; null unless you can edit the model.")
+    def hf_auth_token(self, info: Info) -> Optional[str]:
+        model = cast(AIModel, self)
+        return model.hf_auth_token if can_read_model_secrets(info, model) else None
 
     @strawberry.field(description="Link part for the AI model page: title words + publicId.")
     def url_slug(self) -> str:
@@ -230,6 +240,11 @@ class TypeAIModel(BaseType):
             return None
 
 
+def _provider_secrets_visible(info: Info, provider: VersionProvider) -> bool:
+    # Resolvers get the Django row as `self`, so this cannot be a method of the type.
+    return can_read_model_secrets(info, provider.version.ai_model)
+
+
 @strawberry.type
 class TypeVersionProvider(BaseType):
     """GraphQL type for VersionProvider."""
@@ -248,17 +263,14 @@ class TypeVersionProvider(BaseType):
     # Authentication Configuration
     api_auth_type: EndpointAuthTypeEnum
     api_auth_header_name: str
-    api_key: Optional[str]
     api_key_prefix: Optional[str]
 
     # Request/Response Configuration
-    api_headers: strawberry.scalars.JSON
     api_request_template: strawberry.scalars.JSON
     api_response_path: Optional[str]
 
     # HuggingFace Configuration
     hf_use_pipeline: bool
-    hf_auth_token: Optional[str]
     hf_model_class: Optional[str]
     hf_attn_implementation: Optional[str]
     hf_trust_remote_code: bool
@@ -266,10 +278,30 @@ class TypeVersionProvider(BaseType):
     hf_device_map: Optional[str]
     framework: Optional[str]
 
-    # Additional config
-    config: strawberry.scalars.JSON
     created_at: datetime
     updated_at: datetime
+
+    # Saved credentials: only people who can edit the model get them back.
+    @strawberry.field(description="API key; null unless you can edit the model.")
+    def api_key(self, info: Info) -> Optional[str]:
+        provider = cast(VersionProvider, self)
+        return provider.api_key if _provider_secrets_visible(info, provider) else None
+
+    @strawberry.field(description="Extra request headers; empty unless you can edit the model.")
+    def api_headers(self, info: Info) -> strawberry.scalars.JSON:
+        provider = cast(VersionProvider, self)
+        return provider.api_headers if _provider_secrets_visible(info, provider) else {}
+
+    @strawberry.field(description="Hugging Face token; null unless you can edit the model.")
+    def hf_auth_token(self, info: Info) -> Optional[str]:
+        provider = cast(VersionProvider, self)
+        return provider.hf_auth_token if _provider_secrets_visible(info, provider) else None
+
+    @strawberry.field(description="Free-form settings; empty unless you can edit the model.")
+    def config(self, info: Info) -> strawberry.scalars.JSON:
+        # Free JSON, so it may hold a secret; the dashboard keeps only labels here.
+        provider = cast(VersionProvider, self)
+        return provider.config if _provider_secrets_visible(info, provider) else {}
 
 
 @strawberry_django.filter(AIModelVersion)
