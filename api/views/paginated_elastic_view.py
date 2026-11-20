@@ -186,6 +186,20 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                 for agg in running_status_agg:
                     aggregations["running_status"][agg["key"]] = agg["doc_count"]
 
+            if "location" in aggregations:
+                location_agg = aggregations["location"]["buckets"]
+                aggregations.pop("location")
+                aggregations["location"] = {}
+                for agg in location_agg:
+                    aggregations["location"][agg["key"]] = agg["doc_count"]
+
+            if "is_individual_event" in aggregations:
+                is_individual_event_agg = aggregations["is_individual_event"]["buckets"]
+                aggregations.pop("is_individual_event")
+                aggregations["is_individual_event"] = {}
+                for agg in is_individual_event_agg:
+                    aggregations["is_individual_event"][agg["key_as_string"]] = agg["doc_count"]
+
             if "is_individual_usecase" in aggregations:
                 is_individual_usecase_agg = aggregations["is_individual_usecase"]["buckets"]
                 aggregations.pop("is_individual_usecase")

@@ -206,6 +206,50 @@ org_datasets = client.datasets.get_organization_datasets(
 )
 ```
 
+### Fetch Indexed Dataset Data (filterable)
+
+For datasets whose resources have been indexed into `data_db` (CSV/XLSX/etc.),
+you can query the underlying rows with column-level filters, projection, and
+ordering. See the dedicated guide: [dataset_data_api.md](../dataset_data_api.md).
+
+```python
+# Per-resource fetch
+page = client.datasets.get_resource_data(
+    resource_id="f1e2...",
+    filters={"price__gte": 10, "category__in": ["books", "media"]},
+    columns=["id", "title", "price"],
+    order_by=["-price"],
+    limit=200,
+)
+print(page["total"], len(page["rows"]))
+
+# Per-dataset fetch (defaults to first indexed resource)
+page = client.datasets.get_dataset_data(
+    dataset_id="abcd...",
+    filters={"region": "south"},
+)
+
+# Prompt datasets — extra prompt-aware shorthands
+page = client.datasets.get_prompt_data(
+    dataset_id="abcd...",
+    prompt_contains="translate",
+    min_length=20,
+    filters={"language": "fr"},
+)
+
+# Stream all matching rows as dicts
+for row in client.datasets.iter_resource_data(
+    resource_id="f1e2...",
+    filters={"is_active": True},
+    batch_size=2000,
+):
+    process(row)
+```
+
+Supported filter operators (Django-style suffixes): `eq, ne, gt, gte, lt, lte,
+in, nin, contains, icontains, startswith, istartswith, endswith, iendswith,
+isnull, notnull`.
+
 ## Working with AI Models
 
 ### Search AI Models

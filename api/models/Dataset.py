@@ -5,13 +5,13 @@ from django.db import models
 from django.db.models import Sum
 from django.utils.text import slugify
 
-from api.utils.django_utils import retry_on_slug_collision
 from api.utils.enums import (
     DatasetAccessType,
     DatasetLicense,
     DatasetStatus,
     DatasetType,
 )
+from api.utils.public_links import PUBLIC_ID_LENGTH, build_url_slug, save_with_public_id
 
 if TYPE_CHECKING:
     from api.models.DataSpace import DataSpace
@@ -36,7 +36,10 @@ class Dataset(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=300, unique=False, blank=True)
     description = models.CharField(max_length=1000, unique=False, blank=True, null=True)
-    slug = models.SlugField(max_length=255, unique=True)
+    # Kept for older readers (SDK, search); no longer unique. Links use
+    # public_id, see api/utils/public_links.py.
+    slug = models.SlugField(max_length=255)
+    public_id = models.CharField(max_length=PUBLIC_ID_LENGTH, unique=True, editable=False)
     organization = models.ForeignKey(
         "api.Organization",
         on_delete=models.SET_NULL,
@@ -84,15 +87,13 @@ class Dataset(models.Model):
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
-            self.slug = slugify(self.title)
-        base_slug = self.slug
+            self.slug = slugify(self.title)[:255]
+        save_with_public_id(self, lambda: super(Dataset, self).save(*args, **kwargs))
 
-        def disambiguate(attempt: int) -> None:
-            self.slug = f"{base_slug}-{attempt}"
-
-        retry_on_slug_collision(
-            lambda: super(Dataset, self).save(*args, **kwargs), disambiguate
-        )
+    @property
+    def url_slug(self) -> str:
+        """Link part for the dataset page, e.g. ``city-air-quality-index-k3x9m2qa7b1z``."""
+        return build_url_slug(self.title, self.public_id)
 
     @property
     def tags_indexing(self) -> list[str]:

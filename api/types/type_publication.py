@@ -25,6 +25,7 @@ from api.utils.enums import (
     PublicationStatus,
     UseCaseStatus,
 )
+from api.utils.qs_utils import StatusCount
 from authorization.types import TypeUser
 
 
@@ -128,6 +129,7 @@ class TypePublication(BaseType):
     title: str
     description: Optional[str]
     slug: str
+    public_id: str
     status: publication_status
     authors: List[str]
     publication_date: Optional[date]
@@ -139,6 +141,10 @@ class TypePublication(BaseType):
     organization: Optional["TypeOrganization"]
     user: Optional["TypeUser"]
     resource_type: Optional["TypeResourceType"]
+
+    @strawberry.field(description="Link part for the publication page: title words + publicId.")
+    def url_slug(self) -> str:
+        return cast(Publication, self).url_slug
 
     @strawberry.field
     def sectors(self, info: Info) -> List["TypeSector"]:
@@ -236,3 +242,17 @@ class TypePublication(BaseType):
             return usecases + collabs
         except (AttributeError, Publication.DoesNotExist):
             return 0
+
+
+@strawberry.type
+class PublicationResponse:
+    """One page of a table listing (`publicationsTable`): rows, the total after
+    filters, and per-status counts for tab labels."""
+
+    data: List[TypePublication]
+    total_items_count: int
+    status_counts: List[StatusCount] = strawberry.field(
+        default_factory=list,
+        description="Counts per status with the same filters applied, except any status filter, "
+        "so tab labels stay stable when switching tabs.",
+    )

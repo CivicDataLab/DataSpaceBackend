@@ -23,7 +23,7 @@ from django.urls import URLPattern, URLResolver, include, path, re_path
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 
-from api.views import health
+from api.views import health, legacy_media
 
 # Type alias for URL patterns
 URLPatternsList = List[Union[URLPattern, URLResolver]]
@@ -49,16 +49,22 @@ urlpatterns: URLPatternsList = [
     # Health check endpoint
     path("health/", health.health_check, name="health_check"),
     # API documentation
-    path(
-        "swagger<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"
-    ),
+    path("swagger<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"),
     path(
         "swagger/",
         schema_view.with_ui("swagger", cache_timeout=0),
         name="schema-swagger-ui",
     ),
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Links issued before media moved to S3; see api/views/legacy_media.py.
+    path(
+        # Django prefixes a relative MEDIA_URL with the script name ("/public/"),
+        # which a URL pattern never matches.
+        f"{settings.MEDIA_URL.lstrip('/')}<path:name>",
+        legacy_media.legacy_media_redirect,
+        name="legacy_media",
+    ),
+]
 
 # In debug mode, add static URL patterns and debug toolbar
 if settings.DEBUG:

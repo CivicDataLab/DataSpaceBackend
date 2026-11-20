@@ -7,6 +7,8 @@ from django.utils.text import slugify
 
 from api.utils.enums import DatasetLicense, PublicationBlockType, PublicationStatus
 from api.utils.file_paths import _publication_block_directory_path
+from api.utils.public_links import PUBLIC_ID_LENGTH, build_url_slug, save_with_public_id
+from api.utils.storage import public_storage
 
 if TYPE_CHECKING:
     from api.models.Organization import Organization
@@ -27,7 +29,9 @@ class Publication(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=300, unique=False, blank=True)
     description = models.TextField(blank=True, null=True)
-    slug = models.SlugField(max_length=255, unique=True)
+    # Kept for older readers (SDK); no longer unique. Links use public_id (see url_slug).
+    slug = models.SlugField(max_length=255)
+    public_id = models.CharField(max_length=PUBLIC_ID_LENGTH, unique=True, editable=False)
 
     organization = models.ForeignKey(
         "api.Organization",
@@ -76,14 +80,12 @@ class Publication(models.Model):
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
-            base_slug = slugify(self.title) or "untitled"
-            slug = base_slug
-            counter = 1
-            while Publication.objects.filter(slug=slug).exclude(pk=self.pk).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-            self.slug = slug
-        super().save(*args, **kwargs)
+            self.slug = slugify(self.title)[:255] or "untitled"
+        save_with_public_id(self, lambda: super(Publication, self).save(*args, **kwargs))
+
+    @property
+    def url_slug(self) -> str:
+        return build_url_slug(self.title, self.public_id)
 
     @property
     def is_individual_publication(self) -> bool:
@@ -149,6 +151,7 @@ class PublicationBlock(models.Model):
     # FILE block fields.
     file = models.FileField(
         upload_to=_publication_block_directory_path,
+        storage=public_storage,
         max_length=300,
         blank=True,
     )

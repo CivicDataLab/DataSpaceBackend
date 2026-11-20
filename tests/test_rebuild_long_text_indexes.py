@@ -1,11 +1,11 @@
-"""Migration 0054 rebuilds only search indexes that still have a single-token copy."""
+"""Migration 0064 rebuilds only search indexes that still have a single-token copy."""
 
 import importlib
 from unittest import mock
 
 from django.test import override_settings
 
-migration = importlib.import_module("api.migrations.0054_rebuild_long_text_search_indexes")
+migration = importlib.import_module("api.migrations.0064_rebuild_long_text_search_indexes")
 
 OLD = {
     "properties": {

@@ -93,8 +93,10 @@ class PlatformDatasetInfo:
 # --------------------------------------------------------------------------- #
 # Helpers shared by importers
 # --------------------------------------------------------------------------- #
-# Platform license strings (lower-cased) -> DatasetLicense. Anything not listed
-# falls back to CC-BY 4.0 and the raw string is kept on DatasetSource.
+# Platform license strings (lower-cased) -> DatasetLicense, for names that are
+# not an SPDX id. SPDX ids ("CC-BY-NC-4.0") match the enum directly in
+# map_license. Anything else falls back to CC-BY 4.0 and the raw string is kept
+# on DatasetSource.
 LICENSE_ALIASES: Dict[str, str] = {
     "cc-by-4.0": DatasetLicense.CC_BY_4_0_ATTRIBUTION,
     "cc-by": DatasetLicense.CC_BY_4_0_ATTRIBUTION,
@@ -113,13 +115,25 @@ LICENSE_ALIASES: Dict[str, str] = {
     "odc-odbl": DatasetLicense.OPEN_DATABASE_LICENSE,
     "database: open database, contents: database contents": DatasetLicense.OPEN_DATABASE_LICENSE,
     "database: open database, contents: © original authors": DatasetLicense.OPEN_DATABASE_LICENSE,
+    "cc0": DatasetLicense.CC0_1_0,
+    "cc0: public domain": DatasetLicense.CC0_1_0,
+    "pddl": DatasetLicense.PDDL_1_0,
+    "odc-pddl": DatasetLicense.PDDL_1_0,
+    "odc public domain dedication and licence (pddl)": DatasetLicense.PDDL_1_0,
+    "godl": DatasetLicense.GOVERNMENT_OPEN_DATA_LICENSE,
+    "godl-india": DatasetLicense.GOVERNMENT_OPEN_DATA_LICENSE,
 }
 
 
 def map_license(raw: str) -> str:
     """Map a platform license string onto DatasetLicense (default CC-BY-4.0)."""
     key = (raw or "").strip().lower()
-    return LICENSE_ALIASES.get(key, DatasetLicense.CC_BY_4_0_ATTRIBUTION)
+    if key in LICENSE_ALIASES:
+        return LICENSE_ALIASES[key]
+    spdx = re.sub(r"[^A-Z0-9]+", "_", key.upper()).strip("_")
+    if spdx in DatasetLicense.values:
+        return spdx
+    return DatasetLicense.CC_BY_4_0_ATTRIBUTION
 
 
 # Hard limits: the platforms' own maxima are well under these, so anything

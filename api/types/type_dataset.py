@@ -57,6 +57,7 @@ class TypeDataset(BaseType):
     title: str
     description: Optional[str]
     slug: str
+    public_id: str
     status: dataset_status
     dataset_type: dataset_type_enum
     organization: Optional["TypeOrganization"]
@@ -65,6 +66,11 @@ class TypeDataset(BaseType):
     tags: List["TypeTag"]
     download_count: int
     user: Optional["TypeUser"]
+
+    @strawberry.field
+    def url_slug(self) -> str:
+        """Link part for the dataset page: title words + public_id."""
+        return cast(Dataset, self).url_slug
 
     @strawberry.field
     def source(self) -> Optional["TypeDatasetSource"]:
@@ -130,6 +136,7 @@ class TypeDataset(BaseType):
                     "domain": prompt_dataset.domain,
                     "target_model_types": prompt_dataset.target_model_types,
                     "evaluation_criteria": prompt_dataset.evaluation_criteria,
+                    "purpose": prompt_dataset.purpose,
                 }
             return None
         except (AttributeError, PromptDataset.DoesNotExist):

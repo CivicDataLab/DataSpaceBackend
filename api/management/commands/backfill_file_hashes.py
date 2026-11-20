@@ -3,7 +3,7 @@
     python manage.py backfill_file_hashes            # fill every missing hash
     python manage.py backfill_file_hashes --dry-run  # only count
 
-Writes through a queryset update, so the DVC versioning signal does not run.
+Writes through a queryset update, so no model save signals run.
 """
 
 from django.core.management.base import BaseCommand

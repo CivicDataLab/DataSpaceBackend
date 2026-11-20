@@ -24,6 +24,8 @@ INDEX.settings(number_of_shards=1, number_of_replicas=0)
 class UseCaseDocument(Document):
     """Elasticsearch document for UseCase model."""
 
+    public_id = fields.KeywordField()
+    url_slug = fields.KeywordField(attr="url_slug")
     metadata = fields.NestedField(
         properties={
             "value": KeywordField(multi=True),
@@ -222,7 +224,7 @@ class UseCaseDocument(Document):
     def prepare_logo(self, instance: UseCase) -> str:
         """Prepare logo URL for indexing."""
         if instance.logo:
-            return str(instance.logo.path.replace("/code/files/", ""))
+            return str(instance.logo.url)
         return ""
 
     def should_index_object(self, obj: UseCase) -> bool:

@@ -85,6 +85,8 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
     geographies = serializers.ListField()
     has_charts = serializers.BooleanField()
     slug = serializers.CharField()
+    public_id = serializers.CharField(required=False, allow_null=True)
+    url_slug = serializers.CharField(required=False, allow_null=True)
     download_count = serializers.IntegerField()
     trending_score = serializers.FloatField(required=False)
     is_individual_dataset = serializers.BooleanField()
@@ -110,6 +112,8 @@ class DatasetDocumentSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "slug",
+            "public_id",
+            "url_slug",
             "created",
             "modified",
             "status",

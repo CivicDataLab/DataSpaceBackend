@@ -9,7 +9,21 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 
+# The real settings require the S3 storage variables; give the suite harmless
+# values so it boots without a .env. STORAGES is swapped for memory below.
+os.environ.setdefault("STORAGE_BUCKET", "test-bucket")
+os.environ.setdefault("STORAGE_REGION", "ap-south-1")
+os.environ.setdefault("STORAGE_ENV", "test")
+
 from DataSpace.settings import *
+
+# Tests never reach S3: both media storages (and the default) live in memory.
+STORAGES = {
+    **STORAGES,  # noqa: F405 — imported via ``from DataSpace.settings import *``
+    "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+    "public": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+    "private": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+}
 
 # Use an in-memory SQLite database for testing
 DATABASES = {
@@ -18,6 +32,18 @@ DATABASES = {
         "NAME": ":memory:",
     }
 }
+
+# Data tables live in a second Postgres database. Tests that build them
+# (marked ``data_db``) run only when TEST_DATA_DB_URL points at a Postgres
+# server; pytest-django creates and drops its own database there. The router
+# keeps every Django model out of it, as in production.
+_TEST_DATA_DB_URL = os.environ.get("TEST_DATA_DB_URL")
+if _TEST_DATA_DB_URL:
+    DATABASES["data_db"] = {
+        **env.db_url_config(_TEST_DATA_DB_URL),  # noqa: F405 — from DataSpace.settings
+        "TEST": {"NAME": "test_dataspace_data_db"},
+    }
+    DATABASE_ROUTERS = ["tests.data_index.routers.DataDbTestRouter"]
 
 # Disable debug mode
 DEBUG = True

@@ -20,6 +20,7 @@ from django.db.models import QuerySet
 
 from api.models import Geography, Publication, ResourceType, Sector
 from api.utils.enums import DatasetLicense, PublicationStatus
+from api.utils.organization_access import can_list_organization
 
 # Default page size + hard ceiling for a publications listing, enforced even
 # when the caller sends no pagination input.
@@ -297,13 +298,17 @@ def get_scoped_publications(
 ) -> "QuerySet[Publication, Publication]":
     """Return the publications a caller may list, correctly scoped.
 
-    Organization context → that org's publications; an authenticated individual
-    → their own; anonymous → published only. ``include_public`` unions in the
-    published set so a signed-in user also sees the public listing. Ordered
-    newest-first and de-duplicated after the union.
+    Organization context → that org's publications, for its members only; an
+    authenticated individual → their own; anonymous → published only.
+    ``include_public`` unions in the published set so a signed-in user also sees
+    the public listing. Ordered newest-first and de-duplicated after the union.
     """
     if organization:
-        queryset = Publication.objects.filter(organization=organization)
+        queryset = (
+            Publication.objects.filter(organization=organization)
+            if can_list_organization(user, organization)
+            else Publication.objects.none()
+        )
     elif getattr(user, "is_superuser", False):
         queryset = Publication.objects.all()
     elif getattr(user, "is_authenticated", False):

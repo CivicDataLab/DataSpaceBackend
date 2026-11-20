@@ -43,11 +43,18 @@ def metadata_export(request: HttpRequest, dataset_id: uuid.UUID) -> HttpResponse
 
     standard = (request.GET.get("standard") or "dcat").strip().lower()
     fmt = (request.GET.get("format") or "jsonld").strip().lower()
+    # Only these two inputs are the caller's fault. Fixed messages: never echo
+    # an exception to a public client.
+    options = export_options()
+    if standard not in options:
+        return JsonResponse({"error": "Unknown standard", "options": options}, status=400)
+    if fmt not in options[standard]["formats"]:
+        return JsonResponse(
+            {"error": "Format not available for this standard", "options": options}, status=400
+        )
     try:
         body, content_type, ext, report = export_dataset(dataset, standard, fmt)
-    except ValueError as exc:
-        return JsonResponse({"error": str(exc), "options": export_options()}, status=400)
-    except Exception as exc:  # pragma: no cover - defensive; never 500 on a public page
+    except Exception as exc:  # internal failure: log it, return a fixed message
         logger.error(
             "metadata_export_failed", dataset_id=str(dataset_id), standard=standard, error=str(exc)
         )
