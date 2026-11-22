@@ -39,6 +39,7 @@ from api.utils.aimodel_access import can_view_ai_model, published_ai_models
 from api.utils.graphql_telemetry import trace_resolver
 from api.utils.input_checks import API_TIMEOUT_RANGE, range_error, url_error
 from api.utils.organization_access import can_list_organization
+from api.utils.outbound_url import public_url_error
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
@@ -337,6 +338,8 @@ def _check_input(*messages: Optional[str]) -> None:
 def _provider_checks(endpoint_url: Optional[str], timeout_seconds: Optional[int]) -> None:
     _check_input(
         url_error(endpoint_url, "API endpoint URL", schemes=["http", "https"]),
+        # Calls refuse these too; checking on save gives the owner the error early.
+        public_url_error(endpoint_url),
         range_error(timeout_seconds, "API timeout (seconds)", *API_TIMEOUT_RANGE),
     )
 
