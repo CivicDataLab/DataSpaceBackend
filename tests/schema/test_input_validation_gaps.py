@@ -165,7 +165,10 @@ def test_timeout_outside_1_to_600_is_refused(owner, provider, value):
     assert provider.api_timeout_seconds != value
 
 
-def test_valid_provider_settings_are_saved(owner, provider):
+def test_valid_provider_settings_are_saved(owner, provider, monkeypatch):
+    # The host must resolve to a public address; answer for it without the network.
+    public = [(2, 1, 6, "", ("93.184.215.14", 443))]
+    monkeypatch.setattr("socket.getaddrinfo", lambda *args, **kwargs: public)
     result = run(
         owner,
         UPDATE_PROVIDER,
