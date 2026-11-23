@@ -16,7 +16,7 @@ elastic-transport==8.13.0
 elasticsearch==8.13.0
 elasticsearch-dsl==8.12.0
 googleapis-common-protos==1.65.0
-graphql-core==3.2.3
+graphql-core==3.2.12
 gunicorn==23.0.0
 grpcio==1.68.1
 idna==3.6
