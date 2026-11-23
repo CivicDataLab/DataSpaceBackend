@@ -37,7 +37,12 @@ from api.types.type_aimodel import (
 )
 from api.utils.aimodel_access import can_view_ai_model, published_ai_models
 from api.utils.graphql_telemetry import trace_resolver
-from api.utils.input_checks import API_TIMEOUT_RANGE, range_error, url_error
+from api.utils.input_checks import (
+    API_TIMEOUT_RANGE,
+    range_error,
+    url_error,
+    whitespace_error,
+)
 from api.utils.organization_access import can_list_organization
 from api.utils.outbound_url import public_url_error
 from api.utils.public_links import parse_public_id
@@ -342,6 +347,36 @@ def _provider_checks(endpoint_url: Optional[str], timeout_seconds: Optional[int]
         public_url_error(endpoint_url),
         range_error(timeout_seconds, "API timeout (seconds)", *API_TIMEOUT_RANGE),
     )
+
+
+# Sent to the model provider exactly as saved. A stray space, easy to paste unseen
+# into the masked key field, made every call to the model fail with 401.
+_PROVIDER_TOKEN_FIELDS = {
+    "api_key": "API key",
+    "hf_auth_token": "Hugging Face token",
+    "api_key_prefix": "API key prefix",
+    "api_auth_header_name": "Auth header name",
+    "provider_model_id": "Provider model ID",
+    "api_response_path": "Response path",
+}
+
+
+# With these auth types the key is a whole header value ("Token abc") or
+# "username:password", which may contain spaces.
+_KEY_MAY_CONTAIN_SPACES = {"CUSTOM", "BASIC"}
+
+
+def _clean_provider_tokens(input: Any, auth_type: Any) -> None:
+    """Trim the ends of these fields on `input` and refuse whitespace left inside them."""
+    auth_type = getattr(auth_type, "value", auth_type)
+    for field, label in _PROVIDER_TOKEN_FIELDS.items():
+        value = getattr(input, field, None)
+        if isinstance(value, str):
+            value = value.strip()
+            setattr(input, field, value)
+            if field == "api_key" and auth_type in _KEY_MAY_CONTAIN_SPACES:
+                continue
+            _check_input(whitespace_error(value, label))
 
 
 def _visible_ai_models(info: Info, include_public: Optional[bool] = False) -> QuerySet:
@@ -1086,6 +1121,7 @@ class Mutation:
                     "You don't have permission to add providers to this version."
                 )
 
+        _clean_provider_tokens(input, input.api_auth_type or "BEARER")
         _provider_checks(input.api_endpoint_url, input.api_timeout_seconds)
 
         provider = VersionProvider.objects.create(
@@ -1153,6 +1189,11 @@ class Mutation:
                     )
             else:
                 raise DjangoValidationError("You don't have permission to update this provider.")
+
+        _clean_provider_tokens(
+            input,
+            input.api_auth_type if input.api_auth_type is not None else provider.api_auth_type,
+        )
 
         # Update fields
         if input.provider_model_id is not None:
