@@ -8,6 +8,8 @@ name: PR Gate
 on:
   pull_request:
     branches: [main]
+    # ready_for_review: a draft marked ready gets the suite it skipped.
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -23,8 +25,12 @@ jobs:
     name: Django Tests
     uses: ./.github/workflows/django-tests.yml
 
+  # Drafts skip the suite: the release PR's head is dev, so every merge into dev
+  # would start it, and it holds the dev test queue that dev deploys wait on.
+  # Drafts cannot be merged, and marking one ready runs the suite.
   dev-head:
     name: Resolve dev head
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.dev.outputs.sha }}
@@ -37,6 +43,7 @@ jobs:
   full-suite:
     name: Full Suite (dev)
     needs: dev-head
+    if: github.event.pull_request.draft == false
     uses: CivicDataLab/CivicDataSpace-test/.github/workflows/run-smoke.yml@CI
     with:
       suite: full
