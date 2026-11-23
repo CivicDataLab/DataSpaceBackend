@@ -7,6 +7,7 @@ from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from api.utils.search_pagination import PaginationError, parse_pagination
 from api.utils.telemetry_utils import trace_method, track_metrics
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
 from search.documents import OrganizationPublisherDocument, UserPublisherDocument
@@ -271,9 +272,11 @@ class SearchPublisher(PaginatedElasticSearchAPIView):
     def get(self, request: Any) -> Response:
         """Handle GET request and return search results."""
         try:
+            page, size = parse_pagination(request.GET)
+        except PaginationError as error:
+            return Response({"error": str(error)}, status=400)
+        try:
             query: str = request.GET.get("query", "")
-            page: int = int(request.GET.get("page", 1))
-            size: int = int(request.GET.get("size", 10))
             sort_by: str = request.GET.get("sort", "relevance")
 
             # Handle filters

@@ -15,6 +15,7 @@ from api.models import Dataset, Geography, Metadata, UseCase
 from api.models.AIModel import AIModel
 from api.models.Collaborative import Collaborative
 from api.utils.search_cache import SEARCH_CACHE_VERSION_KEY
+from api.utils.search_pagination import PaginationError, parse_pagination
 from api.utils.telemetry_utils import trace_method
 from DataSpace import settings
 from search.documents import (
@@ -503,14 +504,16 @@ class UnifiedSearch(APIView):
     def get(self, request: Any) -> Response:
         """Handle GET request and return unified search results."""
         try:
+            page, size = parse_pagination(request.GET)
+        except PaginationError as error:
+            return Response({"error": str(error)}, status=400)
+        try:
             cache_key = self._generate_unified_cache_key(request)
             cached_result = cache.get(cache_key)
             if cached_result:
                 return Response(cached_result)
 
             query: str = request.GET.get("query", "")
-            page: int = int(request.GET.get("page", 1))
-            size: int = int(request.GET.get("size", 10))
             entity_types: str = request.GET.get(
                 "types", "dataset,usecase,aimodel,publication,collaborative,event,publisher"
             )  # Which entity types to search
