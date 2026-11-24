@@ -59,6 +59,13 @@ def date_order_error(
     return None
 
 
+def whitespace_error(value: Optional[str], label: str) -> Optional[str]:
+    """Message when a value contains whitespace (spaces, tabs, newlines)."""
+    if value and any(character.isspace() for character in value):
+        return f"{label} cannot contain spaces."
+    return None
+
+
 def choice_error(value: Optional[str], choices: Iterable[str], label: str) -> Optional[str]:
     """Message when a non-empty value is not one of `choices` (empty clears the field)."""
     allowed = list(choices)

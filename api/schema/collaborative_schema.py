@@ -54,6 +54,7 @@ from api.utils.enums import CollaborativeStatus, OrganizationRelationshipType
 from api.utils.graphql_telemetry import trace_resolver
 from api.utils.input_checks import date_order_error
 from api.utils.organization_access import can_list_organization
+from api.utils.owned_item_access import can_view_item, find_visible
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
@@ -62,7 +63,11 @@ from api.utils.qs_utils import (
     status_counts,
 )
 from authorization.models import User
-from authorization.permissions import CreateCollaborativePermission
+from authorization.permissions import (
+    ChangeCollaborativePermission,
+    CreateCollaborativePermission,
+    DeleteCollaborativePermission,
+)
 from authorization.types import TypeUser
 
 
@@ -166,7 +171,15 @@ def _visible_collaboratives(info: Info, include_public: Optional[bool] = False) 
 class Query:
     """Queries for collaboratives."""
 
-    collaborative: TypeCollaborative = strawberry_django.field()
+    @strawberry_django.field
+    @trace_resolver(name="get_collaborative", attributes={"component": "collaborative"})
+    def collaborative(self, info: Info, pk: strawberry.ID) -> TypeCollaborative:
+        """One collaborative by id. A draft the caller may not see answers like a
+        missing id (rules in api/utils/owned_item_access.py)."""
+        collaborative = find_visible(Collaborative, pk, info.context.user)
+        if collaborative is None:
+            raise ValueError("Collaborative matching query does not exist.")
+        return TypeCollaborative.from_django(collaborative)
 
     @strawberry_django.field(
         filters=CollaborativeFilter,
@@ -271,6 +284,8 @@ class Query:
     @trace_resolver(name="get_datasets_by_collaborative", attributes={"component": "collaborative"})
     def dataset_by_collaborative(self, info: Info, collaborative_id: str) -> list[TypeDataset]:
         """Get datasets by collaborative."""
+        if find_visible(Collaborative, collaborative_id, info.context.user) is None:
+            return []
         queryset = Dataset.objects.filter(collaborative__id=collaborative_id)
         return TypeDataset.from_django_list(queryset)
 
@@ -281,12 +296,10 @@ class Query:
     )
     def contributors_by_collaborative(self, info: Info, collaborative_id: str) -> list[TypeUser]:
         """Get contributors by collaborative."""
-        try:
-            collaborative = Collaborative.objects.get(id=collaborative_id)
-            contributors = collaborative.contributors.all()
-            return TypeUser.from_django_list(contributors)
-        except Collaborative.DoesNotExist:
+        collaborative = find_visible(Collaborative, collaborative_id, info.context.user)
+        if collaborative is None:
             raise ValueError(f"Collaborative with ID {collaborative_id} does not exist.")
+        return TypeUser.from_django_list(collaborative.contributors.all())
 
     @strawberry_django.field
     @trace_resolver(
@@ -308,7 +321,8 @@ class Query:
         collaborative = Collaborative.objects.filter(public_id=parsed).first() if parsed else None
         if collaborative is None and public_id is None and slug:
             collaborative = Collaborative.objects.filter(slug=slug).order_by("created").first()
-        if collaborative is None:
+        # A draft the caller may not see answers like a missing link.
+        if collaborative is None or not can_view_item(info.context.user, collaborative):
             raise ValueError(f"Collaborative {value} does not exist.")
         return TypeCollaborative.from_django(collaborative)
 
@@ -429,6 +443,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeCollaborativePermission],
         extensions=[
             TrackModelActivity(
                 verb="updated",
@@ -479,7 +494,9 @@ class Mutation:
             _update_collaborative_geographies(collaborative, update_metadata_input.geographies)
         return TypeCollaborative.from_django(collaborative)
 
-    @strawberry_django.mutation(handle_django_errors=False)
+    @strawberry_django.mutation(
+        handle_django_errors=False, permission_classes=[ChangeCollaborativePermission]
+    )
     @trace_resolver(
         name="update_collaborative",
         attributes={"component": "collaborative", "operation": "mutation"},
@@ -538,6 +555,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=False,
+        permission_classes=[DeleteCollaborativePermission],
         extensions=[
             TrackActivity(
                 verb="deleted",
@@ -560,7 +578,9 @@ class Mutation:
         collaborative.delete()
         return True
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     def add_dataset_to_collaborative(
         self, info: Info, collaborative_id: str, dataset_id: uuid.UUID
     ) -> TypeCollaborative:
@@ -582,7 +602,9 @@ class Mutation:
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     def add_usecase_to_collaborative(
         self, info: Info, collaborative_id: str, usecase_id: str
     ) -> TypeCollaborative:
@@ -604,7 +626,9 @@ class Mutation:
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     def remove_dataset_from_collaborative(
         self, info: Info, collaborative_id: str, dataset_id: uuid.UUID
     ) -> TypeCollaborative:
@@ -624,7 +648,9 @@ class Mutation:
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     def remove_usecase_from_collaborative(
         self, info: Info, collaborative_id: str, usecase_id: str
     ) -> TypeCollaborative:
@@ -644,7 +670,9 @@ class Mutation:
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     @trace_resolver(
         name="update_collaborative_datasets",
         attributes={"component": "collaborative", "operation": "mutation"},
@@ -666,7 +694,9 @@ class Mutation:
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     def add_publication_to_collaborative(
         self, info: Info, collaborative_id: str, publication_id: uuid.UUID
     ) -> TypeCollaborative:
@@ -689,7 +719,9 @@ class Mutation:
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     def remove_publication_from_collaborative(
         self, info: Info, collaborative_id: str, publication_id: uuid.UUID
     ) -> TypeCollaborative:
@@ -709,7 +741,9 @@ class Mutation:
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     @trace_resolver(
         name="update_collaborative_publications",
         attributes={"component": "collaborative", "operation": "mutation"},
@@ -734,7 +768,9 @@ class Mutation:
         collaborative.save()
         return TypeCollaborative.from_django(collaborative)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     @trace_resolver(
         name="update_collaborative_use_cases",
         attributes={"component": "collaborative", "operation": "mutation"},
@@ -758,6 +794,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeCollaborativePermission],
         extensions=[
             TrackModelActivity(
                 verb="published",
@@ -786,6 +823,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeCollaborativePermission],
         extensions=[
             TrackModelActivity(
                 verb="unpublished",
@@ -812,7 +850,9 @@ class Mutation:
         return TypeCollaborative.from_django(collaborative)
 
     # Add a contributor to a collaborative.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     @trace_resolver(
         name="add_contributor_to_collaborative",
         attributes={"component": "collaborative", "operation": "mutation"},
@@ -839,7 +879,9 @@ class Mutation:
         return TypeCollaborative.from_django(collaborative)
 
     # Remove a contributor from a collaborative.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     @trace_resolver(
         name="remove_contributor_from_collaborative",
         attributes={"component": "collaborative", "operation": "mutation"},
@@ -868,6 +910,7 @@ class Mutation:
     # Update the contributors of a collaborative.
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeCollaborativePermission],
         extensions=[
             TrackModelActivity(
                 verb="updated",
@@ -901,7 +944,9 @@ class Mutation:
         return TypeCollaborative.from_django(collaborative)
 
     # Add an organization as a supporter to a collaborative.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     @trace_resolver(
         name="add_supporting_organization_to_collaborative",
         attributes={"component": "collaborative", "operation": "mutation"},
@@ -933,7 +978,9 @@ class Mutation:
         return TypeCollaborativeOrganizationRelationship.from_django(relationship)
 
     # Remove an organization as a supporter from a collaborative.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     @trace_resolver(
         name="remove_supporting_organization_from_collaborative",
         attributes={"component": "collaborative", "operation": "mutation"},
@@ -956,7 +1003,9 @@ class Mutation:
             )
 
     # Add an organization as a partner to a collaborative.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     @trace_resolver(
         name="add_partner_organization_to_collaborative",
         attributes={"component": "collaborative", "operation": "mutation"},
@@ -988,7 +1037,9 @@ class Mutation:
         return TypeCollaborativeOrganizationRelationship.from_django(relationship)
 
     # Remove an organization as a partner from a collaborative.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeCollaborativePermission]
+    )
     @trace_resolver(
         name="remove_partner_organization_from_collaborative",
         attributes={"component": "collaborative", "operation": "mutation"},
@@ -1013,6 +1064,7 @@ class Mutation:
     # Update organization relationships for a collaborative.
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeCollaborativePermission],
         extensions=[
             TrackModelActivity(
                 verb="updated",
