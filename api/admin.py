@@ -171,8 +171,6 @@ class ResourceFileDetailsInline(admin.StackedInline):
 
 
 class ProcessingStatusFilter(admin.SimpleListFilter):
-    """Filter resources by their DOST-Catalyst processing state."""
-
     title = "processing status"
     parameter_name = "processing"
     NEVER = "never"
@@ -274,8 +272,6 @@ class ProcessedFileInline(admin.TabularInline):
 
 @admin.register(ResourceProcessing)
 class ResourceProcessingAdmin(admin.ModelAdmin):
-    """Requests and results; the worker writes them, so every field is read-only."""
-
     list_display = ("resource", "status", "requested_by", "requested_at", "finished_at")
     list_filter = ("status",)
     list_select_related = ("resource", "requested_by")

@@ -78,7 +78,6 @@ class TestS3StorageOptions:
 PRIVATE_FILE_FIELDS = {
     ("api", "resourcefiledetails", "file"),
     ("api", "resourcechartimage", "image"),
-    # DOST-Catalyst outputs hold the same content as the private source file.
     ("api", "processedfile", "file"),
 }
 

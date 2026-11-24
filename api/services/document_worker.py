@@ -66,7 +66,6 @@ class DocumentWorker:
             max_wait=timedelta(minutes=settings.CATALYST_MAX_WAIT_MINUTES),
         )
 
-    # ---------------------------------------------------------------- the loop
     def step(self) -> bool:
         """Do one round of work; True when something changed."""
         changed = False
@@ -77,7 +76,6 @@ class DocumentWorker:
             changed |= self._start_next()
         return changed
 
-    # ------------------------------------------------------------ start a job
     def _claim(self) -> Optional[ResourceProcessing]:
         with transaction.atomic():
             processing = (
@@ -128,7 +126,6 @@ class DocumentWorker:
         log.info("catalyst_job_started", job_id=job_id)
         return True
 
-    # --------------------------------------------------------- follow a job
     def _advance(self, pk: Any) -> bool:
         with transaction.atomic():
             processing = (
@@ -215,7 +212,6 @@ class DocumentWorker:
         processing.report = envelope.get("dost")
         self._finish(processing, ProcessingStatus.DONE)
 
-    # ---------------------------------------------------------------- helpers
     def _finish(self, processing: ResourceProcessing, status: str, error: str = "") -> None:
         processing.status = status
         processing.error = error
