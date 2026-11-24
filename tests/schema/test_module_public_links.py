@@ -152,6 +152,24 @@ def test_collaborative_slug_race_gets_a_new_suffix(owner, monkeypatch) -> None:
     assert c.slug.startswith("clean-rivers-")
 
 
+def test_collaborative_slug_taken_before_validation_gets_a_new_suffix(owner, monkeypatch) -> None:
+    # Two "Add collaborative" clicks in the same second make the same title. The
+    # other save lands after the free-slug check but before full_clean, which
+    # then refuses the slug as taken: that must retry with a suffix too, not
+    # fail the create (seen on dev smoke tests running in parallel).
+    Collaborative.objects.create(title="Clean Rivers", user=owner)
+    real_exists = QuerySet.exists
+    calls = {"n": 0}
+
+    def exists_misses_once(self: QuerySet) -> bool:
+        calls["n"] += 1
+        return False if calls["n"] == 1 else real_exists(self)
+
+    monkeypatch.setattr(QuerySet, "exists", exists_misses_once)
+    c = Collaborative.objects.create(title="Clean Rivers", user=owner)
+    assert c.slug.startswith("clean-rivers-") and len(c.slug) == len("clean-rivers") + 5
+
+
 def test_collaborative_unknown_link_errors(owner) -> None:
     res = run(CB, {"s": "nothing-aaaaaaaaaaaa"})
     assert res.errors

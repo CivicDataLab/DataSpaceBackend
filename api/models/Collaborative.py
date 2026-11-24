@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional, cast
 
+from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
 from django.utils.text import slugify
@@ -59,6 +60,13 @@ def subdomain_error(slug: str) -> Optional[str]:
     if slug.lower() in RESERVED_SUBDOMAINS:
         return "This subdomain is reserved. Choose another."
     return None
+
+
+def _slug_taken(exc: Exception) -> bool:
+    """Whether a failed save was refused only because the slug is taken."""
+    if isinstance(exc, ValidationError):
+        return set(getattr(exc, "error_dict", {})) == {"slug"}
+    return "slug" in str(exc)
 
 
 def _slug_with_suffix(base: str) -> str:
@@ -140,15 +148,16 @@ class Collaborative(models.Model):
             super(Collaborative, self).save(*args, **kwargs)
 
         # Titles may repeat but slugs may not. A slug made from the title that
-        # another save took in the meantime gets a new suffix; a slug the owner
-        # typed is never changed (full_clean refuses it if taken).
+        # another save took in the meantime gets a new suffix, whether full_clean
+        # or the database notices; a slug the owner typed is never changed
+        # (full_clean refuses it if taken).
         for attempt in range(3):
             try:
                 with transaction.atomic():
                     save_with_public_id(self, do_save)
                 return
-            except IntegrityError as exc:
-                if not base or "slug" not in str(exc) or attempt == 2:
+            except (IntegrityError, ValidationError) as exc:
+                if not base or not _slug_taken(exc) or attempt == 2:
                     raise
                 self.slug = _slug_with_suffix(base)
 
