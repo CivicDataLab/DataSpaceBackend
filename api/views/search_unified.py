@@ -16,6 +16,7 @@ from api.models.AIModel import AIModel
 from api.models.Collaborative import Collaborative
 from api.utils.search_cache import SEARCH_CACHE_VERSION_KEY
 from api.utils.search_pagination import PaginationError, parse_pagination
+from api.utils.search_query import sdg_codes
 from api.utils.telemetry_utils import trace_method
 from DataSpace import settings
 from search.documents import (
@@ -322,6 +323,11 @@ class UnifiedSearch(APIView):
             filter_values = Geography.get_geography_names_with_descendants(filter_values)
             search = search.filter("terms", **{"geographies.raw": filter_values})
 
+        if "sdgs" in filters:
+            filter_values = sdg_codes(filters["sdgs"])
+            if filter_values:
+                search = search.filter("terms", sdgs=filter_values)
+
         if "status" in filters:
             search = search.filter("term", status=filters["status"])
 
@@ -437,6 +443,7 @@ class UnifiedSearch(APIView):
         search.aggs.bucket("tags", "terms", field="tags.raw", size=50)
         search.aggs.bucket("sectors", "terms", field="sectors.raw", size=50)
         search.aggs.bucket("geographies", "terms", field="geographies.raw", size=50)
+        search.aggs.bucket("sdgs", "terms", field="sdgs", size=50)
         search.aggs.bucket("status", "terms", field="status")
 
         # Pagination
@@ -476,7 +483,7 @@ class UnifiedSearch(APIView):
                             aggregations["types"]["publisher"] = 0
                         aggregations["types"]["publisher"] += bucket["doc_count"]
 
-            for agg_name in ["tags", "sectors", "geographies", "status"]:
+            for agg_name in ["tags", "sectors", "geographies", "sdgs", "status"]:
                 if agg_name in aggs_dict:
                     aggregations[agg_name] = {}
                     for bucket in aggs_dict[agg_name]["buckets"]:

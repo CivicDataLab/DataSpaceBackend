@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 from django_elasticsearch_dsl import Document, Index, KeywordField, fields
 
 from api.models import (
+    SDG,
     Dataset,
     Geography,
     Metadata,
@@ -77,6 +78,9 @@ class UseCaseDocument(Document):
         },
         multi=True,
     )
+
+    # SDG codes ("SDG1" to "SDG17"), matched exactly by the sdgs search filter and facet
+    sdgs = fields.KeywordField(attr="sdgs_indexing", multi=True)
 
     geographies = fields.TextField(
         attr="geographies_indexing",
@@ -249,7 +253,7 @@ class UseCaseDocument(Document):
     def get_instances_from_related(
         self,
         related_instance: Union[
-            Dataset, Metadata, UseCaseMetadata, Sector, Organization, User, Geography
+            Dataset, Metadata, UseCaseMetadata, Sector, Organization, User, Geography, SDG
         ],
     ) -> Optional[Union[UseCase, List[UseCase]]]:
         """Get UseCase instances from related models."""
@@ -276,6 +280,8 @@ class UseCaseDocument(Document):
             return owned_usecases + contributed_usecases
         elif isinstance(related_instance, Geography):
             return list(related_instance.usecases.all())
+        elif isinstance(related_instance, SDG):
+            return list(related_instance.usecases.all())
         return None
 
     class Django:
@@ -297,4 +303,5 @@ class UseCaseDocument(Document):
             Organization,
             User,
             Geography,
+            SDG,
         ]
