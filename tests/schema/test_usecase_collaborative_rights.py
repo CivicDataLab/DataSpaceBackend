@@ -333,9 +333,9 @@ def dashboard_calls(w):
     return [
         (
             "addUsecaseDashboards",
-            f'input: {{usecaseId: {uc}, dashboards: [{{name: "n", link: "https://y.org"}}]}}',
+            f'input: {{usecaseId: {uc}, dashboards: [{{name: "n", link: "https://justicehub.in/y"}}]}}',
         ),
-        ("addUsecaseDashboard", f'usecaseId: {uc}, name: "n", link: "https://y.org"'),
+        ("addUsecaseDashboard", f'usecaseId: {uc}, name: "n", link: "https://justicehub.in/y"'),
         ("updateUsecaseDashboard", f'id: "{dashboard.id}", name: "changed"'),
         ("deleteUsecaseDashboard", f"id: {dashboard.id}"),
     ]
