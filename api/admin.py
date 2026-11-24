@@ -1,6 +1,10 @@
-from django.contrib import admin
+from collections import Counter
+
+from django.contrib import admin, messages
 from django import forms
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import connection, IntegrityError
+from django.db.models import F, Q
 
 
 from api.models import (
@@ -19,6 +23,7 @@ from api.models import (
     ModelEndpoint,
     Organization,
     PromptDataset,
+    ProcessedFile,
     PromptResource,
     Resource,
     ResourceChartDetails,
@@ -27,6 +32,7 @@ from api.models import (
     ResourceFileDetails,
     ResourceMetadata,
     ResourcePreviewDetails,
+    ResourceProcessing,
     ResourceSchema,
     ResourceVersion,
     SDG,
@@ -38,6 +44,14 @@ from api.models import (
     UseCaseOrganizationRelationship,
     VersionProvider,
 )
+from api.services.document_processing import (
+    ProcessingRefused,
+    can_request_processing,
+    cancel_processing,
+    request_processing,
+)
+from api.models.ResourceProcessing import ACTIVE_STATUSES
+from api.utils.enums import ProcessingStatus
 
 
 # ---------------------------------------------------------------------------
@@ -156,12 +170,171 @@ class ResourceFileDetailsInline(admin.StackedInline):
     extra = 0
 
 
+class ProcessingStatusFilter(admin.SimpleListFilter):
+    """Filter resources by their DOST-Catalyst processing state."""
+
+    title = "processing status"
+    parameter_name = "processing"
+    NEVER = "never"
+    STALE = "stale"
+
+    def lookups(self, request, model_admin):
+        return [
+            (self.NEVER, "Never processed"),
+            *ProcessingStatus.choices,
+            (self.STALE, "Done, but the file changed"),
+        ]
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value is None:
+            return queryset
+        if value == self.NEVER:
+            return queryset.filter(processing__isnull=True)
+        if value == self.STALE:
+            changed = (
+                ~Q(processing__source_sha256=F("resourcefiledetails__sha256"))
+                | Q(resourcefiledetails__sha256__isnull=True)
+                | Q(resourcefiledetails__isnull=True)
+            )
+            return (
+                queryset.filter(processing__status=ProcessingStatus.DONE)
+                .exclude(processing__source_sha256="")
+                .filter(changed)
+            )
+        return queryset.filter(processing__status=value)
+
+
 @admin.register(Resource)
 class ResourceAdmin(admin.ModelAdmin):
-    list_display = ("name", "dataset", "type", "created")
-    list_filter = ("type", "dataset")
+    list_display = ("name", "dataset", "type", "file_format", "processing_status", "created")
+    list_filter = (
+        "type",
+        ("resourcefiledetails__format", admin.AllValuesFieldListFilter),
+        ProcessingStatusFilter,
+        "dataset__organization",
+        "dataset",
+    )
+    list_select_related = ("dataset", "resourcefiledetails", "processing")
     search_fields = ("name", "description")
     inlines = [ResourceFileDetailsInline]
+    actions = ["process_documents"]
+
+    @admin.display(description="Format", ordering="resourcefiledetails__format")
+    def file_format(self, obj):
+        try:
+            return obj.resourcefiledetails.format
+        except ObjectDoesNotExist:
+            return "-"
+
+    @admin.display(description="Processing")
+    def processing_status(self, obj):
+        try:
+            processing = obj.processing
+        except ObjectDoesNotExist:
+            return "-"
+        if processing.is_stale:
+            return f"{processing.status} (file changed)"
+        return processing.status
+
+    def has_process_permission(self, request):
+        return can_request_processing(request.user)
+
+    @admin.action(
+        description="Process selected documents with DOST-Catalyst", permissions=["process"]
+    )
+    def process_documents(self, request, queryset):
+        requested = 0
+        skipped: Counter[str] = Counter()
+        for resource in queryset.select_related("resourcefiledetails"):
+            try:
+                request_processing(resource, request.user)
+            except ProcessingRefused as exc:
+                skipped[str(exc)] += 1
+            else:
+                requested += 1
+        if requested:
+            self.message_user(
+                request, f"{requested} document(s) requested for processing.", messages.SUCCESS
+            )
+        for reason, count in skipped.items():
+            self.message_user(request, f"{count} skipped: {reason}", messages.WARNING)
+
+
+class ProcessedFileInline(admin.TabularInline):
+    model = ProcessedFile
+    extra = 0
+    fields = ("kind", "file", "size", "created")
+    readonly_fields = fields
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ResourceProcessing)
+class ResourceProcessingAdmin(admin.ModelAdmin):
+    """Requests and results; the worker writes them, so every field is read-only."""
+
+    list_display = ("resource", "status", "requested_by", "requested_at", "finished_at")
+    list_filter = ("status",)
+    list_select_related = ("resource", "requested_by")
+    search_fields = ("resource__name", "catalyst_job_id")
+    readonly_fields = (
+        "resource",
+        "status",
+        "options",
+        "requested_by",
+        "requested_at",
+        "started_at",
+        "finished_at",
+        "catalyst_job_id",
+        "cancel_requested",
+        "error",
+        "report",
+        "source_sha256",
+    )
+    inlines = [ProcessedFileInline]
+    actions = ["cancel_requests"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # Delete removes the outputs too (rows and S3 objects); a job that waits
+        # or runs must be cancelled first, or the worker loses track of it.
+        if not request.user.is_superuser:
+            return False
+        return obj is None or not obj.is_active
+
+    def delete_queryset(self, request, queryset):
+        active = queryset.filter(status__in=ACTIVE_STATUSES)
+        if active.exists():
+            self.message_user(
+                request,
+                f"{active.count()} skipped: cancel the processing before you delete it.",
+                messages.WARNING,
+            )
+        queryset.exclude(status__in=ACTIVE_STATUSES).delete()
+
+    def has_cancel_permission(self, request):
+        return request.user.is_superuser
+
+    @admin.action(description="Cancel selected requests", permissions=["cancel"])
+    def cancel_requests(self, request, queryset):
+        cancelled = 0
+        skipped: Counter[str] = Counter()
+        for processing in queryset:
+            try:
+                cancel_processing(processing, request.user)
+            except ProcessingRefused as exc:
+                skipped[str(exc)] += 1
+            else:
+                cancelled += 1
+        if cancelled:
+            self.message_user(request, f"{cancelled} request(s) cancelled.", messages.SUCCESS)
+        for reason, count in skipped.items():
+            self.message_user(request, f"{count} skipped: {reason}", messages.WARNING)
 
 
 @admin.register(ResourceFileDetails)

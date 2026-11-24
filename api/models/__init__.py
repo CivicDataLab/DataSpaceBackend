@@ -28,6 +28,7 @@ from api.models.Resource import (
 from api.models.ResourceChartDetails import ResourceChartDetails
 from api.models.ResourceChartImage import ResourceChartImage
 from api.models.ResourceMetadata import ResourceMetadata
+from api.models.ResourceProcessing import ProcessedFile, ResourceProcessing
 from api.models.ResourceSchema import ResourceSchema
 from api.models.ResourceType import ResourceType
 from api.models.SDG import SDG

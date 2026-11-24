@@ -78,6 +78,8 @@ class TestS3StorageOptions:
 PRIVATE_FILE_FIELDS = {
     ("api", "resourcefiledetails", "file"),
     ("api", "resourcechartimage", "image"),
+    # DOST-Catalyst outputs hold the same content as the private source file.
+    ("api", "processedfile", "file"),
 }
 
 
@@ -92,7 +94,7 @@ class TestFileFieldStorages:
         for key, field in self._file_fields():
             assert field._storage_callable in (public_storage, private_storage), key
 
-    def test_only_resource_files_and_chart_images_are_private(self):
+    def test_only_resource_files_their_outputs_and_chart_images_are_private(self):
         private = {
             key for key, field in self._file_fields() if field._storage_callable is private_storage
         }

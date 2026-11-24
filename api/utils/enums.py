@@ -457,3 +457,22 @@ class ImportPlatform(models.TextChoices):
     KAGGLE = "KAGGLE"
     HUGGINGFACE = "HUGGINGFACE"
     GITHUB = "GITHUB"
+
+
+class ProcessingStatus(models.TextChoices):
+    """Where the DOST-Catalyst processing of one resource is."""
+
+    REQUESTED = "REQUESTED"
+    RUNNING = "RUNNING"
+    DONE = "DONE"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class ProcessedFileKind(models.TextChoices):
+    """The output files that DOST-Catalyst writes for one document."""
+
+    TABLES_MD = "TABLES_MD", "Tables (Markdown)"
+    SENTENCES_CSV = "SENTENCES_CSV", "Sentences (CSV)"
+    PROBLEMS_CSV = "PROBLEMS_CSV", "Sentences not extracted properly (CSV)"
+    IMAGES_ZIP = "IMAGES_ZIP", "Images (ZIP)"

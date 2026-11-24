@@ -564,3 +564,16 @@ ACTIVITY_CONSENT = {
     # Maximum age of activities to keep (in days, 0 means keep forever)
     "MAX_AGE_DAYS": env.int("ACTIVITY_MAX_AGE_DAYS", default=0),
 }
+
+# Document processing with DOST-Catalyst (api/services/document_processing.py).
+# Off by default: a document is processed only when this is True AND an
+# administrator asks for it. An upload never starts processing.
+DOCUMENT_PROCESSING_ENABLED = env.bool("DOCUMENT_PROCESSING_ENABLED", default=False)
+CATALYST_URL = env("CATALYST_URL", default="http://catalyst:8000")
+CATALYST_USERNAME = env("CATALYST_USERNAME", default="dost")
+CATALYST_PASSWORD = env("CATALYST_PASSWORD", default="")
+# The worker (manage.py run_document_processing) asks Catalyst about running
+# jobs this often, and fails a job after this long. Keep the wait under
+# Catalyst's job_ttl_minutes (60 by default): it deletes job files then.
+CATALYST_POLL_SECONDS = env.int("CATALYST_POLL_SECONDS", default=10)
+CATALYST_MAX_WAIT_MINUTES = env.int("CATALYST_MAX_WAIT_MINUTES", default=45)
