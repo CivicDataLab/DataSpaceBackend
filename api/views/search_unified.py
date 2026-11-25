@@ -389,6 +389,11 @@ class UnifiedSearch(APIView):
             result.setdefault("tags", [])
             result.setdefault("sectors", [])
             result.setdefault("geographies", [])
+        elif result["type"] == "publication":
+            # Publication documents have no tags, and the serializer requires them.
+            result.setdefault("tags", [])
+            result.setdefault("title", "")
+            result.setdefault("description", "")
         elif result["type"] == "publisher":
             if "name" in result:
                 result["title"] = result.get("name", "")
