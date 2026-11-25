@@ -27,6 +27,7 @@ from api.utils.dataset_access import (
 )
 from api.utils.enums import AggregateType, ChartStatus, ChartTypes
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.input_checks import blank_error, too_long_error
 from api.utils.qs_utils import (
     FilterSpec,
     SortSpec,
@@ -337,6 +338,27 @@ def _update_value_mapping(
     }
 
 
+def _check_chart_text(chart_input: ResourceChartInput, saved_name: Optional[str]) -> None:
+    """Refuse a blank or too long name/description before anything is saved (#325).
+
+    Too long values used to reach Postgres and return its own error text.
+    """
+    message = (
+        blank_error(chart_input.name, saved_name, "Chart name")
+        or too_long_error(
+            ResourceChartDetails, "name", (chart_input.name or "").strip(), "Chart name"
+        )
+        or too_long_error(
+            ResourceChartDetails,
+            "description",
+            (chart_input.description or "").strip(),
+            "Chart description",
+        )
+    )
+    if message:
+        raise ValueError(message)
+
+
 def _update_chart_fields(
     chart: ResourceChartDetails, chart_input: ResourceChartInput, resource: Resource
 ) -> None:
@@ -378,10 +400,12 @@ def _update_chart_fields(
                 else:
                     options[field_name] = value
 
-    if chart_input.name:
-        chart.name = chart_input.name
-    if chart_input.description:
-        chart.description = chart_input.description
+    name = (chart_input.name or "").strip()
+    if name:
+        chart.name = name
+    description = (chart_input.description or "").strip()
+    if description:
+        chart.description = description
 
     # Update options and filters
     chart.options = options
@@ -444,11 +468,12 @@ class Mutation:
         except Resource.DoesNotExist as e:
             raise ValueError(f"Resource with ID {chart_input.resource} does not exist.")
 
+        _check_chart_text(chart_input, saved_name=None)
         chart = ResourceChartDetails.objects.create(
-            name=chart_input.name
+            name=(chart_input.name or "").strip()
             or f"New chart {datetime.datetime.now().strftime('%d %b %Y - %H:%M:%S')}",
             resource=resource_obj,
-            description=chart_input.description or "",
+            description=(chart_input.description or "").strip(),
             chart_type=chart_input.type or ChartTypeEnum.BAR,
             options=chart_input.options or {},
             filters=chart_input.filters or [],
@@ -489,6 +514,7 @@ class Mutation:
         except Resource.DoesNotExist as e:
             raise ValueError(f"Resource with ID {chart_input.resource} does not exist.")
 
+        _check_chart_text(chart_input, saved_name=chart.name)
         chart.resource = resource
         chart.save()
         _update_chart_fields(chart, chart_input, resource)

@@ -66,6 +66,18 @@ def whitespace_error(value: Optional[str], label: str) -> Optional[str]:
     return None
 
 
+def blank_error(value: Optional[str], saved: Optional[str], label: str) -> Optional[str]:
+    """Message when a blank or whitespace-only value would replace a saved non-blank one.
+
+    A row that is already blank may be sent back as it is: editors resend the whole
+    form on every change, so refusing it would block every other edit of that row.
+    """
+    # Not a string = left out of the input (None or strawberry's UNSET): nothing changes
+    if not isinstance(value, str) or value.strip() or not (saved or "").strip():
+        return None
+    return f"{label} cannot be blank."
+
+
 def choice_error(value: Optional[str], choices: Iterable[str], label: str) -> Optional[str]:
     """Message when a non-empty value is not one of `choices` (empty clears the field)."""
     allowed = list(choices)

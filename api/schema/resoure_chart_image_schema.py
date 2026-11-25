@@ -16,6 +16,7 @@ from api.utils.dataset_access import (
     viewable_datasets_q,
 )
 from api.utils.enums import ChartStatus
+from api.utils.input_checks import blank_error, too_long_error
 
 
 @strawberry_django.input(
@@ -87,6 +88,19 @@ class ChangeChartImagePermission(ChangeDatasetPartPermission):
         return found
 
 
+def _checked_image_name(name: Optional[str], saved_name: Optional[str]) -> str:
+    """Trimmed name, refusing a blank one over a saved name or one too long (#325).
+
+    Too long names used to reach Postgres and return its own error text.
+    """
+    message = blank_error(name, saved_name, "Chart name") or too_long_error(
+        ResourceChartImage, "name", (name or "").strip(), "Chart name"
+    )
+    if message:
+        raise ValueError(message)
+    return (name or "").strip()
+
+
 @strawberry.type
 class Mutation:
     @strawberry_django.mutation(
@@ -100,9 +114,10 @@ class Mutation:
             dataset_obj = Dataset.objects.get(id=input.dataset)
         except Dataset.DoesNotExist:
             raise ValueError(f"Dataset with ID {input.dataset} does not exist.")
+        name = _checked_image_name(input.name, saved_name=None)
         now = datetime.datetime.now()
         image = ResourceChartImage.objects.create(
-            name=input.name or f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M:%S')}",
+            name=name or f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M:%S')}",
             dataset=dataset_obj,
             image=input.image,
         )
@@ -123,8 +138,9 @@ class Mutation:
             dataset_obj = Dataset.objects.get(id=input.dataset)
         except Dataset.DoesNotExist:
             raise ValueError(f"Dataset with ID {input.dataset} does not exist.")
-        if input.name:
-            image.name = input.name
+        name = _checked_image_name(input.name, saved_name=image.name)
+        if name:
+            image.name = name
         if input.image:
             image.image = input.image
         image.dataset = dataset_obj
