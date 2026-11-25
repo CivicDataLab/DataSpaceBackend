@@ -90,3 +90,14 @@ def _publication_block_directory_path(block: Any, filename: str) -> str:
     publication_id = block.publication_id
     unique_name = f"{uuid.uuid4().hex}_{filename}"
     return f"publications/{publication_id}/{unique_name}"
+
+
+def _processed_file_directory_path(processed_file: Any, filename: str) -> str:
+    """
+    Create a directory path to store a DOST-Catalyst output file.
+
+    The outputs of one resource share a folder, next to the resource files,
+    so a new run or a delete removes them together.
+    """
+    resource_id = processed_file.processing.resource_id
+    return f"resources/processed/{resource_id}/{filename}"

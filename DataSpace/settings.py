@@ -572,3 +572,13 @@ ACTIVITY_CONSENT = {
     # Maximum age of activities to keep (in days, 0 means keep forever)
     "MAX_AGE_DAYS": env.int("ACTIVITY_MAX_AGE_DAYS", default=0),
 }
+
+# Document processing settings (DOST-Catalyst)
+# Off by default; even when on, only an administrator starts processing
+DOCUMENT_PROCESSING_ENABLED = env.bool("DOCUMENT_PROCESSING_ENABLED", default=False)
+CATALYST_URL = env("CATALYST_URL", default="http://catalyst:8000")
+CATALYST_USERNAME = env("CATALYST_USERNAME", default="dost")
+CATALYST_PASSWORD = env("CATALYST_PASSWORD", default="")
+# Keep the max wait under Catalyst's job TTL (60 min), after which it deletes job files
+CATALYST_POLL_SECONDS = env.int("CATALYST_POLL_SECONDS", default=10)
+CATALYST_MAX_WAIT_MINUTES = env.int("CATALYST_MAX_WAIT_MINUTES", default=45)

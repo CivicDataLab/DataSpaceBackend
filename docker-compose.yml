@@ -77,6 +77,56 @@ services:
       - default
       - dataexchange_default
 
+  # Document processing with DOST-Catalyst (docs/document_processing.md).
+  # Both services are in the "processing" profile, so a plain `up` never
+  # starts them:  docker compose --profile processing up -d
+  # Processing still needs DOCUMENT_PROCESSING_ENABLED=True and an
+  # administrator who asks for it.
+  catalyst:
+    # Build it from the DOST-Catalyst repository: docker build -t dost-catalyst .
+    image: ${CATALYST_IMAGE:-dost-catalyst}
+    profiles: ["processing"]
+    restart: unless-stopped
+    environment:
+      # The same credentials as the worker's CATALYST_USERNAME/PASSWORD in .env.
+      CATALYST_AUTH_USERNAME: ${CATALYST_USERNAME:-dost}
+      # Set CATALYST_PASSWORD in .env before you start this profile.
+      CATALYST_AUTH_PASSWORD: ${CATALYST_PASSWORD:-}
+    # Not published: only the worker reaches it, on this project's network.
+    expose:
+      - "8000"
+    volumes:
+      - catalyst-jobs:/data
+      - catalyst-models:/home/app/.cache
+    # The layout and table models need about 4 GB for each conversion.
+    mem_limit: ${CATALYST_MEMORY:-6g}
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  document_worker:
+    image: ${DATASPACE_IMAGE:-dataspace-backend:local}
+    build: .
+    env_file: .env
+    profiles: ["processing"]
+    restart: unless-stopped
+    entrypoint: ["python", "manage.py"]
+    command: ["run_document_processing"]
+    depends_on:
+      backend_db:
+        condition: service_healthy
+      catalyst:
+        condition: service_started
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # See `backend`'s identical networks: block above for why both are needed.
+    networks:
+      - default
+      - dataexchange_default
+
   backend_db:
     image: "postgres:14.4"
     env_file: .env
@@ -275,6 +325,12 @@ volumes:
   tele-elasticsearch-data:
     driver: local
   redis-data:
+    driver: local
+  # DOST-Catalyst: files of running jobs (deleted after an hour) and the
+  # Docling models (about 500 MB, downloaded on the first conversion).
+  catalyst-jobs:
+    driver: local
+  catalyst-models:
     driver: local
 
 networks:

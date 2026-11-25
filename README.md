@@ -30,6 +30,10 @@ The backend uses Keycloak for authentication, providing a secure and scalable so
 
 For detailed information about the Keycloak integration, see the [Keycloak Integration Documentation](docs/keycloak_integration.md).
 
+## Document Processing
+
+Administrators can send PDF resources to DOST-Catalyst, which extracts tables, sentences and images. It is off by default and never runs on upload. See [Document Processing](docs/document_processing.md).
+
 ## Getting Started
 
 ### Prerequisites
