@@ -19,6 +19,7 @@ from api.utils.enums import (
     DatasetAccessType,
     DatasetStatus,
     DatasetType,
+    UseCaseStatus,
 )
 
 
@@ -145,6 +146,32 @@ class TestProcessingSet:
 
         found = list(Dataset.objects.filter(processing_set_q()).values_list("id", flat=True))
         assert sorted(found) == sorted([rainfall.id, anaemia.id])
+
+    def test_includes_the_datasets_of_enabled_collaboratives_published_use_cases(
+        self,
+        settings: Any,
+        make_dataset: Callable,
+        make_sector: Callable,
+        make_use_case: Callable,
+        make_collaborative: Callable,
+    ) -> None:
+        make_sector("Climate Action")
+        tenders = make_dataset("MCH tenders")
+        drafted = make_dataset("Draft use case data")
+        literacy = make_dataset("Literacy")
+        fem = make_collaborative(
+            "FemHealth",
+            use_cases=[
+                make_use_case("MCH gaps", datasets=[tenders]),
+                make_use_case("Drafted", status=UseCaseStatus.DRAFT, datasets=[drafted]),
+            ],
+        )
+        make_collaborative("Other", use_cases=[make_use_case("Schools", datasets=[literacy])])
+        settings.QE_PLATFORM_SECTORS = ["climate-action"]
+        settings.QE_ENABLED_COLLABORATIVES = [fem.public_id]
+
+        found = list(Dataset.objects.filter(processing_set_q()).values_list("id", flat=True))
+        assert found == [tenders.id]
 
     def test_with_no_collaboratives_listed_every_published_collaborative_counts(
         self,

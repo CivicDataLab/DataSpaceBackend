@@ -6,9 +6,11 @@
   uploads have none.
 - **Platform scope**: the corpus, narrowed to the sectors in
   ``QE_PLATFORM_SECTORS`` and their sub-sectors when that setting is set.
-- **Collaborative scope**: the corpus datasets attached to one published
-  collaborative (resolved in ./scope.py). A collaborative only narrows the
-  corpus; a private dataset attached to it stays out.
+- **Collaborative scope**: the corpus datasets of one published collaborative
+  (resolved in ./scope.py): those attached to it directly, and those attached
+  to its published use cases (``collaborative_datasets_q``). A collaborative
+  only narrows the corpus; a private or draft dataset attached either way
+  stays out.
 - **Processing set**: what ``qe_sync`` profiles and indexes — platform scope
   plus the corpus datasets of every enabled, published collaborative.
 
@@ -17,8 +19,10 @@ lags can only make results stale, never leak them. A refusal is ``NotFound``
 (404), logged with ids and a reason code, never saying whether the item exists.
 
 Query shapes: one-row lookups ride primary keys; membership uses the
-dataset-sector and collaborative-dataset through tables (unique pairs);
-sector descendants are resolved in Python from the small sector table.
+dataset-sector, collaborative-dataset, collaborative-use-case and
+use-case-dataset through tables (unique pairs, indexed on both sides) as
+subqueries; sector descendants are resolved in Python from the small sector
+table.
 
 Docs: api/views/query_engine/architecture.md
 """
@@ -41,12 +45,14 @@ from uuid import UUID
 from django.conf import settings
 from django.db.models import Prefetch, Q
 
-from api.models import Collaborative, Dataset, Resource, ResourceSchema, Sector
+from api.models import Collaborative, Dataset, Resource, ResourceSchema, Sector, UseCase
 from api.services.query_engine.errors import NotFound
 from api.utils.dataset_access import public_published_datasets_q
-from api.utils.enums import CollaborativeStatus
+from api.utils.enums import CollaborativeStatus, UseCaseStatus
 
 if TYPE_CHECKING:
+    from django.db.models import QuerySet
+
     from api.services.query_engine.scope import ResolvedScope
 
 CORPUS_CHUNK_SIZE = 200
@@ -117,16 +123,32 @@ def enabled_collaboratives_q() -> Q:
     return enabled
 
 
+def collaborative_datasets_q(collaboratives: "QuerySet[Collaborative]", prefix: str = "") -> Q:
+    """Datasets the given collaboratives hold, directly or through a published use case.
+
+    Membership only: combine with the corpus rule to keep private and draft
+    datasets out. A draft or archived use case adds nothing. ``prefix`` reaches
+    the dataset.
+    """
+    direct = Collaborative.datasets.through.objects.filter(collaborative__in=collaboratives)
+    use_cases = Collaborative.use_cases.through.objects.filter(collaborative__in=collaboratives)
+    via_use_cases = UseCase.datasets.through.objects.filter(
+        usecase__in=use_cases.values("usecase_id"),
+        usecase__status=UseCaseStatus.PUBLISHED.value,
+    )
+    return Q(**{f"{prefix}id__in": direct.values("dataset_id")}) | Q(
+        **{f"{prefix}id__in": via_use_cases.values("dataset_id")}
+    )
+
+
 def processing_set_q() -> Q:
     """The datasets ``qe_sync`` works on: platform scope plus enabled collaboratives' corpus datasets."""
     sector_ids = platform_sector_ids()
     platform = _platform_q(sector_ids, "")
     if sector_ids is None:
         return platform
-    members = Collaborative.datasets.through.objects.filter(
-        collaborative__in=Collaborative.objects.filter(enabled_collaboratives_q())
-    )
-    return platform | (public_published_datasets_q() & Q(id__in=members.values("dataset_id")))
+    enabled = Collaborative.objects.filter(enabled_collaboratives_q())
+    return platform | (public_published_datasets_q() & collaborative_datasets_q(enabled))
 
 
 def load_corpus(chunk_size: int = CORPUS_CHUNK_SIZE) -> Iterator[List[Dataset]]:

@@ -9,11 +9,13 @@ takes effect immediately.
 - ``resolve_scope`` loads it: platform gets its sector narrowing resolved
   once; a collaborative must be PUBLISHED (and on ``QE_ENABLED_COLLABORATIVES``
   when that is set), else ScopeNotFound → 404. A collaborative's datasets are
-  its attached corpus datasets, read now.
+  its corpus datasets, attached directly or through one of its published use
+  cases (``corpus.collaborative_datasets_q``), read now.
 - ``scope_summary`` is what GET scope/ returns.
 
 Query shapes: ``Collaborative.only("id", "title").get(public_id=?, status=PUBLISHED)``
-on the unique public id; members through the collaborative-dataset through table.
+on the unique public id; members in one query through the collaborative-dataset,
+collaborative-use-case and use-case-dataset through tables.
 
 Docs: api/views/query_engine/architecture.md
 """
@@ -25,7 +27,11 @@ from uuid import UUID
 from django.conf import settings
 
 from api.models import Collaborative, Dataset
-from api.services.query_engine.corpus import dataset_in_scope_q, platform_sector_ids
+from api.services.query_engine.corpus import (
+    collaborative_datasets_q,
+    dataset_in_scope_q,
+    platform_sector_ids,
+)
 from api.services.query_engine.errors import BadScope, ScopeNotFound
 from api.utils.dataset_access import public_published_datasets_q
 from api.utils.enums import CollaborativeStatus
@@ -52,7 +58,7 @@ class ResolvedScope:
     """A scope as the database says it is right now.
 
     Platform: ``sector_ids`` narrows it (None: the whole corpus), ``dataset_ids`` is None.
-    Collaborative: ``dataset_ids`` are its attached corpus datasets.
+    Collaborative: ``dataset_ids`` are its corpus datasets, direct or via published use cases.
     """
 
     kind: ScopeKind
@@ -95,7 +101,8 @@ def resolve_scope(text: Any) -> ResolvedScope:
     if collaborative is None:
         raise ScopeNotFound(reason="collaborative_not_published", public_id=ref.public_id)
     members = Dataset.objects.filter(
-        public_published_datasets_q(), collaborative__id=collaborative.id
+        public_published_datasets_q(),
+        collaborative_datasets_q(Collaborative.objects.filter(id=collaborative.id)),
     ).values_list("id", flat=True)
     return ResolvedScope(
         kind=COLLABORATIVE,

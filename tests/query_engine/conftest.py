@@ -32,6 +32,7 @@ from api.models import (
     ResourceDataTable,
     ResourceFileDetails,
     Sector,
+    UseCase,
 )
 from api.services.query_engine.geography_match import GeographyIndex, load_geography_index
 from api.utils.data_indexing import index_resource_data
@@ -40,6 +41,7 @@ from api.utils.enums import (
     DatasetAccessType,
     DatasetStatus,
     DatasetType,
+    UseCaseStatus,
 )
 from authorization.models import User
 
@@ -154,11 +156,29 @@ def make_collaborative(owner: User) -> Callable[..., Collaborative]:
         title: str = "FemHealth",
         status: str = CollaborativeStatus.PUBLISHED,
         datasets: Iterable[Dataset] = (),
+        use_cases: Iterable[UseCase] = (),
     ) -> Collaborative:
         collaborative = Collaborative.objects.create(title=title, user=owner, status=status)
         if datasets:
             collaborative.datasets.set(list(datasets))
+        if use_cases:
+            collaborative.use_cases.set(list(use_cases))
         return collaborative
+
+    return make
+
+
+@pytest.fixture
+def make_use_case(owner: User) -> Callable[..., UseCase]:
+    def make(
+        title: str = "Spotting gaps in maternal health",
+        status: str = UseCaseStatus.PUBLISHED,
+        datasets: Iterable[Dataset] = (),
+    ) -> UseCase:
+        use_case = UseCase.objects.create(title=title, user=owner, status=status)
+        if datasets:
+            use_case.datasets.set(list(datasets))
+        return use_case
 
     return make
 

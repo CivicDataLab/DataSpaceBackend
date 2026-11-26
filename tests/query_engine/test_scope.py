@@ -7,7 +7,12 @@ import pytest
 from api.services.query_engine.corpus import get_dataset_in_scope, get_resource_in_scope
 from api.services.query_engine.errors import BadScope, NotFound, ScopeNotFound
 from api.services.query_engine.scope import parse_scope, resolve_scope
-from api.utils.enums import CollaborativeStatus, DatasetAccessType
+from api.utils.enums import (
+    CollaborativeStatus,
+    DatasetAccessType,
+    DatasetStatus,
+    UseCaseStatus,
+)
 
 
 class TestParseScope:
@@ -56,6 +61,49 @@ class TestResolveScope:
         assert scope.collaborative_id == fem.id
         assert scope.title == "FemHealth"
         assert scope.dataset_ids == frozenset({anaemia.id})
+
+    def test_a_collaborative_also_covers_the_datasets_of_its_published_use_cases(
+        self, make_dataset: Callable, make_use_case: Callable, make_collaborative: Callable
+    ) -> None:
+        anaemia = make_dataset("Anaemia")
+        tenders = make_dataset("MCH tenders")
+        private = make_dataset("Private survey", access_type=DatasetAccessType.PRIVATE)
+        draft = make_dataset("Draft indicators", status=DatasetStatus.DRAFT)
+        mch = make_use_case("MCH gaps", datasets=[tenders, private, draft, anaemia])
+        fem = make_collaborative("FemHealth", datasets=[anaemia], use_cases=[mch])
+
+        scope = resolve_scope(f"collaborative:{fem.public_id}")
+
+        assert scope.dataset_ids == frozenset({anaemia.id, tenders.id})
+        assert get_dataset_in_scope(tenders.id, scope).id == tenders.id
+
+    @pytest.mark.parametrize("status", [UseCaseStatus.DRAFT, UseCaseStatus.ARCHIVED])
+    def test_a_use_case_that_is_not_published_adds_nothing(
+        self,
+        make_dataset: Callable,
+        make_use_case: Callable,
+        make_collaborative: Callable,
+        status: str,
+    ) -> None:
+        tenders = make_dataset("MCH tenders")
+        unpublished = make_use_case("MCH gaps", status=status, datasets=[tenders])
+        fem = make_collaborative("FemHealth", use_cases=[unpublished])
+
+        scope = resolve_scope(f"collaborative:{fem.public_id}")
+
+        assert scope.dataset_ids == frozenset()
+
+    def test_another_collaboratives_use_cases_add_nothing(
+        self, make_dataset: Callable, make_use_case: Callable, make_collaborative: Callable
+    ) -> None:
+        literacy = make_dataset("Literacy")
+        make_collaborative("Other", use_cases=[make_use_case("Schools", datasets=[literacy])])
+        make_use_case("Not in any collaborative", datasets=[make_dataset("Loose")])
+        fem = make_collaborative("FemHealth")
+
+        scope = resolve_scope(f"collaborative:{fem.public_id}")
+
+        assert scope.dataset_ids == frozenset()
 
     def test_platform_ignores_collaborative_membership(
         self, make_dataset: Callable, make_resource: Callable, make_collaborative: Callable
