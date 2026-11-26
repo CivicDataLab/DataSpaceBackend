@@ -72,7 +72,13 @@ class CreatePublicationInput:
 
     title: Optional[str] = None
     description: Optional[str] = None
-    authors: Optional[List[str]] = None
+    authors: Optional[List[str]] = strawberry.field(
+        default=None, description="Old author names; send contributorIds instead."
+    )
+    contributor_ids: Optional[List[strawberry.ID]] = strawberry.field(
+        default=None,
+        description="User ids of the contributors. When sent, author names are cleared.",
+    )
     publication_date: Optional[datetime.date] = None
     license: Optional[publication_license] = None
     resource_type_id: Optional[uuid.UUID] = None
@@ -93,7 +99,17 @@ class UpdatePublicationInput:
     id: uuid.UUID
     title: Optional[str] = strawberry.UNSET
     description: Optional[str] = strawberry.UNSET
-    authors: Optional[List[str]] = strawberry.UNSET
+    authors: Optional[List[str]] = strawberry.field(
+        default=strawberry.UNSET, description="Old author names; send contributorIds instead."
+    )
+    contributor_ids: Optional[List[strawberry.ID]] = strawberry.field(
+        default=strawberry.UNSET,
+        description=(
+            "User ids of the contributors; replaces the current ones (empty list clears, "
+            "null keeps). "
+            "When sent, author names are cleared."
+        ),
+    )
     publication_date: Optional[datetime.date] = strawberry.UNSET
     license: Optional[publication_license] = strawberry.UNSET
     resource_type_id: Optional[uuid.UUID] = strawberry.UNSET
@@ -282,6 +298,7 @@ class Mutation:
             sector_ids=input.sector_ids,
             geography_ids=input.geography_ids,
             external_source_link=input.external_source_link,
+            contributor_ids=input.contributor_ids,
         )
         return MutationResponse.success_response(TypePublication.from_django(publication))
 
@@ -508,6 +525,8 @@ def _update_kwargs(input: UpdatePublicationInput) -> dict:
         kwargs["geography_ids"] = input.geography_ids
     if input.external_source_link is not strawberry.UNSET:
         kwargs["external_source_link"] = input.external_source_link
+    if input.contributor_ids is not strawberry.UNSET:
+        kwargs["contributor_ids"] = input.contributor_ids
     return kwargs
 
 
