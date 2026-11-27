@@ -5,10 +5,12 @@ from typing import List, Optional
 
 import strawberry
 import strawberry_django
+from django.db import IntegrityError, transaction
 from strawberry.permission import BasePermission
 from strawberry.types import Info
 
 from api.models import Organization
+from api.models.Organization import NAME_TAKEN, organization_name_error
 from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.types.type_organization import TypeOrganization
 from api.utils.graphql_utils import is_superuser
@@ -146,13 +148,24 @@ class Mutation:
             else:
                 filtered_dict[key] = value
 
-        # Create the organization using the filtered input dictionary
-        organization = Organization.objects.create(**filtered_dict)  # type: ignore[arg-type]
+        name_error = organization_name_error(filtered_dict.get("name", ""))
+        if name_error:
+            raise ValueError(name_error)
 
-        # Add the current user as an admin of the organization
-        OrganizationMembership.objects.create(
-            user=info.context.user, organization=organization, role=Role.objects.get(name="admin")  # type: ignore[misc]
-        )
+        try:
+            with transaction.atomic():
+                # Create the organization using the filtered input dictionary
+                organization = Organization.objects.create(**filtered_dict)  # type: ignore[arg-type]
+
+                # Add the current user as an admin of the organization
+                OrganizationMembership.objects.create(
+                    user=info.context.user, organization=organization, role=Role.objects.get(name="admin")  # type: ignore[misc]
+                )
+        except IntegrityError:
+            # Another request took the slug between the check and the save
+            if organization_name_error(filtered_dict.get("name", "")) == NAME_TAKEN:
+                raise ValueError(NAME_TAKEN) from None
+            raise
 
         return TypeOrganization.from_django(organization)
 
@@ -213,8 +226,20 @@ class Mutation:
                 else:
                     setattr(organization, key, value)
 
+            if "name" in filtered_dict:
+                name_error = organization_name_error(organization.name, organization.pk)
+                if name_error:
+                    raise ValueError(name_error)
+
             # Save the updated organization
-            organization.save()
+            try:
+                with transaction.atomic():
+                    organization.save()
+            except IntegrityError:
+                # Another request took the slug between the check and the save
+                if organization_name_error(organization.name, organization.pk) == NAME_TAKEN:
+                    raise ValueError(NAME_TAKEN) from None
+                raise
             return TypeOrganization.from_django(organization)
         except Organization.DoesNotExist:
             raise ValueError(f"Organization with ID {input.id} does not exist.")
