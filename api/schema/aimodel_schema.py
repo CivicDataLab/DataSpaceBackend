@@ -35,7 +35,16 @@ from api.types.type_aimodel import (
     TypeModelEndpoint,
     TypeVersionProvider,
 )
+from api.utils.aimodel_access import can_view_ai_model, published_ai_models
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.input_checks import (
+    API_TIMEOUT_RANGE,
+    range_error,
+    url_error,
+    whitespace_error,
+)
+from api.utils.organization_access import can_list_organization
+from api.utils.outbound_url import public_url_error
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
@@ -45,6 +54,7 @@ from api.utils.qs_utils import (
 )
 from authorization.graphql_permissions import IsAuthenticated
 from authorization.models import OrganizationMembership, Role
+from authorization.permissions import CreateAIModelPermission
 
 
 @trace_resolver(name="update_aimodel_tags", attributes={"component": "aimodel"})
@@ -323,13 +333,63 @@ AI_MODELS_TABLE_SORT_FIELDS = [
 ]
 
 
+def _check_input(*messages: Optional[str]) -> None:
+    """Raise the first failed input check (#292): mutations save without full_clean."""
+    for message in messages:
+        if message:
+            raise DjangoValidationError(message)
+
+
+def _provider_checks(endpoint_url: Optional[str], timeout_seconds: Optional[int]) -> None:
+    _check_input(
+        url_error(endpoint_url, "API endpoint URL", schemes=["http", "https"]),
+        # Calls refuse these too; checking on save gives the owner the error early.
+        public_url_error(endpoint_url),
+        range_error(timeout_seconds, "API timeout (seconds)", *API_TIMEOUT_RANGE),
+    )
+
+
+# Sent to the model provider exactly as saved. A stray space, easy to paste unseen
+# into the masked key field, made every call to the model fail with 401.
+_PROVIDER_TOKEN_FIELDS = {
+    "api_key": "API key",
+    "hf_auth_token": "Hugging Face token",
+    "api_key_prefix": "API key prefix",
+    "api_auth_header_name": "Auth header name",
+    "provider_model_id": "Provider model ID",
+    "api_response_path": "Response path",
+}
+
+
+# With these auth types the key is a whole header value ("Token abc") or
+# "username:password", which may contain spaces.
+_KEY_MAY_CONTAIN_SPACES = {"CUSTOM", "BASIC"}
+
+
+def _clean_provider_tokens(input: Any, auth_type: Any) -> None:
+    """Trim the ends of these fields on `input` and refuse whitespace left inside them."""
+    auth_type = getattr(auth_type, "value", auth_type)
+    for field, label in _PROVIDER_TOKEN_FIELDS.items():
+        value = getattr(input, field, None)
+        if isinstance(value, str):
+            value = value.strip()
+            setattr(input, field, value)
+            if field == "api_key" and auth_type in _KEY_MAY_CONTAIN_SPACES:
+                continue
+            _check_input(whitespace_error(value, label))
+
+
 def _visible_ai_models(info: Info, include_public: Optional[bool] = False) -> QuerySet:
-    """The AI models a caller may list. Same rules as `aiModels`."""
+    """The AI models a caller may list; `aiModels` and `aiModelsTable` share it."""
     organization = info.context.context.get("organization")
     user = info.context.user
-    public = AIModel.objects.filter(is_public=True, is_active=True)
+    public = published_ai_models()
     if organization:
-        queryset = AIModel.objects.filter(organization=organization)
+        queryset = (
+            AIModel.objects.filter(organization=organization)
+            if can_list_organization(user, organization)
+            else AIModel.objects.none()
+        )
     elif not user.is_authenticated:
         queryset = public
     elif user.is_superuser:
@@ -359,23 +419,7 @@ class Query:
         order: Optional[AIModelOrder] = strawberry.UNSET,
     ) -> List[TypeAIModel]:
         """Get all AI models."""
-        organization = info.context.context.get("organization")
-        user = info.context.user
-
-        if organization:
-            queryset = AIModel.objects.filter(organization=organization)
-        else:
-            # If user is authenticated
-            if user.is_authenticated:
-                # If user is superuser, show all models
-                if user.is_superuser:
-                    queryset = AIModel.objects.all()
-                else:
-                    # For authenticated users, show their models
-                    queryset = AIModel.objects.filter(user=user, organization=None)
-            else:
-                # For non-authenticated users, only show public active models
-                queryset = AIModel.objects.filter(is_public=True, is_active=True)
+        queryset = _visible_ai_models(info)
 
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
@@ -445,23 +489,8 @@ class Query:
                     return None
                 model = AIModel.objects.get(public_id=parsed)
 
-            # Check permissions
-            if model.is_public and model.is_active:
+            if can_view_ai_model(user, model):
                 return TypeAIModel.from_django(model)
-
-            if not user.is_authenticated:
-                return None
-
-            if user.is_superuser or model.user == user:
-                return TypeAIModel.from_django(model)
-
-            if model.organization:
-                org_member = OrganizationMembership.objects.filter(
-                    user=user, organization=model.organization
-                ).first()
-                if org_member and org_member.role.can_view:
-                    return TypeAIModel.from_django(model)
-
             return None
         except AIModel.DoesNotExist:
             return None
@@ -474,19 +503,8 @@ class Query:
         try:
             model = AIModel.objects.get(id=model_id)
 
-            # Check permissions
-            if not model.is_public and not user.is_authenticated:
+            if not can_view_ai_model(user, model):
                 return []
-
-            if not model.is_public and model.user != user and not user.is_superuser:
-                if model.organization:
-                    org_member = OrganizationMembership.objects.filter(
-                        user=user, organization=model.organization
-                    ).first()
-                    if not org_member or not org_member.role.can_view:
-                        return []
-                else:
-                    return []
 
             endpoints = ModelEndpoint.objects.filter(model=model)
             return TypeModelEndpoint.from_django_list(list(endpoints))
@@ -500,7 +518,7 @@ class Mutation:
 
     @strawberry.mutation
     @BaseMutation.mutation(
-        permission_classes=[IsAuthenticated],
+        permission_classes=[CreateAIModelPermission],
         trace_name="create_ai_model",
         trace_attributes={"component": "aimodel"},
         track_activity={
@@ -534,6 +552,8 @@ class Mutation:
 
         # Prepare metadata
         metadata: Any = input.metadata or {}
+
+        _check_input(range_error(input.max_tokens, "Max tokens", 1))
 
         try:
             model = AIModel.objects.create(
@@ -622,6 +642,7 @@ class Mutation:
         if input.supports_streaming is not None:
             model.supports_streaming = input.supports_streaming
         if input.max_tokens is not None:
+            _check_input(range_error(input.max_tokens, "Max tokens", 1))
             model.max_tokens = input.max_tokens
         if input.supported_languages is not None:
             model.supported_languages = input.supported_languages
@@ -904,6 +925,8 @@ class Mutation:
                     "You don't have permission to add versions to this model."
                 )
 
+        _check_input(range_error(input.max_tokens, "Max tokens", 1))
+
         # Create the version
         version = AIModelVersion.objects.create(
             ai_model=model,
@@ -970,6 +993,7 @@ class Mutation:
         if input.supports_streaming is not None:
             version.supports_streaming = input.supports_streaming
         if input.max_tokens is not None:
+            _check_input(range_error(input.max_tokens, "Max tokens", 1))
             version.max_tokens = input.max_tokens
         if input.supported_languages is not None:
             version.supported_languages = input.supported_languages
@@ -1097,6 +1121,9 @@ class Mutation:
                     "You don't have permission to add providers to this version."
                 )
 
+        _clean_provider_tokens(input, input.api_auth_type or "BEARER")
+        _provider_checks(input.api_endpoint_url, input.api_timeout_seconds)
+
         provider = VersionProvider.objects.create(
             version=version,
             provider=input.provider,
@@ -1163,6 +1190,11 @@ class Mutation:
             else:
                 raise DjangoValidationError("You don't have permission to update this provider.")
 
+        _clean_provider_tokens(
+            input,
+            input.api_auth_type if input.api_auth_type is not None else provider.api_auth_type,
+        )
+
         # Update fields
         if input.provider_model_id is not None:
             provider.provider_model_id = input.provider_model_id
@@ -1172,6 +1204,7 @@ class Mutation:
             provider.is_active = input.is_active
 
         # API Endpoint Configuration
+        _provider_checks(input.api_endpoint_url, input.api_timeout_seconds)
         if input.api_endpoint_url is not None:
             provider.api_endpoint_url = input.api_endpoint_url
         if input.api_http_method is not None:

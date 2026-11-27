@@ -384,6 +384,14 @@ PLATFORM_IMPORT_TIMEOUT = float(os.getenv("PLATFORM_IMPORT_TIMEOUT", "15"))
 PUBLIC_SITE_URL = os.getenv("PUBLIC_SITE_URL", "https://civicdataspace.in")
 PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "https://api.datakeep.civicdays.in")
 
+# Hosts (and their subdomains) whose dashboards a use case may embed. Keep the
+# default in step with what the frontend should embed; set it per environment
+# as a comma-separated list to change it.
+DASHBOARD_EMBED_ORIGINS = env.list(
+    "DASHBOARD_EMBED_ORIGINS",
+    default=["analytics.civicdataspace.in", "justicehub.in", "public.tableau.com"],
+)
+
 # Django REST Framework settings
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [

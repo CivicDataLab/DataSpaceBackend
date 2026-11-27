@@ -9,6 +9,7 @@ from strawberry_django.filters import FilterLookup
 
 from api.models import UseCaseDashboard
 from api.types.base_type import BaseType
+from api.utils.dashboard_links import embed_url as dashboard_embed_url
 
 
 @strawberry_django.type(UseCaseDashboard)
@@ -21,6 +22,10 @@ class TypeUseCaseDashboard(BaseType):
     created: auto
     modified: auto
     usecase_id: auto
+
+    @strawberry.field(description="The link to embed, or null when its host may not be embedded.")
+    def embed_url(self) -> Optional[str]:
+        return dashboard_embed_url(self.link)  # type: ignore[attr-defined]
 
 
 @strawberry.input

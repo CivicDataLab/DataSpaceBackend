@@ -49,7 +49,12 @@ class Publication(models.Model):
     )
 
     # Typed metadata columns — a fixed, known schema (no dynamic/EAV fields).
+    # Names as plain text, from before contributors were linked users. Kept until
+    # every client sends contributor ids (see api/utils/publication_contributors.py).
     authors = models.JSONField(default=list, blank=True)
+    contributors = models.ManyToManyField(
+        "authorization.User", blank=True, related_name="contributed_publications"
+    )
     publication_date = models.DateField(null=True, blank=True)
     license = models.CharField(
         max_length=50,

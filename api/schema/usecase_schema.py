@@ -14,7 +14,6 @@ from django.db.models import QuerySet
 from strawberry import auto
 from strawberry.file_uploads import Upload
 from strawberry.types import Info
-from strawberry_django.mutations import mutations
 from strawberry_django.pagination import OffsetPaginationInput
 
 from api.models import (
@@ -29,12 +28,14 @@ from api.models import (
     UseCaseMetadata,
     UseCaseOrganizationRelationship,
 )
+from api.schema.create_in_organization import create_in_organization
 from api.schema.extensions import TrackActivity, TrackModelActivity
 from api.services.publication_linking import (
     assert_can_manage_links,
     get_linkable_publication,
     published_publications,
 )
+from api.services.publish_requirements import assert_use_case_ready
 from api.types.type_dataset import TypeDataset
 from api.types.type_organization import TypeOrganization
 from api.types.type_usecase import (
@@ -53,6 +54,9 @@ from api.utils.enums import (
     UseCaseStatus,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.input_checks import date_order_error, url_error
+from api.utils.organization_access import can_list_organization
+from api.utils.owned_item_access import find_visible
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
@@ -61,6 +65,11 @@ from api.utils.qs_utils import (
     status_counts,
 )
 from authorization.models import User
+from authorization.permissions import (
+    ChangeUseCasePermission,
+    CreateUseCasePermission,
+    DeleteUseCasePermission,
+)
 from authorization.types import TypeUser
 
 
@@ -96,7 +105,8 @@ class UseCaseInputPartial:
 
     id: str
     logo: Optional[Upload] = strawberry.field(default=None)
-    running_status: Optional[use_case_running_status] = UseCaseRunningStatus.INITIATED
+    # No default: an omitted field must keep the stored value (#291).
+    running_status: Optional[use_case_running_status] = None
     title: Optional[str] = None
     summary: Optional[str] = None
     platform_url: Optional[str] = None
@@ -143,11 +153,15 @@ USE_CASES_TABLE_SORT_FIELDS = [
 
 
 def _visible_use_cases(info: Info, include_public: Optional[bool] = False) -> QuerySet:
-    """The use cases a caller may list. Same rules as `useCases`."""
+    """The use cases a caller may list; `useCases` and `useCasesTable` share it."""
     user = info.context.user
     organization = info.context.context.get("organization")
     if organization:
-        queryset = UseCase.objects.filter(organization=organization)
+        queryset = (
+            UseCase.objects.filter(organization=organization)
+            if can_list_organization(user, organization)
+            else UseCase.objects.none()
+        )
     elif user.is_superuser:
         queryset = UseCase.objects.all()
     elif user.is_authenticated:
@@ -163,7 +177,15 @@ def _visible_use_cases(info: Info, include_public: Optional[bool] = False) -> Qu
 class Query:
     """Queries for use cases."""
 
-    use_case: TypeUseCase = strawberry_django.field()
+    @strawberry_django.field
+    @trace_resolver(name="get_use_case", attributes={"component": "usecase"})
+    def use_case(self, info: Info, pk: strawberry.ID) -> TypeUseCase:
+        """One use case by id. A draft the caller may not see answers like a
+        missing id (rules in api/utils/owned_item_access.py)."""
+        use_case = find_visible(UseCase, pk, info.context.user)
+        if use_case is None:
+            raise ValueError("UseCase matching query does not exist.")
+        return TypeUseCase.from_django(use_case)
 
     @strawberry_django.field(
         filters=UseCaseFilter,
@@ -179,16 +201,7 @@ class Query:
         order: Optional[UseCaseOrder] = strawberry.UNSET,
     ) -> list[TypeUseCase]:
         """Get all use cases."""
-        user = info.context.user
-        organization = info.context.context.get("organization")
-        if organization:
-            queryset = UseCase.objects.filter(organization=organization)
-        elif user.is_superuser:
-            queryset = UseCase.objects.all()
-        elif user.is_authenticated:
-            queryset = UseCase.objects.filter(user=user)
-        else:
-            queryset = UseCase.objects.filter(status=UseCaseStatus.PUBLISHED)
+        queryset = _visible_use_cases(info)
 
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
@@ -292,6 +305,8 @@ class Query:
     @trace_resolver(name="get_datasets_by_use_case", attributes={"component": "usecase"})
     def dataset_by_use_case(self, info: Info, use_case_id: str) -> list[TypeDataset]:
         """Get datasets by use case."""
+        if find_visible(UseCase, use_case_id, info.context.user) is None:
+            return []
         queryset = Dataset.objects.filter(usecase__id=use_case_id)
         return TypeDataset.from_django_list(queryset)
 
@@ -299,12 +314,10 @@ class Query:
     @trace_resolver(name="get_contributors_by_use_case", attributes={"component": "usecase"})
     def contributors_by_use_case(self, info: Info, use_case_id: str) -> list[TypeUser]:
         """Get contributors by use case."""
-        try:
-            use_case = UseCase.objects.get(id=use_case_id)
-            contributors = use_case.contributors.all()
-            return TypeUser.from_django_list(contributors)
-        except UseCase.DoesNotExist:
+        use_case = find_visible(UseCase, use_case_id, info.context.user)
+        if use_case is None:
             raise ValueError(f"UseCase with ID {use_case_id} does not exist.")
+        return TypeUser.from_django_list(use_case.contributors.all())
 
 
 @trace_resolver(name="update_usecase_tags", attributes={"component": "usecase"})
@@ -380,11 +393,14 @@ def _delete_existing_metadata(usecase: UseCase) -> None:
 class Mutation:
     """Mutations for use cases."""
 
-    create_use_case: TypeUseCase = mutations.create(UseCaseInput)
+    create_use_case: TypeUseCase = create_in_organization(
+        UseCaseInput, draft_status=UseCaseStatus.DRAFT, permission_classes=[CreateUseCasePermission]
+    )
     # update_use_case: TypeUseCase = mutations.update(UseCaseInputPartial, key_attr="id")
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[CreateUseCasePermission],
         extensions=[
             TrackModelActivity(
                 verb="created",
@@ -426,6 +442,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeUseCasePermission],
         extensions=[
             TrackModelActivity(
                 verb="updated",
@@ -476,7 +493,9 @@ class Mutation:
             _update_usecase_geographies(usecase, update_metadata_input.geographies)
         return TypeUseCase.from_django(usecase)
 
-    @strawberry_django.mutation(handle_django_errors=False)
+    @strawberry_django.mutation(
+        handle_django_errors=False, permission_classes=[ChangeUseCasePermission]
+    )
     @trace_resolver(
         name="update_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
@@ -504,11 +523,18 @@ class Mutation:
                 )
             usecase.summary = summary
         if data.platform_url is not None:
+            url_message = url_error(data.platform_url.strip(), "Platform URL")
+            if url_message:
+                raise ValueError(url_message)
             usecase.platform_url = data.platform_url.strip()
         if data.started_on is not None:
             usecase.started_on = data.started_on
         if data.completed_on is not None and data.completed_on is not strawberry.UNSET:
             usecase.completed_on = data.completed_on
+        if data.started_on is not None or data.completed_on:
+            date_message = date_order_error(usecase.started_on, usecase.completed_on)
+            if date_message:
+                raise ValueError(date_message)
         if data.running_status is not None and data.running_status is not strawberry.UNSET:
             usecase.running_status = data.running_status
         if data.logo is not None and data.logo is not strawberry.UNSET:
@@ -518,6 +544,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=False,
+        permission_classes=[DeleteUseCasePermission],
         extensions=[
             TrackActivity(
                 verb="deleted",
@@ -538,7 +565,9 @@ class Mutation:
         use_case.delete()
         return True
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeUseCasePermission]
+    )
     def add_dataset_to_use_case(
         self, info: Info, use_case_id: str, dataset_id: uuid.UUID
     ) -> TypeUseCase:
@@ -560,7 +589,9 @@ class Mutation:
         use_case.save()
         return TypeUseCase.from_django(use_case)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeUseCasePermission]
+    )
     def remove_dataset_from_use_case(
         self, info: Info, use_case_id: str, dataset_id: uuid.UUID
     ) -> TypeUseCase:
@@ -580,7 +611,9 @@ class Mutation:
         use_case.save()
         return TypeUseCase.from_django(use_case)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeUseCasePermission]
+    )
     @trace_resolver(
         name="update_usecase_datasets",
         attributes={"component": "usecase", "operation": "mutation"},
@@ -602,7 +635,9 @@ class Mutation:
         use_case.save()
         return TypeUseCase.from_django(use_case)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeUseCasePermission]
+    )
     def add_publication_to_use_case(
         self, info: Info, use_case_id: str, publication_id: uuid.UUID
     ) -> TypeUseCase:
@@ -625,7 +660,9 @@ class Mutation:
         use_case.save()
         return TypeUseCase.from_django(use_case)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeUseCasePermission]
+    )
     def remove_publication_from_use_case(
         self, info: Info, use_case_id: str, publication_id: uuid.UUID
     ) -> TypeUseCase:
@@ -645,7 +682,9 @@ class Mutation:
         use_case.save()
         return TypeUseCase.from_django(use_case)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeUseCasePermission]
+    )
     @trace_resolver(
         name="update_usecase_publications",
         attributes={"component": "usecase", "operation": "mutation"},
@@ -672,6 +711,7 @@ class Mutation:
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeUseCasePermission],
         extensions=[
             TrackModelActivity(
                 verb="published",
@@ -693,12 +733,14 @@ class Mutation:
         except UseCase.DoesNotExist:
             raise ValueError(f"Use Case with ID {use_case_id} doesn't exist")
 
+        assert_use_case_ready(use_case)
         use_case.status = UseCaseStatus.PUBLISHED.value
         use_case.save()
         return TypeUseCase.from_django(use_case)
 
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeUseCasePermission],
         extensions=[
             TrackModelActivity(
                 verb="unpublished",
@@ -725,7 +767,9 @@ class Mutation:
         return TypeUseCase.from_django(use_case)
 
     # Add a contributor to a use case.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeUseCasePermission]
+    )
     @trace_resolver(
         name="add_contributor_to_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
@@ -752,7 +796,9 @@ class Mutation:
         return TypeUseCase.from_django(use_case)
 
     # Remove a contributor from a use case.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeUseCasePermission]
+    )
     @trace_resolver(
         name="remove_contributor_from_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
@@ -781,6 +827,7 @@ class Mutation:
     # Update the contributors of a use case.
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeUseCasePermission],
         extensions=[
             TrackModelActivity(
                 verb="updated",
@@ -814,7 +861,9 @@ class Mutation:
         return TypeUseCase.from_django(use_case)
 
     # Add an organization as a supporter to a use case.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeUseCasePermission]
+    )
     @trace_resolver(
         name="add_supporting_organization_to_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
@@ -846,7 +895,9 @@ class Mutation:
         return TypeUseCaseOrganizationRelationship.from_django(relationship)
 
     # Remove an organization as a supporter from a use case.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeUseCasePermission]
+    )
     @trace_resolver(
         name="remove_supporting_organization_from_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
@@ -869,7 +920,9 @@ class Mutation:
             )
 
     # Add an organization as a partner to a use case.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeUseCasePermission]
+    )
     @trace_resolver(
         name="add_partner_organization_to_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
@@ -901,7 +954,9 @@ class Mutation:
         return TypeUseCaseOrganizationRelationship.from_django(relationship)
 
     # Remove an organization as a partner from a use case.
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeUseCasePermission]
+    )
     @trace_resolver(
         name="remove_partner_organization_from_use_case",
         attributes={"component": "usecase", "operation": "mutation"},
@@ -926,6 +981,7 @@ class Mutation:
     # Update organization relationships for a use case.
     @strawberry_django.mutation(
         handle_django_errors=True,
+        permission_classes=[ChangeUseCasePermission],
         extensions=[
             TrackModelActivity(
                 verb="updated",

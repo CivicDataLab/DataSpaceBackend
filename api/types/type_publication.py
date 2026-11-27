@@ -1,3 +1,4 @@
+import copy
 import uuid
 from datetime import date, datetime
 from typing import List, Optional, cast
@@ -26,7 +27,29 @@ from api.utils.enums import (
     UseCaseStatus,
 )
 from api.utils.qs_utils import StatusCount
+from authorization.permissions import _user_manages_publication
 from authorization.types import TypeUser
+
+
+def _caller_can_change(info: Info, publication: Publication) -> bool:
+    """Whether the caller may edit this publication; cached per request (a
+    listing asks once per row)."""
+    request = info.context
+    cache = getattr(request, "_publication_change_access", None)
+    if cache is None:
+        cache = {}
+        try:
+            setattr(request, "_publication_change_access", cache)
+        except AttributeError:
+            pass  # context that takes no attributes: just don't cache
+    if publication.pk not in cache:
+        user = getattr(request, "user", None)
+        cache[publication.pk] = bool(
+            user
+            and getattr(user, "is_authenticated", False)
+            and _user_manages_publication(user, publication, "change")
+        )
+    return bool(cache[publication.pk])
 
 
 def _caller_can_see_links(info: Info, publication: Publication) -> bool:
@@ -131,7 +154,9 @@ class TypePublication(BaseType):
     slug: str
     public_id: str
     status: publication_status
-    authors: List[str]
+    authors: List[str] = strawberry_django.field(
+        description="Old saved author names; use contributors."
+    )
     publication_date: Optional[date]
     license: publication_license
     external_source_link: Optional[str]
@@ -145,6 +170,24 @@ class TypePublication(BaseType):
     @strawberry.field(description="Link part for the publication page: title words + publicId.")
     def url_slug(self) -> str:
         return cast(Publication, self).url_slug
+
+    @strawberry.field(description="Users credited on this publication.")
+    def contributors(self, info: Info) -> List[TypeUser]:
+        """Contributor users; emails only for people who can edit the publication.
+
+        A published publication is public, so outsiders must not read the
+        contributors' email addresses through it.
+        """
+        instance = cast(Publication, self)
+        users = list(instance.contributors.all())
+        if _caller_can_change(info, instance):
+            return TypeUser.from_django_list(users)
+        hidden = []
+        for user in users:
+            shown = copy.copy(user)  # never saved; leaves the prefetched row as is
+            shown.email = ""
+            hidden.append(shown)
+        return TypeUser.from_django_list(hidden)
 
     @strawberry.field
     def sectors(self, info: Info) -> List["TypeSector"]:

@@ -15,6 +15,8 @@ from api.models import Dataset, Geography, Metadata, UseCase
 from api.models.AIModel import AIModel
 from api.models.Collaborative import Collaborative
 from api.utils.search_cache import SEARCH_CACHE_VERSION_KEY
+from api.utils.search_pagination import PaginationError, parse_pagination
+from api.utils.search_query import sdg_codes
 from api.utils.telemetry_utils import trace_method
 from DataSpace import settings
 from search.documents import (
@@ -321,6 +323,11 @@ class UnifiedSearch(APIView):
             filter_values = Geography.get_geography_names_with_descendants(filter_values)
             search = search.filter("terms", **{"geographies.raw": filter_values})
 
+        if "sdgs" in filters:
+            filter_values = sdg_codes(filters["sdgs"])
+            if filter_values:
+                search = search.filter("terms", sdgs=filter_values)
+
         if "status" in filters:
             search = search.filter("term", status=filters["status"])
 
@@ -382,6 +389,11 @@ class UnifiedSearch(APIView):
             result.setdefault("tags", [])
             result.setdefault("sectors", [])
             result.setdefault("geographies", [])
+        elif result["type"] == "publication":
+            # Publication documents have no tags, and the serializer requires them.
+            result.setdefault("tags", [])
+            result.setdefault("title", "")
+            result.setdefault("description", "")
         elif result["type"] == "publisher":
             if "name" in result:
                 result["title"] = result.get("name", "")
@@ -436,6 +448,7 @@ class UnifiedSearch(APIView):
         search.aggs.bucket("tags", "terms", field="tags.raw", size=50)
         search.aggs.bucket("sectors", "terms", field="sectors.raw", size=50)
         search.aggs.bucket("geographies", "terms", field="geographies.raw", size=50)
+        search.aggs.bucket("sdgs", "terms", field="sdgs", size=50)
         search.aggs.bucket("status", "terms", field="status")
 
         # Pagination
@@ -475,7 +488,7 @@ class UnifiedSearch(APIView):
                             aggregations["types"]["publisher"] = 0
                         aggregations["types"]["publisher"] += bucket["doc_count"]
 
-            for agg_name in ["tags", "sectors", "geographies", "status"]:
+            for agg_name in ["tags", "sectors", "geographies", "sdgs", "status"]:
                 if agg_name in aggs_dict:
                     aggregations[agg_name] = {}
                     for bucket in aggs_dict[agg_name]["buckets"]:
@@ -503,14 +516,16 @@ class UnifiedSearch(APIView):
     def get(self, request: Any) -> Response:
         """Handle GET request and return unified search results."""
         try:
+            page, size = parse_pagination(request.GET)
+        except PaginationError as error:
+            return Response({"error": str(error)}, status=400)
+        try:
             cache_key = self._generate_unified_cache_key(request)
             cached_result = cache.get(cache_key)
             if cached_result:
                 return Response(cached_result)
 
             query: str = request.GET.get("query", "")
-            page: int = int(request.GET.get("page", 1))
-            size: int = int(request.GET.get("size", 10))
             entity_types: str = request.GET.get(
                 "types", "dataset,usecase,aimodel,publication,collaborative,event,publisher"
             )  # Which entity types to search

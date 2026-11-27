@@ -7,6 +7,7 @@ from typing import Any, List, Optional, Union
 import strawberry
 import strawberry_django
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from django.db.models import Count, QuerySet
 from strawberry.permission import BasePermission
 from strawberry.types import Info
@@ -32,6 +33,7 @@ from api.schema.base_mutation import (
     MutationResponse,
 )
 from api.schema.extensions import TrackActivity, TrackModelActivity
+from api.services.publish_requirements import assert_dataset_ready
 from api.types.type_dataset import (
     DatasetFilter,
     DatasetOrder,
@@ -44,22 +46,21 @@ from api.types.type_prompt_metadata import TypePromptDataset, prompt_task_type_e
 from api.types.type_resource import TypeResource
 from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
-from api.utils.dataset_access import (
-    ChangeDatasetPartPermission,
-    can_change_dataset,
-    can_list_organization,
-)
+from api.utils.dataset_access import ChangeDatasetPartPermission, can_change_dataset
 from api.utils.enums import (
     DatasetAccessType,
     DatasetLicense,
     DatasetStatus,
     DatasetType,
+    PromptDomain,
     PromptFormat,
     PromptPurpose,
     PromptTaskType,
     UseCaseStatus,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.input_checks import choice_error, range_error, too_long_error
+from api.utils.organization_access import can_list_organization
 from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
@@ -277,8 +278,9 @@ class UpdateMetadataInput:
     tags: Optional[List[str]] = None
     sectors: Optional[List[uuid.UUID]] = None
     geographies: Optional[List[int]] = None
-    access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
-    license: Optional[DatasetLicenseENUM] = DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
+    # No defaults: an omitted field must keep the stored value (#291).
+    access_type: Optional[DatasetAccessTypeENUM] = None
+    license: Optional[DatasetLicenseENUM] = None
 
 
 @strawberry.input
@@ -287,8 +289,9 @@ class UpdateDatasetInput:
     title: Optional[str] = None
     description: Optional[str] = None
     tags: Optional[List[str]] = None
-    access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
-    license: Optional[DatasetLicenseENUM] = DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
+    # No defaults: an omitted field must keep the stored value (#291).
+    access_type: Optional[DatasetAccessTypeENUM] = None
+    license: Optional[DatasetLicenseENUM] = None
 
 
 @strawberry.input
@@ -362,6 +365,17 @@ def _add_update_dataset_metadata(
         except Metadata.DoesNotExist as e:
             _delete_existing_metadata(dataset)
             raise ValueError(f"Metadata with ID {metadata_input_item.id} does not exist.")
+
+
+def _tag_length_error(tags: Optional[List[str]]) -> Optional[str]:
+    """Message for tags the tag table cannot store, checked before anything is saved.
+
+    Postgres would reject them mid-update with its own error text (#291).
+    """
+    max_length = Tag._meta.get_field("value").max_length or 0
+    if any(len(tag) > max_length for tag in tags or []):
+        return f"Tags cannot exceed {max_length} characters."
+    return None
 
 
 @trace_resolver(name="update_dataset_tags", attributes={"component": "dataset"})
@@ -754,20 +768,28 @@ class Mutation:
         if dataset.status != DatasetStatus.DRAFT.value:
             raise DjangoValidationError(f"Dataset with ID {dataset_id} is not in draft status.")
 
+        input_error = _tag_length_error(update_metadata_input.tags) or too_long_error(
+            Dataset, "description", update_metadata_input.description, "Description"
+        )
+        if input_error:
+            raise DjangoValidationError(input_error)
+
         if update_metadata_input.description:
             dataset.description = update_metadata_input.description
         if update_metadata_input.access_type:
             dataset.access_type = update_metadata_input.access_type
         if update_metadata_input.license:
             dataset.license = update_metadata_input.license
-        dataset.save()
-        if update_metadata_input.tags is not None:
-            _update_dataset_tags(dataset, update_metadata_input.tags)
-        _add_update_dataset_metadata(dataset, metadata_input)
-        if update_metadata_input.sectors is not None:
-            _add_update_dataset_sectors(dataset, update_metadata_input.sectors)
-        if update_metadata_input.geographies is not None:
-            _add_update_dataset_geographies(dataset, update_metadata_input.geographies)
+        # All or nothing: a bad metadata item must not leave the fields above saved.
+        with transaction.atomic():
+            dataset.save()
+            if update_metadata_input.tags is not None:
+                _update_dataset_tags(dataset, update_metadata_input.tags)
+            _add_update_dataset_metadata(dataset, metadata_input)
+            if update_metadata_input.sectors is not None:
+                _add_update_dataset_sectors(dataset, update_metadata_input.sectors)
+            if update_metadata_input.geographies is not None:
+                _add_update_dataset_geographies(dataset, update_metadata_input.geographies)
         return MutationResponse.success_response(TypeDataset.from_django(dataset))
 
     @strawberry_django.mutation(
@@ -803,6 +825,18 @@ class Mutation:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
         if dataset.status != DatasetStatus.DRAFT.value:
             raise ValueError(f"Dataset with ID {dataset_id} is not in draft status.")
+        input_error = (
+            _tag_length_error(update_dataset_input.tags)
+            or too_long_error(Dataset, "title", (update_dataset_input.title or "").strip(), "Title")
+            or too_long_error(
+                Dataset,
+                "description",
+                (update_dataset_input.description or "").strip(),
+                "Description",
+            )
+        )
+        if input_error:
+            raise ValueError(input_error)
         if update_dataset_input.title:
             if update_dataset_input.title.strip() == "":
                 raise ValueError("Title cannot be empty.")
@@ -813,8 +847,9 @@ class Mutation:
             dataset.access_type = update_dataset_input.access_type
         if update_dataset_input.license:
             dataset.license = update_dataset_input.license
-        dataset.save()
-        _update_dataset_tags(dataset, update_dataset_input.tags)
+        with transaction.atomic():
+            dataset.save()
+            _update_dataset_tags(dataset, update_dataset_input.tags)
         return TypeDataset.from_django(dataset)
 
     @strawberry.mutation(
@@ -847,6 +882,12 @@ class Mutation:
         if update_input.target_languages is not None:
             prompt_dataset.target_languages = update_input.target_languages
         if update_input.domain is not None:
+            domain_error = choice_error(update_input.domain, PromptDomain.values, "Domain")
+            if domain_error:
+                # success: false like other refused input, not a GraphQL error (#292).
+                return MutationResponse.error_response(
+                    GraphQLValidationError.from_message(domain_error)
+                )
             prompt_dataset.domain = update_input.domain
         if update_input.target_model_types is not None:
             prompt_dataset.target_model_types = update_input.target_model_types
@@ -882,6 +923,14 @@ class Mutation:
         # Check if the dataset is in draft status
         if resource.dataset.status != DatasetStatus.DRAFT.value:
             raise DjangoValidationError(f"Cannot update resource - dataset is not in draft status.")
+
+        input_error = (
+            choice_error(update_input.prompt_format, PromptFormat.values, "Prompt format")
+            or range_error(update_input.prompt_count, "Prompt count", 0)
+            or range_error(update_input.avg_prompt_length, "Average prompt length", 0)
+        )
+        if input_error:
+            return MutationResponse.error_response(GraphQLValidationError.from_message(input_error))
 
         # Get or create PromptResource
         prompt_resource, created = PromptResource.objects.get_or_create(resource=resource)
@@ -925,7 +974,7 @@ class Mutation:
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
-        # TODO: validate dataset
+        assert_dataset_ready(dataset)
         dataset.status = DatasetStatus.PUBLISHED.value
         dataset.save()
         return TypeDataset.from_django(dataset)

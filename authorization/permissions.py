@@ -5,8 +5,18 @@ from rest_framework import permissions
 from strawberry.permission import BasePermission
 from strawberry.types import Info
 
-from api.models import Dataset, Event, Organization, Publication
+from api.models import (
+    Collaborative,
+    Dataset,
+    Event,
+    Organization,
+    Publication,
+    UseCase,
+    UseCaseDashboard,
+)
 from api.utils.enums import EventStatus, PublicationStatus
+from api.utils.organization_access import can_add_to_organization
+from api.utils.owned_item_access import can_manage_item, find_by_id
 from api.utils.public_links import parse_public_id
 from authorization.models import DatasetPermission, OrganizationMembership, Role
 from authorization.service_auth import ServicePrincipal
@@ -736,6 +746,116 @@ class CreateEventPermission(BasePermission):  # type: ignore[misc]
             return bool(membership and membership.role.can_add)
 
         return True
+
+
+class CreateInOrganizationPermission(BasePermission):  # type: ignore[misc]
+    """Creating an individual item needs a signed-in user; creating one owned by
+    the organisation in the request header needs the ``add`` role there."""
+
+    message = "You don't have permission to create this"
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        user = info.context.user
+        if not getattr(user, "is_authenticated", False):
+            return False
+        organization = info.context.context.get("organization")
+        if organization:
+            return can_add_to_organization(user, organization)
+        return True
+
+
+class CreateUseCasePermission(CreateInOrganizationPermission):
+    message = "You don't have permission to create a use case"
+
+
+class CreateCollaborativePermission(CreateInOrganizationPermission):
+    message = "You don't have permission to create a collaborative"
+
+
+class CreateAIModelPermission(CreateInOrganizationPermission):
+    message = "You don't have permission to create an AI model"
+
+
+# ---------------------------------------------------------------------------
+# Use case and collaborative changes: the item named in the arguments decides,
+# not the organisation header (rules in api/utils/owned_item_access.py).
+# ---------------------------------------------------------------------------
+
+
+def _input_id(kwargs: Any, *keys: str) -> Optional[Any]:
+    """The ``id`` of the first input object present in the arguments."""
+    for key in keys:
+        payload = kwargs.get(key)
+        if payload is not None and getattr(payload, "id", None):
+            return payload.id
+    return None
+
+
+class OwnedItemPermission(BasePermission):  # type: ignore[misc]
+    """Base for mutations on one use case or collaborative.
+
+    Subclasses say which item the call touches; the caller needs ``operation``
+    rights on it. A missing item is refused like a forbidden one, so a refusal
+    does not tell whether an id exists.
+    """
+
+    message = "You don't have permission to change this"
+    operation = "change"
+
+    def item(self, kwargs: Any) -> Optional[Any]:
+        raise NotImplementedError
+
+    def has_permission(self, source: Any, info: Info, **kwargs: Any) -> bool:
+        user = info.context.user
+        if not getattr(user, "is_authenticated", False):
+            return False
+        if user.is_superuser:
+            return True
+        item = self.item(kwargs)
+        return item is not None and can_manage_item(user, item, self.operation)
+
+
+class ChangeUseCasePermission(OwnedItemPermission):
+    message = "You don't have permission to change this use case"
+
+    def item(self, kwargs: Any) -> Optional[Any]:
+        use_case_id = kwargs.get("use_case_id") or _input_id(
+            kwargs, "data", "update_metadata_input"
+        )
+        return find_by_id(UseCase, use_case_id)
+
+
+class DeleteUseCasePermission(ChangeUseCasePermission):
+    message = "You don't have permission to delete this use case"
+    operation = "delete"
+
+
+class ChangeCollaborativePermission(OwnedItemPermission):
+    message = "You don't have permission to change this collaborative"
+
+    def item(self, kwargs: Any) -> Optional[Any]:
+        collaborative_id = kwargs.get("collaborative_id") or _input_id(
+            kwargs, "data", "update_metadata_input"
+        )
+        return find_by_id(Collaborative, collaborative_id)
+
+
+class DeleteCollaborativePermission(ChangeCollaborativePermission):
+    message = "You don't have permission to delete this collaborative"
+    operation = "delete"
+
+
+class ChangeUseCaseDashboardPermission(OwnedItemPermission):
+    """Dashboards belong to a use case: changing them needs change rights on it."""
+
+    message = "You don't have permission to change this use case's dashboards"
+
+    def item(self, kwargs: Any) -> Optional[Any]:
+        use_case_id = kwargs.get("usecase_id") or getattr(kwargs.get("input"), "usecase_id", None)
+        if use_case_id:
+            return find_by_id(UseCase, use_case_id)
+        dashboard = find_by_id(UseCaseDashboard, kwargs.get("id"))
+        return dashboard.usecase if dashboard else None
 
 
 class AllowPublishedEvents(BasePermission):  # type: ignore[misc]

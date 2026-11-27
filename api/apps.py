@@ -6,6 +6,11 @@ class ApiConfig(AppConfig):
     name = "api"
 
     def ready(self) -> None:
+        # Before any GraphQL type is defined: file fields must not read a local path (#284)
+        from api.types.file_types import use_storage_file_types
+
+        use_storage_file_types()
+
         # Import signals to register them
         import api.signals
 

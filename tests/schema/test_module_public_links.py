@@ -128,7 +128,8 @@ def test_collaborative_same_title_gets_its_own_slug(owner) -> None:
     assert first.slug == "clean-rivers"
     assert second.slug.startswith("clean-rivers-") and len(second.slug) == len("clean-rivers") + 5
     for c in [first, second]:
-        res = run(CB, {"s": c.slug})
+        # Drafts: only the owner (or a viewing member) may look them up.
+        res = run(CB, {"s": c.slug}, user=owner)
         assert res.data["collaborativeBySlug"]["id"] == str(c.id)
 
 
@@ -149,6 +150,24 @@ def test_collaborative_slug_race_gets_a_new_suffix(owner, monkeypatch) -> None:
     c = Collaborative.objects.create(title="Clean Rivers", user=owner)
     monkeypatch.setattr(QuerySet, "exists", real_exists)
     assert c.slug.startswith("clean-rivers-")
+
+
+def test_collaborative_slug_taken_before_validation_gets_a_new_suffix(owner, monkeypatch) -> None:
+    # Two "Add collaborative" clicks in the same second make the same title. The
+    # other save lands after the free-slug check but before full_clean, which
+    # then refuses the slug as taken: that must retry with a suffix too, not
+    # fail the create (seen on dev smoke tests running in parallel).
+    Collaborative.objects.create(title="Clean Rivers", user=owner)
+    real_exists = QuerySet.exists
+    calls = {"n": 0}
+
+    def exists_misses_once(self: QuerySet) -> bool:
+        calls["n"] += 1
+        return False if calls["n"] == 1 else real_exists(self)
+
+    monkeypatch.setattr(QuerySet, "exists", exists_misses_once)
+    c = Collaborative.objects.create(title="Clean Rivers", user=owner)
+    assert c.slug.startswith("clean-rivers-") and len(c.slug) == len("clean-rivers") + 5
 
 
 def test_collaborative_unknown_link_errors(owner) -> None:
@@ -199,7 +218,8 @@ AM = """query($id: Int, $p: String) {
 
 
 def test_ai_model_by_public_id(owner) -> None:
-    m = make_model(owner, is_public=True, is_active=True)
+    # Published: anonymous callers only see published models (#293).
+    m = make_model(owner, is_public=True, is_active=True, status="ACTIVE")
     for value in [m.url_slug, m.public_id]:
         res = run(AM, {"p": value})
         assert res.errors is None, res.errors

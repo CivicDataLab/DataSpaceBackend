@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import strawberry
 import strawberry_django
+from django.db import transaction
 from django.db.models import Q
 from django.db.models.expressions import Combinable
 from strawberry.types import Info
@@ -152,15 +153,17 @@ class Mutation:
         except Dataset.DoesNotExist:
             raise ValueError(f"Dataset with ID {access_model_input.dataset} does not exist.")
 
-        access_model = AccessModel.objects.create(
-            dataset=dataset,
-            name=access_model_input.name,
-            description=access_model_input.description,
-            type=access_model_input.type.value,  # type: ignore[attr-defined]
-        )
+        # A refused resource or field must not leave the new access model behind.
+        with transaction.atomic():
+            access_model = AccessModel.objects.create(
+                dataset=dataset,
+                name=access_model_input.name,
+                description=access_model_input.description,
+                type=access_model_input.type.value,  # type: ignore[attr-defined]
+            )
 
-        _update_access_model_fields(access_model, access_model_input)
-        _add_update_access_model_resources(access_model, access_model_input.resources)
+            _update_access_model_fields(access_model, access_model_input)
+            _add_update_access_model_resources(access_model, access_model_input.resources)
         return TypeAccessModel.from_django(access_model)
 
     @strawberry_django.mutation(
@@ -169,22 +172,27 @@ class Mutation:
     def edit_access_model(
         self, info: Info, access_model_input: EditAccessModelInput
     ) -> TypeAccessModel:
-        if not access_model_input.access_model_id:
-            try:
-                dataset = Dataset.objects.get(id=access_model_input.dataset)
-            except Dataset.DoesNotExist as e:
-                raise ValueError(f"Dataset with ID {access_model_input.dataset} does not exist.")
-            access_model = AccessModel.objects.create(dataset=dataset)
-        else:
-            try:
-                access_model = AccessModel.objects.get(id=access_model_input.access_model_id)
-            except AccessModel.DoesNotExist as e:
-                raise ValueError(
-                    f"Access Model with ID {access_model_input.access_model_id} does not exist."
-                )
+        # Resources are replaced by deleting the old links first: a refused resource or
+        # field must put them back (and not leave a new access model behind).
+        with transaction.atomic():
+            if not access_model_input.access_model_id:
+                try:
+                    dataset = Dataset.objects.get(id=access_model_input.dataset)
+                except Dataset.DoesNotExist as e:
+                    raise ValueError(
+                        f"Dataset with ID {access_model_input.dataset} does not exist."
+                    )
+                access_model = AccessModel.objects.create(dataset=dataset)
+            else:
+                try:
+                    access_model = AccessModel.objects.get(id=access_model_input.access_model_id)
+                except AccessModel.DoesNotExist as e:
+                    raise ValueError(
+                        f"Access Model with ID {access_model_input.access_model_id} does not exist."
+                    )
 
-        _update_access_model_fields(access_model, access_model_input)
-        _add_update_access_model_resources(access_model, access_model_input.resources)
+            _update_access_model_fields(access_model, access_model_input)
+            _add_update_access_model_resources(access_model, access_model_input.resources)
         return TypeAccessModel.from_django(access_model)
 
     @strawberry_django.mutation(

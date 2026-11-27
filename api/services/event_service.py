@@ -15,6 +15,7 @@ from django.db.models import QuerySet
 from api.models import Event
 from api.utils.enums import EventStatus
 from api.utils.luma import canonical_luma_src, validate_luma_embed
+from api.utils.organization_access import can_list_organization
 
 _UNSET: Any = object()
 
@@ -126,11 +127,16 @@ def set_event_status(event: Event, status: EventStatus) -> Event:
 def get_scoped_events(*, user: Any, organization: Any) -> "QuerySet[Event, Event]":
     """Return the events a caller may list.
 
-    Organization context → that org's events; an authenticated individual →
-    their own; anonymous → published only. Ordered newest-first.
+    Organization context → that org's events, for its members only; an
+    authenticated individual → their own; anonymous → published only. Ordered
+    newest-first.
     """
     if organization:
-        queryset = Event.objects.filter(organization=organization)
+        queryset = (
+            Event.objects.filter(organization=organization)
+            if can_list_organization(user, organization)
+            else Event.objects.none()
+        )
     elif getattr(user, "is_superuser", False):
         queryset = Event.objects.all()
     elif getattr(user, "is_authenticated", False):
