@@ -50,7 +50,9 @@
         { "name": "ELASTICSEARCH_PASS", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/ELASTICSEARCH_PASS" },
         { "name": "REDIS_HOST", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/REDIS_HOST" },
         { "name": "SECRET_KEY", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/SECRET_KEY" },
-        { "name": "URL_WHITELIST", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/URL_WHITELIST" }
+        { "name": "URL_WHITELIST", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/URL_WHITELIST" },
+        { "name": "QE_EMBEDDINGS_API_KEY", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/QE_EMBEDDINGS_API_KEY" },
+        { "name": "QE_RERANK_API_KEY", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/QE_RERANK_API_KEY" }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
@@ -96,7 +98,9 @@
         { "name": "ELASTICSEARCH_PASS", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/ELASTICSEARCH_PASS" },
         { "name": "REDIS_HOST", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/REDIS_HOST" },
         { "name": "SECRET_KEY", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/SECRET_KEY" },
-        { "name": "URL_WHITELIST", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/URL_WHITELIST" }
+        { "name": "URL_WHITELIST", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/URL_WHITELIST" },
+        { "name": "QE_EMBEDDINGS_API_KEY", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/QE_EMBEDDINGS_API_KEY" },
+        { "name": "QE_RERANK_API_KEY", "valueFrom": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/dataspace/QE_RERANK_API_KEY" }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
