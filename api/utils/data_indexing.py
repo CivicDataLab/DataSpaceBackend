@@ -354,12 +354,18 @@ def _parse_filter_key(key: str) -> Tuple[str, str]:
 
 
 def _build_where_clause(
-    filters: Dict[str, Any], allowed_columns: List[str]
+    filters: Dict[str, Any],
+    allowed_columns: List[str],
+    column_exprs: Optional[Dict[str, pg_sql.Composable]] = None,
 ) -> Tuple[pg_sql.Composable, List[Any]]:
     """Build a parameterized WHERE clause from a filters dict.
 
     Filters are of the form ``{"column": value}`` for equality, or
     ``{"column__op": value}`` for other operators. Unknown columns are rejected.
+
+    ``column_exprs`` (opt-in, used by the query engine) compares a column
+    through an expression instead of its name, e.g. a guarded numeric cast of
+    a text column. Without it the output is exactly as before.
     """
     if not filters:
         return pg_sql.SQL(""), []
@@ -374,7 +380,7 @@ def _build_where_clause(
             raise DataFetchError(f"Unknown filter column: {col}")
         op_template, transformer = _FILTER_OPERATORS[op]
 
-        col_ident = _column_ident(col)
+        col_ident = (column_exprs or {}).get(col) or _column_ident(col)
         if op in ("isnull", "notnull"):
             # Boolean toggle: isnull=true means IS NULL, isnull=false means IS NOT NULL
             truthy = value not in (False, "false", "False", 0, "0", None)

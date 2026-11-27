@@ -201,3 +201,56 @@ class TestViewQueryParamHelpers(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestBuildWhereClauseColumnExpressions(unittest.TestCase):
+    """The query engine's opt-in cast expressions; the data API's output must not change."""
+
+    CASES = [
+        {"price": 10, "year__gte": 2020},
+        {"tag__in": ["a", "b"], "name__icontains": "kam"},
+        {"value__isnull": "true", "x__notnull": True, "Literacy rate (%)": 81.5},
+        {"district__nin": ["Total"], "rate__lt": 1.5, "label__iendswith": "pur"},
+    ]
+    ALLOWED = [
+        "price",
+        "year",
+        "tag",
+        "name",
+        "value",
+        "x",
+        "Literacy rate (%)",
+        "district",
+        "rate",
+        "label",
+    ]
+
+    # What origin/dev's builder (before column_exprs existed) renders for each case.
+    BEFORE = [
+        (' WHERE "price" = %s AND "year" >= %s', [10, 2020]),
+        (' WHERE "tag" = ANY(%s) AND "name" ILIKE %s', [["a", "b"], "%kam%"]),
+        (' WHERE "value" IS NULL AND "x" IS NOT NULL AND "Literacy rate (%%)" = %s', [81.5]),
+        (
+            ' WHERE "district" <> ALL(%s) AND "rate" < %s AND "label" ILIKE %s',
+            [["Total"], 1.5, "%pur"],
+        ),
+    ]
+
+    def test_without_expressions_the_output_is_byte_identical(self) -> None:
+        for filters, (sql_before, params_before) in zip(self.CASES, self.BEFORE):
+            for where_sql, params in (
+                _build_where_clause(filters, self.ALLOWED),
+                _build_where_clause(filters, self.ALLOWED, column_exprs=None),
+            ):
+                self.assertEqual(_render(where_sql), sql_before)
+                self.assertEqual(params, params_before)
+
+    def test_a_column_with_an_expression_is_compared_through_it(self) -> None:
+        cast = pg_sql.SQL("CAST_OF_POPULATION")
+        where_sql, params = _build_where_clause(
+            {"Population__gt": 1000, "district": "Kamrup"},
+            ["Population", "district"],
+            column_exprs={"Population": cast},
+        )
+        self.assertEqual(_render(where_sql), ' WHERE CAST_OF_POPULATION > %s AND "district" = %s')
+        self.assertEqual(params, [1000, "Kamrup"])

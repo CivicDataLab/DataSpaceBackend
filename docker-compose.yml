@@ -77,6 +77,38 @@ services:
       - default
       - dataexchange_default
 
+  # The query engine's background sync (api/management/commands/qe_sync.py):
+  # keeps table profiles, facts and the AI-search index in step with the
+  # platform. Its own process from the same image. The command override runs
+  # only `qe_sync --loop` -- the image's entrypoint (migrate, search-mapping
+  # sync) stays with `backend`. Opt-in: start it with
+  # `docker compose --profile query-engine up -d qe_sync` once the QE_* settings
+  # are in place; deploys then keep it on the new image (scripts/ci-deploy.sh).
+  # Docs: api/views/query_engine/architecture.md
+  qe_sync:
+    image: ${DATASPACE_IMAGE:-dataspace-backend:local}
+    build: .
+    env_file: .env
+    profiles: ["query-engine"]
+    restart: unless-stopped
+    entrypoint: ["python", "manage.py"]
+    command: ["qe_sync", "--loop"]
+    depends_on:
+      backend_db:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # See `backend`'s identical networks: block above for why both are needed.
+    networks:
+      - default
+      - dataexchange_default
+
   backend_db:
     image: "postgres:14.4"
     env_file: .env

@@ -9,6 +9,7 @@ from api.models.CollaborativeOrganizationRelationship import (
 )
 from api.models.Dataset import Dataset, Tag
 from api.models.DatasetMetadata import DatasetMetadata
+from api.models.DatasetProfile import DatasetProfile
 from api.models.DatasetSource import DatasetSource
 from api.models.DataSpace import DataSpace
 from api.models.Event import Event
@@ -28,6 +29,7 @@ from api.models.Resource import (
 from api.models.ResourceChartDetails import ResourceChartDetails
 from api.models.ResourceChartImage import ResourceChartImage
 from api.models.ResourceMetadata import ResourceMetadata
+from api.models.ResourceProfile import ResourceProfile, ResourceProfileStatus
 from api.models.ResourceSchema import ResourceSchema
 from api.models.ResourceType import ResourceType
 from api.models.SDG import SDG

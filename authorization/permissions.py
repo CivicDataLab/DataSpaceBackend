@@ -19,6 +19,7 @@ from api.utils.organization_access import can_add_to_organization
 from api.utils.owned_item_access import can_manage_item, find_by_id
 from api.utils.public_links import parse_public_id
 from authorization.models import DatasetPermission, OrganizationMembership, Role
+from authorization.service_auth import ServicePrincipal
 
 # Roles that may publish/unpublish and edit an org-owned publication, by name.
 PUBLICATION_MANAGER_ROLE_NAMES = ["admin", "editor", "owner"]
@@ -134,6 +135,20 @@ class HasOrganizationRole(permissions.BasePermission):
         elif method == "delete":
             return "delete"
         return None
+
+
+class IsQueryEngineService(permissions.BasePermission):
+    """Only the query engine's own service token (right client, right role) may pass.
+
+    Pairs with QueryEngineServiceAuthentication on the internal /api/internal/qe/
+    views; any other authenticated caller, Django users and admins included, gets 403.
+    """
+
+    message = "This endpoint is only for the query engine."
+
+    def has_permission(self, request: Any, view: Any) -> bool:
+        user = getattr(request, "user", None)
+        return isinstance(user, ServicePrincipal) and user.is_query_engine_service
 
 
 # Strawberry GraphQL Permissions
