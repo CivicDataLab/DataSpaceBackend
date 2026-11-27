@@ -1,6 +1,7 @@
 import abc
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 
+import structlog
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse
 from elasticsearch_dsl import Search
@@ -11,6 +12,10 @@ from rest_framework.serializers import Serializer
 from rest_framework.views import APIView
 
 from api.utils.search_cache import SEARCH_CACHE_VERSION_KEY
+from api.utils.search_pagination import PaginationError, parse_pagination
+
+logger = structlog.get_logger(__name__)
+
 
 def as_plain_data(value: Any) -> Any:
     """Convert Elasticsearch wrapper objects into plain Python containers.
@@ -72,6 +77,10 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
     def get(self, request: HttpRequest) -> Response:
         """Handle GET request and return paginated search results."""
         try:
+            page, size = parse_pagination(request.GET)
+        except PaginationError as error:
+            return Response({"error": str(error)}, status=400)
+        try:
             # Generate cache key based on request parameters
             cache_key = self._generate_cache_key(request)
             cached_result: Optional[Dict[str, Any]] = cache.get(cache_key)
@@ -81,8 +90,6 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
 
             # Original search logic
             query: str = request.GET.get("query", "")
-            page: int = int(request.GET.get("page", 1))
-            size: int = int(request.GET.get("size", 10))
             sort: str = request.GET.get("sort", "alphabetical")
             order: str = request.GET.get("order", "asc")
             # Handle multiple values for the same filter parameter
@@ -186,6 +193,20 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
                 for agg in running_status_agg:
                     aggregations["running_status"][agg["key"]] = agg["doc_count"]
 
+            if "location" in aggregations:
+                location_agg = aggregations["location"]["buckets"]
+                aggregations.pop("location")
+                aggregations["location"] = {}
+                for agg in location_agg:
+                    aggregations["location"][agg["key"]] = agg["doc_count"]
+
+            if "is_individual_event" in aggregations:
+                is_individual_event_agg = aggregations["is_individual_event"]["buckets"]
+                aggregations.pop("is_individual_event")
+                aggregations["is_individual_event"] = {}
+                for agg in is_individual_event_agg:
+                    aggregations["is_individual_event"][agg["key_as_string"]] = agg["doc_count"]
+
             if "is_individual_usecase" in aggregations:
                 is_individual_usecase_agg = aggregations["is_individual_usecase"]["buckets"]
                 aggregations.pop("is_individual_usecase")
@@ -205,8 +226,10 @@ class PaginatedElasticSearchAPIView(Generic[SerializerType, SearchType], APIView
             cache.set(cache_key, result, timeout=3600)  # Cache for 1 hour
 
             return Response(result)
-        except Exception as e:
-            return Response(str(e), status=500)
+        except Exception:
+            # Never return the error text: it can carry Elasticsearch internals.
+            logger.exception("search_error", document=self.document_class.__name__)
+            return Response({"error": "An internal error has occurred."}, status=500)
 
     def _generate_cache_key(self, request: HttpRequest) -> str:
         """Generate a unique cache key based on request parameters and cache version."""

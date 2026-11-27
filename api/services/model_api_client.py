@@ -4,15 +4,28 @@ Supports various authentication methods and providers.
 Works with VersionProvider configuration.
 """
 
+import asyncio
 import time
 from typing import Any, Dict, Optional
 
 import httpx
+import structlog
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 from tenacity import retry, stop_after_attempt, wait_exponential  # type: ignore
 
 from api.models.AIModelVersion import VersionProvider
+from api.utils.outbound_url import BlockedURLError, PublicTarget, resolve_public_url
+
+logger = structlog.get_logger("dataspace.model_api_client")
+
+NOT_JSON_MESSAGE = "The model provider did not return JSON."
+UNREADABLE_MESSAGE = "Could not read the model provider's response."
+UNREACHABLE_MESSAGE = "Could not get a response from the model provider."
+
+
+class _ProviderReplyError(Exception):
+    """A failed call whose message is safe to return to the caller."""
 
 
 class ModelAPIClient:
@@ -250,145 +263,107 @@ class ModelAPIClient:
 
         await sync_to_async(_update)()
 
+    def _failure(
+        self, error: str, start_time: float, status_code: Optional[int] = None
+    ) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "success": False,
+            "error": error,
+            "latency_ms": (time.time() - start_time) * 1000,
+            "provider": self.provider.provider,
+            "model_id": self.provider.provider_model_id,
+        }
+        if status_code is not None:
+            result["status_code"] = status_code
+        return result
+
+    def _success(self, response: httpx.Response, start_time: float) -> Dict[str, Any]:
+        response.raise_for_status()  # also refuses redirects, which are never followed
+        if "application/json" not in response.headers.get("content-type", ""):
+            raise _ProviderReplyError(NOT_JSON_MESSAGE)
+        response_data = response.json()
+        latency_ms = (time.time() - start_time) * 1000
+        try:
+            output_text = self._extract_response(response_data)
+        except (ValueError, KeyError, IndexError, TypeError):
+            raise _ProviderReplyError(UNREADABLE_MESSAGE)
+        return {
+            "success": True,
+            "output": output_text,
+            "raw_response": response_data,
+            "latency_ms": latency_ms,
+            "status_code": response.status_code,
+            "provider": self.provider.provider,
+            "model_id": self.provider.provider_model_id,
+        }
+
+    def _handle_error(self, error: Exception, start_time: float) -> Dict[str, Any]:
+        """Client-safe result for a failed call. Raw error text could reveal internal
+        hosts, ports or the API key (the URL may carry it), so it is only logged by type."""
+        if isinstance(error, BlockedURLError):
+            return self._failure(str(error), start_time)
+        if isinstance(error, httpx.HTTPStatusError):
+            code = error.response.status_code
+            return self._failure(f"The model provider answered with HTTP {code}.", start_time, code)
+        if isinstance(error, _ProviderReplyError):
+            return self._failure(str(error), start_time)
+        logger.warning(
+            "model provider call failed",
+            provider_id=self.provider.id,
+            error_type=type(error).__name__,
+        )
+        return self._failure(UNREACHABLE_MESSAGE, start_time)
+
+    def _send_kwargs(
+        self, target: PublicTarget, input_text: str, parameters: Optional[Dict]
+    ) -> Dict:
+        method = self.provider.api_http_method
+        if method not in ("POST", "GET"):
+            raise _ProviderReplyError(f"Unsupported HTTP method: {method}")
+        body = self._build_request_body(input_text, parameters)
+        kwargs = target.request_kwargs()
+        # The Host header always names the checked URL's host, whatever api_headers says.
+        headers = {k: v for k, v in self._build_headers().items() if k.lower() != "host"}
+        kwargs["headers"] = {**headers, **kwargs["headers"]}
+        kwargs["json" if method == "POST" else "params"] = body
+        return {"method": method, "url": target.url, **kwargs}
+
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
     async def call_async(
         self, input_text: str, parameters: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Make async API call to the model via the provider configuration."""
         start_time = time.time()
-
-        headers = self._build_headers()
-        body = self._build_request_body(input_text, parameters)
-
-        endpoint_url: str = self.provider.api_endpoint_url  # type: ignore[assignment]
-
         try:
-            async with httpx.AsyncClient(timeout=self.provider.api_timeout_seconds) as client:
-                if self.provider.api_http_method == "POST":
-                    response = await client.post(endpoint_url, headers=headers, json=body)
-                elif self.provider.api_http_method == "GET":
-                    response = await client.get(endpoint_url, headers=headers, params=body)
-                else:
-                    raise ValueError(f"Unsupported HTTP method: {self.provider.api_http_method}")
-
-                response.raise_for_status()
-
-                # Check if response is JSON
-                content_type = response.headers.get("content-type", "")
-                if "application/json" not in content_type:
-                    raise ValueError(
-                        f"Expected JSON response but got {content_type}. "
-                        f"Check if the API endpoint URL is correct: {endpoint_url}"
-                    )
-
-                response_data = response.json()
-
-                latency_ms = (time.time() - start_time) * 1000
-
-                # Update provider statistics (async-safe)
-                await self._update_provider_success()
-
-                # Extract response text
-                output_text = self._extract_response(response_data)
-
-                return {
-                    "success": True,
-                    "output": output_text,
-                    "raw_response": response_data,
-                    "latency_ms": latency_ms,
-                    "status_code": response.status_code,
-                    "provider": self.provider.provider,
-                    "model_id": self.provider.provider_model_id,
-                }
-
-        except httpx.HTTPStatusError as e:
-            # Update failure statistics (async-safe)
+            # Resolve once and connect to that address only (see api/utils/outbound_url.py).
+            target = await asyncio.to_thread(resolve_public_url, self._endpoint_url())
+            async with httpx.AsyncClient(
+                timeout=self.provider.api_timeout_seconds, follow_redirects=False
+            ) as client:
+                response = await client.request(**self._send_kwargs(target, input_text, parameters))
+            result = self._success(response, start_time)
+            await self._update_provider_success()
+            return result
+        except Exception as error:
             await self._update_provider_failure()
-
-            return {
-                "success": False,
-                "error": f"HTTP {e.response.status_code}: {e.response.text}",
-                "status_code": e.response.status_code,
-                "latency_ms": (time.time() - start_time) * 1000,
-                "provider": self.provider.provider,
-                "model_id": self.provider.provider_model_id,
-            }
-        except Exception as e:
-            # Update failure statistics (async-safe)
-            await self._update_provider_failure()
-
-            return {
-                "success": False,
-                "error": str(e),
-                "latency_ms": (time.time() - start_time) * 1000,
-                "provider": self.provider.provider,
-                "model_id": self.provider.provider_model_id,
-            }
+            return self._handle_error(error, start_time)
 
     def call(self, input_text: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Make synchronous API call to the model using httpx sync client."""
         start_time = time.time()
-
-        headers = self._build_headers()
-        body = self._build_request_body(input_text, parameters)
-        endpoint_url: str = self.provider.api_endpoint_url  # type: ignore[assignment]
-
         try:
-            with httpx.Client(timeout=self.provider.api_timeout_seconds) as client:
-                if self.provider.api_http_method == "POST":
-                    response = client.post(endpoint_url, headers=headers, json=body)
-                elif self.provider.api_http_method == "GET":
-                    response = client.get(endpoint_url, headers=headers, params=body)
-                else:
-                    raise ValueError(f"Unsupported HTTP method: {self.provider.api_http_method}")
+            # Resolve once and connect to that address only (see api/utils/outbound_url.py).
+            target = resolve_public_url(self._endpoint_url())
+            with httpx.Client(
+                timeout=self.provider.api_timeout_seconds, follow_redirects=False
+            ) as client:
+                response = client.request(**self._send_kwargs(target, input_text, parameters))
+            result = self._success(response, start_time)
+        except Exception as error:
+            result = self._handle_error(error, start_time)
+        self.provider.updated_at = timezone.now()
+        self.provider.save(update_fields=["updated_at"])
+        return result
 
-                response.raise_for_status()
-
-                # Check if response is JSON
-                content_type = response.headers.get("content-type", "")
-                if "application/json" not in content_type:
-                    raise ValueError(
-                        f"Expected JSON response but got {content_type}. "
-                        f"Check if the API endpoint URL is correct: {endpoint_url}"
-                    )
-
-                response_data = response.json()
-                latency_ms = (time.time() - start_time) * 1000
-
-                # Update provider timestamp (sync)
-                self.provider.updated_at = timezone.now()
-                self.provider.save(update_fields=["updated_at"])
-
-                # Extract response text
-                output_text = self._extract_response(response_data)
-
-                return {
-                    "success": True,
-                    "output": output_text,
-                    "raw_response": response_data,
-                    "latency_ms": latency_ms,
-                    "status_code": response.status_code,
-                    "provider": self.provider.provider,
-                    "model_id": self.provider.provider_model_id,
-                }
-
-        except httpx.HTTPStatusError as e:
-            self.provider.updated_at = timezone.now()
-            self.provider.save(update_fields=["updated_at"])
-
-            return {
-                "success": False,
-                "error": f"HTTP {e.response.status_code}: {e.response.text}",
-                "status_code": e.response.status_code,
-                "latency_ms": (time.time() - start_time) * 1000,
-                "provider": self.provider.provider,
-                "model_id": self.provider.provider_model_id,
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "latency_ms": (time.time() - start_time) * 1000,
-                "provider": self.provider.provider,
-                "model_id": self.provider.provider_model_id,
-            }
+    def _endpoint_url(self) -> str:
+        return self.provider.api_endpoint_url  # type: ignore[return-value]

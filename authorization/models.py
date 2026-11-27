@@ -3,6 +3,7 @@ from django.db import models
 from django.utils.text import slugify
 
 from api.utils.file_paths import _user_profile_image_directory_path
+from api.utils.storage import public_storage
 from authorization.consent import UserConsent
 
 
@@ -46,7 +47,10 @@ class User(AbstractUser):
     # Additional user profile fields
     bio = models.TextField(blank=True, null=True)
     profile_picture = models.ImageField(
-        upload_to=_user_profile_image_directory_path, blank=True, null=True
+        upload_to=_user_profile_image_directory_path,
+        storage=public_storage,
+        blank=True,
+        null=True,
     )
     github_profile = models.URLField(blank=True, null=True)
     linkedin_profile = models.URLField(blank=True, null=True)

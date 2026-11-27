@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional, cast
 
 import structlog
 from django.core.management.base import BaseCommand, CommandParser
-from django.db import transaction
 
 from api.models.Resource import Resource, ResourceDataTable
 from api.utils.data_indexing import INDEXED_FORMATS, index_resource_data
@@ -125,9 +124,9 @@ class Command(BaseCommand):
                     f"[{i}/{total_resources}] Processing resource {resource.id} - {resource.name}"
                 )
 
-                # Update dataindex for the resource
-                with transaction.atomic():
-                    data_table = index_resource_data(resource)
+                # Not inside a transaction: the flow commits its own switch and refuses
+                # to run inside an outer one (a failed resource keeps its old data).
+                data_table = index_resource_data(resource)
 
                 if data_table:
                     success_count += 1

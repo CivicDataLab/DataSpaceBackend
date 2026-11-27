@@ -1,4 +1,6 @@
-from typing import List, Optional
+# mypy: disable-error-code="valid-type"
+
+from typing import List, Optional, cast
 
 import strawberry
 import strawberry_django
@@ -29,6 +31,7 @@ from api.utils.enums import (
     OrganizationRelationshipType,
     PublicationStatus,
 )
+from api.utils.qs_utils import StatusCount
 from authorization.types import TypeUser
 
 collaborative_status = strawberry.enum(CollaborativeStatus)  # type: ignore
@@ -70,9 +73,11 @@ class TypeCollaborative(BaseType):
         description="URL of the platform where this collaborative is published"
     )
 
-    @strawberry.field(
-        description="Check if this collaborative is created by an individual user."
-    )
+    @strawberry.field(description="Link part for the collaborative page: title words + publicId.")
+    def url_slug(self) -> str:
+        return cast(Collaborative, self).url_slug
+
+    @strawberry.field(description="Check if this collaborative is created by an individual user.")
     def is_individual_collaborative(self) -> bool:
         """Check if this collaborative is created by an individual user."""
         return self.organization is None
@@ -123,9 +128,7 @@ class TypeCollaborative(BaseType):
         except Exception:
             return []
 
-    @strawberry.field(
-        description="Get the count of datasets associated with this collaborative."
-    )
+    @strawberry.field(description="Get the count of datasets associated with this collaborative.")
     def dataset_count(self: "TypeCollaborative", info: Info) -> int:
         """Get the count of datasets associated with this collaborative."""
         try:
@@ -133,9 +136,7 @@ class TypeCollaborative(BaseType):
         except Exception:
             return 0
 
-    @strawberry.field(
-        description="Get the count of use cases associated with this collaborative."
-    )
+    @strawberry.field(description="Get the count of use cases associated with this collaborative.")
     def use_case_count(self: "TypeCollaborative", info: Info) -> int:
         """Get the count of use cases associated with this collaborative."""
         try:
@@ -198,9 +199,7 @@ class TypeCollaborative(BaseType):
         except Exception:
             return []
 
-    @strawberry.field(
-        description="Get contributors associated with this collaborative."
-    )
+    @strawberry.field(description="Get contributors associated with this collaborative.")
     def contributors(self) -> Optional[List["TypeUser"]]:
         """Get contributors associated with this collaborative."""
         try:
@@ -226,9 +225,7 @@ class TypeCollaborative(BaseType):
         except Exception:
             return []
 
-    @strawberry.field(
-        description="Get supporting organizations for this collaborative."
-    )
+    @strawberry.field(description="Get supporting organizations for this collaborative.")
     def supporting_organizations(self) -> Optional[List["TypeOrganization"]]:
         """Get supporting organizations for this collaborative."""
         try:
@@ -269,3 +266,17 @@ class TypeCollaborative(BaseType):
             return TypeOrganization.from_django_list(organizations)
         except Exception:
             return []
+
+
+@strawberry.type
+class CollaborativeResponse:
+    """One page of a table listing (`collaborativesTable`): rows, the total after
+    filters, and per-status counts for tab labels."""
+
+    data: List[TypeCollaborative]
+    total_items_count: int
+    status_counts: List[StatusCount] = strawberry.field(
+        default_factory=list,
+        description="Counts per status with the same filters applied, except any status filter, "
+        "so tab labels stay stable when switching tabs.",
+    )

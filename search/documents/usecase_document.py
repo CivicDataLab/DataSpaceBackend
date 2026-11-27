@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 from django_elasticsearch_dsl import Document, Index, KeywordField, fields
 
 from api.models import (
+    SDG,
     Dataset,
     Geography,
     Metadata,
@@ -24,6 +25,8 @@ INDEX.settings(number_of_shards=1, number_of_replicas=0)
 class UseCaseDocument(Document):
     """Elasticsearch document for UseCase model."""
 
+    public_id = fields.KeywordField()
+    url_slug = fields.KeywordField(attr="url_slug")
     metadata = fields.NestedField(
         properties={
             "value": KeywordField(multi=True),
@@ -75,6 +78,9 @@ class UseCaseDocument(Document):
         },
         multi=True,
     )
+
+    # SDG codes ("SDG1" to "SDG17"), matched exactly by the sdgs search filter and facet
+    sdgs = fields.KeywordField(attr="sdgs_indexing", multi=True)
 
     geographies = fields.TextField(
         attr="geographies_indexing",
@@ -222,7 +228,7 @@ class UseCaseDocument(Document):
     def prepare_logo(self, instance: UseCase) -> str:
         """Prepare logo URL for indexing."""
         if instance.logo:
-            return str(instance.logo.path.replace("/code/files/", ""))
+            return str(instance.logo.url)
         return ""
 
     def should_index_object(self, obj: UseCase) -> bool:
@@ -247,7 +253,7 @@ class UseCaseDocument(Document):
     def get_instances_from_related(
         self,
         related_instance: Union[
-            Dataset, Metadata, UseCaseMetadata, Sector, Organization, User, Geography
+            Dataset, Metadata, UseCaseMetadata, Sector, Organization, User, Geography, SDG
         ],
     ) -> Optional[Union[UseCase, List[UseCase]]]:
         """Get UseCase instances from related models."""
@@ -274,6 +280,8 @@ class UseCaseDocument(Document):
             return owned_usecases + contributed_usecases
         elif isinstance(related_instance, Geography):
             return list(related_instance.usecases.all())
+        elif isinstance(related_instance, SDG):
+            return list(related_instance.usecases.all())
         return None
 
     class Django:
@@ -295,4 +303,5 @@ class UseCaseDocument(Document):
             Organization,
             User,
             Geography,
+            SDG,
         ]

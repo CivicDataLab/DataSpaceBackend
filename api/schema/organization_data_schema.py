@@ -15,6 +15,7 @@ from api.types.type_sector import TypeSector
 from api.types.type_usecase import TypeUseCase
 from api.utils.enums import DatasetStatus, UseCaseStatus
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.organization_access import can_list_organization
 from authorization.models import OrganizationMembership, User
 from authorization.permissions import IsAuthenticated, IsOrganizationMemberGraphQL
 from authorization.types import TypeUser
@@ -137,10 +138,10 @@ class Query:
     def organization_members(
         self, info: Info, organization_id: strawberry.ID
     ) -> List[TypeUser]:
-        """Get members of an organization.
-
-        Returns a list of users who are members of the specified organization.
-        """
+        """The members of an organization, for its own members."""
+        organization = Organization.objects.filter(id=organization_id).first()
+        if not organization or not can_list_organization(info.context.user, organization):
+            return []
         try:
             user_ids = OrganizationMembership.objects.filter(
                 organization_id=organization_id

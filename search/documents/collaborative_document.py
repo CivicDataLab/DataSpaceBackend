@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from django_elasticsearch_dsl import Document, Index, KeywordField, fields
 
 from api.models import (
+    SDG,
     Collaborative,
     CollaborativeMetadata,
     CollaborativeOrganizationRelationship,
@@ -32,6 +33,8 @@ INDEX.settings(number_of_shards=1, number_of_replicas=0)
 class CollaborativeDocument(Document):
     """Elasticsearch document for Collaborative model."""
 
+    public_id = fields.KeywordField()
+    url_slug = fields.KeywordField(attr="url_slug")
     metadata = fields.NestedField(
         properties={
             "value": KeywordField(multi=True),
@@ -89,6 +92,9 @@ class CollaborativeDocument(Document):
         },
         multi=True,
     )
+
+    # SDG codes ("SDG1" to "SDG17"), matched exactly by the sdgs search filter and facet
+    sdgs = fields.KeywordField(attr="sdgs_indexing", multi=True)
 
     geographies = fields.TextField(
         attr="geographies_indexing",
@@ -242,12 +248,12 @@ class CollaborativeDocument(Document):
 
     def prepare_logo(self, instance: Collaborative) -> str:
         if instance.logo:
-            return str(instance.logo.path.replace("/code/files/", ""))
+            return str(instance.logo.url)
         return ""
 
     def prepare_cover_image(self, instance: Collaborative) -> str:
         if instance.cover_image:
-            return str(instance.cover_image.path.replace("/code/files/", ""))
+            return str(instance.cover_image.url)
         return ""
 
     def prepare_dataset_count(self, instance: Collaborative) -> int:
@@ -283,6 +289,7 @@ class CollaborativeDocument(Document):
             Organization,
             User,
             Geography,
+            SDG,
         ],
     ) -> Optional[Union[Collaborative, List[Collaborative]]]:
         if isinstance(related_instance, Dataset):
@@ -306,6 +313,8 @@ class CollaborativeDocument(Document):
             return owned + contributed
         if isinstance(related_instance, Geography):
             return list(related_instance.collaboratives.all())
+        if isinstance(related_instance, SDG):
+            return list(related_instance.collaboratives.all())
         return None
 
     class Django:
@@ -326,4 +335,5 @@ class CollaborativeDocument(Document):
             Organization,
             User,
             Geography,
+            SDG,
         ]

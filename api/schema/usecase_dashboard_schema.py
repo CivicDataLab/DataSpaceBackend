@@ -4,18 +4,26 @@ from typing import List, Optional
 
 import strawberry
 import strawberry_django
+from django.db import transaction
 from strawberry.types import Info
 from strawberry_django.pagination import OffsetPaginationInput
 
 from api.models import UseCase, UseCaseDashboard
-from api.schema.base_mutation import BaseMutation, MutationResponse
+from api.schema.base_mutation import (
+    BaseMutation,
+    GraphQLValidationError,
+    MutationResponse,
+)
 from api.types.type_usecase_dashboard import (
     TypeUseCaseDashboard,
     UseCaseDashboardFilter,
     UseCaseDashboardOrder,
 )
+from api.utils.dashboard_links import DashboardLinkError, clean_dashboard_link
+from api.utils.dashboard_links import embed_url as dashboard_embed_url
 from api.utils.graphql_telemetry import trace_resolver
-from authorization.permissions import IsAuthenticated
+from api.utils.owned_item_access import find_visible, viewable_items_q
+from authorization.permissions import ChangeUseCaseDashboardPermission, IsAuthenticated
 
 
 @strawberry.input
@@ -44,12 +52,25 @@ class UseCaseDashboardMutationResponse:
 
 
 @strawberry.type
+class DashboardLinkCheck:
+    """Whether a dashboard link may be saved, for the builder's live check."""
+
+    allowed: bool
+    embed_url: Optional[str] = None
+    message: Optional[str] = None
+
+
+def _refused(error: DashboardLinkError) -> MutationResponse:  # type: ignore[type-arg]
+    return MutationResponse.error_response(GraphQLValidationError.from_message(str(error)))
+
+
+@strawberry.type
 class Mutation:
     """UseCaseDashboard mutations."""
 
     @strawberry.mutation
     @BaseMutation.mutation(
-        permission_classes=[IsAuthenticated],
+        permission_classes=[IsAuthenticated, ChangeUseCaseDashboardPermission],
         trace_name="add_usecase_dashboards",
         trace_attributes={"component": "usecase_dashboard"},
         track_activity={
@@ -68,15 +89,21 @@ class Mutation:
             # Check if usecase exists
             usecase = UseCase.objects.get(id=input.usecase_id)
 
-            # Create dashboards
+            # One refused link saves none of them.
+            try:
+                links = [clean_dashboard_link(d.link) for d in input.dashboards]
+            except DashboardLinkError as error:
+                return _refused(error)
+
             created_dashboards = []
-            for dashboard_input in input.dashboards:
-                dashboard = UseCaseDashboard.objects.create(
-                    name=dashboard_input.name,
-                    link=dashboard_input.link,
-                    usecase=usecase,
-                )
-                created_dashboards.append(dashboard)
+            with transaction.atomic():
+                for dashboard_input, link in zip(input.dashboards, links):
+                    dashboard = UseCaseDashboard.objects.create(
+                        name=dashboard_input.name,
+                        link=link,
+                        usecase=usecase,
+                    )
+                    created_dashboards.append(dashboard)
 
             return MutationResponse.success_response(
                 TypeUseCaseDashboard.from_django_list(created_dashboards)
@@ -88,7 +115,7 @@ class Mutation:
 
     @strawberry.mutation
     @BaseMutation.mutation(
-        permission_classes=[IsAuthenticated],
+        permission_classes=[IsAuthenticated, ChangeUseCaseDashboardPermission],
         trace_name="add_usecase_dashboard",
         trace_attributes={"component": "usecase_dashboard"},
         track_activity={
@@ -111,10 +138,15 @@ class Mutation:
             # Check if usecase exists
             usecase = UseCase.objects.get(id=usecase_id)
 
+            try:
+                cleaned_link = clean_dashboard_link(link)
+            except DashboardLinkError as error:
+                return _refused(error)
+
             # Create dashboard
             dashboard = UseCaseDashboard.objects.create(
                 name=name or "",
-                link=link or "",
+                link=cleaned_link,
                 usecase=usecase,
             )
 
@@ -128,7 +160,7 @@ class Mutation:
 
     @strawberry.mutation
     @BaseMutation.mutation(
-        permission_classes=[IsAuthenticated],
+        permission_classes=[IsAuthenticated, ChangeUseCaseDashboardPermission],
         trace_name="update_usecase_dashboard",
         trace_attributes={"component": "usecase_dashboard"},
         track_activity={
@@ -144,8 +176,13 @@ class Mutation:
         """Update a usecase dashboard."""
         try:
             dashboard = UseCaseDashboard.objects.get(id=id)
+            try:
+                # An empty link keeps the saved one, as before.
+                cleaned_link = clean_dashboard_link(link)
+            except DashboardLinkError as error:
+                return _refused(error)
             dashboard.name = name or dashboard.name
-            dashboard.link = link or dashboard.link
+            dashboard.link = cleaned_link or dashboard.link
             dashboard.save()
             return MutationResponse.success_response(
                 TypeUseCaseDashboard.from_django(dashboard)
@@ -157,7 +194,7 @@ class Mutation:
 
     @strawberry.mutation
     @BaseMutation.mutation(
-        permission_classes=[IsAuthenticated],
+        permission_classes=[IsAuthenticated, ChangeUseCaseDashboardPermission],
         trace_name="delete_usecase_dashboard",
         trace_attributes={"component": "usecase_dashboard"},
         track_activity={
@@ -198,8 +235,10 @@ class Query:
         pagination: OffsetPaginationInput = strawberry.UNSET,
         order: UseCaseDashboardOrder = strawberry.UNSET,
     ) -> list[TypeUseCaseDashboard]:
-        """Get all usecase dashboards."""
-        queryset = UseCaseDashboard.objects.all()
+        """Get all usecase dashboards (of use cases the caller may see)."""
+        queryset = UseCaseDashboard.objects.filter(
+            viewable_items_q(info.context.user, prefix="usecase__")
+        )
 
         if filters is not strawberry.UNSET:
             queryset = strawberry_django.filters.apply(filters, queryset, info)
@@ -223,6 +262,15 @@ class Query:
             for instance in dashboard_instances
         ]
 
+    @strawberry.field(permission_classes=[IsAuthenticated])
+    def check_dashboard_link(self, info: Info, link: str) -> DashboardLinkCheck:
+        """Run the save check on a link without saving (builder's live warning)."""
+        try:
+            cleaned = clean_dashboard_link(link)
+        except DashboardLinkError as error:
+            return DashboardLinkCheck(allowed=False, message=str(error))
+        return DashboardLinkCheck(allowed=True, embed_url=dashboard_embed_url(cleaned))
+
     @strawberry_django.field
     @trace_resolver(
         name="get_usecase_dashboards", attributes={"component": "usecase_dashboard"}
@@ -231,6 +279,9 @@ class Query:
         self, info: Info, usecase_id: int
     ) -> list[TypeUseCaseDashboard]:
         """Get dashboards for a specific usecase."""
+        # A draft the caller may not see answers like a missing id.
+        if find_visible(UseCase, usecase_id, info.context.user) is None:
+            raise Exception(f"Usecase with ID {usecase_id} does not exist")
         try:
             # Check if usecase exists
             usecase = UseCase.objects.get(id=usecase_id)

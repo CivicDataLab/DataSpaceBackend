@@ -1,3 +1,5 @@
+# mypy: disable-error-code="valid-type"
+
 from enum import Enum
 from typing import List, Optional
 
@@ -25,7 +27,7 @@ class ValidatorType(Enum):
 class MetadataFilter:
     """Filter for metadata."""
 
-    model: MetadataModels
+    model: metadata_models
     enabled: bool
 
 
@@ -35,7 +37,7 @@ class TypeMetadata(BaseType):
 
     id: auto
     label: auto
-    model: MetadataModels
+    model: metadata_models
     type: auto
     enabled: auto
     validator: List[ValidatorType]

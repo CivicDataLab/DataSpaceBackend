@@ -25,6 +25,9 @@ logger = structlog.get_logger(__name__)
 class PublicationDocumentSerializer(serializers.ModelSerializer):
     """Serializer for the Publication search document."""
 
+    public_id = serializers.CharField(required=False, allow_null=True)
+    url_slug = serializers.CharField(required=False, allow_null=True)
+
     resource_type = serializers.CharField(allow_blank=True)
     sectors = serializers.ListField()
     geographies = serializers.ListField()
@@ -45,6 +48,8 @@ class PublicationDocumentSerializer(serializers.ModelSerializer):
         model = Publication
         fields = [
             "id",
+            "public_id",
+            "url_slug",
             "title",
             "description",
             "status",

@@ -24,6 +24,8 @@ class AIModelDocument(Document):
     """Elasticsearch document for AIModel."""
 
     # Basic fields with analyzers
+    public_id = fields.KeywordField()
+    url_slug = fields.KeywordField(attr="url_slug")
     name = fields.TextField(
         analyzer=ngram_analyser,
         fields=title_subfields(),

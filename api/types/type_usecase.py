@@ -1,4 +1,6 @@
-from typing import List, Optional
+# mypy: disable-error-code="valid-type"
+
+from typing import List, Optional, cast
 
 import strawberry
 import strawberry_django
@@ -28,6 +30,7 @@ from api.utils.enums import (
     PublicationStatus,
     UseCaseStatus,
 )
+from api.utils.qs_utils import StatusCount
 from authorization.types import TypeUser
 
 use_case_status = strawberry.enum(UseCaseStatus)  # type: ignore
@@ -69,9 +72,11 @@ class TypeUseCase(BaseType):
         description="URL of the platform where this use case is published"
     )
 
-    @strawberry.field(
-        description="Check if this use case is created by an individual user."
-    )
+    @strawberry.field(description="Link part for the use case page: title words + publicId.")
+    def url_slug(self) -> str:
+        return cast(UseCase, self).url_slug
+
+    @strawberry.field(description="Check if this use case is created by an individual user.")
     def is_individual_usecase(self) -> bool:
         """Check if this use case is created by an individual user."""
         return self.organization is None
@@ -88,9 +93,7 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field(
-        description="Get the count of datasets associated with this use case."
-    )
+    @strawberry.field(description="Get the count of datasets associated with this use case.")
     def dataset_count(self: "TypeUseCase", info: Info) -> int:
         """Get the count of datasets associated with this use case."""
         try:
@@ -185,9 +188,7 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field(
-        description="Get organization relationships associated with this use case."
-    )
+    @strawberry.field(description="Get organization relationships associated with this use case.")
     def organization_relationships(
         self,
     ) -> Optional[List["TypeUseCaseOrganizationRelationship"]]:
@@ -234,9 +235,7 @@ class TypeUseCase(BaseType):
         except Exception:
             return []
 
-    @strawberry.field(
-        description="Get Usecase dashboard associated with this use case."
-    )
+    @strawberry.field(description="Get Usecase dashboard associated with this use case.")
     def usecase_dashboard(self) -> Optional[List["TypeUseCaseDashboard"]]:
         """Get Usecase dashboard associated with this use case."""
         try:
@@ -246,3 +245,17 @@ class TypeUseCase(BaseType):
             return TypeUseCaseDashboard.from_django_list(usecase_dashboards)
         except Exception:
             return []
+
+
+@strawberry.type
+class UseCaseResponse:
+    """One page of a table listing (`useCasesTable`): rows, the total after
+    filters, and per-status counts for tab labels."""
+
+    data: List[TypeUseCase]
+    total_items_count: int
+    status_counts: List[StatusCount] = strawberry.field(
+        default_factory=list,
+        description="Counts per status with the same filters applied, except any status filter, "
+        "so tab labels stay stable when switching tabs.",
+    )

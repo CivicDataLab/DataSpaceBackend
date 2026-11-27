@@ -20,6 +20,9 @@ logger = structlog.get_logger(__name__)
 class AIModelDocumentSerializer(serializers.ModelSerializer):
     """Serializer for AIModel document."""
 
+    public_id = serializers.CharField(required=False, allow_null=True)
+    url_slug = serializers.CharField(required=False, allow_null=True)
+
     tags = serializers.ListField()
     sectors = serializers.ListField()
     geographies = serializers.ListField()
@@ -77,6 +80,8 @@ class AIModelDocumentSerializer(serializers.ModelSerializer):
         model = AIModel
         fields = [
             "id",
+            "public_id",
+            "url_slug",
             "name",
             "display_name",
             "description",

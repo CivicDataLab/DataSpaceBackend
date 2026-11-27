@@ -16,6 +16,7 @@ from typing import List, Optional
 import strawberry
 import strawberry_django
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import QuerySet
 from strawberry.file_uploads import Upload
 from strawberry.types import Info
 
@@ -41,6 +42,7 @@ from api.services.publication_service import (
 from api.types.type_publication import (
     PublicationFilter,
     PublicationOrder,
+    PublicationResponse,
     TypePublication,
     TypePublicationBlock,
     TypeResourceType,
@@ -48,12 +50,19 @@ from api.types.type_publication import (
 )
 from api.utils.enums import PublicationStatus
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.qs_utils import (
+    FilterSpec,
+    SortSpec,
+    get_pagination_window,
+    status_counts,
+)
 from authorization.permissions import (
     AllowPublishedPublications,
     ChangePublicationPermission,
     CreatePublicationPermission,
     DeletePublicationPermission,
     PublishPublicationPermission,
+    find_publication,
 )
 
 
@@ -63,7 +72,13 @@ class CreatePublicationInput:
 
     title: Optional[str] = None
     description: Optional[str] = None
-    authors: Optional[List[str]] = None
+    authors: Optional[List[str]] = strawberry.field(
+        default=None, description="Old author names; send contributorIds instead."
+    )
+    contributor_ids: Optional[List[strawberry.ID]] = strawberry.field(
+        default=None,
+        description="User ids of the contributors. When sent, author names are cleared.",
+    )
     publication_date: Optional[datetime.date] = None
     license: Optional[publication_license] = None
     resource_type_id: Optional[uuid.UUID] = None
@@ -84,13 +99,63 @@ class UpdatePublicationInput:
     id: uuid.UUID
     title: Optional[str] = strawberry.UNSET
     description: Optional[str] = strawberry.UNSET
-    authors: Optional[List[str]] = strawberry.UNSET
+    authors: Optional[List[str]] = strawberry.field(
+        default=strawberry.UNSET, description="Old author names; send contributorIds instead."
+    )
+    contributor_ids: Optional[List[strawberry.ID]] = strawberry.field(
+        default=strawberry.UNSET,
+        description=(
+            "User ids of the contributors; replaces the current ones (empty list clears, "
+            "null keeps). "
+            "When sent, author names are cleared."
+        ),
+    )
     publication_date: Optional[datetime.date] = strawberry.UNSET
     license: Optional[publication_license] = strawberry.UNSET
     resource_type_id: Optional[uuid.UUID] = strawberry.UNSET
     sector_ids: Optional[List[uuid.UUID]] = strawberry.UNSET
     geography_ids: Optional[List[int]] = strawberry.UNSET
     external_source_link: Optional[str] = strawberry.UNSET
+
+
+# Fields a table client may filter or sort on. Explicit allowlists are what
+# stop arbitrary columns (and relations) from becoming queryable.
+PUBLICATIONS_TABLE_FILTER_FIELDS = [
+    "id",
+    "title",
+    "status",
+    "license",
+    "resource_type",
+    "resource_type__slug",
+    "organization",
+    "organization__slug",
+    "sectors__id",
+    "sectors__slug",
+    "sectors__name",
+    "geographies__id",
+    "geographies__name",
+    "geographies__code",
+    "publication_date",
+    "created",
+    "modified",
+]
+PUBLICATIONS_TABLE_SORT_FIELDS = [
+    "title",
+    "created",
+    "modified",
+    "status",
+    "publication_date",
+    "download_count",
+]
+
+
+def _visible_publications(info: Info, include_public: Optional[bool] = False) -> QuerySet:
+    """The publications a caller may list. Same rules as `publications`."""
+    return get_scoped_publications(
+        user=info.context.user,
+        organization=info.context.context.get("organization"),
+        include_public=bool(include_public),
+    )
 
 
 @strawberry.type(name="Query")
@@ -109,12 +174,18 @@ class Query:
         permission_classes=[AllowPublishedPublications],  # type: ignore[list-item]
     )
     @trace_resolver(name="get_publication", attributes={"component": "publication"})
-    def get_publication(self, info: Info, publication_id: uuid.UUID) -> Optional[TypePublication]:
-        """Get a single resource by id (drafts gated to owner/org by the permission)."""
-        try:
-            return TypePublication.from_django(Publication.objects.get(id=publication_id))
-        except Publication.DoesNotExist:
-            return None
+    def get_publication(
+        self,
+        info: Info,
+        publication_id: Optional[uuid.UUID] = None,
+        public_id: Optional[str] = None,
+    ) -> Optional[TypePublication]:
+        """Get a single resource by id, or by its link (``urlSlug``) or ``publicId``.
+
+        Drafts are gated to owner/org by the permission.
+        """
+        publication = find_publication(publication_id, public_id)
+        return TypePublication.from_django(publication) if publication else None
 
     @strawberry.field
     @trace_resolver(name="get_publications", attributes={"component": "publication"})
@@ -146,6 +217,42 @@ class Query:
             getattr(pagination, "limit", None) if pagination is not strawberry.UNSET else None,
         )
         return TypePublication.from_django_list(queryset[offset : offset + limit])
+
+    @strawberry.field
+    @trace_resolver(name="publications_table", attributes={"component": "publication"})
+    def publications_table(
+        self,
+        info: Info,
+        filters: Optional[List[FilterSpec]] = None,
+        sort_options: Optional[List[SortSpec]] = None,
+        limit: int = 50,
+        offset: int = 0,
+        include_public: Optional[bool] = False,
+    ) -> PublicationResponse:
+        """Publications for a table UI: client-driven filters, sortable columns and
+        page controls backed by a real total count.
+
+        Additive next to `publications`, with the same visibility rules, plus
+        published publications when `include_public` is set. Filters are `{field,
+        condition, value}` and sorts are `{field, direction}`, limited to the
+        allowlists above; anything else is a GraphQL error naming the allowed
+        fields. Default order: newest first.
+        """
+        visible = _visible_publications(info, include_public)
+        window = get_pagination_window(
+            visible,
+            limit=limit,
+            offset=offset,
+            filters=filters,
+            filtering_allowed_fields=PUBLICATIONS_TABLE_FILTER_FIELDS,
+            sort_options=sort_options or [SortSpec(field="created", direction="desc")],
+            sorting_allowed_fields=PUBLICATIONS_TABLE_SORT_FIELDS,
+        )
+        return PublicationResponse(
+            data=TypePublication.from_django_list(window["data"]),
+            total_items_count=window["total_items_count"],
+            status_counts=status_counts(visible, filters, PUBLICATIONS_TABLE_FILTER_FIELDS),
+        )
 
 
 @strawberry.type(name="Mutation")
@@ -191,6 +298,7 @@ class Mutation:
             sector_ids=input.sector_ids,
             geography_ids=input.geography_ids,
             external_source_link=input.external_source_link,
+            contributor_ids=input.contributor_ids,
         )
         return MutationResponse.success_response(TypePublication.from_django(publication))
 
@@ -417,6 +525,8 @@ def _update_kwargs(input: UpdatePublicationInput) -> dict:
         kwargs["geography_ids"] = input.geography_ids
     if input.external_source_link is not strawberry.UNSET:
         kwargs["external_source_link"] = input.external_source_link
+    if input.contributor_ids is not strawberry.UNSET:
+        kwargs["contributor_ids"] = input.contributor_ids
     return kwargs
 
 

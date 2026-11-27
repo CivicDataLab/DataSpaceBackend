@@ -1,4 +1,5 @@
 # mypy: disable-error-code=union-attr
+# mypy: disable-error-code=valid-type
 import datetime
 import uuid
 from typing import Any, List, Optional, Union
@@ -6,6 +7,7 @@ from typing import Any, List, Optional, Union
 import strawberry
 import strawberry_django
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from django.db.models import Count, QuerySet
 from strawberry.permission import BasePermission
 from strawberry.types import Info
@@ -31,6 +33,7 @@ from api.schema.base_mutation import (
     MutationResponse,
 )
 from api.schema.extensions import TrackActivity, TrackModelActivity
+from api.services.publish_requirements import assert_dataset_ready
 from api.types.type_dataset import (
     DatasetFilter,
     DatasetOrder,
@@ -43,22 +46,27 @@ from api.types.type_prompt_metadata import TypePromptDataset, prompt_task_type_e
 from api.types.type_resource import TypeResource
 from api.types.type_resource_chart import TypeResourceChart
 from api.types.type_resource_chart_image import TypeResourceChartImage
+from api.utils.dataset_access import ChangeDatasetPartPermission, can_change_dataset
 from api.utils.enums import (
     DatasetAccessType,
     DatasetLicense,
     DatasetStatus,
     DatasetType,
+    PromptDomain,
     PromptFormat,
     PromptPurpose,
     PromptTaskType,
     UseCaseStatus,
 )
 from api.utils.graphql_telemetry import trace_resolver
+from api.utils.input_checks import choice_error, range_error, too_long_error
+from api.utils.organization_access import can_list_organization
+from api.utils.public_links import parse_public_id
 from api.utils.qs_utils import (
     FilterSpec,
     SortSpec,
-    apply_filters,
     get_pagination_window,
+    status_counts,
 )
 from authorization.models import DatasetPermission, OrganizationMembership, Role, User
 from authorization.permissions import (
@@ -74,6 +82,14 @@ DatasetTypeENUM = strawberry.enum(DatasetType)  # type: ignore
 PromptTaskTypeENUM = strawberry.enum(PromptTaskType)  # type: ignore
 PromptFormatENUM = strawberry.enum(PromptFormat)  # type: ignore
 PromptPurposeENUM = strawberry.enum(PromptPurpose)  # type: ignore
+
+
+def _find_dataset(dataset_id: Optional[uuid.UUID], public_id: Optional[str]) -> Optional[Dataset]:
+    """The dataset for a UUID or a public link part, or None if there is none."""
+    if dataset_id:
+        return Dataset.objects.filter(id=dataset_id).first()
+    parsed = parse_public_id(public_id)
+    return Dataset.objects.filter(public_id=parsed).first() if parsed else None
 
 
 # Create permission classes dynamically with different operations
@@ -113,19 +129,19 @@ class AllowPublishedDatasets(BasePermission):
         # For queries/mutations that don't have a source yet (e.g., getting a dataset by ID)
         if source is None:
             dataset_id = kwargs.get("dataset_id")
-            if dataset_id:
-                try:
-                    dataset = Dataset.objects.get(id=dataset_id)
-                    # Allow access to published datasets for everyone
-                    if dataset.status == DatasetStatus.PUBLISHED.value:
-                        return True
-                except Dataset.DoesNotExist:
-                    pass  # Let the resolver handle the non-existent dataset
+            public_id = kwargs.get("public_id")
+            if dataset_id or public_id:
+                dataset = _find_dataset(dataset_id, public_id)
+                # Allow access to published datasets for everyone
+                if dataset is not None and dataset.status == DatasetStatus.PUBLISHED.value:
+                    return True
 
                 # For non-published datasets, require authentication
                 user = request.user
                 if not user.is_authenticated:
                     return False
+                if dataset is None:
+                    return True  # the resolver returns null for a missing dataset
                 if user.is_superuser:
                     return True
                 dataset_perm = DatasetPermission.objects.filter(user=user, dataset=dataset).first()
@@ -227,38 +243,25 @@ class UpdateDatasetPermission(BasePermission):
         if not update_dataset_input or not hasattr(update_dataset_input, "dataset"):
             return False
 
-        dataset_id = update_dataset_input.dataset
-
-        try:
-            dataset = Dataset.objects.get(id=dataset_id)
-
-            # Check if user owns the dataset
-            if dataset.user and dataset.user == user:
-                return True
-
-            # If organization-owned, check organization permissions
-            if dataset.organization:
-                # Get the roles with names 'admin' or 'editor'
-                admin_editor_roles = Role.objects.filter(
-                    name__in=["admin", "editor", "owner"]
-                ).values_list("id", flat=True)
-
-                # Check if user is a member of the dataset's organization with appropriate role
-                org_member = OrganizationMembership.objects.filter(
-                    user=user,
-                    organization=dataset.organization,
-                    role__id__in=admin_editor_roles,
-                ).exists()
-
-                if org_member:
-                    return True
-
-            # Check dataset-specific permissions
-            dataset_perm = DatasetPermission.objects.filter(user=user, dataset=dataset).first()
-            return dataset_perm and dataset_perm.role.can_change and dataset.status == DatasetStatus.DRAFT.value  # type: ignore
-
-        except Dataset.DoesNotExist:
+        dataset = Dataset.objects.filter(id=update_dataset_input.dataset).first()
+        if not dataset:
             return False
+        return can_change_dataset(user, dataset)
+
+
+class ChangePromptResourcePermission(ChangeDatasetPartPermission):
+    """Prompt details of a file need edit rights on the file's dataset."""
+
+    message = "You don't have permission to update this dataset"
+
+    def datasets(self, kwargs: Any) -> Optional[list]:
+        resource_id = getattr(kwargs.get("update_input"), "resource", None)
+        resource = (
+            Resource.objects.select_related("dataset").filter(id=resource_id).first()
+            if resource_id
+            else None
+        )
+        return [resource.dataset] if resource else None
 
 
 @strawberry.input
@@ -275,8 +278,9 @@ class UpdateMetadataInput:
     tags: Optional[List[str]] = None
     sectors: Optional[List[uuid.UUID]] = None
     geographies: Optional[List[int]] = None
-    access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
-    license: Optional[DatasetLicenseENUM] = DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
+    # No defaults: an omitted field must keep the stored value (#291).
+    access_type: Optional[DatasetAccessTypeENUM] = None
+    license: Optional[DatasetLicenseENUM] = None
 
 
 @strawberry.input
@@ -285,8 +289,9 @@ class UpdateDatasetInput:
     title: Optional[str] = None
     description: Optional[str] = None
     tags: Optional[List[str]] = None
-    access_type: Optional[DatasetAccessTypeENUM] = DatasetAccessTypeENUM.PUBLIC
-    license: Optional[DatasetLicenseENUM] = DatasetLicenseENUM.CC_BY_SA_4_0_ATTRIBUTION_SHARE_ALIKE
+    # No defaults: an omitted field must keep the stored value (#291).
+    access_type: Optional[DatasetAccessTypeENUM] = None
+    license: Optional[DatasetLicenseENUM] = None
 
 
 @strawberry.input
@@ -362,6 +367,17 @@ def _add_update_dataset_metadata(
             raise ValueError(f"Metadata with ID {metadata_input_item.id} does not exist.")
 
 
+def _tag_length_error(tags: Optional[List[str]]) -> Optional[str]:
+    """Message for tags the tag table cannot store, checked before anything is saved.
+
+    Postgres would reject them mid-update with its own error text (#291).
+    """
+    max_length = Tag._meta.get_field("value").max_length or 0
+    if any(len(tag) > max_length for tag in tags or []):
+        return f"Tags cannot exceed {max_length} characters."
+    return None
+
+
 @trace_resolver(name="update_dataset_tags", attributes={"component": "dataset"})
 def _update_dataset_tags(dataset: Dataset, tags: Optional[List[str]]) -> None:
     if tags is None:
@@ -434,7 +450,11 @@ def _visible_datasets(info: Info, include_public: Optional[bool] = False) -> Que
     organization = info.context.context.get("organization")
     user = info.context.user
     if organization:
-        queryset = Dataset.objects.filter(organization=organization)
+        queryset = (
+            Dataset.objects.filter(organization=organization)
+            if can_list_organization(user, organization)
+            else Dataset.objects.none()
+        )
     elif not user.is_authenticated:
         queryset = Dataset.objects.none()
     elif user.is_superuser:
@@ -463,24 +483,17 @@ class Query:
         user = info.context.user
 
         if organization:
-            queryset = Dataset.objects.filter(organization=organization)
+            # Only members whose role can view may list an organisation's datasets
+            if can_list_organization(user, organization):
+                queryset = Dataset.objects.filter(organization=organization)
+            else:
+                queryset = Dataset.objects.none()
         else:
             # If user is authenticated
             if user.is_authenticated:
                 # If user is superuser, show all datasets
                 if user.is_superuser:
                     queryset = Dataset.objects.all()
-                elif organization:
-                    # Check id user has access to organization
-                    org_member = OrganizationMembership.objects.get(
-                        user=user, organization=organization
-                    )
-                    if org_member.exists() and org_member.role.can_view:  # type: ignore
-                        # Show only datasets from current organization
-                        queryset = Dataset.objects.filter(organization=organization)
-                    else:
-                        # if user is not a member of the organization, return empty queryset
-                        queryset = Dataset.objects.none()
                 else:
                     # For non-organization authenticated users, only owned datasets
                     queryset = Dataset.objects.filter(user=user, organization=None)
@@ -538,33 +551,31 @@ class Query:
             sort_options=sort_options or [SortSpec(field="created", direction="desc")],
             sorting_allowed_fields=DATASETS_TABLE_SORT_FIELDS,
         )
-        # Tab labels: counts per status under every filter except status itself.
-        without_status = [f for f in (filters or []) if f.field.strip() != "status"]
-        status_rows = (
-            apply_filters(visible, without_status, DATASETS_TABLE_FILTER_FIELDS)
-            .order_by()
-            .values("status")
-            .annotate(n=Count("id", distinct=True))
-        )
         return DatasetResponse(
             data=TypeDataset.from_django_list(window["data"]),
             total_items_count=window["total_items_count"],
-            status_counts=[
-                DatasetStatusCount(status=row["status"], count=row["n"]) for row in status_rows
-            ],
+            status_counts=status_counts(
+                visible, filters, DATASETS_TABLE_FILTER_FIELDS, item_type=DatasetStatusCount
+            ),
         )
 
     @strawberry.field(
         permission_classes=[AllowPublishedDatasets],  # type: ignore[list-item]
     )
     @trace_resolver(name="get_dataset", attributes={"component": "dataset"})
-    def get_dataset(self, info: Info, dataset_id: uuid.UUID) -> Optional[TypeDataset]:
-        """Get a dataset by ID."""
-        try:
-            dataset = Dataset.objects.get(id=dataset_id)
-            return TypeDataset.from_django(dataset)
-        except Dataset.DoesNotExist:
-            return None
+    def get_dataset(
+        self,
+        info: Info,
+        dataset_id: Optional[uuid.UUID] = None,
+        public_id: Optional[str] = None,
+    ) -> Optional[TypeDataset]:
+        """Get a dataset by ID, or by its public link.
+
+        ``public_id`` takes the id itself or the whole link part
+        (``city-air-quality-index-k3x9m2qa7b1z``); only the id at the end is used.
+        """
+        dataset = _find_dataset(dataset_id, public_id)
+        return TypeDataset.from_django(dataset) if dataset is not None else None
 
     @strawberry.field(
         permission_classes=[ChartDataPermission],  # type: ignore[list-item]
@@ -757,20 +768,28 @@ class Mutation:
         if dataset.status != DatasetStatus.DRAFT.value:
             raise DjangoValidationError(f"Dataset with ID {dataset_id} is not in draft status.")
 
+        input_error = _tag_length_error(update_metadata_input.tags) or too_long_error(
+            Dataset, "description", update_metadata_input.description, "Description"
+        )
+        if input_error:
+            raise DjangoValidationError(input_error)
+
         if update_metadata_input.description:
             dataset.description = update_metadata_input.description
         if update_metadata_input.access_type:
             dataset.access_type = update_metadata_input.access_type
         if update_metadata_input.license:
             dataset.license = update_metadata_input.license
-        dataset.save()
-        if update_metadata_input.tags is not None:
-            _update_dataset_tags(dataset, update_metadata_input.tags)
-        _add_update_dataset_metadata(dataset, metadata_input)
-        if update_metadata_input.sectors is not None:
-            _add_update_dataset_sectors(dataset, update_metadata_input.sectors)
-        if update_metadata_input.geographies is not None:
-            _add_update_dataset_geographies(dataset, update_metadata_input.geographies)
+        # All or nothing: a bad metadata item must not leave the fields above saved.
+        with transaction.atomic():
+            dataset.save()
+            if update_metadata_input.tags is not None:
+                _update_dataset_tags(dataset, update_metadata_input.tags)
+            _add_update_dataset_metadata(dataset, metadata_input)
+            if update_metadata_input.sectors is not None:
+                _add_update_dataset_sectors(dataset, update_metadata_input.sectors)
+            if update_metadata_input.geographies is not None:
+                _add_update_dataset_geographies(dataset, update_metadata_input.geographies)
         return MutationResponse.success_response(TypeDataset.from_django(dataset))
 
     @strawberry_django.mutation(
@@ -806,6 +825,18 @@ class Mutation:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
         if dataset.status != DatasetStatus.DRAFT.value:
             raise ValueError(f"Dataset with ID {dataset_id} is not in draft status.")
+        input_error = (
+            _tag_length_error(update_dataset_input.tags)
+            or too_long_error(Dataset, "title", (update_dataset_input.title or "").strip(), "Title")
+            or too_long_error(
+                Dataset,
+                "description",
+                (update_dataset_input.description or "").strip(),
+                "Description",
+            )
+        )
+        if input_error:
+            raise ValueError(input_error)
         if update_dataset_input.title:
             if update_dataset_input.title.strip() == "":
                 raise ValueError("Title cannot be empty.")
@@ -816,8 +847,9 @@ class Mutation:
             dataset.access_type = update_dataset_input.access_type
         if update_dataset_input.license:
             dataset.license = update_dataset_input.license
-        dataset.save()
-        _update_dataset_tags(dataset, update_dataset_input.tags)
+        with transaction.atomic():
+            dataset.save()
+            _update_dataset_tags(dataset, update_dataset_input.tags)
         return TypeDataset.from_django(dataset)
 
     @strawberry.mutation(
@@ -850,6 +882,12 @@ class Mutation:
         if update_input.target_languages is not None:
             prompt_dataset.target_languages = update_input.target_languages
         if update_input.domain is not None:
+            domain_error = choice_error(update_input.domain, PromptDomain.values, "Domain")
+            if domain_error:
+                # success: false like other refused input, not a GraphQL error (#292).
+                return MutationResponse.error_response(
+                    GraphQLValidationError.from_message(domain_error)
+                )
             prompt_dataset.domain = update_input.domain
         if update_input.target_model_types is not None:
             prompt_dataset.target_model_types = update_input.target_model_types
@@ -862,7 +900,7 @@ class Mutation:
         return MutationResponse.success_response(TypePromptDataset.from_django(prompt_dataset))
 
     @strawberry.mutation(
-        permission_classes=[IsAuthenticated],
+        permission_classes=[ChangePromptResourcePermission],
     )
     @trace_resolver(
         name="update_prompt_resource",
@@ -885,6 +923,14 @@ class Mutation:
         # Check if the dataset is in draft status
         if resource.dataset.status != DatasetStatus.DRAFT.value:
             raise DjangoValidationError(f"Cannot update resource - dataset is not in draft status.")
+
+        input_error = (
+            choice_error(update_input.prompt_format, PromptFormat.values, "Prompt format")
+            or range_error(update_input.prompt_count, "Prompt count", 0)
+            or range_error(update_input.avg_prompt_length, "Average prompt length", 0)
+        )
+        if input_error:
+            return MutationResponse.error_response(GraphQLValidationError.from_message(input_error))
 
         # Get or create PromptResource
         prompt_resource, created = PromptResource.objects.get_or_create(resource=resource)
@@ -928,7 +974,7 @@ class Mutation:
         except Dataset.DoesNotExist as e:
             raise ValueError(f"Dataset with ID {dataset_id} does not exist.")
 
-        # TODO: validate dataset
+        assert_dataset_ready(dataset)
         dataset.status = DatasetStatus.PUBLISHED.value
         dataset.save()
         return TypeDataset.from_django(dataset)

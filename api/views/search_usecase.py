@@ -9,7 +9,7 @@ from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 
 from api.models import Geography, Metadata, UseCase, UseCaseMetadata
-from api.utils.search_query import nested_paths, text_query
+from api.utils.search_query import nested_paths, sdg_codes, text_query
 from api.utils.telemetry_utils import trace_method, track_metrics
 from api.views.paginated_elastic_view import PaginatedElasticSearchAPIView
 from search.documents import UseCaseDocument
@@ -61,6 +61,9 @@ class UseCaseMetadataSerializer(serializers.ModelSerializer):
 class UseCaseDocumentSerializer(serializers.ModelSerializer):
     """Serializer for UseCase document."""
 
+    public_id = serializers.CharField(required=False, allow_null=True)
+    url_slug = serializers.CharField(required=False, allow_null=True)
+
     metadata = UseCaseMetadataSerializer(many=True)
     tags = serializers.ListField()
     logo = serializers.CharField()
@@ -109,6 +112,8 @@ class UseCaseDocumentSerializer(serializers.ModelSerializer):
         model = UseCase
         fields = [
             "id",
+            "public_id",
+            "url_slug",
             "title",
             "summary",
             "slug",
@@ -259,6 +264,10 @@ class SearchUseCase(PaginatedElasticSearchAPIView):
         for filter in filters:
             if filter in excluded_labels:
                 continue
+            elif filter == "sdgs":
+                sdg_values = sdg_codes(filters[filter])
+                if sdg_values:
+                    search = search.filter("terms", sdgs=sdg_values)
             elif filter in ["tags", "sectors", "geographies"]:
                 raw_filter = filter + ".raw"
                 if raw_filter in self.aggregations:

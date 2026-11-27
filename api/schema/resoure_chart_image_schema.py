@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import strawberry
 import strawberry_django
@@ -10,7 +10,13 @@ from strawberry_django.mutations import mutations
 
 from api.models import Dataset, ResourceChartImage
 from api.types.type_resource_chart_image import TypeResourceChartImage
+from api.utils.dataset_access import (
+    ChangeDatasetPartPermission,
+    can_view_dataset,
+    viewable_datasets_q,
+)
 from api.utils.enums import ChartStatus
+from api.utils.input_checks import blank_error, too_long_error
 
 
 @strawberry_django.input(
@@ -34,6 +40,7 @@ class ResourceChartImageInputPartial:
 
 @strawberry.type(name="Query")
 class Query:
+    # Draft datasets' images are hidden by TypeResourceChartImage.get_queryset.
     resource_chart_images: list[TypeResourceChartImage] = strawberry_django.field()
 
     @strawberry_django.field(pagination=True)
@@ -41,23 +48,64 @@ class Query:
         self, info: Info, dataset_id: uuid.UUID
     ) -> List[TypeResourceChartImage]:
         """Get all resource chart images for a dataset."""
-        images = ResourceChartImage.objects.filter(dataset_id=dataset_id)
+        images = ResourceChartImage.objects.filter(dataset_id=dataset_id).filter(
+            viewable_datasets_q(info.context.user, prefix="dataset__")
+        )
         return [TypeResourceChartImage.from_django(image) for image in images]
 
     @strawberry_django.field
-    def resource_chart_image(
-        self, info: Info, image_id: uuid.UUID
-    ) -> TypeResourceChartImage:
-        try:
-            image = ResourceChartImage.objects.get(id=image_id)
-            return TypeResourceChartImage.from_django(image)
-        except ResourceChartImage.DoesNotExist as e:
+    def resource_chart_image(self, info: Info, image_id: uuid.UUID) -> TypeResourceChartImage:
+        image = ResourceChartImage.objects.select_related("dataset").filter(id=image_id).first()
+        # A hidden image gets the same answer as a missing one.
+        if not image or not image.dataset or not can_view_dataset(info.context.user, image.dataset):
             raise ValueError(f"Resource Chart Image with ID {image_id} does not exist.")
+        return TypeResourceChartImage.from_django(image)
+
+
+class ChangeChartImagePermission(ChangeDatasetPartPermission):
+    """Chart images belong to a dataset; changing one needs edit rights on it.
+
+    Moving an image to another dataset needs rights on both.
+    """
+
+    message = "You don't have permission to change this dataset's chart images"
+
+    def datasets(self, kwargs: Any) -> Optional[list]:
+        data = kwargs.get("input")
+        found = []
+        for dataset_id in (kwargs.get("dataset"), getattr(data, "dataset", None)):
+            if dataset_id:
+                dataset = Dataset.objects.filter(id=dataset_id).first()
+                if not dataset:
+                    return None
+                found.append(dataset)
+        image_id = kwargs.get("resource_chart_image_id") or getattr(data, "id", None)
+        if image_id:
+            image = ResourceChartImage.objects.select_related("dataset").filter(id=image_id).first()
+            if not image or not image.dataset:
+                return None
+            found.append(image.dataset)
+        return found
+
+
+def _checked_image_name(name: Optional[str], saved_name: Optional[str]) -> str:
+    """Trimmed name, refusing a blank one over a saved name or one too long (#325).
+
+    Too long names used to reach Postgres and return its own error text.
+    """
+    message = blank_error(name, saved_name, "Chart name") or too_long_error(
+        ResourceChartImage, "name", (name or "").strip(), "Chart name"
+    )
+    if message:
+        raise ValueError(message)
+    return (name or "").strip()
 
 
 @strawberry.type
 class Mutation:
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeChartImagePermission]
+    )
     def create_resource_chart_image(
         self, info: Info, input: ResourceChartImageInput
     ) -> TypeResourceChartImage:
@@ -66,16 +114,18 @@ class Mutation:
             dataset_obj = Dataset.objects.get(id=input.dataset)
         except Dataset.DoesNotExist:
             raise ValueError(f"Dataset with ID {input.dataset} does not exist.")
+        name = _checked_image_name(input.name, saved_name=None)
         now = datetime.datetime.now()
         image = ResourceChartImage.objects.create(
-            name=input.name
-            or f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M:%S')}",
+            name=name or f"New resource_chart_image {now.strftime('%d %b %Y - %H:%M:%S')}",
             dataset=dataset_obj,
             image=input.image,
         )
         return TypeResourceChartImage.from_django(image)
 
-    @strawberry_django.mutation(handle_django_errors=True)
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeChartImagePermission]
+    )
     def update_resource_chart_image(
         self, info: Info, input: ResourceChartImageInputPartial
     ) -> TypeResourceChartImage:
@@ -88,18 +138,19 @@ class Mutation:
             dataset_obj = Dataset.objects.get(id=input.dataset)
         except Dataset.DoesNotExist:
             raise ValueError(f"Dataset with ID {input.dataset} does not exist.")
-        if input.name:
-            image.name = input.name
+        name = _checked_image_name(input.name, saved_name=image.name)
+        if name:
+            image.name = name
         if input.image:
             image.image = input.image
         image.dataset = dataset_obj
         image.save()
         return TypeResourceChartImage.from_django(image)
 
-    @strawberry_django.mutation(handle_django_errors=True)
-    def add_resource_chart_image(
-        self, info: Info, dataset: uuid.UUID
-    ) -> TypeResourceChartImage:
+    @strawberry_django.mutation(
+        handle_django_errors=True, permission_classes=[ChangeChartImagePermission]
+    )
+    def add_resource_chart_image(self, info: Info, dataset: uuid.UUID) -> TypeResourceChartImage:
         """Add a new resource chart image to a dataset."""
         try:
             dataset_obj = Dataset.objects.get(id=dataset)
@@ -113,10 +164,10 @@ class Mutation:
         )
         return TypeResourceChartImage.from_django(image)
 
-    @strawberry_django.mutation(handle_django_errors=False)
-    def publish_resource_chart_image(
-        self, info: Info, resource_chart_image_id: uuid.UUID
-    ) -> bool:
+    @strawberry_django.mutation(
+        handle_django_errors=False, permission_classes=[ChangeChartImagePermission]
+    )
+    def publish_resource_chart_image(self, info: Info, resource_chart_image_id: uuid.UUID) -> bool:
         try:
             image = ResourceChartImage.objects.get(id=resource_chart_image_id)
             image.status = ChartStatus.PUBLISHED
@@ -127,7 +178,9 @@ class Mutation:
                 f"Resource Chart Image with ID {resource_chart_image_id} does not exist."
             )
 
-    @strawberry_django.mutation(handle_django_errors=False)
+    @strawberry_django.mutation(
+        handle_django_errors=False, permission_classes=[ChangeChartImagePermission]
+    )
     def unpublish_resource_chart_image(
         self, info: Info, resource_chart_image_id: uuid.UUID
     ) -> bool:
@@ -141,10 +194,10 @@ class Mutation:
                 f"Resource Chart Image with ID {resource_chart_image_id} does not exist."
             )
 
-    @strawberry_django.mutation(handle_django_errors=False)
-    def delete_resource_chart_image(
-        self, info: Info, resource_chart_image_id: uuid.UUID
-    ) -> bool:
+    @strawberry_django.mutation(
+        handle_django_errors=False, permission_classes=[ChangeChartImagePermission]
+    )
+    def delete_resource_chart_image(self, info: Info, resource_chart_image_id: uuid.UUID) -> bool:
         """Delete a resource chart image."""
         try:
             image = ResourceChartImage.objects.get(id=resource_chart_image_id)

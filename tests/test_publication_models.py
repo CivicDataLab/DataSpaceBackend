@@ -26,20 +26,23 @@ def org(db):
 
 @pytest.mark.django_db
 class TestPublicationSlug:
-    def test_two_same_title_publications_get_distinct_slugs(self, user):
+    def test_two_same_title_publications_get_distinct_links(self, user):
+        # Slugs may repeat; each publication is found by its own public_id.
         first = Publication.objects.create(title="Annual Report", user=user)
         second = Publication.objects.create(title="Annual Report", user=user)
 
-        assert first.slug == "annual-report"
-        assert second.slug == "annual-report-1"
-        assert first.slug != second.slug
+        assert first.slug == second.slug == "annual-report"
+        assert first.public_id != second.public_id
+        assert first.url_slug == f"annual-report-{first.public_id}"
+        assert first.url_slug != second.url_slug
 
-    def test_a_blank_title_still_gets_a_unique_slug(self, user):
+    def test_a_blank_title_still_gets_a_link(self, user):
         first = Publication.objects.create(title="", user=user)
         second = Publication.objects.create(title="   ", user=user)
 
-        assert first.slug == "untitled"
-        assert second.slug == "untitled-1"
+        assert first.slug == second.slug == "untitled"
+        assert first.url_slug == first.public_id
+        assert first.public_id != second.public_id
 
     def test_a_unicode_title_slugs_without_crashing(self, user):
         publication = Publication.objects.create(title="Report — Résumé 2024", user=user)

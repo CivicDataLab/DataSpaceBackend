@@ -20,11 +20,22 @@ from django.db.models import QuerySet
 
 from api.models import Geography, Publication, ResourceType, Sector
 from api.utils.enums import DatasetLicense, PublicationStatus
+from api.utils.input_checks import too_long_error
+from api.utils.organization_access import can_list_organization
+from authorization.models import User
 
 # Default page size + hard ceiling for a publications listing, enforced even
 # when the caller sends no pagination input.
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
+
+# Mutations save without full_clean, so limits are checked here. They follow
+# the rest of the platform: dataset, organisation and chart descriptions are
+# 1000 characters, and the dataset form never takes a future date.
+DESCRIPTION_MAX_LENGTH = 1000
+MAX_CONTRIBUTORS = 50
+# The wizard accepts only these; URLValidator alone also allows ftp/ftps.
+LINK_SCHEMES = ["http", "https"]
 
 
 def validate_draft_inputs(
@@ -47,11 +58,9 @@ def validate_draft_inputs(
         errors["license"] = ["Not a valid license."]
     if resource_type_id:
         resource_type = _resolve_active_resource_type(resource_type_id, errors)
-    if external_source_link:
-        try:
-            URLValidator()(external_source_link)
-        except DjangoValidationError:
-            errors["external_source_link"] = ["Enter a valid URL."]
+    link_message = _link_error(external_source_link)
+    if link_message:
+        errors["external_source_link"] = [link_message]
 
     if errors:
         raise DjangoValidationError(errors)
@@ -69,11 +78,13 @@ def validate_publication_metadata(
     sector_ids: Optional[List[Any]],
     geography_ids: Optional[List[Any]],
     external_source_link: Optional[str],
+    contributor_count: int = 0,
 ) -> ResourceType:
     """Validate a resource's metadata at the publish boundary.
 
-    Enforces the required fields (title, description, authors, publication_date,
-    license, an active resource type, at least one sector and one geography),
+    Enforces the required fields (title, description, at least one contributor
+    or saved author name, publication_date, license, an active resource type,
+    at least one sector and one geography),
     the controlled license vocabulary, and the optional external link's URL
     shape. Raises a field-keyed ``ValidationError`` on any problem and returns
     the resolved active ``ResourceType`` on success. Draft create/update does
@@ -85,10 +96,19 @@ def validate_publication_metadata(
         errors["title"] = ["Title is required."]
     if not description or not description.strip():
         errors["description"] = ["Description is required."]
-    if not authors or not [a for a in authors if a and a.strip()]:
+    # Keyed "authors" until every client moves to contributors (the test repo
+    # checks this key); old publications may still have only names.
+    if not contributor_count and not _clean_authors(authors):
         errors["authors"] = ["At least one author is required."]
     if publication_date is None:
         errors["publication_date"] = ["Publication date is required."]
+    _check_limits(
+        errors,
+        title=title,
+        description=description,
+        publication_date=publication_date,
+        authors=authors,
+    )
     if not sector_ids:
         errors["sectors"] = ["At least one sector is required."]
     if not geography_ids:
@@ -99,11 +119,9 @@ def validate_publication_metadata(
     elif license_value not in DatasetLicense.values:
         errors["license"] = ["Not a valid license."]
 
-    if external_source_link:
-        try:
-            URLValidator()(external_source_link)
-        except DjangoValidationError:
-            errors["external_source_link"] = ["Enter a valid URL."]
+    link_message = _link_error(external_source_link)
+    if link_message:
+        errors["external_source_link"] = [link_message]
 
     resource_type = _resolve_active_resource_type(resource_type_id, errors)
 
@@ -144,14 +162,24 @@ def create_publication(
     sector_ids: Optional[List[Any]] = None,
     geography_ids: Optional[List[Any]] = None,
     external_source_link: Optional[str] = None,
+    contributor_ids: Optional[List[Any]] = None,
 ) -> Publication:
-    """Create a draft and attach any sector or geography ids that were sent.
+    """Create a draft and attach any sector, geography or contributor ids sent.
 
     A blank title is replaced with a generated one.     An organization on the
-    request owns the row; otherwise the user does.
+    request owns the row; otherwise the user does. Sent contributor ids replace
+    any author names.
     """
     errors: dict[str, List[str]] = {}
     _reject_missing_tags(sector_ids or [], geography_ids or [], errors)
+    contributors = _contributor_users(contributor_ids, errors)
+    _check_limits(
+        errors,
+        title=(title or "").strip(),
+        description=(description or "").strip(),
+        publication_date=publication_date,
+        authors=authors,
+    )
     if errors:
         raise DjangoValidationError(errors)
 
@@ -159,7 +187,7 @@ def create_publication(
         publication = Publication.objects.create(
             title=(title or "").strip() or _default_title(),
             description=(description or "").strip() or None,
-            authors=_clean_authors(authors),
+            authors=[] if contributors is not None else _clean_authors(authors),
             publication_date=publication_date,
             license=license_value or DatasetLicense.CC_BY_4_0_ATTRIBUTION,
             resource_type=resource_type,
@@ -169,6 +197,8 @@ def create_publication(
             status=PublicationStatus.DRAFT,
         )
         _set_publication_tags(publication, sector_ids or [], geography_ids or [])
+        if contributors:
+            publication.contributors.set(contributors)
     return publication
 
 
@@ -188,6 +218,7 @@ def apply_publication_update(
     sector_ids: Any = _UNSET,
     geography_ids: Any = _UNSET,
     external_source_link: Any = _UNSET,
+    contributor_ids: Any = _UNSET,
 ) -> Publication:
     """Apply a partial metadata update. Omitted fields are left untouched.
 
@@ -195,7 +226,9 @@ def apply_publication_update(
     list is stored as-is. A provided license must be in the controlled list, a
     provided resource type must be active, and a provided link must be a valid
     URL. A row that is already published cannot be saved back into an
-    incomplete state; publish is what requires every field.
+    incomplete state; publish is what requires every field. Sent contributor
+    ids replace the contributors (an empty list clears them, null keeps them)
+    and clear the author names.
     """
     errors: dict[str, List[str]] = {}
     new_title = publication.title if title is _UNSET else (title or "").strip()
@@ -208,14 +241,11 @@ def apply_publication_update(
     new_date = publication.publication_date if publication_date is _UNSET else publication_date
     new_link = publication.external_source_link
     if external_source_link is not _UNSET:
-        if external_source_link:
-            try:
-                URLValidator()(external_source_link)
-                new_link = external_source_link
-            except DjangoValidationError:
-                errors["external_source_link"] = ["Enter a valid URL."]
+        link_message = _link_error(external_source_link)
+        if link_message:
+            errors["external_source_link"] = [link_message]
         else:
-            new_link = None
+            new_link = external_source_link or None
 
     new_license = publication.license
     if license_value is not _UNSET and license_value:
@@ -234,6 +264,21 @@ def apply_publication_update(
             new_resource_type = None
 
     _reject_missing_tags(sector_ids, geography_ids, errors)
+    # Like the tag lists, null keeps what is saved; an empty list clears.
+    contributors = (
+        None
+        if contributor_ids is _UNSET or contributor_ids is None
+        else _contributor_users(contributor_ids, errors)
+    )
+    if contributors is not None:
+        new_authors = []
+    _check_limits(
+        errors,
+        title=None if title is _UNSET else new_title,
+        description=None if description is _UNSET else new_description,
+        publication_date=None if publication_date is _UNSET else new_date,
+        authors=None if authors is _UNSET else authors,
+    )
     if errors:
         raise DjangoValidationError(errors)
 
@@ -250,6 +295,9 @@ def apply_publication_update(
             sector_ids=kept_sectors,
             geography_ids=kept_geographies,
             external_source_link=new_link,
+            contributor_count=(
+                len(contributors) if contributors is not None else publication.contributors.count()
+            ),
         )
 
     with transaction.atomic():
@@ -267,6 +315,8 @@ def apply_publication_update(
                 None if sector_ids is _UNSET or sector_ids is None else sector_ids,
                 None if geography_ids is _UNSET or geography_ids is None else geography_ids,
             )
+        if contributors is not None:
+            publication.contributors.set(contributors)
     return publication
 
 
@@ -282,6 +332,7 @@ def assert_ready_to_publish(publication: Publication) -> None:
         sector_ids=list(publication.sectors.values_list("id", flat=True)),
         geography_ids=list(publication.geographies.values_list("id", flat=True)),
         external_source_link=publication.external_source_link,
+        contributor_count=publication.contributors.count(),
     )
 
 
@@ -297,13 +348,17 @@ def get_scoped_publications(
 ) -> "QuerySet[Publication, Publication]":
     """Return the publications a caller may list, correctly scoped.
 
-    Organization context → that org's publications; an authenticated individual
-    → their own; anonymous → published only. ``include_public`` unions in the
-    published set so a signed-in user also sees the public listing. Ordered
-    newest-first and de-duplicated after the union.
+    Organization context → that org's publications, for its members only; an
+    authenticated individual → their own; anonymous → published only.
+    ``include_public`` unions in the published set so a signed-in user also sees
+    the public listing. Ordered newest-first and de-duplicated after the union.
     """
     if organization:
-        queryset = Publication.objects.filter(organization=organization)
+        queryset = (
+            Publication.objects.filter(organization=organization)
+            if can_list_organization(user, organization)
+            else Publication.objects.none()
+        )
     elif getattr(user, "is_superuser", False):
         queryset = Publication.objects.all()
     elif getattr(user, "is_authenticated", False):
@@ -318,7 +373,7 @@ def get_scoped_publications(
     # resources stays a bounded number of queries, not one-per-row.
     return (
         queryset.select_related("resource_type", "organization", "user")
-        .prefetch_related("sectors", "geographies", "blocks")
+        .prefetch_related("sectors", "geographies", "blocks", "contributors")
         .order_by("-modified")
         .distinct()
     )
@@ -351,6 +406,71 @@ def _default_title() -> str:
 def _clean_authors(authors: Optional[List[str]]) -> List[str]:
     """Author names with surrounding space and blanks removed."""
     return [author.strip() for author in (authors or []) if author and author.strip()]
+
+
+def _link_error(link: Optional[str]) -> Optional[str]:
+    """Message for a link that is not http(s) or does not fit its column."""
+    if not link:
+        return None
+    try:
+        URLValidator(schemes=LINK_SCHEMES)(link)
+    except DjangoValidationError:
+        return "Enter a valid URL."
+    return too_long_error(Publication, "external_source_link", link, "External source link")
+
+
+def _latest_date() -> datetime.date:
+    """Today, a day ahead of UTC: the server runs in UTC, users in India are
+    up to 5.5 hours ahead, and their today must still be accepted."""
+    return datetime.datetime.now(datetime.timezone.utc).date() + datetime.timedelta(days=1)
+
+
+def _check_limits(
+    errors: dict[str, List[str]],
+    *,
+    title: Optional[str] = None,
+    description: Optional[str] = None,
+    publication_date: Optional[datetime.date] = None,
+    authors: Optional[List[str]] = None,
+) -> None:
+    """Record values past the platform's limits; None means not sent."""
+    title_message = too_long_error(Publication, "title", title, "Title")
+    if title_message:
+        errors["title"] = [title_message]
+    if description and len(description) > DESCRIPTION_MAX_LENGTH:
+        errors["description"] = [
+            f"Description cannot be longer than {DESCRIPTION_MAX_LENGTH} characters."
+        ]
+    if publication_date and publication_date > _latest_date():
+        errors["publication_date"] = ["Publication date cannot be in the future."]
+    if authors is not None and len(_clean_authors(authors)) > MAX_CONTRIBUTORS:
+        errors["authors"] = [f"A publication can have at most {MAX_CONTRIBUTORS} authors."]
+
+
+def _contributor_users(
+    ids: Optional[List[Any]], errors: dict[str, List[str]]
+) -> Optional[List[User]]:
+    """Users for the sent contributor ids, each once; None when none were sent.
+
+    Records an error when any id is not a user: never saves a partial list.
+    """
+    if ids is None:
+        return None
+    try:
+        wanted = list(dict.fromkeys(int(str(item)) for item in ids))
+    except ValueError:
+        errors["contributors"] = ["One or more contributors do not exist."]
+        return None
+    if len(wanted) > MAX_CONTRIBUTORS:
+        errors["contributors"] = [
+            f"A publication can have at most {MAX_CONTRIBUTORS} contributors."
+        ]
+        return None
+    users = list(User.objects.filter(id__in=wanted))
+    if len(users) != len(wanted):
+        errors["contributors"] = ["One or more contributors do not exist."]
+        return None
+    return users
 
 
 def _tag_ids(incoming: Any, current: Any) -> List[Any]:

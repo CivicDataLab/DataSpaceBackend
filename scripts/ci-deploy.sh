@@ -134,7 +134,7 @@ $RELEASE migrate --noinput
 # exists" on its own, gets the correctness of both without either failure
 # mode. Keep this list in sync with DataSpace/settings.py's
 # ELASTICSEARCH_INDEX_NAMES if a new search document is ever added.
-for model in api.Dataset api.UseCase api.AIModel api.Publication api.Collaborative api.Organization authorization.User; do
+for model in api.Dataset api.UseCase api.AIModel api.Publication api.Collaborative api.Event api.Organization authorization.User; do
   $RELEASE search_index --create --models "$model" -f || true
 done
 $RELEASE search_index --populate -f

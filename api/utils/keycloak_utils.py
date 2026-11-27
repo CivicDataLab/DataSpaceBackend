@@ -150,7 +150,11 @@ class KeycloakManager:
             # is not available to this client.
             try:
                 user_info = self.keycloak_openid.userinfo(token)
-                return user_info
+                if isinstance(user_info, bytes):
+                    import json
+
+                    user_info = json.loads(user_info.decode("utf-8"))
+                return user_info  # type: ignore[return-value]
             except KeycloakError as userinfo_error:
                 # If userinfo fails (e.g., 403), extract user info from token introspection
                 logger.warning(
