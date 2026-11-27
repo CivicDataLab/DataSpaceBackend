@@ -20,6 +20,7 @@ from django.db.models import QuerySet
 
 from api.models import Geography, Publication, ResourceType, Sector
 from api.utils.enums import DatasetLicense, PublicationStatus
+from api.utils.input_checks import too_long_error
 from api.utils.organization_access import can_list_organization
 from authorization.models import User
 
@@ -27,6 +28,14 @@ from authorization.models import User
 # when the caller sends no pagination input.
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
+
+# Mutations save without full_clean, so limits are checked here. They follow
+# the rest of the platform: dataset, organisation and chart descriptions are
+# 1000 characters, and the dataset form never takes a future date.
+DESCRIPTION_MAX_LENGTH = 1000
+MAX_CONTRIBUTORS = 50
+# The wizard accepts only these; URLValidator alone also allows ftp/ftps.
+LINK_SCHEMES = ["http", "https"]
 
 
 def validate_draft_inputs(
@@ -49,11 +58,9 @@ def validate_draft_inputs(
         errors["license"] = ["Not a valid license."]
     if resource_type_id:
         resource_type = _resolve_active_resource_type(resource_type_id, errors)
-    if external_source_link:
-        try:
-            URLValidator()(external_source_link)
-        except DjangoValidationError:
-            errors["external_source_link"] = ["Enter a valid URL."]
+    link_message = _link_error(external_source_link)
+    if link_message:
+        errors["external_source_link"] = [link_message]
 
     if errors:
         raise DjangoValidationError(errors)
@@ -95,6 +102,13 @@ def validate_publication_metadata(
         errors["authors"] = ["At least one author is required."]
     if publication_date is None:
         errors["publication_date"] = ["Publication date is required."]
+    _check_limits(
+        errors,
+        title=title,
+        description=description,
+        publication_date=publication_date,
+        authors=authors,
+    )
     if not sector_ids:
         errors["sectors"] = ["At least one sector is required."]
     if not geography_ids:
@@ -105,11 +119,9 @@ def validate_publication_metadata(
     elif license_value not in DatasetLicense.values:
         errors["license"] = ["Not a valid license."]
 
-    if external_source_link:
-        try:
-            URLValidator()(external_source_link)
-        except DjangoValidationError:
-            errors["external_source_link"] = ["Enter a valid URL."]
+    link_message = _link_error(external_source_link)
+    if link_message:
+        errors["external_source_link"] = [link_message]
 
     resource_type = _resolve_active_resource_type(resource_type_id, errors)
 
@@ -161,6 +173,13 @@ def create_publication(
     errors: dict[str, List[str]] = {}
     _reject_missing_tags(sector_ids or [], geography_ids or [], errors)
     contributors = _contributor_users(contributor_ids, errors)
+    _check_limits(
+        errors,
+        title=(title or "").strip(),
+        description=(description or "").strip(),
+        publication_date=publication_date,
+        authors=authors,
+    )
     if errors:
         raise DjangoValidationError(errors)
 
@@ -222,14 +241,11 @@ def apply_publication_update(
     new_date = publication.publication_date if publication_date is _UNSET else publication_date
     new_link = publication.external_source_link
     if external_source_link is not _UNSET:
-        if external_source_link:
-            try:
-                URLValidator()(external_source_link)
-                new_link = external_source_link
-            except DjangoValidationError:
-                errors["external_source_link"] = ["Enter a valid URL."]
+        link_message = _link_error(external_source_link)
+        if link_message:
+            errors["external_source_link"] = [link_message]
         else:
-            new_link = None
+            new_link = external_source_link or None
 
     new_license = publication.license
     if license_value is not _UNSET and license_value:
@@ -256,6 +272,13 @@ def apply_publication_update(
     )
     if contributors is not None:
         new_authors = []
+    _check_limits(
+        errors,
+        title=None if title is _UNSET else new_title,
+        description=None if description is _UNSET else new_description,
+        publication_date=None if publication_date is _UNSET else new_date,
+        authors=None if authors is _UNSET else authors,
+    )
     if errors:
         raise DjangoValidationError(errors)
 
@@ -385,6 +408,45 @@ def _clean_authors(authors: Optional[List[str]]) -> List[str]:
     return [author.strip() for author in (authors or []) if author and author.strip()]
 
 
+def _link_error(link: Optional[str]) -> Optional[str]:
+    """Message for a link that is not http(s) or does not fit its column."""
+    if not link:
+        return None
+    try:
+        URLValidator(schemes=LINK_SCHEMES)(link)
+    except DjangoValidationError:
+        return "Enter a valid URL."
+    return too_long_error(Publication, "external_source_link", link, "External source link")
+
+
+def _latest_date() -> datetime.date:
+    """Today, a day ahead of UTC: the server runs in UTC, users in India are
+    up to 5.5 hours ahead, and their today must still be accepted."""
+    return datetime.datetime.now(datetime.timezone.utc).date() + datetime.timedelta(days=1)
+
+
+def _check_limits(
+    errors: dict[str, List[str]],
+    *,
+    title: Optional[str] = None,
+    description: Optional[str] = None,
+    publication_date: Optional[datetime.date] = None,
+    authors: Optional[List[str]] = None,
+) -> None:
+    """Record values past the platform's limits; None means not sent."""
+    title_message = too_long_error(Publication, "title", title, "Title")
+    if title_message:
+        errors["title"] = [title_message]
+    if description and len(description) > DESCRIPTION_MAX_LENGTH:
+        errors["description"] = [
+            f"Description cannot be longer than {DESCRIPTION_MAX_LENGTH} characters."
+        ]
+    if publication_date and publication_date > _latest_date():
+        errors["publication_date"] = ["Publication date cannot be in the future."]
+    if authors is not None and len(_clean_authors(authors)) > MAX_CONTRIBUTORS:
+        errors["authors"] = [f"A publication can have at most {MAX_CONTRIBUTORS} authors."]
+
+
 def _contributor_users(
     ids: Optional[List[Any]], errors: dict[str, List[str]]
 ) -> Optional[List[User]]:
@@ -398,6 +460,11 @@ def _contributor_users(
         wanted = list(dict.fromkeys(int(str(item)) for item in ids))
     except ValueError:
         errors["contributors"] = ["One or more contributors do not exist."]
+        return None
+    if len(wanted) > MAX_CONTRIBUTORS:
+        errors["contributors"] = [
+            f"A publication can have at most {MAX_CONTRIBUTORS} contributors."
+        ]
         return None
     users = list(User.objects.filter(id__in=wanted))
     if len(users) != len(wanted):
